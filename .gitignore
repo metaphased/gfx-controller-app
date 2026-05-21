@@ -1,9 +1,10 @@
 # Dependencies
 node_modules/
 
-# Runtime data & uploads
+# Runtime data, old code zips & uploads
 data/
 public/uploads/
+code/
 
 # Logs
 *.log
