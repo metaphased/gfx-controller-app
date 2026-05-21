@@ -1,0 +1,205 @@
+// Head to Head overlay — h2h.js
+const _gfxToken = new URLSearchParams(window.location.search).get('token') || '';
+const socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
+
+let _lastVisible = null;
+var _exitTimer  = null;
+var _enterTimer = null;
+
+// Role order matches state.draft.team1RolePicks / team2RolePicks indices
+// (DRAFT_ROLES in control.js = ['Top','Jungle','Mid','ADC','Support'])
+const ROLES        = ['top', 'jungle', 'mid', 'bot', 'support'];
+const ROLE_LABELS  = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const ROLE_ICONS   = {
+  top:     '/graphics/draft/roles/top.png',
+  jungle:  '/graphics/draft/roles/jungle.png',
+  mid:     '/graphics/draft/roles/mid.png',
+  bot:     '/graphics/draft/roles/bot.png',
+  support: '/graphics/draft/roles/support.png',
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+function setBg(id, url) { const el = $(id); if (el) el.style.backgroundImage = url ? 'url(' + url + ')' : ''; }
+
+// Strip path + extension + Riot-style trailing _N suffix → champion name
+// e.g. '/champions/Ahri.png' → 'Ahri',  '/path/Yasuo_0.jpg' → 'Yasuo'
+function champNameFromUrl(url) {
+  if (!url) return '';
+  return url.split('/').pop().replace(/\.[^.]+$/, '').replace(/_\d+$/, '');
+}
+
+// Normalise role strings from Teams DB ('adc', 'ADC', 'Bot', 'bot' → 'bot')
+function normalizeRole(r) {
+  r = (r || '').toLowerCase().trim();
+  return r === 'adc' ? 'bot' : r;
+}
+
+// ── Show / hide ───────────────────────────────────────────────────────────────
+function animateIn() {
+  var root = $('h2h-root');
+  if (!root) return;
+  if (_exitTimer)  { clearTimeout(_exitTimer);  _exitTimer  = null; }
+  if (_enterTimer) { clearTimeout(_enterTimer); _enterTimer = null; }
+  root.classList.remove('h2h-exiting');
+  root.style.display = '';
+  void root.offsetWidth;
+  root.classList.add('visible', 'h2h-entering');
+  _enterTimer = setTimeout(function() {
+    root.classList.remove('h2h-entering');
+    _enterTimer = null;
+  }, 1400);
+}
+function animateOut() {
+  var root = $('h2h-root');
+  if (!root) return;
+  if (_enterTimer) { clearTimeout(_enterTimer); root.classList.remove('h2h-entering'); _enterTimer = null; }
+  root.classList.remove('visible');
+  root.classList.add('h2h-exiting');
+  _exitTimer = setTimeout(function() {
+    root.classList.remove('h2h-exiting');
+    root.style.display = 'none';
+    _exitTimer = null;
+  }, 700);
+}
+
+// ── Row builder ───────────────────────────────────────────────────────────────
+function buildRowHTML(i, t1Picks, t2Picks, t1Players, t2Players) {
+  var roleKey   = ROLES[i];
+  var roleLabel = ROLE_LABELS[i];
+  var iconUrl   = ROLE_ICONS[roleKey];
+
+  var t1ChampUrl  = t1Picks[i] || '';
+  var t2ChampUrl  = t2Picks[i] || '';
+  var t1ChampName = champNameFromUrl(t1ChampUrl);
+  var t2ChampName = champNameFromUrl(t2ChampUrl);
+
+  // Construct path to the larger splash art (champname_0.jpg)
+  var t1Splash = t1ChampName ? '/graphics/head2head/champions/' + t1ChampName + '_0.jpg' : '';
+  var t2Splash = t2ChampName ? '/graphics/head2head/champions/' + t2ChampName + '_0.jpg' : '';
+
+  // Match player to role — players use 'top'/'jungle'/'mid'/'bot'/'adc'/'support'
+  var t1Player = t1Players.find(function(p) { return normalizeRole(p.role) === roleKey; }) || {};
+  var t2Player = t2Players.find(function(p) { return normalizeRole(p.role) === roleKey; }) || {};
+
+  var splashStyle1 = t1Splash ? 'background-image:url(' + t1Splash + ')' : '';
+  var splashStyle2 = t2Splash ? 'background-image:url(' + t2Splash + ')' : '';
+
+  return (
+    '<div class="h2h-card h2h-card-left" style="' + splashStyle1 + '">' +
+      '<div class="h2h-player-info">' +
+        '<div class="h2h-champ-name">' + t1ChampName + '</div>' +
+        '<div class="h2h-player-handle">' + (t1Player.handle || '') + '</div>' +
+      '</div>' +
+    '</div>' +
+    '<div class="h2h-centre">' +
+      '<div class="h2h-role-icon" style="background-image:url(' + iconUrl + ')"></div>' +
+      '<div class="h2h-role-label">' + roleLabel + '</div>' +
+    '</div>' +
+    '<div class="h2h-card h2h-card-right" style="' + splashStyle2 + '">' +
+      '<div class="h2h-player-info">' +
+        '<div class="h2h-champ-name">' + t2ChampName + '</div>' +
+        '<div class="h2h-player-handle">' + (t2Player.handle || '') + '</div>' +
+      '</div>' +
+    '</div>'
+  );
+}
+
+// ── Main render ───────────────────────────────────────────────────────────────
+function renderAll(state) {
+  var h2h      = state.headToHead || {};
+  var draft    = state.draft      || {};
+  var match    = state.match      || {};
+  var settings = state.settings   || {};
+  var t1      = match.team1      || {};
+  var t2      = match.team2      || {};
+  // Players live at state.players (top-level) — state.match does not include them
+  var t1Players = (state.players && state.players.team1) || [];
+  var t2Players = (state.players && state.players.team2) || [];
+  var t1Picks   = draft.team1RolePicks || [];
+  var t2Picks   = draft.team2RolePicks || [];
+
+  // ── Team headers ─────────────────────────────────────────────────────────
+  setBg('h2h-t1-logo', t1.logo);
+  setBg('h2h-t2-logo', t2.logo);
+  var t1NameEl = $('h2h-t1-name');
+  var t2NameEl = $('h2h-t2-name');
+  if (t1NameEl) t1NameEl.textContent = t1.name || t1.tag || '';
+  if (t2NameEl) t2NameEl.textContent = t2.name || t2.tag || '';
+
+  // ── Centre logo (tournament logo or first library logo) ───────────────────
+  var logoLibrary  = (settings.logoSet && settings.logoSet.logos) || [];
+  var h2hLogoSel   = settings.h2hLogoUrl !== undefined ? settings.h2hLogoUrl : '';
+  var centreLogo   = h2hLogoSel || (logoLibrary.length ? logoLibrary[0].url : '');
+  var centreLogoEl = $('h2h-centre-logo');
+  if (centreLogoEl) {
+    if (centreLogo) { centreLogoEl.src = centreLogo; centreLogoEl.style.display = ''; }
+    else              { centreLogoEl.style.display = 'none'; }
+  }
+
+  // ── Build rows (once) or update when data changes ─────────────────────────
+  var rowsEl = $('h2h-rows');
+  if (!rowsEl) return;
+
+  if (rowsEl.children.length !== 5) {
+    rowsEl.innerHTML = '';
+    for (var i = 0; i < 5; i++) {
+      var row = document.createElement('div');
+      row.className = 'h2h-row';
+      row.dataset.roleIdx = i;
+      rowsEl.appendChild(row);
+    }
+  }
+
+  // Key each row on its data so we only rebuild innerHTML when picks/players change
+  Array.from(rowsEl.children).forEach(function(row, i) {
+    var t1Url = t1Picks[i] || '';
+    var t2Url = t2Picks[i] || '';
+    var t1P   = t1Players.find(function(p) { return normalizeRole(p.role) === ROLES[i]; }) || {};
+    var t2P   = t2Players.find(function(p) { return normalizeRole(p.role) === ROLES[i]; }) || {};
+    var key = t1Url + '|' + t2Url + '|' + (t1P.handle || '') + '|' + (t2P.handle || '');
+
+    if (row.dataset.rowKey !== key) {
+      row.dataset.rowKey = key;
+      row.innerHTML = buildRowHTML(i, t1Picks, t2Picks, t1Players, t2Players);
+    }
+  });
+
+  // ── Apply mode + active row ───────────────────────────────────────────────
+  var root = $('h2h-root');
+  if (!root) return;
+
+  var mode      = h2h.mode || 'spotlight';
+  var spotlight = (h2h.spotlightRole !== undefined && h2h.spotlightRole !== null)
+                  ? h2h.spotlightRole : 0;
+
+  // Only touch the mode class when mode actually changes — removing and re-adding
+  // the same class every render creates an intermediate height state that Chrome
+  // uses as the transition start point, making the animation look invisible.
+  if (!root.classList.contains('mode-' + mode)) {
+    root.classList.remove('mode-spotlight', 'mode-lineup');
+    root.classList.add('mode-' + mode);
+  }
+
+  Array.from(rowsEl.children).forEach(function(row, i) {
+    row.classList.toggle('active', mode === 'spotlight' && i === spotlight);
+  });
+}
+
+// ── Socket ────────────────────────────────────────────────────────────────────
+socket.on('state', function(state) {
+  var root    = $('h2h-root');
+  var visible = !!(state.headToHead && state.headToHead.visible);
+
+  GfxSettings.applyTheme(document.documentElement, state);
+  GfxSettings.applyBackground(root, state);
+
+  if (visible !== _lastVisible) {
+    if (visible) animateIn();
+    else if (_lastVisible !== null) animateOut();
+    _lastVisible = visible;
+  }
+
+  if (!visible) return;
+  renderAll(state);
+});

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MetaGFX — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070f12; --bg2: #0a1b20; --bg3: #0d2028;
+  --border: rgba(167,163,142,0.15); --accent: #a7a38e;
+  --primary: #1ffaff; --danger: #ff4444; --text: #e8e6df;
+  --text-dim: rgba(232,230,223,0.5);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Barlow', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.login-box {
+  width: 360px;
+  background: var(--bg2);
+  border: 1px solid rgba(31,250,255,0.2);
+  box-shadow: 0 0 60px rgba(31,250,255,0.06);
+  padding: 40px 36px;
+}
+.login-logo {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  margin-bottom: 6px;
+}
+.login-logo span { color: var(--primary); }
+.login-sub {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 32px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+.field { margin-bottom: 16px; }
+.field label {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+.field input {
+  width: 100%;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: 'Barlow', sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.field input:focus { border-color: var(--primary); }
+.btn-login {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  background: rgba(31,250,255,0.1);
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.btn-login:hover { background: rgba(31,250,255,0.18); }
+.btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
+.error-msg {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: rgba(255,68,68,0.08);
+  border: 1px solid rgba(255,68,68,0.25);
+  color: var(--danger);
+  font-size: 12px;
+  display: none;
+}
+.error-msg.show { display: block; }
+</style>
+</head>
+<body>
+<div class="login-box">
+  <div class="login-logo"><span>Meta</span>GFX</div>
+  <div class="login-sub">Broadcast Graphics System</div>
+  <form id="login-form">
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="username" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="password" autocomplete="current-password" required>
+    </div>
+    <button class="btn-login" type="submit" id="login-btn">Sign In</button>
+    <div class="error-msg" id="error-msg">Invalid username or password.</div>
+  </form>
+</div>
+<script>
+document.getElementById('login-form').addEventListener('submit', async function(e) {
+  e.preventDefault();
+  const btn = document.getElementById('login-btn');
+  const err = document.getElementById('error-msg');
+  btn.disabled = true;
+  err.classList.remove('show');
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: document.getElementById('username').value.trim(),
+        password: document.getElementById('password').value
+      })
+    });
+    const data = await res.json();
+    if (res.ok && data.ok) {
+      window.location.href = data.redirect || '/control/';
+    } else {
+      err.textContent = data.error || 'Invalid username or password.';
+      err.classList.add('show');
+    }
+  } catch(ex) {
+    err.textContent = 'Connection error. Is the server running?';
+    err.classList.add('show');
+  }
+  btn.disabled = false;
+});
+document.getElementById('username').focus();
+</script>
+</body>
+</html>

@@ -1,0 +1,330 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
+
+:root {
+  --gfx-c1: #1ffaff;
+  --h2h-header-h:  10vh;
+  --h2h-rows-h:    90vh;
+  --h2h-centre-w:  12vw;
+  --h2h-compact-h: 11.5vh;  /* inactive row in spotlight   (4 × 11.5 + 44 = 90) */
+  --h2h-active-h:  44vh;    /* expanded row in spotlight                         */
+  --h2h-lineup-h:  18vh;    /* all rows equal in lineup     (5 × 18 = 90)        */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROOT
+   ═══════════════════════════════════════════════════════════════════════════ */
+#h2h-root {
+  width: 100vw; height: 100vh;
+  display: flex; flex-direction: column;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+#h2h-root.visible { opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER BAR
+   ═══════════════════════════════════════════════════════════════════════════ */
+.h2h-header {
+  height: var(--h2h-header-h);
+  display: flex;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.h2h-header-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+  padding: 0 3vw;
+  background: rgba(0,0,0,0.72);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.h2h-header-right { flex-direction: row-reverse; }
+
+.h2h-header-logo {
+  width: 7vh; height: 7vh;
+  flex-shrink: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.h2h-header-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 4.8vh; font-weight: 900;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: #fff;
+  line-height: 1;
+}
+
+.h2h-header-centre {
+  width: var(--h2h-centre-w);
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.85);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.h2h-header-centre img {
+  max-height: 6.5vh;
+  max-width: calc(var(--h2h-centre-w) - 1.5vw);
+  object-fit: contain;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROWS CONTAINER
+   ═══════════════════════════════════════════════════════════════════════════ */
+.h2h-rows {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #07101a; /* backstop — fills any sub-pixel gaps between rows */
+  position: relative;
+  z-index: 1; /* sits above the canvas injected at z-index:0 by applyBackground */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INDIVIDUAL ROW
+   ═══════════════════════════════════════════════════════════════════════════ */
+.h2h-row {
+  height: var(--h2h-lineup-h);   /* default — lineup mode */
+  display: flex;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  transition: height 0.7s cubic-bezier(0.25, 1, 0.5, 1);
+  position: relative;
+}
+
+/* Spotlight mode — compact / expanded */
+#h2h-root.mode-spotlight .h2h-row         { height: var(--h2h-compact-h); }
+#h2h-root.mode-spotlight .h2h-row.active  { height: var(--h2h-active-h);  }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CHAMPION CARDS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.h2h-card {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: #0a0f18; /* fallback when art hasn't loaded / no champ assigned */
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+
+/* Spotlight: anchor to top so expanding the card reveals the body downward */
+.h2h-card-left  { background-position: 60% top; }
+.h2h-card-right { background-position: 40% top; }
+
+/* Lineup: all rows are fixed height (~18vh), so shift the anchor point
+   down the image to show faces/bodies rather than the top edge of the art */
+#h2h-root.mode-lineup .h2h-card-left  { background-position: 60% 20%; }
+#h2h-root.mode-lineup .h2h-card-right { background-position: 40% 20%; }
+
+/* Gradient overlay — bottom text scrim + inner-edge blend toward centre */
+.h2h-card-left::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to right, transparent 55%, rgba(4,8,16,0.8) 100%),
+    linear-gradient(to top,   rgba(4,8,16,0.95) 0%, rgba(4,8,16,0.55) 25%, rgba(4,8,16,0.1) 55%, transparent 75%);
+}
+.h2h-card-right::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to left,  transparent 55%, rgba(4,8,16,0.8) 100%),
+    linear-gradient(to top,   rgba(4,8,16,0.95) 0%, rgba(4,8,16,0.55) 25%, rgba(4,8,16,0.1) 55%, transparent 75%);
+}
+
+/* Dim overlay on inactive rows in spotlight mode */
+#h2h-root.mode-spotlight .h2h-row:not(.active) .h2h-card::before {
+  content: '';
+  position: absolute; inset: 0; z-index: 1;
+  background: rgba(0,0,0,0.5);
+}
+
+/* ── Player info (absolute — bottom of the card) ─────────────────────────── */
+.h2h-player-info {
+  position: absolute;
+  bottom: 0;
+  z-index: 2;   /* above both ::before and ::after pseudo-elements */
+  padding: 1.4vh 2vw;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.h2h-row.active .h2h-player-info {
+  opacity: 1;
+  transition: opacity 0.4s ease 0.25s; /* fades in after row finishes expanding */
+}
+.h2h-card-left  .h2h-player-info { left: 0; }
+.h2h-card-right .h2h-player-info { right: 0; text-align: right; }
+
+.h2h-player-handle {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 6vh; font-weight: 900;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: #fff;
+  line-height: 1;
+  transition: font-size 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.h2h-champ-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.9vh; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--gfx-c1);
+  line-height: 1; margin-bottom: 0.4vh;
+  transition: font-size 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CENTRE COLUMN — role icon + label
+   ═══════════════════════════════════════════════════════════════════════════ */
+.h2h-centre {
+  width: var(--h2h-centre-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8vh;
+  background: #07101a; /* fully opaque — prevents canvas animation bleeding through */
+  border-left:  1px solid rgba(255,255,255,0.07);
+  border-right: 1px solid rgba(255,255,255,0.07);
+  position: relative;
+  z-index: 3;
+}
+
+.h2h-role-icon {
+  width: 4.5vh; height: 4.5vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: brightness(0) invert(1);
+  opacity: 0.45;
+  transition: width 0.7s cubic-bezier(0.25, 1, 0.5, 1),
+              height 0.7s cubic-bezier(0.25, 1, 0.5, 1),
+              opacity 0.4s ease;
+}
+.h2h-row.active .h2h-role-icon {
+  width: 7vh; height: 7vh;
+  opacity: 1;
+  filter: brightness(0) saturate(100%) invert(89%) sepia(100%) saturate(300%) hue-rotate(150deg);
+}
+
+.h2h-role-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3vh; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  transition: color 0.4s ease, font-size 0.4s ease;
+}
+.h2h-row.active .h2h-role-label {
+  color: var(--gfx-c1);
+  font-size: 1.6vh;
+}
+
+/* ── Compact row: small text hint inside centre (role only, no icon) ────── */
+/* When extremely compact, hide the role icon and just show label */
+#h2h-root.mode-spotlight .h2h-row:not(.active) .h2h-role-icon  { width: 3.5vh; height: 3.5vh; }
+#h2h-root.mode-spotlight .h2h-row:not(.active) .h2h-role-label { font-size: 1.1vh; }
+
+/* Lineup mode — no dimming, all rows equal, player info always visible */
+#h2h-root.mode-lineup .h2h-player-info {
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+#h2h-root.mode-lineup .h2h-player-handle { font-size: 3.8vh; }
+#h2h-root.mode-lineup .h2h-champ-name    { font-size: 1.4vh; }
+#h2h-root.mode-lineup .h2h-role-icon     { width: 5vh; height: 5vh; opacity: 0.7; filter: brightness(0) invert(1); }
+#h2h-root.mode-lineup .h2h-role-label    { font-size: 1.2vh; color: rgba(255,255,255,0.45); }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENTRY / EXIT ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes h2h-rise {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes h2h-slide-left {
+  from { transform: translateX(-6vw); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes h2h-slide-right {
+  from { transform: translateX(6vw);  opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes h2h-sink {
+  to { transform: translateY(20px); }
+}
+@keyframes h2h-exit-left {
+  to { transform: translateX(-5vw); }
+}
+@keyframes h2h-exit-right {
+  to { transform: translateX(5vw); }
+}
+
+/* ── Entry ──────────────────────────────────────────────────────────────── */
+/* Root uses its normal 0.6s opacity fade — panel fades in, then motion begins */
+
+/* Centre column: header centre + all row centres rise together as one bar.
+   0.2s delay lets the panel establish before the bar starts moving. */
+#h2h-root.h2h-entering .h2h-header-centre,
+#h2h-root.h2h-entering .h2h-centre {
+  animation: h2h-rise 0.65s cubic-bezier(0.25, 1, 0.5, 1) 0.2s both;
+}
+
+/* Header sides sweep in once the bar is mid-rise */
+#h2h-root.h2h-entering .h2h-header-left {
+  animation: h2h-slide-left  0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.3s both;
+}
+#h2h-root.h2h-entering .h2h-header-right {
+  animation: h2h-slide-right 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.3s both;
+}
+
+/* Champion cards slide in from their side */
+#h2h-root.h2h-entering .h2h-card-left  {
+  animation: h2h-slide-left  0.55s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+#h2h-root.h2h-entering .h2h-card-right {
+  animation: h2h-slide-right 0.55s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+
+/* Top-to-bottom row stagger — shifted to start once panel is visible */
+#h2h-root.h2h-entering .h2h-row:nth-child(1) .h2h-card { animation-delay: 0.30s; }
+#h2h-root.h2h-entering .h2h-row:nth-child(2) .h2h-card { animation-delay: 0.37s; }
+#h2h-root.h2h-entering .h2h-row:nth-child(3) .h2h-card { animation-delay: 0.44s; }
+#h2h-root.h2h-entering .h2h-row:nth-child(4) .h2h-card { animation-delay: 0.51s; }
+#h2h-root.h2h-entering .h2h-row:nth-child(5) .h2h-card { animation-delay: 0.58s; }
+
+/* ── Exit ───────────────────────────────────────────────────────────────── */
+/* Root's natural 0.6s opacity fade dissolves the backgrounds.
+   Child animations are transform-only so they slide while the panel fades. */
+
+#h2h-root.h2h-exiting .h2h-header-centre,
+#h2h-root.h2h-exiting .h2h-centre {
+  animation: h2h-sink 0.4s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+#h2h-root.h2h-exiting .h2h-header-left {
+  animation: h2h-exit-left  0.35s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+#h2h-root.h2h-exiting .h2h-header-right {
+  animation: h2h-exit-right 0.35s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+#h2h-root.h2h-exiting .h2h-card-left {
+  animation: h2h-exit-left  0.4s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+#h2h-root.h2h-exiting .h2h-card-right {
+  animation: h2h-exit-right 0.4s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+
+/* Reversed stagger for exit: bottom row leaves first */
+#h2h-root.h2h-exiting .h2h-row:nth-child(5) .h2h-card { animation-delay: 0s;    }
+#h2h-root.h2h-exiting .h2h-row:nth-child(4) .h2h-card { animation-delay: 0.04s; }
+#h2h-root.h2h-exiting .h2h-row:nth-child(3) .h2h-card { animation-delay: 0.08s; }
+#h2h-root.h2h-exiting .h2h-row:nth-child(2) .h2h-card { animation-delay: 0.12s; }
+#h2h-root.h2h-exiting .h2h-row:nth-child(1) .h2h-card { animation-delay: 0.16s; }

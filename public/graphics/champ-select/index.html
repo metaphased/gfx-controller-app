@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Draft</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1920px; height: 1080px;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Barlow Condensed', sans-serif;
+  }
+  :root {
+    --bg: #0a1b20;
+    --bg2: #0d2028;
+    --accent: #a7a38e;
+    --primary: #1ffaff;
+  }
+
+  .cs-wrap {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 40px 60px;
+    opacity: 0;
+    transition: opacity 0.5s;
+    pointer-events: none;
+  }
+  .cs-wrap.visible { opacity: 1; }
+
+  .cs-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 560px;
+  }
+
+  .panel-header {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .panel-header span { color: var(--accent); font-size: 18px; font-weight: 800; }
+
+  .bans-row { display: flex; gap: 8px; }
+
+  .ban-slot {
+    width: 72px; height: 72px;
+    background: var(--bg2);
+    border: 1px solid rgba(167,163,142,0.2);
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .ban-slot img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(80%) brightness(0.5); }
+  .ban-slot .ban-x {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,50,50,0.7); font-size: 28px; font-weight: 900;
+  }
+  .ban-slot.empty { opacity: 0.3; }
+
+  .picks-col { display: flex; flex-direction: column; gap: 8px; }
+
+  .pick-slot {
+    height: 120px;
+    background: var(--bg2);
+    border: 1px solid rgba(167,163,142,0.15);
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .pick-slot.active { border-color: var(--primary); box-shadow: 0 0 12px rgba(31,250,255,0.3); }
+
+  .pick-champ-img {
+    width: 120px; height: 120px;
+    object-fit: cover;
+    object-position: top center;
+    flex-shrink: 0;
+  }
+  .pick-info { padding: 12px 16px; flex: 1; }
+  .pick-player {
+    font-size: 13px; font-weight: 600;
+    letter-spacing: 0.15em; color: var(--accent);
+    text-transform: uppercase;
+  }
+  .pick-champ {
+    font-size: 22px; font-weight: 800;
+    color: #fff; text-transform: uppercase;
+    letter-spacing: 0.04em; line-height: 1; margin-top: 2px;
+  }
+  .pick-role {
+    font-size: 11px; color: var(--primary);
+    letter-spacing: 0.12em; text-transform: uppercase; margin-top: 4px;
+  }
+  .pick-bar {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    width: 4px; background: var(--primary);
+  }
+  .cs-panel.right .pick-bar { left: auto; right: 0; }
+  .cs-panel.right .pick-slot { flex-direction: row-reverse; }
+
+  .cs-center {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 16px;
+  }
+  .phase-label {
+    font-size: 12px; font-weight: 700;
+    letter-spacing: 0.3em; color: var(--accent); text-transform: uppercase;
+  }
+  .phase-name {
+    font-size: 28px; font-weight: 800;
+    color: var(--primary); text-transform: uppercase; letter-spacing: 0.1em;
+  }
+  .game-label {
+    font-size: 11px; letter-spacing: 0.2em;
+    color: rgba(255,255,255,0.3); text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="cs-wrap" id="cs">
+  <div class="cs-panel" id="t1-panel">
+    <div class="panel-header"><span id="t1-tag">T1</span> BANS</div>
+    <div class="bans-row" id="t1-bans"></div>
+    <div class="panel-header" style="margin-top:8px"><span id="t1-tag2">T1</span> PICKS</div>
+    <div class="picks-col" id="t1-picks"></div>
+  </div>
+
+  <div class="cs-center">
+    <div class="phase-label">CURRENT PHASE</div>
+    <div class="phase-name" id="phase-name">—</div>
+    <div class="game-label" id="game-label">League of Legends</div>
+  </div>
+
+  <div class="cs-panel right" id="t2-panel">
+    <div class="panel-header">BANS <span id="t2-tag">T2</span></div>
+    <div class="bans-row" id="t2-bans"></div>
+    <div class="panel-header" style="margin-top:8px">PICKS <span id="t2-tag2">T2</span></div>
+    <div class="picks-col" id="t2-picks"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const PHASE_LABELS = {
+  notstarted: '—',
+  bans1:  'PHASE 1 — BANS',
+  picks1: 'PHASE 1 — PICKS',
+  bans2:  'PHASE 2 — BANS',
+  picks2: 'PHASE 2 — PICKS',
+  complete: 'DRAFT COMPLETE'
+};
+const GAME_LABELS = { lol: 'League of Legends', valorant: 'VALORANT', cs2: 'CS2', generic: '' };
+
+// Draft step order: 20 steps (0-indexed)
+// Blue bans (display order 1-5): steps 0,2,4,13,15
+// Red  bans (display order 1-5): steps 1,3,5,12,14
+// Blue picks (display order 1-5): steps 6,9,10,17,18
+// Red  picks (display order 1-5): steps 7,8,11,16,19
+const BLUE_BAN_IDX  = [0,2,4,13,15];
+const RED_BAN_IDX   = [1,3,5,12,14];
+const BLUE_PICK_IDX = [6,9,10,17,18];
+const RED_PICK_IDX  = [7,8,11,16,19];
+
+function champNameFromUrl(urlOrName) {
+  if (!urlOrName) return '';
+  const filename = urlOrName.split('/').pop();
+  const noExt = filename.replace(/\.[^.]+$/, '');
+  return noExt.replace(/_\d+$/, '');
+}
+
+function renderBans(id, bans) {
+  const el = document.getElementById(id);
+  el.innerHTML = (bans || ['','','','','']).map(function(b) {
+    return '<div class="ban-slot' + (b ? '' : ' empty') + '">' +
+      (b ? '<img src="' + b + '" alt="">' : '') +
+      (b ? '<div class="ban-x">✕</div>' : '') +
+      '</div>';
+  }).join('');
+}
+
+function renderPicks(id, picks, players, isRight) {
+  const el = document.getElementById(id);
+  el.innerHTML = (picks || ['','','','','']).map(function(p, i) {
+    const player = (players && players[i]) || {};
+    const champName = champNameFromUrl(p);
+    return '<div class="pick-slot">' +
+      '<div class="pick-bar"></div>' +
+      (p ? '<img class="pick-champ-img" src="' + p + '" alt="">' : '<div style="width:120px;height:120px;background:rgba(255,255,255,0.04)"></div>') +
+      '<div class="pick-info">' +
+        '<div class="pick-player">' + (player.handle || player.name || ('Player ' + (i+1))) + '</div>' +
+        '<div class="pick-champ">' + (champName || '—') + '</div>' +
+        '<div class="pick-role">' + (player.role || '') + '</div>' +
+      '</div>' +
+      '</div>';
+  }).join('');
+}
+
+const socket = io();
+socket.on('state', function(s) {
+  const draft = s.draft || {};
+  const cs = document.getElementById('cs');
+  cs.classList.toggle('visible', !!draft.visible);
+
+  const picks = draft.picks || Array(20).fill('');
+  const blueSideTeam = draft.blueSideTeam || 'team1';
+  const t1 = s.match.team1, t2 = s.match.team2;
+
+  // Determine which team is blue and which is red
+  const blueTeam = blueSideTeam === 'team1' ? t1 : t2;
+  const redTeam  = blueSideTeam === 'team1' ? t2 : t1;
+  const blueKey  = blueSideTeam === 'team1' ? 'team1' : 'team2';
+  const redKey   = blueSideTeam === 'team1' ? 'team2' : 'team1';
+  const bluePlayers = (s.players && s.players[blueKey]) || [];
+  const redPlayers  = (s.players && s.players[redKey])  || [];
+
+  // Left panel = team1, right panel = team2 (regardless of side)
+  ['t1-tag','t1-tag2'].forEach(function(id) { document.getElementById(id).textContent = t1.tag || t1.name; });
+  ['t2-tag','t2-tag2'].forEach(function(id) { document.getElementById(id).textContent = t2.tag || t2.name; });
+
+  document.getElementById('phase-name').textContent = PHASE_LABELS[draft.phase] || '—';
+  document.getElementById('game-label').textContent = GAME_LABELS[s.match.game] || '';
+
+  // Derive bans from the flat picks array (always draft-order)
+  const blueBans = BLUE_BAN_IDX.map(function(i) { return picks[i] || ''; });
+  const redBans  = RED_BAN_IDX.map(function(i)  { return picks[i] || ''; });
+
+  // Use role-ordered picks if available, otherwise fall back to draft-order
+  const t1RolePicks = (draft.team1RolePicks && draft.team1RolePicks.some(Boolean)) ? draft.team1RolePicks : null;
+  const t2RolePicks = (draft.team2RolePicks && draft.team2RolePicks.some(Boolean)) ? draft.team2RolePicks : null;
+
+  const blueDraftPicks = BLUE_PICK_IDX.map(function(i) { return picks[i] || ''; });
+  const redDraftPicks  = RED_PICK_IDX.map(function(i)  { return picks[i] || ''; });
+
+  // Map to team1/team2
+  const t1Bans  = blueSideTeam === 'team1' ? blueBans : redBans;
+  const t2Bans  = blueSideTeam === 'team1' ? redBans  : blueBans;
+
+  const t1Picks = t1RolePicks || (blueSideTeam === 'team1' ? blueDraftPicks : redDraftPicks);
+  const t2Picks = t2RolePicks || (blueSideTeam === 'team1' ? redDraftPicks  : blueDraftPicks);
+
+  const t1Players = s.players && s.players.team1;
+  const t2Players = s.players && s.players.team2;
+
+  renderBans('t1-bans', t1Bans);
+  renderBans('t2-bans', t2Bans);
+  renderPicks('t1-picks', t1Picks, t1Players);
+  renderPicks('t2-picks', t2Picks, t2Players, true);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,398 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
+
+:root {
+  --ps-c1:        #1ffaff;
+  --ps-panel:     rgba(7,15,18,0.88);
+  --ps-ticker-h:  5.5vh;
+  --ps-logo-scale: 8vh;
+  --ps-timer-w:   38vw;  /* side layout left panel width */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROOT
+   ═══════════════════════════════════════════════════════════════════════════ */
+#ps-root {
+  width: 100vw; height: 100vh;
+  display: flex; flex-direction: column;
+  position: relative;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+#ps-root.visible { opacity: 1; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   HEADER — tournament logo + name
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ps-header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2.5vw;
+  padding: 2vh 4vw;
+  background: var(--ps-panel);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  position: relative;
+  z-index: 1;
+}
+
+.ps-logo {
+  height: var(--ps-logo-scale);
+  max-height: 30vh;
+  max-width: 30vw;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.ps-tourn-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 5vh; font-weight: 900;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: #fff;
+  line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   BODY — flex wrapper toggled between center (column) and side (row) layouts
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ps-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TIMER SECTION — CENTER layout (default)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ps-timer-section {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4vh 0;
+  background: var(--ps-panel);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+
+.ps-timer-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.8vh; font-weight: 600;
+  letter-spacing: 0.4em; text-transform: uppercase;
+  color: rgba(255,255,255,0.38);
+  margin-bottom: 1vh;
+}
+
+.ps-timer {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 16vh; font-weight: 900;
+  letter-spacing: -0.01em;
+  color: #fff;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 60px rgba(31,250,255,0.18);
+}
+.ps-timer.ps-timer-done {
+  color: var(--ps-c1);
+  text-shadow: 0 0 60px rgba(31,250,255,0.5);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MATCH CARDS — CENTER layout
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ps-games {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 2vw;
+  padding: 3vh 5vw;
+  overflow: hidden;
+}
+
+.ps-card {
+  flex: 1;
+  min-width: 0;   /* allow shrinking below content size for 4+ games */
+  max-width: 22vw;
+  display: flex;
+  flex-direction: column;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  overflow: hidden;
+  position: relative;
+}
+
+/* Accent bar for the current / next match */
+.ps-card.is-current::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--ps-c1);
+  box-shadow: 0 0 14px rgba(31,250,255,0.65);
+}
+
+/* Card body — T1 | VS | T2 row */
+.ps-card-inner {
+  display: flex;
+  align-items: center;
+  padding: 2.5vh 1.8vw;
+  gap: 1vw;
+}
+
+.ps-card-team {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.2vh;
+  min-width: 0;
+}
+
+.ps-card-logo {
+  width: 6vh; height: 6vh;
+  flex-shrink: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.ps-card-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.4vh; font-weight: 800;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: #fff;
+  text-align: center;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.ps-card-vs {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.ps-card-vs-text {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.6vh; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+}
+
+/* Card footer */
+.ps-card-footer {
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding: 1vh 1.8vw;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1vw;
+}
+
+.ps-card-format {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3vh; font-weight: 700;
+  letter-spacing: 0.28em; text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+}
+.ps-card.is-current .ps-card-format { color: var(--ps-c1); opacity: 0.9; }
+
+.ps-card-stage {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.1vh; font-weight: 600;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(255,255,255,0.2);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SPONSOR LOGOS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ps-sponsors {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 2.5vw;
+  padding: 2.5vh 3vw 0;
+}
+
+.ps-sponsor-logo {
+  height: 4.5vh;
+  max-width: 10vw;
+  object-fit: contain;
+  opacity: 0.65;
+  filter: brightness(0) invert(1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SIDE LAYOUT — timer left, match list right
+   ═══════════════════════════════════════════════════════════════════════════ */
+#ps-root.layout-side .ps-body {
+  flex-direction: row;
+}
+
+#ps-root.layout-side .ps-timer-section {
+  width: var(--ps-timer-w);
+  flex-shrink: 0;
+  border-bottom: none;
+  border-right: 1px solid rgba(255,255,255,0.07);
+  padding: 0;
+  /* Gradient fades right edge so it doesn't read as a heavy dark block */
+  background: linear-gradient(to right, var(--ps-panel) 75%, rgba(7,15,18,0.55));
+}
+
+#ps-root.layout-side .ps-timer {
+  font-size: 14vh;
+}
+
+#ps-root.layout-side .ps-games {
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 0;
+  padding: 3vh 4vw;
+}
+
+#ps-root.layout-side .ps-card {
+  flex: none;       /* fully override flex:1 — height is content-driven, not container-filling */
+  width: auto;
+  max-width: none;  /* override the 22vw cap from center layout */
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+}
+#ps-root.layout-side .ps-card:last-child { border-bottom: none; }
+
+#ps-root.layout-side .ps-card.is-current {
+  background: rgba(31,250,255,0.04);
+}
+
+#ps-root.layout-side .ps-card-inner {
+  padding: 2.2vh 1vw;
+  gap: 2vw;
+}
+
+#ps-root.layout-side .ps-card-team {
+  flex-direction: row;
+  align-items: center;
+  gap: 1.2vw;
+}
+
+#ps-root.layout-side .ps-card-team:last-child {
+  flex-direction: row-reverse;
+}
+
+#ps-root.layout-side .ps-card-logo {
+  width: 5vh; height: 5vh;
+}
+
+#ps-root.layout-side .ps-card-name {
+  font-size: 2.8vh;
+  text-align: left;
+}
+
+#ps-root.layout-side .ps-card-team:last-child .ps-card-name {
+  text-align: right;
+}
+
+#ps-root.layout-side .ps-card-footer {
+  display: none;
+}
+
+/* Format label in side layout lives inside the vs column */
+#ps-root.layout-side .ps-card-vs {
+  flex-direction: column;
+  gap: 0.4vh;
+  flex-shrink: 0;
+}
+
+.ps-card-format-side { display: none; }
+
+#ps-root.layout-side .ps-card-format-side {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.2vh; font-weight: 700;
+  letter-spacing: 0.25em; text-transform: uppercase;
+  color: rgba(255,255,255,0.25);
+  display: block;
+}
+#ps-root.layout-side .ps-card.is-current .ps-card-format-side {
+  color: var(--ps-c1);
+  opacity: 0.8;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TICKER — matches break screen behaviour exactly
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ps-ticker {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: var(--ps-ticker-h);
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: rgba(0,0,0,0.45);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  z-index: 6;
+}
+
+.ps-ticker-label {
+  flex-shrink: 0;
+  padding: 0 1.4vw;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3vh; font-weight: 800; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--ps-c1);
+  border-right: 1px solid rgba(255,255,255,0.12);
+  height: 100%; display: flex; align-items: center;
+}
+
+.ps-ticker-track {
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.ps-ticker-inner {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+  flex-shrink: 0;
+}
+
+.ps-ticker-item {
+  display: inline-block;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.9vh; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.82);
+  white-space: nowrap;
+}
+
+.ps-ticker-result-win  { color: var(--ps-c1); font-weight: 800; }
+.ps-ticker-result-loss { color: rgba(255,255,255,0.82); }
+.ps-ticker-result-score { color: rgba(255,255,255,0.65); }
+.ps-ticker-live-label  { color: #ff3b3b; font-weight: 800; letter-spacing: 0.12em; }
+.ps-ticker-live-dot {
+  display: inline-block;
+  width: 0.55em; height: 0.55em; border-radius: 50%;
+  background: #ff3b3b; margin: 0 0.55em;
+  vertical-align: middle; position: relative; top: -0.05em;
+}
+
+.ps-ticker.ticker-entering { animation: ps-ticker-slide-in  1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+.ps-ticker.ticker-leaving  { animation: ps-ticker-slide-out 1.5s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+
+@keyframes ps-ticker-slide-in  { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes ps-ticker-slide-out { from { transform: translateY(0); } to { transform: translateY(100%); } }
+@keyframes ps-ticker-scroll    { from { transform: translateX(0); }   to { transform: translateX(-50%); } }

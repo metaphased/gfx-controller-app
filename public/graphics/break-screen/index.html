@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Break Screen</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=Barlow:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="break.css">
+</head>
+<body>
+
+<div id="break-root" style="display:none">
+
+  <!-- ── Main content (vertically centred) ────────────────────────────────── -->
+  <div class="break-content" id="break-content">
+
+    <!-- Tournament logo + name -->
+    <div class="break-tourn-logo" id="break-tourn-logo">
+      <img id="break-tourn-logo-img" style="display:none;">
+    </div>
+    <div class="break-tourn-name" id="break-tourn-name"></div>
+
+    <!-- Primary message + subtext -->
+    <div class="break-main-msg" id="break-main-msg">BE RIGHT BACK</div>
+    <div class="break-subtext"  id="break-subtext"></div>
+
+    <!-- Series state — side wrappers flex:1 so centre is always truly centred -->
+    <div class="break-series" id="break-series">
+      <div class="break-series-side break-series-side-left">
+        <div class="break-side">
+          <div class="break-team-logo" id="break-t1-logo"></div>
+          <div class="break-team-name" id="break-t1-name"></div>
+        </div>
+        <div class="break-team-score" id="break-t1-score">0</div>
+      </div>
+      <div class="break-series-centre">
+        <div class="break-series-format" id="break-series-format"></div>
+        <div class="break-series-game"   id="break-series-game"></div>
+      </div>
+      <div class="break-series-side break-series-side-right">
+        <div class="break-team-score" id="break-t2-score">0</div>
+        <div class="break-side">
+          <div class="break-team-name" id="break-t2-name"></div>
+          <div class="break-team-logo" id="break-t2-logo"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Countdown timer -->
+    <div class="break-timer" id="break-timer" style="display:none">
+      <div class="break-timer-label">RESUMING IN</div>
+      <div class="break-timer-value" id="break-timer-value">00:00</div>
+    </div>
+
+    <!-- Next up -->
+    <div class="break-next" id="break-next" style="display:none">
+      <div class="break-next-label">UPCOMING</div>
+      <div class="break-next-text" id="break-next-text"></div>
+    </div>
+
+    <!-- Sponsor logos -->
+    <div class="break-sponsors" id="break-sponsors"></div>
+
+  </div><!-- /break-content -->
+
+  <!-- ── PIP: video zone (top-right area cleared for VMix layer) ─────────── -->
+  <div class="break-pip-video-zone" id="break-pip-video-zone"></div>
+
+  <!-- ── PIP: bottom bar (series state + timer + upcoming, above ticker) ─── -->
+  <div class="break-pip-bottom" id="break-pip-bottom">
+    <!-- Left cell: countdown timer, width matches left column = L-corner box -->
+    <div class="break-pip-timer-cell" id="break-pip-timer-cell">
+      <div class="break-pip-timer-label">RESUMING IN</div>
+      <div class="break-pip-timer-value" id="break-pip-timer-value">--:--</div>
+    </div>
+    <!-- Right cell: current series state + upcoming match -->
+    <div class="break-pip-info" id="break-pip-info">
+      <div class="break-pip-section-label">AFTER THE BREAK</div>
+      <div class="break-pip-series" id="break-pip-series">
+        <div class="break-pip-side break-pip-side-left">
+          <div class="break-pip-logo" id="break-pip-t1-logo"></div>
+          <div class="break-pip-name" id="break-pip-t1-name"></div>
+          <div class="break-pip-score" id="break-pip-t1-score"></div>
+        </div>
+        <div class="break-pip-centre">
+          <div class="break-pip-format" id="break-pip-format"></div>
+          <div class="break-pip-game"   id="break-pip-game"></div>
+        </div>
+        <div class="break-pip-side break-pip-side-right">
+          <div class="break-pip-score" id="break-pip-t2-score"></div>
+          <div class="break-pip-name"  id="break-pip-t2-name"></div>
+          <div class="break-pip-logo"  id="break-pip-t2-logo"></div>
+        </div>
+      </div>
+      <div class="break-pip-upcoming" id="break-pip-upcoming" style="display:none">
+        <span class="break-next-label">UPCOMING</span>
+        <span class="break-pip-upcoming-text" id="break-pip-upcoming-text"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Ticker (anchored to bottom) ──────────────────────────────────────── -->
+  <div class="break-ticker" id="break-ticker" style="display:none">
+    <div class="break-ticker-label" id="break-ticker-label">
+      <span id="break-ticker-label-text">NEWS</span>
+      <img  id="break-ticker-label-img" style="display:none;height:3.8vh;max-width:7vw;object-fit:contain;">
+    </div>
+    <div class="break-ticker-track">
+      <div class="break-ticker-inner" id="break-ticker-inner"></div>
+    </div>
+  </div>
+
+</div><!-- /break-root -->
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/graphics/gfx-settings.js"></script>
+<script src="break.js"></script>
+</body>
+</html>

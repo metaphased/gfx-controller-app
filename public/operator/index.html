@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MetaGFX — Operator</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #070f12; --bg2: #0a1b20; --bg3: #0d2028;
+  --border: rgba(167,163,142,0.15); --accent: #a7a38e;
+  --primary: #1ffaff; --danger: #ff4444; --text: #e8e6df;
+  --text-dim: rgba(232,230,223,0.5);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Barlow', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 14px; }
+
+/* ── Header ── */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px;
+  height: 48px;
+  background: var(--bg2);
+  border-bottom: 1px solid rgba(31,250,255,0.15);
+}
+.topbar-logo { font-family: 'Barlow Condensed',sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 0.1em; flex-shrink: 0; }
+.topbar-logo span { color: var(--primary); }
+.topbar-tourn { display: flex; align-items: center; gap: 8px; flex: 1; padding: 0 20px; min-width: 0; overflow: hidden; }
+.topbar-tourn-logo { width: 24px; height: 24px; flex-shrink: 0; background-size: contain; background-repeat: no-repeat; background-position: center; }
+.topbar-tourn-name { font-family: 'Barlow Condensed',sans-serif; font-size: 13px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.topbar-tourn-sep { color: var(--text-dim); font-size: 11px; flex-shrink: 0; }
+.topbar-profile-name { font-family: 'Barlow Condensed',sans-serif; font-size: 12px; font-weight: 600; color: var(--primary); letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+.topbar-right { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+.conn-dot { font-size: 11px; color: var(--text-dim); font-weight: 600; letter-spacing: 0.1em; }
+.conn-dot.connected { color: #2ecc71; }
+.conn-dot.disconnected { color: var(--danger); }
+.btn-logout {
+  font-family: 'Barlow Condensed',sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 4px 12px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-dim); cursor: pointer;
+  transition: all 0.15s; text-decoration: none; display: inline-flex; align-items: center;
+}
+.btn-logout:hover { border-color: var(--danger); color: var(--danger); }
+
+/* ── Grid ── */
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; padding: 20px; }
+
+/* ── Card ── */
+.card { background: var(--bg2); border: 1px solid var(--border); padding: 16px; }
+.card.active { border-color: rgba(31,250,255,0.35); background: rgba(31,250,255,0.03); }
+.card-title {
+  font-family: 'Barlow Condensed',sans-serif; font-size: 11px; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase; color: var(--accent);
+  margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.card-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(167,163,142,0.25); flex-shrink: 0;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.card.active .card-dot { background: var(--primary); box-shadow: 0 0 6px rgba(31,250,255,0.8); }
+
+/* Toggle pill */
+.toggle-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Barlow Condensed',sans-serif; font-size: 11px; font-weight: 800;
+  letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 7px 16px; border-radius: 20px;
+  border: 1px solid rgba(167,163,142,0.2);
+  background: transparent; color: rgba(167,163,142,0.4);
+  cursor: pointer; transition: all 0.15s; width: 100%;
+  justify-content: center;
+}
+.toggle-btn:hover { border-color: rgba(167,163,142,0.5); color: var(--accent); }
+.toggle-btn.is-on { background: rgba(31,250,255,0.1); border-color: var(--primary); color: var(--primary); box-shadow: 0 0 10px rgba(31,250,255,0.12); }
+.toggle-btn.is-on:hover { background: rgba(255,68,68,0.1); border-color: var(--danger); color: var(--danger); box-shadow: none; }
+
+/* Score */
+.score-row { display: flex; align-items: flex-end; justify-content: center; gap: 8px; margin-bottom: 12px; }
+.score-team { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.score-tag { font-family: 'Barlow Condensed',sans-serif; font-size: 9px; font-weight: 700; letter-spacing: 0.2em; color: var(--accent); }
+.score-ctrl { display: flex; align-items: center; gap: 6px; }
+.score-btn {
+  width: 30px; height: 30px; display: flex; align-items: center; justify-content: center;
+  font-size: 18px; font-weight: 700; background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text); cursor: pointer; transition: all 0.12s;
+}
+.score-btn:hover { border-color: var(--primary); color: var(--primary); }
+.score-btn.add { border-color: rgba(31,250,255,0.25); color: rgba(31,250,255,0.7); }
+.score-btn.add:hover { background: rgba(31,250,255,0.1); border-color: var(--primary); color: var(--primary); }
+.score-val {
+  font-family: 'Barlow Condensed',sans-serif; font-size: 36px; font-weight: 800;
+  color: var(--primary); min-width: 32px; text-align: center; line-height: 1;
+}
+.score-sep { font-family: 'Barlow Condensed',sans-serif; font-size: 20px; color: rgba(167,163,142,0.3); padding-bottom: 4px; }
+
+/* Fields */
+.field-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.field-row label { font-size: 10px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); font-family: 'Barlow Condensed',sans-serif; }
+.field-row input[type=text], .field-row select {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  padding: 7px 9px; font-size: 13px; font-family: 'Barlow',sans-serif; width: 100%; outline: none;
+  transition: border-color 0.15s;
+}
+.field-row input:focus, .field-row select:focus { border-color: var(--primary); }
+
+/* Radio pills */
+.radio-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.radio-pill {
+  display: flex; align-items: center; cursor: pointer;
+  padding: 4px 12px; border: 1px solid var(--border); background: var(--bg3);
+  font-family: 'Barlow Condensed',sans-serif; font-size: 12px; font-weight: 700;
+  text-transform: uppercase; color: var(--accent); transition: all 0.12s;
+}
+.radio-pill:has(input:checked) { border-color: var(--primary); color: var(--primary); background: rgba(31,250,255,0.06); }
+.radio-pill input { display: none; }
+
+/* Timer row */
+.timer-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.timer-num {
+  width: 44px; background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text); font-size: 13px; padding: 5px 4px; text-align: center; outline: none;
+  -moz-appearance: textfield; appearance: textfield;
+}
+.timer-num::-webkit-outer-spin-button, .timer-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.timer-num:focus { border-color: var(--primary); }
+.timer-sep { color: rgba(167,163,142,0.4); font-size: 14px; }
+.timer-btn {
+  padding: 5px 10px; background: var(--bg3); border: 1px solid var(--border);
+  color: var(--accent); cursor: pointer; font-size: 12px; transition: all 0.12s;
+}
+.timer-btn:hover { border-color: var(--primary); color: var(--primary); }
+.timer-btn.clear:hover { border-color: var(--danger); color: var(--danger); }
+.timer-display {
+  font-family: 'Barlow Condensed',sans-serif; font-size: 16px; font-weight: 700;
+  color: var(--primary); min-width: 38px; text-align: center; letter-spacing: 0.04em;
+}
+.timer-display.expired { color: var(--danger); }
+
+/* Quick LT buttons */
+.player-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 8px; }
+.player-btn {
+  display: flex; flex-direction: column; align-items: flex-start;
+  padding: 8px 10px; background: var(--bg3); border: 1px solid var(--border);
+  cursor: pointer; transition: border-color 0.15s;
+}
+.player-btn:hover { border-color: var(--primary); }
+.player-btn .p-handle { font-family: 'Barlow Condensed',sans-serif; font-size: 13px; font-weight: 700; color: #fff; }
+.player-btn .p-team { font-size: 10px; color: var(--accent); letter-spacing: 0.1em; }
+
+/* Game context bar */
+.game-ctx-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 20px; height: 32px;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  font-family: 'Barlow Condensed', sans-serif; font-size: 11px;
+  font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(167,163,142,0.5);
+}
+.game-ctx-bar .ctx-game { color: var(--primary); }
+.game-ctx-bar .ctx-sep { color: rgba(167,163,142,0.25); }
+
+/* Hint */
+.hint { font-size: 11px; color: var(--text-dim); margin-bottom: 10px; line-height: 1.5; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo"><span>Meta</span>GFX <span style="color:var(--accent);font-size:12px;margin-left:8px">OPERATOR</span></div>
+  <div class="topbar-tourn" id="topbar-tourn">
+    <div class="topbar-tourn-logo" id="topbar-tourn-logo" style="display:none"></div>
+    <span class="topbar-tourn-name" id="topbar-tourn-name"></span>
+    <span class="topbar-tourn-sep" id="topbar-tourn-sep" style="display:none">·</span>
+    <span class="topbar-profile-name" id="topbar-profile-name"></span>
+  </div>
+  <div class="topbar-right">
+    <span class="conn-dot" id="conn-status">⬤ Connecting…</span>
+    <a class="btn-logout" href="/api/auth/logout">Log Out</a>
+  </div>
+</div>
+
+<div class="game-ctx-bar">
+  <span class="ctx-game" id="ops-ctx-game">GAME 1 OF 3</span>
+  <span class="ctx-sep">·</span>
+  <span id="ops-ctx-teams">T1 VS T2</span>
+  <span class="ctx-sep">·</span>
+  <span id="ops-ctx-format">Bo3</span>
+</div>
+
+<div class="grid">
+
+  <!-- Scoreboard -->
+  <div class="card" id="ops-card-scoreboard">
+    <div class="card-title"><span class="card-dot" id="ops-dot-scoreboard"></span>Scoreboard <span id="ops-score-game-label" style="margin-left:auto;font-size:10px;color:var(--text-dim);letter-spacing:0.1em;font-weight:600"></span></div>
+    <div class="score-row">
+      <div class="score-team">
+        <span class="score-tag" id="ops-t1-tag">T1</span>
+        <div class="score-ctrl">
+          <button class="score-btn" onclick="api('/api/score',{team:'team1',delta:-1})">−</button>
+          <span class="score-val" id="ops-t1-score">0</span>
+          <button class="score-btn add" onclick="api('/api/score',{team:'team1',delta:1})">+</button>
+        </div>
+      </div>
+      <span class="score-sep">:</span>
+      <div class="score-team">
+        <span class="score-tag" id="ops-t2-tag">T2</span>
+        <div class="score-ctrl">
+          <button class="score-btn" onclick="api('/api/score',{team:'team2',delta:-1})">−</button>
+          <span class="score-val" id="ops-t2-score">0</span>
+          <button class="score-btn add" onclick="api('/api/score',{team:'team2',delta:1})">+</button>
+        </div>
+      </div>
+    </div>
+    <button class="toggle-btn" id="ops-toggle-scoreboard" onclick="toggleGfx('scoreboard')">SHOW / HIDE</button>
+  </div>
+
+  <!-- Lower Third -->
+  <div class="card" id="ops-card-lowerThird">
+    <div class="card-title"><span class="card-dot" id="ops-dot-lowerThird"></span>Lower Third</div>
+    <div class="field-row"><label>Main Text</label><input type="text" id="ops-lt-text" placeholder="Player name / heading" oninput="api('/api/lowerThird',{text:this.value})"></div>
+    <div class="field-row"><label>Subtext</label><input type="text" id="ops-lt-sub" placeholder="Team / Role" oninput="api('/api/lowerThird',{subtext:this.value})"></div>
+    <div class="field-row"><label>Super Label</label><input type="text" id="ops-lt-super" placeholder="e.g. TOURNAMENT NAME" oninput="api('/api/lowerThird',{supertext:this.value})"></div>
+    <p class="hint">Quick: click a player to fill and show instantly.</p>
+    <div class="player-grid" id="ops-lt-player-grid"></div>
+    <button class="toggle-btn" id="ops-toggle-lowerThird" onclick="toggleGfx('lowerThird')" style="margin-top:10px">SHOW / HIDE</button>
+  </div>
+
+  <!-- Head to Head -->
+  <div class="card" id="ops-card-headToHead">
+    <div class="card-title"><span class="card-dot" id="ops-dot-headToHead"></span>Head to Head</div>
+    <p class="hint">Displays both team rosters in a versus layout.</p>
+    <button class="toggle-btn" id="ops-toggle-headToHead" onclick="toggleGfx('headToHead')">SHOW / HIDE</button>
+  </div>
+
+  <!-- Draft -->
+  <div class="card" id="ops-card-draft">
+    <div class="card-title"><span class="card-dot" id="ops-dot-draft"></span>Draft Overlay</div>
+    <p class="hint" id="ops-draft-phase" style="margin-bottom:10px"></p>
+    <button class="toggle-btn" id="ops-toggle-draft" onclick="toggleGfx('draft')">SHOW / HIDE</button>
+  </div>
+
+  <!-- Bracket -->
+  <div class="card" id="ops-card-bracket">
+    <div class="card-title"><span class="card-dot" id="ops-dot-bracket"></span>Bracket</div>
+    <p class="hint">Bracket is configured in the admin panel.</p>
+    <button class="toggle-btn" id="ops-toggle-bracket" onclick="toggleGfx('bracket')">SHOW / HIDE</button>
+  </div>
+
+  <!-- Break Screen -->
+  <div class="card" id="ops-card-breakScreen">
+    <div class="card-title"><span class="card-dot" id="ops-dot-breakScreen"></span>Break Screen</div>
+    <div class="field-row"><label>Message</label><input type="text" id="ops-break-msg" oninput="api('/api/breakScreen',{message:this.value})"></div>
+    <div class="field-row"><label>Next Match</label><input type="text" id="ops-break-next" placeholder="Team A vs Team B" oninput="api('/api/breakScreen',{nextMatch:this.value})"></div>
+    <div class="timer-row" style="margin-bottom:10px">
+      <input type="number" class="timer-num" id="ops-break-min" placeholder="m" min="0" max="99">
+      <span class="timer-sep">:</span>
+      <input type="number" class="timer-num" id="ops-break-sec" placeholder="s" min="0" max="59">
+      <button class="timer-btn" onclick="opsStartTimer()" title="Start / adjust">▶</button>
+      <button class="timer-btn clear" onclick="api('/api/breakScreen',{timerEnd:null})" title="Clear timer">✕</button>
+      <span class="timer-display" id="ops-break-countdown"></span>
+    </div>
+    <button class="toggle-btn" id="ops-toggle-breakScreen" onclick="toggleGfx('breakScreen')">SHOW / HIDE</button>
+  </div>
+
+  <!-- Win Screen -->
+  <div class="card" id="ops-card-winScreen">
+    <div class="card-title"><span class="card-dot" id="ops-dot-winScreen"></span>Win Screen</div>
+    <div class="radio-pills" style="margin-bottom:12px">
+      <label class="radio-pill"><input type="radio" name="ops-win" value="team1" id="ops-win-t1" onchange="api('/api/winScreen',{team:'team1'})" checked><span id="ops-win-t1-name">Team 1</span></label>
+      <label class="radio-pill"><input type="radio" name="ops-win" value="team2" id="ops-win-t2" onchange="api('/api/winScreen',{team:'team2'})"><span id="ops-win-t2-name">Team 2</span></label>
+    </div>
+    <button class="toggle-btn" id="ops-toggle-winScreen" onclick="toggleGfx('winScreen')">SHOW / HIDE</button>
+  </div>
+
+</div><!-- /grid -->
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+window._state = {};
+let _opsTimerSetMs = 0;
+
+const GRAPHICS = ['scoreboard','lowerThird','headToHead','draft','bracket','breakScreen','winScreen'];
+
+function g(id) { return document.getElementById(id); }
+function api(url, body) { fetch(url, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).catch(console.error); }
+
+socket.on('connect', () => { const el = g('conn-status'); el.textContent = '⬤ Connected'; el.className = 'conn-dot connected'; });
+socket.on('disconnect', () => { const el = g('conn-status'); el.textContent = '⬤ Disconnected'; el.className = 'conn-dot disconnected'; });
+
+socket.on('state', state => {
+  window._state = state;
+
+  // Top bar — tournament info + active profile
+  const tournLogo = state.match && state.match.tournamentLogo;
+  const tournName = (state.match && state.match.tournament) || '';
+  const profileName = (state.meta && state.meta.activeProfileName) || '';
+  const logoEl = g('topbar-tourn-logo');
+  if (logoEl) { logoEl.style.backgroundImage = tournLogo ? 'url(' + tournLogo + ')' : ''; logoEl.style.display = tournLogo ? 'block' : 'none'; }
+  const tnEl = g('topbar-tourn-name'); if (tnEl) tnEl.textContent = tournName;
+  const sepEl = g('topbar-tourn-sep'); if (sepEl) sepEl.style.display = (tournName && profileName) ? 'inline' : 'none';
+  const pnEl = g('topbar-profile-name'); if (pnEl) pnEl.textContent = profileName;
+
+  const m = state.match;
+
+  // Team tags / names
+  const t1l = m.team1.tag || m.team1.name || 'T1';
+  const t2l = m.team2.tag || m.team2.name || 'T2';
+  g('ops-t1-tag').textContent = t1l;
+  g('ops-t2-tag').textContent = t2l;
+  g('ops-t1-score').textContent = m.team1.score;
+  g('ops-t2-score').textContent = m.team2.score;
+
+  // Game context bar
+  const formatNum = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
+  const gameLabel = 'GAME ' + (m.currentGameNum || 1) + ' OF ' + formatNum;
+  const ctxGame = g('ops-ctx-game'); if (ctxGame) ctxGame.textContent = gameLabel;
+  const ctxTeams = g('ops-ctx-teams'); if (ctxTeams) ctxTeams.textContent = t1l + ' VS ' + t2l;
+  const ctxFmt = g('ops-ctx-format'); if (ctxFmt) ctxFmt.textContent = m.format || 'Bo3';
+  const scoreLabel = g('ops-score-game-label'); if (scoreLabel) scoreLabel.textContent = gameLabel;
+  g('ops-win-t1-name').textContent = m.team1.name || 'Team 1';
+  g('ops-win-t2-name').textContent = m.team2.name || 'Team 2';
+
+  // Win radio
+  const r1 = g('ops-win-t1'); if (r1) r1.checked = state.winScreen.team === 'team1';
+  const r2 = g('ops-win-t2'); if (r2) r2.checked = state.winScreen.team === 'team2';
+
+  // LT fields
+  const setInp = (id, val) => { const e = g(id); if (e && document.activeElement !== e) e.value = val || ''; };
+  setInp('ops-lt-text',    state.lowerThird.text);
+  setInp('ops-lt-sub',     state.lowerThird.subtext);
+  setInp('ops-lt-super',   state.lowerThird.supertext);
+  setInp('ops-break-msg',  state.breakScreen.message);
+  setInp('ops-break-next', state.breakScreen.nextMatch);
+  const draftPhaseLabels = { notstarted:'—', bans1:'Phase 1 — Bans', picks1:'Phase 1 — Picks', bans2:'Phase 2 — Bans', picks2:'Phase 2 — Picks', complete:'Draft Complete' };
+  const phaseEl = g('ops-draft-phase'); if (phaseEl) phaseEl.textContent = draftPhaseLabels[(state.draft && state.draft.phase) || 'notstarted'] || '—';
+
+  // Graphic toggle states
+  GRAPHICS.forEach(key => {
+    const active = state[key] && state[key].visible;
+    const card = g('ops-card-' + key);
+    const dot  = g('ops-dot-'  + key);
+    const btn  = g('ops-toggle-' + key);
+    if (card) card.classList.toggle('active', !!active);
+    if (dot)  dot.classList.toggle('active', !!active);
+    if (btn)  btn.className = 'toggle-btn' + (active ? ' is-on' : '');
+  });
+
+  // Quick LT player grid
+  renderPlayerGrid(state);
+});
+
+function toggleGfx(key) {
+  const btn = g('ops-toggle-' + key);
+  const isOn = btn && btn.classList.contains('is-on');
+  fetch('/api/graphic/' + key + '/' + (isOn ? 'hide' : 'show'), { method: 'POST' }).catch(console.error);
+}
+
+function renderPlayerGrid(state) {
+  const grid = g('ops-lt-player-grid');
+  if (!grid) return;
+  const players = [];
+  ['team1','team2'].forEach(team => {
+    const tag = state.match[team].tag || state.match[team].name || team;
+    (state.players[team] || []).forEach(p => {
+      if (p.handle) players.push({ ...p, teamTag: tag, teamKey: team });
+    });
+  });
+  grid.innerHTML = players.map((p, i) =>
+    '<button class="player-btn" onclick="opsQuickLT(' + i + ')">' +
+    '<span class="p-handle">' + escHtml(p.handle) + '</span>' +
+    '<span class="p-team">' + escHtml(p.teamTag) + ' · ' + escHtml(p.role) + '</span>' +
+    '</button>'
+  ).join('');
+  grid._players = players;
+}
+
+function opsQuickLT(idx) {
+  const grid = g('ops-lt-player-grid');
+  const p = grid && grid._players && grid._players[idx];
+  if (!p) return;
+  const state = window._state;
+  const tag = state.match[p.teamKey].tag || state.match[p.teamKey].name || '';
+  fetch('/api/lowerThird', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ text: p.handle, subtext: (p.name ? p.name + ' · ' : '') + p.role, supertext: tag })
+  }).then(() => fetch('/api/graphic/lowerThird/show', { method: 'POST' })).catch(console.error);
+}
+
+function opsStartTimer() {
+  const mins = parseInt(g('ops-break-min').value) || 0;
+  const secs = parseInt(g('ops-break-sec').value) || 0;
+  const newDuration = (mins * 60 + secs) * 1000;
+  const currentEnd = window._state.breakScreen && window._state.breakScreen.timerEnd;
+  const timerActive = currentEnd && currentEnd > Date.now();
+  let newEnd;
+  if (timerActive && _opsTimerSetMs > 0) {
+    newEnd = currentEnd + (newDuration - _opsTimerSetMs);
+  } else {
+    newEnd = Date.now() + newDuration;
+  }
+  _opsTimerSetMs = newDuration;
+  api('/api/breakScreen', { timerEnd: newEnd });
+}
+
+// Countdown ticker
+setInterval(function() {
+  const el = g('ops-break-countdown');
+  if (!el) return;
+  const timerEnd = window._state.breakScreen && window._state.breakScreen.timerEnd;
+  if (!timerEnd) { el.textContent = ''; el.className = 'timer-display'; return; }
+  const remaining = Math.max(0, timerEnd - Date.now());
+  const totalSecs = Math.ceil(remaining / 1000);
+  const m = Math.floor(totalSecs / 60);
+  const s = totalSecs % 60;
+  el.textContent = m + ':' + String(s).padStart(2, '0');
+  el.className = 'timer-display' + (remaining === 0 ? ' expired' : '');
+}, 500);
+
+function escHtml(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+</script>
+</body>
+</html>

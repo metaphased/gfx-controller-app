@@ -1,0 +1,575 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
+
+:root {
+  --gfx-blue:    #1e6fff;
+  --gfx-red:     #ff3b3b;
+  --gfx-c1:      #1ffaff;
+  --clock-color: #ffffff;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROOT GRID
+   3 columns (30vw | 40vw | 30vw)  ×  2 rows (1fr | 22vh)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.draft-root {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  grid-template-columns: 30vw 40vw 30vw;
+  grid-template-rows: 1fr 22vh;
+  grid-template-areas:
+    "side-blue centre side-red"
+    "pbar      pbar   pbar";
+}
+
+/* ── Side panels ────────────────────────────────────────────────────────── */
+/*   flex-end pushes header+bans to the bottom; transparent space above     */
+.team-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  overflow: hidden;
+}
+.side-blue { grid-area: side-blue; }
+.side-red  { grid-area: side-red; }
+
+/* Team header bar */
+.team-header {
+  display: flex;
+  align-items: center;
+  height: 6.5vh;
+  padding: 0 1.2vw;
+  gap: 0.8vw;
+  flex-shrink: 0;
+}
+.side-blue .team-header {
+  background: linear-gradient(90deg,
+    rgba(30,111,255,0.92) 0%,
+    rgba(30,111,255,0.28) 55%,
+    transparent 100%);
+  border-top: 2px solid var(--gfx-blue);
+}
+/* Red header: reverse layout so logo is outer-right, score faces centre */
+.side-red .team-header {
+  flex-direction: row-reverse;
+  background: linear-gradient(270deg,
+    rgba(255,59,59,0.92) 0%,
+    rgba(255,59,59,0.28) 55%,
+    transparent 100%);
+  border-top: 2px solid var(--gfx-red);
+}
+
+.team-logo {
+  width: 4vh; height: 4vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+.team-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.7vh; font-weight: 800; letter-spacing: 0.07em;
+  text-transform: uppercase; color: #fff;
+  flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+/* Red side name reads right-to-left, anchored toward its logo on the outer edge */
+.side-red .team-name { text-align: right; }
+.team-score {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.7vh; font-weight: 800;
+  color: rgba(255,255,255,0.6);
+  flex-shrink: 0;
+}
+
+/* Active team header — overlay pulse so text/logo brightness stays constant */
+.team-header { position: relative; }
+.team-header > * { position: relative; z-index: 1; }
+
+@keyframes header-clock-pulse {
+  0%, 100% { opacity: 0; }
+  50%       { opacity: 1; }
+}
+/* Per-side gradient overlay — same fade shape as the base gradient so transparent edge stays transparent */
+.team-header.on-clock::before {
+  content: '';
+  position: absolute; inset: 0;
+  animation: header-clock-pulse 1.3s ease-in-out infinite;
+  pointer-events: none;
+}
+.side-blue .team-header.on-clock::before {
+  background: linear-gradient(90deg,
+    rgba(30,111,255,0.55) 0%,
+    rgba(30,111,255,0.18) 55%,
+    transparent 100%);
+}
+.side-red .team-header.on-clock::before {
+  background: linear-gradient(270deg,
+    rgba(255,59,59,0.55) 0%,
+    rgba(255,59,59,0.18) 55%,
+    transparent 100%);
+}
+
+/* Ban slots row — below header, pushed closer to outer edges */
+.bans-panel {
+  display: flex;
+  align-items: center;
+  gap: 0.22vw;
+  padding: 0.55vh 0.5vw 0.8vh;
+  flex-shrink: 0;
+}
+/* Red bans mirrored: first ban on the right */
+.bans-panel-red { flex-direction: row-reverse; }
+
+.ban-slot {
+  width: 5.2vw; height: 5.2vw;
+  max-width: 66px; max-height: 66px;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: rgba(14,18,28,0.85);
+}
+.ban-slot img.ban-img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center top;
+  opacity: 0; transition: opacity 0.4s ease;
+}
+.ban-slot img.ban-img.loaded { opacity: 1; }
+
+/* Diagonal placeholder */
+.ban-slot.empty-ban {
+  background-color: rgba(18,20,30,0.85);
+  background-image: repeating-linear-gradient(
+    135deg, transparent 0px, transparent 7px,
+    rgba(0,0,0,0.3) 7px, rgba(0,0,0,0.3) 9px
+  );
+}
+.ban-slot.empty-ban-blue::after {
+  content: ''; position: absolute; inset: 0; background: rgba(30,111,255,0.08);
+}
+.ban-slot.empty-ban-red::after {
+  content: ''; position: absolute; inset: 0; background: rgba(255,59,59,0.08);
+}
+.ban-slot .ban-overlay {
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,0.52);
+  display: flex; align-items: center; justify-content: center;
+}
+.ban-slot .ban-overlay::after {
+  content: '✕'; color: rgba(255,255,255,0.4); font-size: 1.5vh;
+}
+
+/* ── Centre column: transparent camera space + fearless at bottom ─────── */
+.centre-col {
+  grid-area: centre;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end; /* fearless bans sit at the base if present */
+  pointer-events: none;
+}
+
+.fearless-section {
+  padding: 0 2vw 0.6vh;
+  width: 100%;
+}
+.fearless-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.4vh; font-weight: 700; letter-spacing: 0.22em;
+  text-transform: uppercase; color: rgba(255,255,255,0.65);
+  text-align: center; margin-bottom: 0.5vh;
+}
+/* Grid layout: 5 role columns, one row per game.
+   BYE games span all 5 columns with a centred label + decorative rules. */
+.fearless-grid {
+  display: grid;
+  grid-template-columns: repeat(5, auto);
+  row-gap: 0.28vh;
+  column-gap: 1.4vw;
+  justify-content: center;
+  align-items: center;
+}
+.fearless-role-icon-hdr {
+  width: 0.9vw; height: 0.9vw;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.6;
+  justify-self: center;
+}
+.fearless-game-pair {
+  display: flex;
+  gap: 0.1vw;
+}
+.fearless-bye-row {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.55vw;
+  height: 1.7vw; /* matches icon row height */
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.4vh; font-weight: 800; letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.55); /* fallback if side unknown */
+}
+.fearless-bye-row::before,
+.fearless-bye-row::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: rgba(255,255,255,0.22);
+}
+/* Winning-side accent colour on the rules only — text stays white for readability */
+.fearless-bye-row[data-side="blue"]::before,
+.fearless-bye-row[data-side="blue"]::after { background: var(--gfx-blue); opacity: 0.55; }
+.fearless-bye-row[data-side="red"]::before,
+.fearless-bye-row[data-side="red"]::after  { background: var(--gfx-red);  opacity: 0.55; }
+/* Bold mode — brighten text and bump line opacity */
+body.phase-bold .fearless-bye-row                          { color: rgba(255,255,255,0.9); }
+body.phase-bold .fearless-bye-row[data-side="blue"]::before,
+body.phase-bold .fearless-bye-row[data-side="blue"]::after,
+body.phase-bold .fearless-bye-row[data-side="red"]::before,
+body.phase-bold .fearless-bye-row[data-side="red"]::after  { opacity: 0.8; }
+/* Role icons and fearless label brighten in bold mode */
+body.phase-bold .fearless-role-icon-hdr {
+  opacity: 0.9;
+}
+body.phase-bold .fearless-label {
+  color: rgba(255,255,255,0.9);
+}
+.fearless-icon {
+  width: 1.7vw; height: 1.7vw;
+  background-size: cover; background-position: center top;
+  background-color: rgba(18,20,28,0.85);
+  flex-shrink: 0;
+}
+
+/* ── Player bar ─────────────────────────────────────────────────────────── */
+.player-bar {
+  grid-area: pbar;
+  display: flex;
+  overflow: visible; /* allow logo glow to bleed above the bar edge */
+}
+
+.players-side {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+.players-side-red { /* same left-to-right order as blue — top lane leftmost on both sides */ }
+
+/* Player card */
+.player-card {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.player-bg {
+  position: absolute; inset: 0;
+  background-size: cover;
+  background-position: center top;
+}
+.player-bg::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(to top,
+    rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 45%, transparent 100%);
+}
+/* Placeholder when no champion picked — linear bottom-to-top */
+.player-card.side-blue .player-bg.no-champ {
+  background: linear-gradient(to top, rgba(22,60,140,0.9) 0%, rgba(5,8,22,1) 100%);
+}
+.player-card.side-red .player-bg.no-champ {
+  background: linear-gradient(to top, rgba(140,20,22,0.9) 0%, rgba(5,6,18,1) 100%);
+}
+/* Bottom accent line */
+.player-card.side-blue::after {
+  content: ''; position: absolute; bottom: 0; inset-inline: 0;
+  height: 2px; background: var(--gfx-blue); opacity: 0.55;
+}
+.player-card.side-red::after {
+  content: ''; position: absolute; bottom: 0; inset-inline: 0;
+  height: 2px; background: var(--gfx-red); opacity: 0.55;
+}
+
+.player-info {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 0 0.4vw 0.7vh; gap: 0.2vh;
+}
+.player-role-icon {
+  width: 2.5vh; height: 2.5vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.75;
+}
+.player-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.4vh; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; color: #fff;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 100%; text-align: center;
+}
+
+/* Clock center — in the middle of the player bar */
+.clock-center {
+  width: 14vw;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4vh;
+  padding: 0.5vh 0.4vw;
+  position: relative;
+}
+/* Series block now lives in the centre column, just above the player bar */
+.clock-series-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  flex-shrink: 0;
+  padding: 0 2vw 0.8vh;
+}
+
+/* Top row: side-choice tag ◀ GAME X/X ▶ pick-order tag */
+.series-game-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.6vw;
+}
+
+/* Side-choice and pick-order labels — same weight/size as GAME X/X */
+.series-choice-tag {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.6vh; font-weight: 800; letter-spacing: 0.16em;
+  text-transform: uppercase; white-space: nowrap;
+  flex-shrink: 0; flex: 1;
+  opacity: 0; /* anim-fade-in handles reveal — no CSS transition */
+}
+#side-choice-tag { text-align: left; }
+.series-pick-tag { text-align: right; }
+
+.series-choice-blue { color: var(--gfx-blue); }
+.series-choice-red  { color: var(--gfx-red); }
+.series-choice-pick { color: rgba(255,255,255,0.9); }
+/* Ambient glow behind clock center */
+.clock-center::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 50% 50%, var(--clock-color) 0%, transparent 75%);
+  opacity: 0;
+  transition: opacity 0.5s;
+  pointer-events: none;
+}
+.clock-center.active-blue::before,
+.clock-center.active-red::before { opacity: 0.08; }
+
+/* Series info — two separate rows */
+.clock-series-game {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.6vh; font-weight: 800; letter-spacing: 0.16em;
+  text-transform: uppercase; color: rgba(255,255,255,0.9);
+  white-space: nowrap; text-align: center;
+}
+
+.clock-series-phase {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3vh; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgba(255,255,255,0.65);
+  white-space: nowrap; text-align: center;
+}
+body.phase-bold .clock-series-phase {
+  color: rgba(255,255,255,0.95);
+  text-shadow: 0 1px 5px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.7);
+}
+
+/* Logo + timer ring merged into one element */
+.logo-timer-wrap {
+  position: relative;
+  width: 10vw; height: 10vw;
+  max-width: 148px; max-height: 148px;
+  flex-shrink: 0;
+}
+/* Timer ring positioned absolutely around the logo */
+.logo-timer-wrap .timer-ring {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  transform: rotate(-90deg);
+}
+/* Track starts fully hidden (dashoffset = circumference); ring-track-draw reveals it */
+.timer-track {
+  fill: none; stroke: rgba(255,255,255,0.12); stroke-width: 3;
+  stroke-dasharray: 276.46;
+  stroke-dashoffset: 276.46;
+}
+.timer-arc   {
+  fill: none; stroke: #009b23; stroke-width: 3; stroke-linecap: round;
+  opacity: 0;
+  transition: stroke-dashoffset 0.22s linear, stroke 0.5s;
+  /* CCW from 12 o'clock: scaleX(-1) reverses direction, rotate(180deg) corrects start point */
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scaleX(-1) rotate(180deg);
+}
+/* Tournament logo fills the centre of the wrap */
+.logo-timer-wrap .tourn-logo {
+  position: absolute;
+  inset: 17%; /* percentage scales with container so logo stays inside ring at any size */
+  width: auto; height: auto;
+  will-change: transform;
+  max-width: none; max-height: none;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  transition: filter 0.45s ease, transform 0.45s ease;
+}
+
+/* Pulse + glow when on the clock */
+/* Pulse uses glow intensity only — no scale so logo stays within the ring */
+@keyframes logo-pulse-blue {
+  0%, 100% { filter: drop-shadow(0 0 6px var(--gfx-blue))  drop-shadow(0 0 16px var(--gfx-blue)); }
+  50%       { filter: drop-shadow(0 0 14px var(--gfx-blue)) drop-shadow(0 0 36px var(--gfx-blue)); }
+}
+@keyframes logo-pulse-red {
+  0%, 100% { filter: drop-shadow(0 0 6px var(--gfx-red))  drop-shadow(0 0 16px var(--gfx-red)); }
+  50%       { filter: drop-shadow(0 0 14px var(--gfx-red)) drop-shadow(0 0 36px var(--gfx-red)); }
+}
+.logo-timer-wrap .tourn-logo.side-blue {
+  animation: logo-pulse-blue 1.3s ease-in-out infinite;
+}
+.logo-timer-wrap .tourn-logo.side-red {
+  animation: logo-pulse-red 1.3s ease-in-out infinite;
+}
+
+/* Timer countdown value — always in layout flow; opacity controls visibility */
+.timer-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.2vh; font-weight: 800; color: rgba(255,255,255,0.75);
+  text-align: center;
+  opacity: 0; /* hidden by default; anim-slide-up-sm reveals it */
+}
+
+/* Horizontal arrow + logo layout: ◀ [LOGO+RING] ▶ */
+.clock-logo-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8vw;
+  width: 100%;
+}
+
+/* Arrows: left always blue, right always red; hidden until draft starts, then updateClock controls them */
+.clock-arrow {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 3.5vh; font-weight: 900;
+  opacity: 0;
+  transition: opacity 0.3s;
+  flex-shrink: 0;
+}
+#clock-arrow-l { color: var(--gfx-blue); }
+#clock-arrow-r { color: var(--gfx-red); }
+@keyframes arrow-nudge-left {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(-5px); }
+}
+@keyframes arrow-nudge-right {
+  0%, 100% { transform: translateX(0); }
+  50%       { transform: translateX(5px); }
+}
+#clock-arrow-l.show { opacity: 1; animation: arrow-nudge-left  1.3s ease-in-out infinite; }
+#clock-arrow-r.show { opacity: 1; animation: arrow-nudge-right 1.3s ease-in-out infinite; }
+#clock-arrow-l.hide, #clock-arrow-r.hide { opacity: 0; animation: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   INTRO & DATA-CHANGE ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes anim-slide-up {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes anim-slide-left {
+  from { transform: translateX(-28px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+@keyframes anim-slide-right {
+  from { transform: translateX(28px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes anim-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Clockwise ring reveal — draws the track from 12 o'clock around (no opacity: draw IS the reveal) */
+@keyframes ring-track-draw {
+  from { stroke-dashoffset: 276.46; }
+  to   { stroke-dashoffset: 0; }
+}
+/* Counter-clockwise arc reveal — sweeps from 12 o'clock going CCW while fading in */
+@keyframes arc-reveal-ccw {
+  from { stroke-dashoffset: -276.46; opacity: 0; }
+  to   { stroke-dashoffset: 0;       opacity: 1; }
+}
+@keyframes anim-scale-in {
+  from { transform: scale(0); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+/* Logo pre-draft expand and draft-start contract */
+@keyframes anim-logo-expand {
+  from { transform: scale(1); }
+  to   { transform: scale(1.5); }
+}
+@keyframes anim-logo-contract {
+  from { transform: scale(1.5); }
+  to   { transform: scale(1); }
+}
+@keyframes anim-ban-reveal {
+  from { transform: scale(0.65); opacity: 0; }
+  to   { transform: scale(1);    opacity: 1; }
+}
+@keyframes anim-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes anim-slide-down-sm {
+  from { transform: translateY(0);    opacity: 1; }
+  to   { transform: translateY(20px); opacity: 0; }
+}
+@keyframes anim-logo-complete {
+  from { transform: scale(1); }
+  to   { transform: scale(1.08); }
+}
+/* Old champion slides straight down out of the card */
+@keyframes anim-role-exit {
+  from { transform: translateY(0);    }
+  to   { transform: translateY(105%); }
+}
+/* New champion slides straight up into the card */
+@keyframes anim-role-enter {
+  from { transform: translateY(105%); }
+  to   { transform: translateY(0);    }
+}
+@keyframes anim-reveal-center {
+  from { clip-path: inset(0 50% 0 50%); opacity: 0; }
+  to   { clip-path: inset(0 0% 0 0%);   opacity: 1; }
+}
+@keyframes anim-slide-up-sm {
+  from { transform: translateY(18px); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   CLASSIC LAYOUT — same grid but side panels fill from top
+   ═══════════════════════════════════════════════════════════════════════════ */
+body.layout-classic .team-panel { justify-content: flex-start; }
+body.layout-classic .centre-col { justify-content: flex-start; padding-top: 2vh; }

@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Runtime data & uploads
+data/
+public/uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment / secrets
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/settings.json

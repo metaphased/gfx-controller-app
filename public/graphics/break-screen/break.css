@@ -1,0 +1,502 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
+
+:root {
+  --gfx-c1:   #1ffaff;
+  --gfx-blue: #1e6fff;
+  --gfx-red:  #ff3b3b;
+
+  /* PIP layout — at 1920×1080 a box of Xvw × Xvh is exactly 16:9 in pixels,
+     so these three variables stay in sync: pip-bar-h = 100vh - 5.5vh - pip-video-h */
+  --pip-left:    25vw;   /* width of left content column */
+  --pip-video-h: 75vh;   /* height of the video zone (= 100-pip-left numerically at 1080p) */
+  --pip-bar-h:   19.5vh; /* height of bottom bar above ticker */
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROOT — full screen, fade in/out
+   ═══════════════════════════════════════════════════════════════════════════ */
+#break-root {
+  width: 100vw; height: 100vh;
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+#break-root.visible { opacity: 1; }
+
+/* ── Broadcast logos (top-right corner) ────────────────────────────────── */
+.break-bcast-logos {
+  position: absolute;
+  top: 2.5vh; right: 2vw;
+  display: flex; align-items: center; gap: 1vw;
+  z-index: 10;
+}
+.break-bcast-logo {
+  width: 5vh; height: 5vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.7;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   MAIN CONTENT — centred column, above ticker
+   ═══════════════════════════════════════════════════════════════════════════ */
+.break-content {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  bottom: 5.5vh; /* clear the ticker strip */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.2vh;
+  padding: 4vh 8vw;
+  border-right: 1px solid transparent;
+  /* No right/bottom/padding transitions — FLIP JS handles all element movement */
+  transition: border-right-color 0s;
+}
+
+/* PIP: container jumps to final dimensions instantly; FLIP drives the visual transition */
+#break-root.pip-mode .break-content {
+  right:   calc(100vw - var(--pip-left));
+  bottom:  calc(5.5vh + var(--pip-bar-h));
+  padding: 4vh 1.2vw;
+  align-items: center;
+  border-right-color: rgba(255,255,255,0.12);
+  transition: border-right-color 0.5s ease 0.5s;
+}
+/* Logo to very top, sponsor to very bottom */
+#break-root.pip-spread .break-content {
+  justify-content: space-between;
+}
+/* Font-size change — FLIP JS restores old value and transitions it.
+   white-space: nowrap prevents text wrapping while element width is constrained to 25vw
+   during the FLIP transform animation. No overflow:hidden so text can extend visually. */
+#break-root.pip-mode .break-main-msg {
+  font-size: 4.8vh;
+  white-space: nowrap;
+}
+/* Series/next/timer fade is handled entirely by JS (position:fixed + inline opacity transition)
+   so no CSS pip-mode opacity rules are needed here */
+
+/* ── Tournament logo + name ────────────────────────────────────────────── */
+.break-tourn-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0; /* prevent flex column from compressing the logo container */
+}
+.break-tourn-logo img {
+  height: 8vh; /* default — overridden inline by JS; also overridden in pip mode via JS cap */
+  width: auto;
+  max-width: 84vw; /* matches the usable content area width (100vw - 2×8vw padding) */
+  object-fit: contain;
+  transition: height 2s cubic-bezier(0.16, 1, 0.3, 1); /* pip scale happens in sync with container */
+}
+.break-tourn-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3vh; font-weight: 700; letter-spacing: 0.35em;
+  text-transform: uppercase; color: rgba(255,255,255,0.45);
+  text-align: center;
+}
+
+/* ── Main message + subtext ────────────────────────────────────────────── */
+.break-main-msg {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 8.5vh; font-weight: 900; letter-spacing: 0.1em;
+  text-transform: uppercase; color: #fff;
+  text-align: center; line-height: 1;
+}
+.break-subtext {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.2vh; font-weight: 400; letter-spacing: 0.28em;
+  text-transform: uppercase; color: rgba(255,255,255,0.5);
+  text-align: center;
+}
+
+/* ── Series info ───────────────────────────────────────────────────────── */
+.break-series {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+/* Equal-width sides ensure the centre element is always the true midpoint */
+.break-series-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+}
+.break-series-side-left  { justify-content: flex-end; }
+.break-series-side-right { justify-content: flex-start; }
+.break-side {
+  display: flex;
+  align-items: center;
+  gap: 0.9vw;
+}
+
+.break-team-logo {
+  width: 7vh; height: 7vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+.break-team-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 3.5vh; font-weight: 800; letter-spacing: 0.05em;
+  text-transform: uppercase; color: #fff;
+  white-space: nowrap;
+}
+.break-team-score {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 5.5vh; font-weight: 900; letter-spacing: 0;
+  line-height: 1;
+  color: rgba(255,255,255,0.9);
+}
+.break-series-centre {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2vw;
+  text-align: center;
+}
+.break-series-format {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 3.5vh; font-weight: 900; letter-spacing: 0.12em;
+  text-transform: uppercase; color: rgba(255,255,255,0.75);
+}
+.break-series-game {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 3.5vh; font-weight: 800; letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgba(255,255,255,0.65);
+}
+
+/* ── Countdown timer ───────────────────────────────────────────────────── */
+.break-timer {
+  display: flex; flex-direction: column; align-items: center; gap: 0.4vh;
+}
+.break-timer-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.1vh; font-weight: 700; letter-spacing: 0.32em;
+  text-transform: uppercase; color: rgba(255,255,255,0.4);
+}
+.break-timer-value {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 7vh; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--gfx-c1);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Next up ───────────────────────────────────────────────────────────── */
+.break-next {
+  display: flex; align-items: center; gap: 1.2vw;
+  padding: 1.2vh 2vw;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+}
+.break-next-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3vh; font-weight: 700; letter-spacing: 0.3em;
+  text-transform: uppercase; color: var(--gfx-c1);
+  white-space: nowrap;
+}
+.break-next-text {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.1vh; font-weight: 800; letter-spacing: 0.05em;
+  text-transform: uppercase; color: #fff;
+}
+
+/* ── Sponsor logos ─────────────────────────────────────────────────────── */
+.break-sponsors {
+  display: flex; align-items: center; justify-content: center;
+  flex-wrap: wrap; gap: 2.5vw;
+}
+.break-sponsor {
+  width: 7vw; height: 3.5vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  opacity: 0.6;
+  filter: brightness(0) invert(1);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TICKER — anchored to bottom
+   ═══════════════════════════════════════════════════════════════════════════ */
+.break-ticker {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 5.5vh;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  background: rgba(0,0,0,0.45);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  z-index: 6; /* above pip-bottom (z-index:5) so ticker slides over the reserved slot */
+}
+.break-ticker-label {
+  flex-shrink: 0;
+  padding: 0 1.4vw;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3vh; font-weight: 800; letter-spacing: 0.22em;
+  text-transform: uppercase; color: var(--gfx-c1);
+  border-right: 1px solid rgba(255,255,255,0.12);
+  height: 100%; display: flex; align-items: center;
+}
+.break-ticker-track {
+  flex: 1;
+  overflow: hidden;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.break-ticker-inner {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+  flex-shrink: 0; /* must NOT shrink — translateX loop depends on true content width */
+}
+.break-ticker-item {
+  display: inline-block;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.9vh; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.82);
+  white-space: nowrap;
+}
+.ticker-result-win {
+  color: var(--gfx-c1);
+  font-weight: 800;
+}
+.ticker-result-loss {
+  color: rgba(255,255,255,0.82);
+}
+.ticker-result-score {
+  color: rgba(255,255,255,0.65);
+}
+.break-ticker-live-label {
+  color: #ff3b3b;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+.break-ticker-live-dot {
+  display: inline-block;
+  width: 0.55em; height: 0.55em;
+  border-radius: 50%;
+  background: #ff3b3b;
+  margin: 0 0.55em;
+  vertical-align: middle;
+  position: relative; top: -0.05em;
+}
+
+/* Ticker strip slide-in / slide-out */
+.break-ticker.ticker-entering {
+  animation: break-ticker-slide-in 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+.break-ticker.ticker-leaving {
+  animation: break-ticker-slide-out 1.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+@keyframes break-ticker-slide-in {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes break-ticker-slide-out {
+  from { transform: translateY(0); }
+  to   { transform: translateY(100%); }
+}
+
+/* -50% of the element's own width = exactly one copy, since inner always holds two identical copies */
+@keyframes break-ticker-scroll {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PIP MODE — L-shaped layout elements
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Video zone guide (top-right) — no border, space is left open for VMix ─── */
+.break-pip-video-zone {
+  position: absolute;
+  top: 0; right: 0;
+  width:  calc(100vw - var(--pip-left));
+  height: var(--pip-video-h);
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ── Bottom bar ───────────────────────────────────────────────────────────── */
+/* Spans from the break-content bottom edge (75vh from top) to the screen edge.
+   Total height = pip-bar-h + 5.5vh so the ticker slot lives inside this element.
+   padding-bottom reserves the ticker slot; flex children fill only pip-bar-h.
+   The ticker has a higher z-index and slides in/out on top — nothing else moves. */
+.break-pip-bottom {
+  position: absolute;
+  left: 0; right: 0;
+  bottom: 0;
+  height: calc(var(--pip-bar-h) + 5.5vh);
+  padding-bottom: 5.5vh;
+  display: flex;
+  align-items: stretch;
+  pointer-events: none;
+  z-index: 5;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+#break-root.pip-mode .break-pip-bottom {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: all;
+  transition: opacity 1s ease 0.4s, transform 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s;
+}
+
+/* ── Timer cell (left section, width = left column = L-corner box) ────────── */
+.break-pip-timer-cell {
+  width: var(--pip-left);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4vh;
+  border-right: 1px solid rgba(255,255,255,0.12); /* vertical guide — aligns with content div right border */
+  background: rgba(0,0,0,0.12);
+  padding: 1vh 1.5vw;
+}
+/* Extend the dark tint and vertical border-right into the 5.5vh ticker slot below.
+   clip-path controls visibility — hidden while ticker is active, revealed as it exits.
+   The reveal animation uses the same easing as the ticker's slide-out so the border
+   follows the ticker's top edge exactly, like a mask. */
+.break-pip-bottom::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: var(--pip-left);
+  bottom: 0;
+  height: 5.5vh;
+  background: rgba(0,0,0,0.12);
+  border-right: 1px solid rgba(255,255,255,0.12);
+  clip-path: inset(0 0 100% 0); /* hidden by default (ticker covering) */
+  pointer-events: none;
+}
+/* Ticker fully gone — border fully visible */
+#break-root.ticker-off .break-pip-bottom::after {
+  clip-path: inset(0 0 0% 0);
+}
+/* Ticker entering — wipe the border out from bottom, tracking the ticker's rising edge */
+#break-root.ticker-entering .break-pip-bottom::after {
+  animation: pip-border-hide 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+/* Ticker exiting — wipe the border in from top, tracking the ticker's descending edge */
+#break-root.ticker-leaving .break-pip-bottom::after {
+  animation: pip-border-reveal 1.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+@keyframes pip-border-hide {
+  from { clip-path: inset(0 0 0%   0); }
+  to   { clip-path: inset(0 0 100% 0); }
+}
+@keyframes pip-border-reveal {
+  from { clip-path: inset(0 0 100% 0); }
+  to   { clip-path: inset(0 0 0%   0); }
+}
+.break-pip-timer-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.1vh; font-weight: 700; letter-spacing: 0.32em;
+  text-transform: uppercase; color: rgba(255,255,255,0.4);
+}
+.break-pip-timer-value {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 7vh; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--gfx-c1);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+/* ── Series + upcoming info cell (right section) ─────────────────────────── */
+.break-pip-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* centre series row and upcoming row horizontally */
+  justify-content: center;
+  gap: 1.2vh;
+  padding: 1.5vh 3vw;
+}
+
+/* "AFTER THE BREAK" section header above the series row */
+.break-pip-section-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2vh; font-weight: 700; letter-spacing: 0.28em;
+  text-transform: uppercase; color: var(--gfx-c1);
+  width: 100%; text-align: center;
+}
+
+/* Series row — mirrors normal break-series but sized for the bar */
+.break-pip-series {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+.break-pip-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.8vw;
+}
+.break-pip-side-left  { justify-content: flex-end; }
+.break-pip-side-right { justify-content: flex-start; }
+.break-pip-logo {
+  width: 5.5vh; height: 5.5vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  flex-shrink: 0;
+}
+.break-pip-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 3.5vh; font-weight: 800; letter-spacing: 0.05em;
+  text-transform: uppercase; color: #fff;
+  white-space: nowrap;
+}
+.break-pip-score {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 5vh; font-weight: 900; letter-spacing: 0;
+  line-height: 1; color: rgba(255,255,255,0.9);
+}
+.break-pip-centre {
+  flex-shrink: 0;
+  text-align: center;
+  padding: 0 2vw;
+}
+.break-pip-format,
+.break-pip-game {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 3.2vh; font-weight: 900; letter-spacing: 0.1em;
+  text-transform: uppercase; color: rgba(255,255,255,0.75);
+}
+
+/* Upcoming row — vertically centred, same font size as series for alignment continuity */
+.break-pip-upcoming {
+  display: flex;
+  align-items: center;
+  gap: 1vw;
+}
+/* Both "UPCOMING" label and match text at the same size — smaller than the series above */
+.break-pip-upcoming .break-next-label {
+  font-size: 2vh;
+  letter-spacing: 0.22em;
+  line-height: 1;
+}
+.break-pip-upcoming-text {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2vh; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase; color: rgba(255,255,255,0.65);
+  line-height: 1;
+}

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Win Screen</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="/graphics/gfx-settings.js"></script>
+<link rel="stylesheet" href="win.css">
+</head>
+<body>
+<div id="win-root" class="style-blade" style="display:none">
+
+  <!-- BLADE: parallelogram band that sweeps across -->
+  <div class="ws-blade-bg"></div>
+  <div class="ws-blade-line ws-blade-line-top"></div>
+  <div class="ws-blade-line ws-blade-line-bot"></div>
+
+  <!-- BURST: detonates from center outward -->
+  <div class="ws-burst-bg"></div>
+  <div class="ws-burst-flash"></div>
+  <div class="ws-burst-ring ws-burst-ring-1"></div>
+  <div class="ws-burst-ring ws-burst-ring-2"></div>
+  <div class="ws-burst-ring ws-burst-ring-3"></div>
+
+  <!-- SLAM: full-screen overlay -->
+  <div class="ws-slam-overlay"></div>
+
+  <!-- SPLIT: vertical divide, winner's colour floods left panel -->
+  <div class="ws-split-overlay"></div>
+  <div class="ws-split-panel-l"></div>
+  <div class="ws-split-divider"></div>
+
+  <!-- SPOTLIGHT: darkened screen + beam from above + sparkle canvas -->
+  <div class="ws-spotlight-overlay"></div>
+  <div class="ws-spotlight-beam"></div>
+  <canvas class="ws-spotlight-particles" id="ws-spotlight-canvas"></canvas>
+
+  <!-- WIPE: cinematic letterbox bars close in from top and bottom -->
+  <div class="ws-wipe-bar-top"></div>
+  <div class="ws-wipe-bar-bot"></div>
+  <div class="ws-wipe-streak"></div>
+
+  <!-- Shared content card (positioned differently per style via CSS) -->
+  <div class="ws-card" id="ws-card">
+    <div class="ws-logo" id="ws-logo"></div>
+    <div class="ws-text">
+      <div class="ws-tag" id="ws-tag">✦ VICTORY ✦</div>
+      <div class="ws-name" id="ws-name"></div>
+      <div class="ws-message" id="ws-message"></div>
+      <div class="ws-score-row" id="ws-score-row" style="display:none">
+        <div class="ws-score-val" id="ws-score-t1"></div>
+        <div class="ws-score-sep">—</div>
+        <div class="ws-score-val" id="ws-score-t2"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="win.js"></script>
+</body>
+</html>

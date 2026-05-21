@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check server.js)",
+      "Bash(node --check public/control/control.js)",
+      "Bash(node --check \"g:/Broadcast Workfiles/GFX Controller App/public/control/control.js\")",
+      "Bash(node --check \"g:/Broadcast Workfiles/GFX Controller App/public/graphics/draft/draft.js\")",
+      "Bash(Test-Path \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\\\\public\\\\graphics\\\\head2head\\\\index.html\")"
+    ]
+  }
+}

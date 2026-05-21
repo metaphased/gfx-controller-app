@@ -1,0 +1,201 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100vw; height: 100vh;
+  overflow: hidden; background: transparent;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+#ts-root {
+  width: 100vw; height: 100vh;
+  overflow: hidden; position: relative;
+  display: flex; flex-direction: column;
+  padding: 3vh 5vw;
+}
+
+/* Push content clear of the logo when visible */
+#ts-root.has-logo              { padding-top: calc(var(--ts-logo-h,7vh) + 4.5vh); }
+#ts-root.has-logo.logo-center  { padding-top: calc(var(--ts-logo-h,7vh) + 5vh); }
+
+/* ── Logo ─────────────────────────────────────────────────────────────────── */
+#ts-logo-wrap {
+  position: absolute; top: 2.5vh; left: 4vw;
+  z-index: 10; pointer-events: none;
+  transition: left 0.3s, transform 0.3s;
+}
+#ts-root.logo-center #ts-logo-wrap { left: 50%; transform: translateX(-50%); }
+#ts-logo-wrap img {
+  height: var(--ts-logo-h, 7vh); max-width: 18vw;
+  object-fit: contain; display: block;
+}
+
+/* ── Content group — title, pills, and cards centred together ─────────────── */
+#ts-content {
+  flex: 1; min-height: 0;
+  display: flex; flex-direction: column;
+  justify-content: center;
+  gap: 1.8vh;
+}
+
+/* ── Optional display title ───────────────────────────────────────────────── */
+#ts-title {
+  font-size: 5vh; font-weight: 900;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: #fff; line-height: 1;
+}
+
+/* ── Info pills (sits just above the stage cards) ─────────────────────────── */
+#ts-info-bar { display: flex; flex-wrap: wrap; gap: 0.8vw; justify-content: flex-start; }
+#ts-root.info-center #ts-info-bar { justify-content: center; }
+
+.ts-pill {
+  display: flex; flex-direction: column;
+  padding: 1.2vh 2vw;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 3px;
+}
+.ts-pill-lbl {
+  font-size: 1.2vh; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(255,255,255,0.35);
+  line-height: 1; margin-bottom: 0.6vh;
+}
+.ts-pill-val {
+  font-size: 3vh; font-weight: 800;
+  letter-spacing: 0.04em;
+  color: rgba(255,255,255,0.9); line-height: 1;
+}
+.ts-pill-wide .ts-pill-val {
+  font-size: 2vh; font-weight: 600;
+  font-style: italic; letter-spacing: 0.02em;
+  color: rgba(255,255,255,0.75);
+}
+
+/* ── Stage row ────────────────────────────────────────────────────────────── */
+#ts-stages { display: flex; flex-direction: column; }
+
+.ts-stage-row {
+  display: flex; flex-direction: row;
+  align-items: stretch;
+}
+/* Solo card with no pills: match one-card width from the two-card layout, centred.
+   (90vw usable − 3vw arrow) / 2 = 43.5vw each card. */
+.ts-stage-row.ts-stage-row-solo {
+  max-width: 43.5vw;
+  align-self: center;
+}
+
+/* Solo layout with pills: card on left, pills stacked vertically on right */
+.ts-solo-wrap {
+  display: flex; flex-direction: row;
+  align-items: stretch;
+  gap: 3vw;
+}
+.ts-solo-wrap .ts-stage-row { flex: 1; min-width: 0; }
+
+.ts-solo-pills {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  justify-content: flex-start;
+  gap: 0.8vw;
+}
+/* Pills in side panel stretch to fill column width for a clean uniform look */
+.ts-solo-pills .ts-pill { width: 100%; }
+
+/* ── Arrows ───────────────────────────────────────────────────────────────── */
+.ts-h-arrow {
+  flex-shrink: 0; width: 3vw;
+  display: flex; align-items: center;
+  position: relative;
+}
+.ts-h-arrow-line {
+  position: absolute; left: 0; right: 12px; top: 50%;
+  height: 2px; background: rgba(255,255,255,0.25);
+  transform: translateY(-1px);
+}
+.ts-h-arrow-head {
+  position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+  font-size: 1vh; color: rgba(255,255,255,0.25); line-height: 1;
+}
+
+/* ── Stage card ───────────────────────────────────────────────────────────── */
+.ts-stage {
+  flex: 1; min-width: 0;
+  display: flex; flex-direction: column;
+  background: rgba(5,11,16,0.92);
+  border: 1px solid rgba(255,255,255,0.09);
+  border-top: 3px solid var(--ts-accent, rgba(255,255,255,0.2));
+  border-radius: 2px; overflow: hidden;
+}
+
+.ts-type-group    { --ts-accent: rgba(255,159,74,0.8);   }
+.ts-type-playoffs { --ts-accent: rgba(74,183,255,0.8);   }
+
+/* Card header: stage name + type subtitle */
+.ts-stage-body {
+  padding: 2.2vh 2.5vw 2vh;
+  display: flex; flex-direction: column; gap: 0.5vh;
+}
+.ts-stage-name {
+  font-size: 5.5vh; font-weight: 900;
+  letter-spacing: 0.03em; text-transform: uppercase;
+  color: #fff; line-height: 1;
+}
+.ts-stage-sub {
+  font-size: 1.8vh; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(255,255,255,0.35); line-height: 1;
+}
+
+/* Detail rows */
+.ts-stage-details {
+  border-top: 1px solid rgba(255,255,255,0.08);
+  padding: 1.6vh 2.5vw 2vh;
+  display: flex; flex-direction: column; gap: 1vh;
+}
+.ts-detail-row {
+  display: flex; justify-content: space-between; align-items: baseline; gap: 1vw;
+}
+.ts-detail-lbl {
+  font-size: 1.6vh; font-weight: 700;
+  letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4); flex-shrink: 0;
+}
+.ts-detail-val {
+  font-size: 2.8vh; font-weight: 800;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: rgba(255,255,255,0.85); text-align: right;
+}
+
+/* Grand Final row: thin rule above + accent colour, same font size as all other rows */
+.ts-detail-row.ts-detail-gf {
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding-top: 0.8vh; margin-top: 0.3vh;
+}
+.ts-detail-row.ts-detail-gf .ts-detail-lbl { color: rgba(255,255,255,0.5); }
+.ts-detail-row.ts-detail-gf .ts-detail-val { color: var(--gfx-c1, #1ffaff); }
+
+/* ══════════════════════════════════════════════════════════════════════════
+   ANIMATION
+   ══════════════════════════════════════════════════════════════════════════ */
+.ts-entering #ts-content {
+  animation: ts-fade-up 0.4s cubic-bezier(0.22,1,0.36,1) 0.05s both;
+}
+.ts-entering .ts-stage {
+  animation: ts-slide-up 0.45s cubic-bezier(0.22,1,0.36,1) both;
+}
+@keyframes ts-fade-up {
+  from { opacity: 0; transform: translateY(1vh); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes ts-slide-up {
+  from { opacity: 0; transform: translateY(2.5vh); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   EXIT
+   ══════════════════════════════════════════════════════════════════════════ */
+.ts-exiting { animation: ts-fade-out 0.45s ease forwards; }
+@keyframes ts-fade-out { to { opacity: 0; } }

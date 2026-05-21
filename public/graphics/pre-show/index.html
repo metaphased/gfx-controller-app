@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Pre-show Countdown</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=Barlow:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="pre-show.css">
+</head>
+<body>
+
+<div id="ps-root" style="display:none">
+
+  <!-- Tournament header -->
+  <div class="ps-header">
+    <img class="ps-logo" id="ps-logo" style="display:none">
+    <div class="ps-tourn-name" id="ps-tourn-name"></div>
+  </div>
+
+  <!-- Body — flex-direction toggled between column (center) and row (side) -->
+  <div class="ps-body">
+
+    <div class="ps-timer-section">
+      <div class="ps-timer-label" id="ps-timer-label">BROADCAST BEGINS IN</div>
+      <div class="ps-timer" id="ps-timer">--:--</div>
+      <div class="ps-sponsors" id="ps-sponsors"></div>
+    </div>
+
+    <!-- Tonight's matches — built by JS from state.todayGames -->
+    <div class="ps-games" id="ps-games"></div>
+
+  </div>
+
+  <!-- Ticker — slides up from the bottom, overlays games section -->
+  <div class="ps-ticker" id="ps-ticker" style="display:none">
+    <div class="ps-ticker-label" id="ps-ticker-label">
+      <span id="ps-ticker-label-text">NEWS</span>
+      <img id="ps-ticker-label-img" style="display:none;height:3.8vh;max-width:7vw;object-fit:contain;">
+    </div>
+    <div class="ps-ticker-track">
+      <div class="ps-ticker-inner" id="ps-ticker-inner"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/graphics/gfx-settings.js"></script>
+<script src="pre-show.js"></script>
+</body>
+</html>

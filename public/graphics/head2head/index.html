@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Head to Head</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=Barlow:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="h2h.css">
+</head>
+<body>
+
+<div id="h2h-root" style="display:none">
+
+  <!-- Team header bar -->
+  <div class="h2h-header">
+    <div class="h2h-header-side h2h-header-left">
+      <div class="h2h-header-logo" id="h2h-t1-logo"></div>
+      <div class="h2h-header-name" id="h2h-t1-name"></div>
+    </div>
+    <div class="h2h-header-centre">
+      <img id="h2h-centre-logo" style="display:none">
+    </div>
+    <div class="h2h-header-side h2h-header-right">
+      <div class="h2h-header-logo" id="h2h-t2-logo"></div>
+      <div class="h2h-header-name" id="h2h-t2-name"></div>
+    </div>
+  </div>
+
+  <!-- Role rows — built and managed by h2h.js -->
+  <div class="h2h-rows" id="h2h-rows"></div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/graphics/gfx-settings.js"></script>
+<script src="h2h.js"></script>
+</body>
+</html>

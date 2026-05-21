@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Draft Overlay</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="draft.css">
+</head>
+<body class="layout-arena">
+<div id="draft-root" class="draft-root">
+
+  <!-- ── Blue side panel: header + bans only ───────────────────── -->
+  <div class="team-panel side-blue" id="panel-blue">
+    <div class="team-header" id="blue-header">
+      <div  class="team-logo"  id="blue-logo"></div>
+      <span class="team-name"  id="blue-name">BLUE TEAM</span>
+      <span class="team-score" id="blue-score">0</span>
+    </div>
+    <!-- 5 blue ban slots — rendered by JS -->
+    <div class="bans-panel bans-panel-blue" id="blue-bans"></div>
+  </div>
+
+  <!-- ── Centre: transparent camera space, series label + fearless at bottom ─── -->
+  <div class="centre-col" id="centre-col">
+    <div class="fearless-section" id="fearless-section" style="display:none">
+      <div class="fearless-label">FEARLESS</div>
+      <div id="fearless-content"></div>
+    </div>
+    <!-- Series context floats just above the player bar, outside the bar itself -->
+    <div class="clock-series-block" id="series-block">
+      <!-- Top row: side-choice · GAME X/X · pick-order -->
+      <div class="series-game-row">
+        <span class="series-choice-tag" id="side-choice-tag" style="display:none"></span>
+        <span class="clock-series-game" id="series-game">GAME 1</span>
+        <span class="series-choice-tag series-pick-tag" id="pick-order-tag" style="display:none"></span>
+      </div>
+      <span class="clock-series-phase" id="series-phase">—</span>
+    </div>
+  </div>
+
+  <!-- ── Red side panel: header + bans (mirrored) ─────────────── -->
+  <div class="team-panel side-red" id="panel-red">
+    <!-- Same DOM order as blue; CSS reverses direction for mirror -->
+    <div class="team-header" id="red-header">
+      <div  class="team-logo"  id="red-logo"></div>
+      <span class="team-name"  id="red-name">RED TEAM</span>
+      <span class="team-score" id="red-score">0</span>
+    </div>
+    <!-- 5 red ban slots — rendered by JS, CSS mirrors order -->
+    <div class="bans-panel bans-panel-red" id="red-bans"></div>
+  </div>
+
+  <!-- ── Player bar: picks as bg, clock indicator centre ────────── -->
+  <div class="player-bar" id="player-bar">
+
+    <div class="players-side" id="players-blue"></div>
+
+    <!-- Clock indicator — replaces the old pip -->
+    <div class="clock-center" id="clock-center">
+
+      <!-- Arrows flank the logo+ring: ◀ [LOGO] ▶ -->
+      <div class="clock-logo-row">
+        <span class="clock-arrow" id="clock-arrow-l">◀</span>
+        <div class="logo-timer-wrap">
+          <svg class="timer-ring" id="timer-ring" viewBox="0 0 100 100" style="display:none">
+            <circle class="timer-track" id="timer-track" cx="50" cy="50" r="44"/>
+            <circle class="timer-arc"   id="timer-arc"   cx="50" cy="50" r="44"/>
+          </svg>
+          <div class="tourn-logo" id="tourn-logo"></div>
+        </div>
+        <span class="clock-arrow" id="clock-arrow-r">▶</span>
+      </div>
+      <!-- Timer countdown value — below the logo row, outside the flex row so arrows stay ring-centered -->
+      <span class="timer-val" id="timer-val">—</span>
+    </div>
+
+    <div class="players-side players-side-red" id="players-red"></div>
+
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/graphics/gfx-settings.js"></script>
+<script src="draft.js"></script>
+</body>
+</html>

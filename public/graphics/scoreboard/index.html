@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Scoreboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1920px; height: 1080px;
+    background: transparent;
+    overflow: hidden;
+    font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  }
+  :root {
+    --bg: #0a1b20;
+    --accent: #a7a38e;
+    --primary: #1ffaff;
+  }
+
+  .scoreboard {
+    position: absolute;
+    top: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-120px);
+    display: flex;
+    align-items: center;
+    gap: 0;
+    opacity: 0;
+    transition: transform 0.5s cubic-bezier(.4,0,.2,1), opacity 0.5s;
+    pointer-events: none;
+  }
+  .scoreboard.visible {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .team-block {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--bg);
+    padding: 12px 22px 12px 18px;
+    min-width: 280px;
+  }
+  .team-block.right {
+    flex-direction: row-reverse;
+    padding: 12px 18px 12px 22px;
+  }
+
+  .team-logo {
+    width: 52px; height: 52px;
+    object-fit: contain;
+    display: none;
+  }
+  .team-logo.has-logo { display: block; }
+
+  .team-name {
+    font-size: 28px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #fff;
+    letter-spacing: 0.05em;
+    line-height: 1;
+  }
+  .team-tag {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .score-block {
+    display: flex;
+    align-items: center;
+    background: var(--bg);
+    position: relative;
+  }
+  .score-inner {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 0 4px;
+  }
+  .score-num {
+    font-size: 56px;
+    font-weight: 800;
+    color: var(--primary);
+    width: 64px;
+    text-align: center;
+    line-height: 1;
+    padding: 10px 8px;
+  }
+  .score-divider {
+    width: 2px;
+    height: 40px;
+    background: var(--accent);
+    opacity: 0.4;
+  }
+  .format-label {
+    position: absolute;
+    bottom: -22px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--accent);
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .left-bar, .right-bar {
+    width: 4px;
+    height: 100%;
+    position: absolute;
+  }
+  .left-edge {
+    width: 4px;
+    background: var(--primary);
+    align-self: stretch;
+    flex-shrink: 0;
+  }
+  .right-edge {
+    width: 4px;
+    background: var(--primary);
+    align-self: stretch;
+    flex-shrink: 0;
+  }
+
+  .wrapper {
+    display: flex;
+    align-items: stretch;
+  }
+
+  /* Sponsor / tournament strip */
+  .meta-strip {
+    position: absolute;
+    bottom: -30px;
+    left: 0; right: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+  }
+  .tournament-logo {
+    height: 22px;
+    object-fit: contain;
+  }
+  .tournament-name {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+</style>
+</head>
+<body>
+<div class="scoreboard" id="sb">
+  <div class="wrapper">
+    <div class="left-edge" id="left-edge"></div>
+
+    <div class="team-block" id="t1-block">
+      <img class="team-logo" id="t1-logo" src="" alt="">
+      <div>
+        <div class="team-name" id="t1-name">TEAM ONE</div>
+        <div class="team-tag" id="t1-tag">T1</div>
+      </div>
+    </div>
+
+    <div class="score-block">
+      <div class="score-inner">
+        <div class="score-num" id="t1-score">0</div>
+        <div class="score-divider"></div>
+        <div class="score-num" id="t2-score">0</div>
+      </div>
+      <div class="format-label" id="format-label">Best of 3</div>
+    </div>
+
+    <div class="team-block right" id="t2-block">
+      <img class="team-logo" id="t2-logo" src="" alt="">
+      <div style="text-align:right">
+        <div class="team-name" id="t2-name">TEAM TWO</div>
+        <div class="team-tag" id="t2-tag">T2</div>
+      </div>
+    </div>
+
+    <div class="right-edge" id="right-edge"></div>
+  </div>
+
+  <div class="meta-strip">
+    <img class="tournament-logo" id="tournament-logo" src="" alt="" style="display:none">
+    <span class="tournament-name" id="tournament-name"></span>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+const socket = io();
+socket.on('state', (s) => {
+  const sb = document.getElementById('sb');
+  sb.classList.toggle('visible', !!s.scoreboard?.visible);
+
+  const t1 = s.match.team1, t2 = s.match.team2;
+
+  document.getElementById('t1-name').textContent = t1.name;
+  document.getElementById('t1-tag').textContent = t1.tag;
+  document.getElementById('t1-score').textContent = t1.score ?? 0;
+  document.getElementById('t2-name').textContent = t2.name;
+  document.getElementById('t2-tag').textContent = t2.tag;
+  document.getElementById('t2-score').textContent = t2.score ?? 0;
+
+  const l1 = document.getElementById('t1-logo');
+  if (t1.logo) { l1.src = t1.logo; l1.classList.add('has-logo'); } else l1.classList.remove('has-logo');
+  const l2 = document.getElementById('t2-logo');
+  if (t2.logo) { l2.src = t2.logo; l2.classList.add('has-logo'); } else l2.classList.remove('has-logo');
+
+  document.getElementById('format-label').textContent = s.match.format || '';
+  document.getElementById('tournament-name').textContent = s.match.tournament || '';
+
+  const tl = document.getElementById('tournament-logo');
+  if (s.match.tournamentLogo) { tl.src = s.match.tournamentLogo; tl.style.display = 'block'; }
+  else tl.style.display = 'none';
+
+  document.getElementById('left-edge').style.background = t1.color || '#1ffaff';
+  document.getElementById('right-edge').style.background = t2.color || '#a7a38e';
+  document.getElementById('t1-score').style.color = t1.color || '#1ffaff';
+  document.getElementById('t2-score').style.color = t2.color || '#1ffaff';
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,118 @@
+/* ── Champion Picker ─────────────────────────────────────────────────────────── */
+.cs-picker-row {
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.cs-picker-row label {
+  min-width: 46px;
+  flex-shrink: 0;
+}
+.cs-picker-container {
+  flex: 1;
+  position: relative;
+}
+.champ-picker-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+.champ-thumb {
+  width: 36px;
+  height: 36px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  flex-shrink: 0;
+  background-size: cover;
+  background-position: top center;
+  transition: border-color 0.2s;
+}
+.champ-thumb.has-img { border-color: var(--primary); }
+.champ-search-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 8px;
+  font-size: 13px;
+  font-family: 'Barlow', sans-serif;
+  outline: none;
+}
+.champ-search-input:focus { border-color: var(--primary); }
+.champ-clear-btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  flex-shrink: 0;
+  cursor: pointer;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--accent);
+  transition: color 0.15s, border-color 0.15s;
+}
+.champ-clear-btn:hover { color: var(--danger); border-color: var(--danger); }
+.champ-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: var(--bg2);
+  border: 1px solid var(--primary);
+  z-index: 1000;
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+.champ-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.champ-option:hover { background: rgba(31,250,255,0.08); }
+.champ-option-img {
+  width: 32px;
+  height: 32px;
+  background-size: cover;
+  background-position: top center;
+  background-color: var(--bg3);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.champ-option span {
+  font-size: 13px;
+  color: var(--text);
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+.champ-no-results {
+  padding: 12px 10px;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: center;
+}
+.champ-dropdown::-webkit-scrollbar { width: 4px; }
+.champ-dropdown::-webkit-scrollbar-thumb { background: var(--border); }
+.champ-option-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: auto;
+}
+.champ-option-disabled .champ-option-img { filter: grayscale(80%); }
+.champ-option-disabled span { text-decoration: line-through; color: var(--text-dim); }
+.champ-option-banned-badge {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.15em;
+  color: rgba(255,68,68,0.7);
+  background: rgba(255,68,68,0.1);
+  border: 1px solid rgba(255,68,68,0.25);
+  padding: 1px 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+}

@@ -1,0 +1,228 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+/* Root: relative for logo, flex-column for vertical centering of the group area */
+#groups-root {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  /* Top padding reserves space for the logo; groups are centered in what remains */
+  padding: 9.5vh 5vw 2vh;
+}
+
+/* ── Tournament logo ────────────────────────────────────────────────────────── */
+#groups-logo-wrap {
+  position: absolute;
+  top: 2.5vh;
+  left: 3vw;
+  z-index: 10;
+  pointer-events: none;
+  transition: left 0.3s, transform 0.3s;
+}
+
+#groups-root.logo-center #groups-logo-wrap {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#groups-logo-wrap img {
+  height: var(--groups-logo-h, 7vh);
+  max-width: 16vw;
+  object-fit: contain;
+  display: block;
+}
+
+/* ── Groups container ───────────────────────────────────────────────────────── */
+#groups-container {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2vw;
+}
+
+/* ── Group card ─────────────────────────────────────────────────────────────── */
+.gs-group {
+  background: rgba(5, 11, 16, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 3px;
+  overflow: hidden;
+  width: var(--gs-card-w, 22vw);
+  flex-shrink: 0;
+}
+
+/* ── Group header ───────────────────────────────────────────────────────────── */
+.gs-group-header {
+  padding: 1.4vh 1.2vw;
+  font-size: 2.2vh;
+  font-weight: 900;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--gfx-c1, #1ffaff);
+  text-shadow: 0 0 20px rgba(31, 250, 255, 0.45);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* ── Team row ───────────────────────────────────────────────────────────────── */
+.gs-team {
+  display: flex;
+  align-items: center;
+  gap: 0.6vw;
+  padding: 0.85vh 1.2vw;
+  min-height: 5vh; /* normalises row height regardless of logo aspect ratio */
+  position: relative;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  background-color: transparent;
+  /* Transition for mode switch — only non-animating properties are instant */
+  transition: opacity 0.45s ease, background-color 0.45s ease;
+}
+
+.gs-team:last-child { border-bottom: none; }
+
+/* Qualifying */
+.gs-team.qualifying { background-color: rgba(255, 255, 255, 0.025); }
+
+.gs-team.qualifying::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--gfx-c1, #1ffaff);
+  opacity: 1;
+  transition: opacity 0.45s ease;
+}
+
+/* Eliminated */
+.gs-team.eliminated { opacity: 0.28; }
+
+/* ── Team logo ──────────────────────────────────────────────────────────────── */
+.gs-team-logo {
+  width: 3.2vh;
+  height: 3.2vh;
+  max-width: 3.2vh;
+  max-height: 3.2vh;
+  object-fit: contain;
+  object-position: center;
+  flex-shrink: 0;
+  display: block;
+}
+
+.gs-team-logo-ph {
+  width: 3.2vh;
+  height: 3.2vh;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+/* ── Team name ──────────────────────────────────────────────────────────────── */
+.gs-team-name {
+  flex: 1;
+  font-size: 1.9vh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  transition: color 0.45s ease;
+}
+
+.gs-team.qualifying .gs-team-name { color: #fff; }
+
+/* ── W-L record ─────────────────────────────────────────────────────────────── */
+.gs-record {
+  font-size: 1.8vh;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+  min-width: 4.5ch;
+  text-align: right;
+  transition: color 0.45s ease;
+}
+
+.gs-team.qualifying .gs-record { color: var(--gfx-c1, #1ffaff); }
+
+/* ── Qualifier cutoff ───────────────────────────────────────────────────────── */
+.gs-cutoff {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 2vh;
+  background: rgba(31, 250, 255, 0.04);
+  border-top: 1px solid rgba(31, 250, 255, 0.18);
+  border-bottom: 1px solid rgba(31, 250, 255, 0.18);
+  transition: opacity 0.45s ease;
+}
+
+.gs-cutoff-label {
+  font-size: 0.95vh;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--gfx-c1, #1ffaff);
+  opacity: 0.55;
+}
+
+/* ── Empty state ────────────────────────────────────────────────────────────── */
+.gs-empty {
+  color: rgba(255, 255, 255, 0.15);
+  font-size: 1.6vh;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+/* ── Mode: live — all teams equal, no qualifier distinction ─────────────────── */
+/* Overrides via root class so CSS transitions animate the difference */
+#groups-root.mode-live .gs-team.eliminated     { opacity: 1; }
+#groups-root.mode-live .gs-team.qualifying     { background-color: transparent; }
+#groups-root.mode-live .gs-team.qualifying::before { opacity: 0; }
+#groups-root.mode-live .gs-team.qualifying .gs-team-name { color: rgba(255, 255, 255, 0.8); }
+#groups-root.mode-live .gs-team.qualifying .gs-record    { color: rgba(255, 255, 255, 0.4); }
+#groups-root.mode-live .gs-cutoff             { opacity: 0; pointer-events: none; }
+
+/* ── Logo entry animation ───────────────────────────────────────────────────── */
+.groups-entering #groups-logo-wrap {
+  animation: gs-fade-in 0.6s ease 0.1s both;
+}
+
+@keyframes gs-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Entry animation ────────────────────────────────────────────────────────── */
+.groups-entering .gs-group {
+  animation: gs-slide-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes gs-slide-in {
+  from { opacity: 0; transform: translateY(1.5vh); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Exit ───────────────────────────────────────────────────────────────────── */
+.groups-exiting {
+  animation: gs-fade-out 0.5s ease forwards;
+}
+
+@keyframes gs-fade-out {
+  to { opacity: 0; }
+}

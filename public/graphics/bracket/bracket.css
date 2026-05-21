@@ -1,0 +1,473 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Barlow Condensed', sans-serif;
+}
+
+/* ── Root ──────────────────────────────────────────────────────────────────── */
+#bracket-root {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── Tournament logo ────────────────────────────────────────────────────────── */
+#bracket-logo-wrap {
+  position: absolute;
+  top: 2.5vh;
+  left: 3vw;
+  z-index: 10;
+  pointer-events: none;
+  transition: left 0.3s, transform 0.3s;
+}
+
+#bracket-root.logo-center #bracket-logo-wrap {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+#bracket-logo-wrap img {
+  height: var(--bracket-logo-h, 7vh);
+  max-width: 16vw;
+  object-fit: contain;
+  display: block;
+}
+
+/* ── SVG connector layer ────────────────────────────────────────────────────── */
+#bracket-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 2;
+}
+
+/* ── Rounds container ───────────────────────────────────────────────────────── */
+#bracket-rounds-gfx {
+  position: absolute;
+  top: 9.5vh;
+  right: 2.5vw;
+  bottom: 2vh;
+  left: 2.5vw;
+  z-index: 1;
+}
+
+/* ── Single elimination ─────────────────────────────────────────────────────── */
+#bracket-rounds-gfx.layout-single {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 3vw;
+}
+
+/* ── Double elimination grid ────────────────────────────────────────────────── */
+#bracket-rounds-gfx.layout-double {
+  display: grid;
+  grid-template-columns: 1fr 23vw;
+  grid-template-rows: 2fr 1fr;
+  column-gap: 0;
+  row-gap: 2.5vh;
+}
+
+/* ── Bracket sections ───────────────────────────────────────────────────────── */
+.bkt-section {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.bkt-section.bkt-upper { grid-column: 1; grid-row: 1; }
+.bkt-section.bkt-lower { grid-column: 1; grid-row: 2; }
+
+.bkt-section-label {
+  font-size: 1.5vh;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  padding-bottom: 0.8vh;
+  flex-shrink: 0;
+}
+
+.bkt-section.bkt-upper .bkt-section-label { color: rgba(74, 183, 255, 0.65); }
+.bkt-section.bkt-lower .bkt-section-label { color: rgba(255, 159, 74,  0.65); }
+
+/* Headers and round columns share the same grid → guaranteed column alignment */
+.bkt-section-rounds {
+  flex: 1;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  grid-template-rows: auto 1fr;
+  column-gap: 2.5vw;
+  min-height: 0;
+}
+
+/* Row 1: round labels — auto-placed by grid-auto-flow: column */
+.bkt-round-header {
+  text-align: center;
+  font-size: 1.2vh;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  padding-bottom: 0.5vh;
+  align-self: end;
+}
+
+/* Row 2: round columns — auto-placed after their header in the same column */
+.bkt-round {
+  min-height: 0;
+}
+
+/* ── Grand Final column ─────────────────────────────────────────────────────── */
+.bkt-final-section {
+  grid-column: 2;
+  grid-row: 1 / 3;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  padding-left: 2.5vw;
+  z-index: 1;
+}
+
+.bkt-final-label {
+  text-align: center;
+  font-size: 2.8vh;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--gfx-c1, #1ffaff);
+  text-shadow: 0 0 28px var(--gfx-c1, #1ffaff);
+  line-height: 1.1;
+  padding-bottom: 1.5vh;
+}
+
+/* Grand Finals match — larger card, no max-width cap, label sits directly above */
+.bkt-final-section .bkt-matches {
+  flex: none; /* don't grow — lets label + match group together and center as a unit */
+}
+
+.bkt-final-section .bkt-team { padding: 1.3vh 1vw; }
+
+.bkt-final-section .bkt-team-logo,
+.bkt-final-section .bkt-team-logo-ph {
+  width: 4.5vh;
+  height: 4.5vh;
+}
+
+.bkt-final-section .bkt-team-name  { font-size: 2.3vh; }
+.bkt-final-section .bkt-team-score { font-size: 2.5vh; font-weight: 900; }
+
+.bkt-final-section .bkt-match {
+  border-color: rgba(255, 255, 255, 0.18);
+  max-width: none; /* override the general max-width cap */
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Round column ───────────────────────────────────────────────────────────── */
+.bkt-round {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bkt-round-label {
+  height: 3.5vh;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 0.6vh;
+  font-size: 1.2vh;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+}
+
+/* Single-elim: round labels larger and centered above full-width cards */
+#bracket-rounds-gfx.layout-single .bkt-round-label {
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 1.6vh;
+  justify-content: center;
+}
+
+/* Match cards fill their column — keeps cards centered under the column header */
+#bracket-rounds-gfx.layout-single .bkt-match,
+#bracket-rounds-gfx.layout-double .bkt-match {
+  max-width: none;
+}
+
+
+/* ── Single-elim grand final column ────────────────────────────────────────────── */
+#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round {
+  justify-content: center;
+}
+
+#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-matches {
+  flex: none;
+}
+
+#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-round-label {
+  height: auto;
+  padding-bottom: 1.5vh;
+  font-size: 2.8vh;
+  font-weight: 900;
+  letter-spacing: 0.22em;
+  line-height: 1.1;
+  color: var(--gfx-c1, #1ffaff);
+  text-shadow: 0 0 28px var(--gfx-c1, #1ffaff);
+  opacity: 1;
+}
+
+#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-match {
+  max-width: none;
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 0 24px rgba(0, 0, 0, 0.5);
+}
+
+#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-team { padding: 1.3vh 1vw; }
+
+#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-team-logo,
+#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-team-logo-ph {
+  width: 4.5vh;
+  height: 4.5vh;
+}
+
+#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-team-name  { font-size: 2.3vh; }
+#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-team-score { font-size: 2.5vh; font-weight: 900; }
+
+/* ── Final area wrapper (GF + 3rd place stacked) ───────────────────────────────── */
+.bkt-final-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-items: stretch;
+}
+
+/* The bkt-round inside bkt-final-area shouldn't grow — it centers as a unit */
+.bkt-final-area .bkt-round {
+  flex: none;
+}
+
+/* ── 3rd place section ──────────────────────────────────────────────────────────── */
+.bkt-3p-section {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.bkt-3p-label {
+  padding-bottom: 0.7vh;
+  font-size: 1.35vh;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  text-align: center;
+}
+
+.bkt-3p-section .bkt-match {
+  max-width: none;
+}
+
+.bkt-3p-section .bkt-team { padding: 1vh 0.9vw; }
+
+.bkt-3p-section .bkt-team-logo,
+.bkt-3p-section .bkt-team-logo-ph { width: 3.5vh; height: 3.5vh; }
+
+.bkt-3p-section .bkt-team-name  { font-size: 1.9vh; }
+.bkt-3p-section .bkt-team-score { font-size: 2vh; font-weight: 800; }
+
+.bkt-matches {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  min-height: 0;
+}
+
+/* ── Match card ─────────────────────────────────────────────────────────────── */
+.bkt-match {
+  background: rgba(5, 11, 16, 0.90);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 2px;
+  overflow: hidden;
+  max-width: 17vw; /* keeps cards from stretching too wide in large columns */
+}
+
+.bkt-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  margin: 0 0.6vw;
+}
+
+/* ── Team row ───────────────────────────────────────────────────────────────── */
+.bkt-team {
+  display: flex;
+  align-items: center;
+  gap: 0.55vw;
+  padding: 0.75vh 0.75vw;
+  position: relative;
+  transition: opacity 0.3s;
+}
+
+.bkt-section.bkt-lower .bkt-team { padding: 0.5vh 0.65vw; }
+
+.bkt-team-logo {
+  width: 3vh;
+  height: 3vh;
+  object-fit: contain;
+  flex-shrink: 0;
+  display: block;
+}
+
+.bkt-team-logo-ph {
+  width: 3vh;
+  height: 3vh;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+.bkt-section.bkt-lower .bkt-team-logo,
+.bkt-section.bkt-lower .bkt-team-logo-ph {
+  width: 2.4vh;
+  height: 2.4vh;
+}
+
+.bkt-team-name {
+  flex: 1;
+  font-size: 1.7vh;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.bkt-section.bkt-lower .bkt-team-name { font-size: 1.45vh; }
+
+.bkt-team-score {
+  font-size: 1.8vh;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.4);
+  min-width: 2ch;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.bkt-section.bkt-lower .bkt-team-score { font-size: 1.5vh; }
+
+/* Winner */
+.bkt-team.bkt-winner { background: rgba(255, 255, 255, 0.04); }
+
+.bkt-team.bkt-winner::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--bkt-accent, var(--gfx-c1, #1ffaff));
+}
+
+.bkt-team.bkt-winner .bkt-team-name  { color: #fff; }
+.bkt-team.bkt-winner .bkt-team-score { color: var(--bkt-accent, var(--gfx-c1, #1ffaff)); }
+
+/* Loser */
+.bkt-team.bkt-loser { opacity: 0.25; }
+
+/* TBD */
+.bkt-team.bkt-tbd .bkt-team-name {
+  color: rgba(255, 255, 255, 0.22);
+  font-style: italic;
+}
+
+/* Pending bracket reference ("Winner of SF M1") */
+.bkt-team.bkt-pending-ref .bkt-team-name {
+  font-size: 1.2vh;
+  color: rgba(255, 255, 255, 0.28);
+  font-style: italic;
+  letter-spacing: 0.01em;
+}
+
+.bkt-team.bkt-pending-ref .bkt-team-logo-ph {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Match badge — shown when both team slots are pending refs */
+.bkt-match-badge {
+  padding: 0.3vh 0.6vw;
+  font-size: 0.9vh;
+  font-weight: 800;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+
+/* ── Entry animation ─────────────────────────────────────────────────────────── */
+
+.bracket-entering #bracket-logo-wrap {
+  animation: bkt-fade-in 0.6s ease 0.1s both;
+}
+
+@keyframes bkt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.bracket-entering .bkt-round,
+.bracket-entering .bkt-final-section,
+.bracket-entering .bkt-3p-section,
+.bracket-entering .bkt-section-label,
+.bracket-entering .bkt-round-header {
+  animation: bkt-slide-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes bkt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes bkt-slide-in {
+  from { opacity: 0; transform: translateX(-1vw); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* ── Exit ────────────────────────────────────────────────────────────────────── */
+.bracket-exiting {
+  animation: bkt-fade-out 0.6s ease forwards;
+}
+
+@keyframes bkt-fade-out {
+  to { opacity: 0; }
+}
+
+/* ── Empty state ─────────────────────────────────────────────────────────────── */
+.bkt-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.15);
+  font-size: 1.6vh;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}

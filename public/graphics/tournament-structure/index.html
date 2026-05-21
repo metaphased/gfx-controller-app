@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tournament Structure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,400&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="tournament.css">
+</head>
+<body>
+  <div id="ts-root" style="display:none">
+
+    <div id="ts-logo-wrap">
+      <img id="ts-logo" src="" alt="" style="display:none">
+    </div>
+
+    <!-- Title + pills + cards all grouped together and centered as a unit -->
+    <div id="ts-content">
+      <div id="ts-title"></div>
+      <div id="ts-info-bar"></div>
+      <div id="ts-stages"></div>
+    </div>
+
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/graphics/gfx-settings.js"></script>
+  <script src="tournament.js"></script>
+</body>
+</html>

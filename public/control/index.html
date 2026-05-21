@@ -1,0 +1,1872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MetaGFX</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="control.css">
+<link rel="stylesheet" href="champion-picker.css">
+<link rel="stylesheet" href="teams.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Sidebar ──────────────────────────────────────────────────────────── -->
+  <nav class="sidebar">
+    <div class="logo"><span class="logo-accent">Meta</span><span class="logo-text">GFX</span></div>
+
+    <!-- Profile dirty / save bar — shown when active profile has unsaved changes -->
+    <div id="profile-save-bar" class="profile-save-bar" style="display:none">
+      <div class="psb-text">
+        <span class="psb-label">Unsaved changes</span>
+        <span class="psb-name" id="psb-name"></span>
+      </div>
+      <button class="btn btn-primary btn-sm psb-btn" onclick="saveActiveProfileChanges()">↑ Update</button>
+    </div>
+
+    <div class="nav-section-label">TOURNAMENT</div>
+    <a class="nav-item active" data-tab="profiles" id="nav-item-profiles">⬡ Profiles</a>
+    <a class="nav-item" data-tab="tournament">⬡ Tournament Setup</a>
+    <a class="nav-item" data-tab="teams">⬡ Teams Database</a>
+    <a class="nav-item" data-tab="schedule">⬡ Schedule</a>
+    <a class="nav-item" data-tab="groups" id="nav-item-groups" style="display:none">⬡ Groups</a>
+    <a class="nav-item" data-tab="playoffs">⬡ Playoffs</a>
+
+    <div class="nav-section-label">GAME</div>
+    <a class="nav-item" data-tab="game">⬡ Game Setup</a>
+    <a class="nav-item" data-tab="draft">⬡ Draft</a>
+    <a class="nav-item" data-tab="players">⬡ Players / Rosters</a>
+
+    <div class="nav-section-label">GRAPHICS</div>
+    <a class="nav-item" data-tab="theme">⬡ Broadcast Theme</a>
+    <a class="nav-item" data-tab="bgoutput">⬡ BG Output</a>
+    <a class="nav-item" data-tab="scoreboard">
+      <span id="nav-dot-scoreboard" class="nav-status-dot"></span>
+      Scoreboard
+    </a>
+    <a class="nav-item" data-tab="lowerthird">
+      <span id="nav-dot-lowerthird" class="nav-status-dot"></span>
+      Lower Third
+    </a>
+    <a class="nav-item" data-tab="h2h">
+      <span id="nav-dot-h2h" class="nav-status-dot"></span>
+      Head to Head
+    </a>
+    <a class="nav-item" data-tab="preshow">
+      <span id="nav-dot-preshow" class="nav-status-dot"></span>
+      Pre-show
+    </a>
+    <a class="nav-item" data-tab="ticker">
+      <span id="nav-dot-ticker" class="nav-status-dot"></span>
+      Ticker
+    </a>
+    <a class="nav-item" data-tab="draft-gfx">
+      <span id="nav-dot-draft-gfx" class="nav-status-dot"></span>
+      Draft
+    </a>
+    <a class="nav-item" data-tab="bracket">
+      <span id="nav-dot-bracket" class="nav-status-dot"></span>
+      Bracket
+    </a>
+    <a class="nav-item" data-tab="groups-gfx">
+      <span id="nav-dot-groups-gfx" class="nav-status-dot"></span>
+      Group Stage
+    </a>
+    <a class="nav-item" data-tab="tournament-structure-gfx">
+      <span id="nav-dot-tournament-structure-gfx" class="nav-status-dot"></span>
+      Tournament Structure
+    </a>
+    <a class="nav-item" data-tab="prizepool">
+      <span id="nav-dot-prizepool" class="nav-status-dot"></span>
+      Prizepool
+    </a>
+    <a class="nav-item" data-tab="break">
+      <span id="nav-dot-break" class="nav-status-dot"></span>
+      Break Screen
+    </a>
+    <a class="nav-item" data-tab="win">
+      <span id="nav-dot-win" class="nav-status-dot"></span>
+      Win Screen
+    </a>
+
+    <div class="nav-section-label">SYSTEM</div>
+    <a class="nav-item" data-tab="users">⬡ Settings</a>
+
+    <div class="nav-section-label">OUTPUT URLS</div>
+    <div class="url-list" id="url-list"></div>
+    <div class="sidebar-footer">
+      <div class="connection-status" id="conn-status">⬤ Connecting…</div>
+      <div class="sidebar-session" id="sidebar-session"></div>
+      <a class="sidebar-logout" href="/api/auth/logout">Log Out</a>
+    </div>
+  </nav>
+
+  <!-- ── Top bar ───────────────────────────────────────────────────────────── -->
+  <div id="meta-topbar">
+    <span class="mtb-profile-label">ACTIVE PROFILE</span>
+    <span class="mtb-profile-name" id="mtb-profile-name">No profile loaded</span>
+  </div>
+
+  <!-- ── Main ─────────────────────────────────────────────────────────────── -->
+  <main class="main">
+
+<!-- ══════════════════════════════════════════════════════════════════════
+         PROFILES
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab active" id="tab-profiles">
+      <div class="tab-header">
+        <h1>Profiles</h1>
+        <button class="btn btn-primary btn-sm" onclick="openSaveProfileForm()">+ Save as New Profile</button>
+      </div>
+
+      <!-- Save new profile form -->
+      <div class="card" id="save-profile-form" style="display:none;max-width:520px;margin-bottom:20px">
+        <div class="card-title">New Profile</div>
+        <div class="field-row"><label>Profile Name</label><input type="text" id="new-profile-name" placeholder="e.g. Summer Split 2025" autocomplete="off"></div>
+        <p class="hint" style="margin-bottom:12px">Saves the current tournament structure, schedule, groups, bracket, active game setup and rosters.</p>
+        <div style="display:flex;gap:10px">
+          <button class="btn btn-primary btn-sm" onclick="submitSaveProfile()">Save Profile</button>
+          <button class="btn btn-sm" onclick="closeSaveProfileForm()">Cancel</button>
+        </div>
+        <div class="profile-msg" id="save-profile-msg"></div>
+      </div>
+
+      <!-- Profiles list -->
+      <div id="profiles-list"><p class="hint">No profiles saved yet. Use "+ Save as New Profile" to capture the current tournament setup.</p></div>
+    </section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+         TOURNAMENT SETUP
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-tournament">
+      <div class="tab-header"><h1>Tournament Setup</h1></div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Tournament Info</div>
+          <div class="field-row"><label>Tournament Name</label><input type="text" id="ts-name" placeholder="e.g. Summer Split 2025" oninput="patchTournamentInfo({name:this.value})"></div>
+          <div class="field-row"><label>Game</label>
+            <select id="ts-game" onchange="patchTournamentInfo({game:this.value})">
+              <option value="lol">League of Legends</option><option value="valorant">VALORANT</option><option value="cs2">CS2</option><option value="generic">Generic / Other</option>
+            </select>
+          </div>
+          <div class="field-row"><label>Tournament Logo</label>
+            <div class="upload-row">
+              <input type="text" id="ts-logo" placeholder="URL or upload" oninput="patchTournamentInfo({logo:this.value})">
+              <button class="btn btn-sm" onclick="triggerUpload('ts-logo-file',function(url){document.getElementById('ts-logo').value=url;patchTournamentInfo({logo:url});})">Upload</button>
+              <input type="file" id="ts-logo-file" accept="image/*" style="display:none">
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Sponsor Logos</div>
+          <div id="sponsor-list" class="sponsor-grid"></div>
+          <div style="margin-top:12px">
+            <button class="btn btn-sm" onclick="addSponsor()">+ Add Sponsor Logo</button>
+            <input type="file" id="sponsor-file" accept="image/*" style="display:none">
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Tournament Structure</div>
+
+        <!-- Group Stage toggle -->
+        <div class="field-row">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:400">
+            <input type="checkbox" id="ts-has-groups" onchange="patchTournamentStructure()">
+            This tournament has a Group Stage
+          </label>
+        </div>
+
+        <!-- Group stage config (conditional) -->
+        <div id="ts-group-config" style="display:none;padding:10px 0 4px;border-top:1px solid var(--border);margin-top:8px">
+          <!-- Total Teams — shown here when group stage is ON -->
+          <div class="field-row" style="flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+            <label style="white-space:nowrap">Total Teams in Tournament</label>
+            <input type="number" id="ts-total-teams" min="1" max="512" placeholder="e.g. 16" style="width:72px" onchange="api('/api/tournament',{totalTeams:parseInt(this.value)||0}).then(()=>updateBracketSizeInfo(window._state.tournament||{}))">
+          </div>
+          <div class="field-row" style="flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+            <label style="white-space:nowrap">Number of Groups</label>
+            <input type="number" id="ts-num-groups" min="1" max="32" style="width:56px" placeholder="e.g. 4" onchange="api('/api/tournament',{numGroups:parseInt(this.value)||0}).then(()=>updateBracketSizeInfo(window._state.tournament||{}))">
+            <button class="btn btn-sm" onclick="generateGroups()">Generate Groups →</button>
+          </div>
+          <div class="field-row" style="flex-direction:row;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+            <label style="white-space:nowrap">Teams advancing per group</label>
+            <input type="number" id="ts-qualifiers" min="1" max="8" value="2" style="width:56px" onchange="api('/api/tournament',{qualifiersPerGroup:parseInt(this.value)||2}).then(()=>updateBracketSizeInfo(window._state.tournament||{}))">
+          </div>
+          <div class="field-row" style="margin-bottom:0">
+            <label>Playoff Seeding</label>
+            <div class="radio-group">
+              <label><input type="radio" name="ts-seeding" value="manual" onchange="api('/api/tournament',{playoffSeeding:'manual'})" checked> Manual</label>
+              <label><input type="radio" name="ts-seeding" value="seeded" onchange="api('/api/tournament',{playoffSeeding:'seeded'})"> Seeded (cross-bracket)</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Playoff format (always shown) -->
+        <div class="ts-divider" id="ts-playoff-divider"></div>
+
+        <!-- Total Teams — shown here when group stage is OFF -->
+        <div class="field-row" id="ts-total-teams-solo-row" style="flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;margin-bottom:12px">
+          <label style="white-space:nowrap">Total Teams in Tournament</label>
+          <input type="number" id="ts-total-teams-solo" min="1" max="512" placeholder="e.g. 16" style="width:72px" onchange="api('/api/tournament',{totalTeams:parseInt(this.value)||0}).then(()=>updateBracketSizeInfo(window._state.tournament||{}))">
+        </div>
+
+        <div class="field-row" style="margin-top:0">
+          <label>Playoff Format</label>
+          <div class="radio-group">
+            <label><input type="radio" name="ts-playoff" value="singleElim" onchange="patchTournamentStructure()" checked> Single Elimination</label>
+            <label><input type="radio" name="ts-playoff" value="doubleElim" onchange="patchTournamentStructure()"> Double Elimination</label>
+          </div>
+        </div>
+        <div id="ts-third-place-wrap" class="field-row" style="margin-top:2px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:400">
+            <input type="checkbox" id="ts-third-place" onchange="api('/api/tournament',{thirdPlaceMatch:this.checked})">
+            Include 3rd / 4th place match
+          </label>
+        </div>
+
+        <div class="ts-divider"></div>
+        <div style="margin-bottom:8px"><span id="ts-bracket-size-info" class="bracket-info-text"></span></div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="previewBracketGeneration()">Preview Bracket Structure</button>
+          <span class="hint" style="margin:0">Generates round and match slots based on the settings above.</span>
+        </div>
+      </div>
+
+      <!-- Bracket generation preview (shown after clicking Preview) -->
+      <div class="card" id="ts-bracket-preview-card" style="margin-top:16px;display:none">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span>Bracket Structure Preview</span>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="g('ts-bracket-preview-card').style.display='none'">Dismiss</button>
+            <button class="btn btn-primary btn-sm" id="ts-confirm-bracket-btn" onclick="confirmApplyBracket()">Confirm &amp; Apply to Playoffs →</button>
+          </div>
+        </div>
+        <div id="ts-bracket-preview-content"></div>
+      </div>
+
+      <!-- Roster size -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Roster</div>
+        <div class="field-row">
+          <label>Players per team</label>
+          <input type="number" id="ts-players-per-team" min="1" max="20" value="5" style="width:56px"
+                 onchange="api('/api/tournament',{playersPerTeam:parseInt(this.value)||5})">
+        </div>
+        <div class="field-row" style="margin-bottom:0">
+          <label>Max substitutes per team</label>
+          <input type="number" id="ts-max-subs" min="0" max="20" value="0" style="width:56px"
+                 onchange="api('/api/tournament',{maxSubsPerTeam:parseInt(this.value)||0})">
+          <span class="hint" style="margin:0">0 = hide sub count in structure overlay</span>
+        </div>
+      </div>
+
+      <!-- Optional broadcast info -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Broadcast Info</div>
+        <p class="hint" style="margin-bottom:12px">Shown on the Tournament Structure overlay when toggled on in the Graphics tab.</p>
+        <div class="field-row">
+          <label style="white-space:nowrap;min-width:100px">Start Date</label>
+          <input type="date" id="ts-start-date" style="flex:1"
+                 onchange="api('/api/tournament',{startDate:this.value})">
+        </div>
+        <div class="field-row">
+          <label style="white-space:nowrap;min-width:100px">End Date</label>
+          <input type="date" id="ts-end-date" style="flex:1"
+                 onchange="api('/api/tournament',{endDate:this.value})">
+        </div>
+        <div class="field-row">
+          <label style="white-space:nowrap;min-width:100px">Region</label>
+          <input type="text" id="ts-region" placeholder="e.g. EU Online / LAN" style="flex:1"
+                 oninput="api('/api/tournament',{region:this.value})">
+        </div>
+        <div class="field-row">
+          <label style="white-space:nowrap;min-width:100px">Patch / Version</label>
+          <input type="text" id="ts-patch-version" placeholder="e.g. 14.10" style="flex:1"
+                 oninput="api('/api/tournament',{patchVersion:this.value})">
+        </div>
+        <div class="field-row">
+          <label style="white-space:nowrap;min-width:100px">Tiebreaker Rule</label>
+          <input type="text" id="ts-tiebreaker" placeholder="e.g. Head-to-head then map diff" style="flex:1"
+                 oninput="api('/api/tournament',{tiebreaker:this.value})">
+        </div>
+        <div class="field-row" style="margin-bottom:0">
+          <label style="white-space:nowrap;min-width:100px">Location</label>
+          <input type="text" id="ts-technology" placeholder="e.g. Online / LAN" style="flex:1"
+                 oninput="api('/api/tournament',{location:this.value})">
+        </div>
+      </div>
+
+      <!-- Prizepool (data only — display handled by separate Prizepool graphic) -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Prizepool</div>
+        <div class="field-row" style="margin-bottom:0">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:400">
+            <input type="checkbox" id="ts-has-prizepool" onchange="api('/api/tournament',{hasPrizepool:this.checked})">
+            This tournament has a prizepool
+          </label>
+          <span class="hint" style="margin:0">Prizepool breakdown is displayed via the separate Prizepool graphic.</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Stage Formats</div>
+        <div id="ts-stage-formats" class="stage-format-grid"></div>
+      </div>
+
+      <p class="hint" id="ts-groups-hint" style="margin-top:12px;display:none">Groups and standings are managed in <strong>Tournament → Groups</strong>.</p>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         SCHEDULE
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-schedule">
+      <div class="tab-header">
+        <h1>Schedule</h1>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-primary btn-sm" id="sched-add-day-btn" onclick="addScheduleDay()" style="display:none">+ Add Broadcast Day</button>
+          <button class="btn btn-sm" id="sched-edit-btn" onclick="setSchedEditMode(!_schedEditMode)">Edit Schedule</button>
+        </div>
+      </div>
+      <div id="schedule-days"></div>
+      <p class="hint" id="schedule-empty" style="display:none;margin-top:8px">No broadcast days yet. Enter Edit Schedule mode to add a broadcast day.</p>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         GROUPS
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-groups">
+      <div class="tab-header">
+        <h1>Groups</h1>
+        <button class="btn btn-sm" id="groups-edit-btn" onclick="setGroupsEditMode(!_groupsEditMode)">Edit Groups</button>
+      </div>
+      <div class="grid2" style="align-items:start">
+        <div>
+          <div class="card">
+            <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+              Group Configuration
+              <button class="btn btn-sm" id="groups-add-btn" onclick="addGroup()" style="display:none">+ Add Group</button>
+            </div>
+            <p class="hint" style="margin-bottom:10px">Qualifiers per group and seeding preference are set in Tournament Setup.</p>
+            <div id="groups-list"></div>
+          </div>
+        </div>
+        <div>
+          <div class="card">
+            <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+              Standings
+              <button class="btn btn-sm" onclick="renderGroupsTab(window._state)">↻ Refresh</button>
+            </div>
+            <div id="groups-standings-content"><p class="hint">Standings appear here as group stage games complete.</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         PLAYOFFS
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-playoffs">
+      <div class="tab-header">
+        <h1>Playoffs</h1>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span id="po-bracket-info" class="bracket-info-badge"></span>
+          <button class="btn btn-sm" id="playoffs-edit-btn" onclick="setPlayoffsEditMode(!_playoffsEditMode)">Edit Bracket</button>
+        </div>
+      </div>
+
+      <!-- Seedings from groups (shown when group stage + seeded mode) -->
+      <div class="card" id="po-seedings-card" style="display:none;margin-bottom:16px">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span>Generate from Group Seedings</span>
+          <button class="btn btn-sm btn-primary" id="po-apply-btn" onclick="applyGeneratedBracket()">Generate &amp; Apply →</button>
+        </div>
+        <div id="po-seedings-content"></div>
+      </div>
+
+      <!-- Manual seedings hint (shown when group stage + manual mode) -->
+      <div class="card" id="po-manual-hint-card" style="display:none;margin-bottom:16px">
+        <div class="card-title">Manual Bracket Entry</div>
+        <p class="hint">Group standings are in <a onclick="switchToTab('groups')" style="color:var(--primary);cursor:pointer">Tournament → Groups</a>. Use the bracket editor below to assign teams to slots manually.</p>
+      </div>
+
+      <!-- Bracket editor (moved from GRAPHICS › Bracket) -->
+      <div class="card">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+          Bracket Rounds
+          <div id="playoffs-edit-btns" data-edit-display="flex" style="display:none;gap:8px">
+            <button class="btn btn-sm" onclick="addBracketRound()">+ Add Round</button>
+            <button class="btn btn-sm btn-danger" onclick="if(confirm('Clear all bracket rounds?')){bracketRounds=[];syncBracket();renderBracketEditor();}">Clear</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-bottom:12px">Rounds top to bottom, earliest first. Team names are selectable from the Teams Database or typed manually.</p>
+        <div id="bracket-rounds"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         GAME SETUP
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-game">
+      <div class="tab-header">
+        <h1>Game Setup</h1>
+        <button class="btn btn-danger btn-sm" onclick="resetState()">Reset All</button>
+      </div>
+
+      <!-- Load from schedule -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Load from Schedule</div>
+        <div class="field-row" style="flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:0">
+          <label style="white-space:nowrap">Broadcast Day</label>
+          <select id="gs-day-select" onchange="onGsDayChange(this.value)" style="flex:1;min-width:180px">
+            <option value="">— select a day —</option>
+          </select>
+        </div>
+        <div id="gs-game-list" style="margin-top:10px"></div>
+      </div>
+
+      <div id="gs-active-indicator" style="display:none;padding:8px 14px;background:rgba(31,250,255,0.06);border:1px solid rgba(31,250,255,0.22);font-size:12px;color:var(--primary);margin-bottom:16px;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em"></div>
+
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px"><div class="team-color-dot" id="t1-dot"></div>Team 1</div>
+            <button class="btn btn-sm btn-primary gs-load-team-btn" style="display:none" onclick="openTeamPicker('team1')">Load Team ▾</button>
+          </div>
+          <div class="gs-team-display">
+            <div class="gstd-logo" id="t1-logo-thumb"></div>
+            <div class="gstd-text">
+              <div class="gstd-name" id="t1-name-disp">No team loaded</div>
+              <div class="gstd-tag" id="t1-tag-disp"></div>
+            </div>
+          </div>
+          <div class="score-control"><label>Series Score</label>
+            <span class="score-val" id="t1-score">0</span>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+            <div style="display:flex;align-items:center;gap:8px"><div class="team-color-dot" id="t2-dot"></div>Team 2</div>
+            <button class="btn btn-sm btn-primary gs-load-team-btn" style="display:none" onclick="openTeamPicker('team2')">Load Team ▾</button>
+          </div>
+          <div class="gs-team-display">
+            <div class="gstd-logo" id="t2-logo-thumb"></div>
+            <div class="gstd-text">
+              <div class="gstd-name" id="t2-name-disp">No team loaded</div>
+              <div class="gstd-tag" id="t2-tag-disp"></div>
+            </div>
+          </div>
+          <div class="score-control"><label>Series Score</label>
+            <span class="score-val" id="t2-score">0</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Series Tracker -->
+      <div class="card" style="margin-top:16px">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+          <span>Series Tracker</span>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <div class="field-row" style="flex-direction:row;align-items:center;gap:8px;margin-bottom:0">
+              <label style="white-space:nowrap">Format</label>
+              <select id="gs-format" onchange="gsEditSave({format:this.value})" style="width:auto" disabled>
+                <option value="Bo1">Bo1</option><option value="Bo3">Bo3</option><option value="Bo5">Bo5</option>
+              </select>
+            </div>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;white-space:nowrap">
+              <input type="checkbox" id="gs-fearless" onchange="gsEditSave({fearlessDraft:this.checked})" disabled>
+              Fearless Draft
+            </label>
+            <button id="gs-reset-series-btn" class="btn btn-sm btn-danger" style="display:none" onclick="if(confirm('Reset series scores and game history?'))api('/api/match/reset-series',{})">Reset Series</button>
+            <button id="gs-edit-btn" class="btn btn-sm" onclick="setGsEditMode(!_gsEditMode)">Edit</button>
+          </div>
+        </div>
+        <div id="gs-series-tracker" style="margin-top:4px"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         TEAMS DATABASE
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-teams">
+      <div class="tab-header">
+        <h1>Teams Database</h1>
+        <button class="btn btn-primary btn-sm" onclick="openTeamEditor(null)">+ New Team</button>
+      </div>
+      <div id="teams-list"></div>
+      <p class="hint" id="teams-empty" style="display:none;margin-top:16px">No teams saved yet. Click + New Team to create one.</p>
+      <div class="card" id="team-editor" style="display:none;margin-top:20px">
+        <div class="card-title" id="team-editor-title">New Team</div>
+        <input type="hidden" id="edit-team-id">
+        <div class="grid2">
+          <div>
+            <div class="field-row"><label>Team Name</label><input type="text" id="edit-team-name" placeholder="e.g. Cloud9"></div>
+            <div class="field-row"><label>Tag</label><input type="text" id="edit-team-tag" maxlength="6" placeholder="e.g. C9"></div>
+            <div class="field-row"><label>Accent Color</label>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="edit-team-color" value="#1ffaff" style="width:48px;height:32px;padding:2px;background:none;border:1px solid var(--border);cursor:pointer" onchange="document.getElementById('edit-team-color-text').value=this.value">
+                <input type="text" id="edit-team-color-text" placeholder="#1ffaff" value="#1ffaff" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value))document.getElementById('edit-team-color').value=this.value">
+              </div>
+            </div>
+            <div class="field-row"><label>Logo</label>
+              <div class="upload-row">
+                <input type="text" id="edit-team-logo" placeholder="URL or upload" oninput="updateEditLogoPreview(this.value)">
+                <button class="btn btn-sm" onclick="triggerUpload('edit-team-logo-file',function(url){document.getElementById('edit-team-logo').value=url;updateEditLogoPreview(url);})">Upload</button>
+                <input type="file" id="edit-team-logo-file" accept="image/*" style="display:none">
+              </div>
+            </div>
+            <p class="hint" style="margin-bottom:8px">Square format recommended (e.g. 200×200px). Logos display at ~34px in overlays — non-square images will be letterboxed.</p>
+          </div>
+          <div>
+            <div id="edit-team-logo-preview" style="width:100%;height:130px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden">
+              <span style="color:var(--text-dim);font-size:12px">Logo preview</span>
+            </div>
+          </div>
+        </div>
+        <div id="edit-team-players"></div>
+        <div style="display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+          <button class="btn btn-primary" onclick="saveTeamEditor()">Save Team</button>
+          <button class="btn" onclick="closeTeamEditor()">Cancel</button>
+          <button class="btn btn-danger" id="delete-team-btn" onclick="deleteEditingTeam()" style="margin-left:auto;display:none">Delete Team</button>
+        </div>
+      </div>
+
+      <!-- Import section inline in Teams tab -->
+      <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--accent);letter-spacing:0.1em;text-transform:uppercase">Import Team Data</h2>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">Google Sheets</div>
+            <p class="hint">Sheet must be publicly readable. Columns: <code>team, handle, role</code><br>Creates or updates teams in the Teams Database. Add logos and acronyms there afterwards.</p>
+            <div class="field-row"><label>Sheet ID</label><input type="text" id="gsheets-id" placeholder="Sheet ID"></div>
+            <div class="field-row"><label>API Key</label><input type="text" id="gsheets-key" placeholder="AIza..."></div>
+            <div class="field-row"><label>Range</label><input type="text" id="gsheets-range" value="Sheet1"></div>
+            <button class="btn btn-primary" onclick="importGSheets()">Import from Google Sheets</button>
+            <div class="import-result" id="gsheets-result"></div>
+          </div>
+          <div class="card">
+            <div class="card-title">JSON / CSV Import</div>
+            <p class="hint">CSV/JSON columns: <code>team, handle, role</code><br>Creates or updates teams in the Teams Database.</p>
+            <div class="field-row"><label>JSON File</label><div class="upload-row"><input type="file" id="json-file" accept=".json"><button class="btn btn-sm" onclick="importJson()">Import</button></div></div>
+            <div class="field-row"><label>CSV File</label><div class="upload-row"><input type="file" id="csv-file" accept=".csv"><button class="btn btn-sm" onclick="importCsv()">Import</button></div></div>
+            <div class="import-result" id="import-result"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         PLAYERS
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-players">
+      <div class="tab-header"><h1>Players / Rosters</h1></div>
+      <div class="grid2">
+        <div class="card"><div class="card-title" id="players-t1-label">Team 1 Roster</div><div id="t1-roster"></div></div>
+        <div class="card"><div class="card-title" id="players-t2-label">Team 2 Roster</div><div id="t2-roster"></div></div>
+      </div>
+    </section>
+
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         SCOREBOARD
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-scoreboard">
+      <div class="tab-header"><h1>Scoreboard</h1></div>
+      <div class="card" style="max-width:540px">
+        <div class="gfx-toggle-row">
+          <span>Scoreboard Visible</span>
+          <button id="showbtn-scoreboard" class="btn btn-primary" onclick="showGraphic('scoreboard')">SHOW</button>
+          <button id="hidebtn-scoreboard" class="btn btn-danger" onclick="hideGraphic('scoreboard')">HIDE</button>
+        </div>
+        <div class="live-score-panel">
+          <div class="ls-team"><span class="ls-name" id="ls-t1-name">Team 1</span>
+            <div class="score-btns"><button class="btn btn-icon" onclick="patchScore('team1',-1)">−</button><span class="score-val large" id="ls-t1-score">0</span><button class="btn btn-icon btn-primary" onclick="patchScore('team1',1)">+</button></div>
+          </div>
+          <div class="ls-sep">:</div>
+          <div class="ls-team"><span class="ls-name" id="ls-t2-name">Team 2</span>
+            <div class="score-btns"><button class="btn btn-icon" onclick="patchScore('team2',-1)">−</button><span class="score-val large" id="ls-t2-score">0</span><button class="btn btn-icon btn-primary" onclick="patchScore('team2',1)">+</button></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         LOWER THIRD
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-lowerthird">
+      <div class="tab-header"><h1>Lower Third</h1></div>
+      <div class="card" style="max-width:640px">
+        <div class="field-row"><label>Main Text</label><input type="text" id="lt-text" placeholder="Player name or heading" oninput="patchLT({text:this.value})"></div>
+        <div class="field-row"><label>Subtext</label><input type="text" id="lt-sub" placeholder="Team / Role / Info" oninput="patchLT({subtext:this.value})"></div>
+        <div class="field-row"><label>Super Label</label><input type="text" id="lt-super" placeholder="e.g. TOURNAMENT NAME" oninput="patchLT({supertext:this.value})"></div>
+        <div class="field-row"><label>Position</label>
+          <div class="radio-group">
+            <label><input type="radio" name="lt-side" value="left" onchange="patchLT({side:'left'})" checked> Left</label>
+            <label><input type="radio" name="lt-side" value="right" onchange="patchLT({side:'right'})"> Right</label>
+          </div>
+        </div>
+        <div class="field-row"><label>Team Accent Color</label>
+          <div class="radio-group">
+            <label><input type="radio" name="lt-color" value="" onchange="patchLT({teamColor:''})" checked> Default</label>
+            <label><input type="radio" name="lt-color" value="team1" onchange="patchLT({teamColor:getLTColor('team1')})"> Team 1</label>
+            <label><input type="radio" name="lt-color" value="team2" onchange="patchLT({teamColor:getLTColor('team2')})"> Team 2</label>
+          </div>
+        </div>
+        <div class="gfx-toggle-row">
+          <button id="showbtn-lowerThird" class="btn btn-primary" onclick="showGraphic('lowerThird')">SHOW</button>
+          <button id="hidebtn-lowerThird" class="btn btn-danger" onclick="hideGraphic('lowerThird')">HIDE</button>
+        </div>
+        <div class="card-title" style="margin-top:24px">Quick Player Lower Thirds</div>
+        <p class="hint">Click a player to instantly populate and show their lower third.</p>
+        <div class="player-quick-grid" id="lt-player-grid"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         HEAD TO HEAD
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-h2h">
+      <div class="tab-header"><h1>Head to Head</h1></div>
+
+      <!-- Match info (read-only) -->
+      <div class="card">
+        <div class="card-title">Current Match</div>
+        <div id="h2h-match-preview" style="font-size:13px;color:rgba(255,255,255,0.6);margin-top:4px">—</div>
+      </div>
+
+      <!-- Spotlight role selector -->
+      <div class="card">
+        <div class="card-title">Spotlight Role</div>
+        <div class="upload-row" style="gap:6px;flex-wrap:wrap;margin-top:8px">
+          <button id="h2h-role-0" class="btn btn-sm btn-dim" onclick="setH2HSpotlight(0)">Top</button>
+          <button id="h2h-role-1" class="btn btn-sm btn-dim" onclick="setH2HSpotlight(1)">Jungle</button>
+          <button id="h2h-role-2" class="btn btn-sm btn-dim" onclick="setH2HSpotlight(2)">Mid</button>
+          <button id="h2h-role-3" class="btn btn-sm btn-dim" onclick="setH2HSpotlight(3)">ADC</button>
+          <button id="h2h-role-4" class="btn btn-sm btn-dim" onclick="setH2HSpotlight(4)">Support</button>
+        </div>
+        <div class="upload-row" style="gap:6px;margin-top:10px">
+          <button class="btn btn-sm" onclick="setH2HPrev()">← Prev</button>
+          <button class="btn btn-sm" onclick="setH2HNext()">Next →</button>
+        </div>
+      </div>
+
+      <!-- Final lineup view -->
+      <div class="card">
+        <div class="card-title">Final View</div>
+        <div class="upload-row" style="margin-top:8px">
+          <button id="h2h-lineup-btn" class="btn btn-primary" onclick="setH2HLineup()">Show Full Lineup</button>
+          <button class="btn btn-dim" onclick="setH2HSpotlight(0)">Back to Spotlight</button>
+        </div>
+      </div>
+
+      <!-- Centre logo -->
+      <div class="card">
+        <div class="card-title">Centre Logo</div>
+        <p class="hint" style="margin-bottom:8px">Select from your <a onclick="switchToTab('theme')" href="#" style="color:var(--primary)">Broadcast Logos</a> library. Auto uses the first logo added.</p>
+        <div id="h2h-logo-grid" class="draft-logo-grid"></div>
+      </div>
+
+      <!-- Show / hide -->
+      <div class="card">
+        <div class="gfx-toggle-row">
+          <button id="showbtn-headToHead" class="btn btn-primary" onclick="showGraphic('headToHead')">SHOW</button>
+          <button id="hidebtn-headToHead" class="btn btn-danger"  onclick="hideGraphic('headToHead')">HIDE</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         PRE-SHOW COUNTDOWN
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-preshow">
+      <div class="tab-header"><h1>Pre-show Countdown</h1></div>
+
+      <!-- Layout -->
+      <div class="card">
+        <div class="card-title">Layout</div>
+        <div class="upload-row" style="gap:6px;margin-top:8px">
+          <button id="ps-layout-center" class="btn btn-sm btn-primary" onclick="patchPreShow({layout:'center'})">Center</button>
+          <button id="ps-layout-side"   class="btn btn-sm btn-dim"     onclick="patchPreShow({layout:'side'})">Side</button>
+        </div>
+      </div>
+
+      <!-- Logo -->
+      <div class="card">
+        <div class="card-title">Logo</div>
+        <div class="upload-row" style="gap:10px;margin-top:8px;align-items:center">
+          <label class="toggle-label" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input id="ps-show-logo" type="checkbox" checked onchange="patchPreShow({hideLogo:!this.checked})">
+            <span style="font-size:12px">Show logo</span>
+          </label>
+        </div>
+        <div style="margin-top:10px">
+          <label style="font-size:12px;color:var(--text-dim);display:block;margin-bottom:4px">Size</label>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="ps-logo-scale" type="range" min="4" max="30" step="0.5" value="8" style="flex:1" oninput="patchPreShow({logoScale:parseFloat(this.value)});g('ps-logo-scale-val').textContent=this.value+'vh'">
+            <span id="ps-logo-scale-val" style="font-size:12px;color:var(--text-dim);width:38px;text-align:right">8vh</span>
+          </div>
+        </div>
+        <p class="hint" style="margin:8px 0 6px">Select from your <a onclick="switchToTab('theme')" href="#" style="color:var(--primary)">Broadcast Logos</a> library. Auto uses the first logo added.</p>
+        <div id="ps-logo-grid" class="draft-logo-grid"></div>
+      </div>
+
+      <!-- Header text -->
+      <div class="card">
+        <div class="card-title">Header Text</div>
+        <div class="upload-row" style="gap:10px;margin-top:8px;align-items:center">
+          <label class="toggle-label" style="display:flex;align-items:center;gap:6px;cursor:pointer">
+            <input id="ps-show-header-text" type="checkbox" checked onchange="patchPreShow({hideHeaderText:!this.checked})">
+            <span style="font-size:12px">Show text</span>
+          </label>
+        </div>
+        <div class="field-row" style="margin-top:8px">
+          <label>Text</label>
+          <input id="ps-header-text" type="text" placeholder="Auto — uses tournament name" oninput="patchPreShow({headerText:this.value})">
+        </div>
+        <p class="hint" style="margin-top:4px">Leave blank to use the tournament name from Tournament Setup.</p>
+      </div>
+
+      <!-- Timer -->
+      <div class="card">
+        <div class="card-title">Countdown Timer</div>
+        <div class="field-row" style="margin-top:8px">
+          <label>Label</label>
+          <input id="ps-timer-label-input" type="text" placeholder="BROADCAST BEGINS IN" oninput="patchPreShow({timerLabel:this.value})">
+        </div>
+
+        <div style="margin-top:12px">
+          <p class="hint" style="margin-bottom:6px;font-weight:600;color:var(--text)">Count down to a specific time</p>
+          <div class="upload-row" style="gap:8px;align-items:center">
+            <input id="ps-target-time" type="time" style="width:110px">
+            <button class="btn btn-primary" onclick="setPreShowTargetTime()">Set</button>
+          </div>
+          <p class="hint" style="margin-top:4px">Uses your system clock. Automatically targets tomorrow if the time has already passed today.</p>
+        </div>
+
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+          <p class="hint" style="margin-bottom:6px;color:var(--text-dim)">Or count down from a duration</p>
+          <div class="upload-row" style="gap:8px;flex-wrap:wrap;align-items:center">
+            <label style="font-size:12px;color:var(--text-dim)">Min</label>
+            <input id="ps-timer-min" type="number" min="0" max="999" value="15" style="width:64px">
+            <label style="font-size:12px;color:var(--text-dim)">Sec</label>
+            <input id="ps-timer-sec" type="number" min="0" max="59"  value="0"  style="width:56px">
+            <button class="btn btn-dim" onclick="startPreShowTimer()">Start</button>
+            <button class="btn btn-dim" onclick="clearPreShowTimer()">Clear</button>
+            <button class="btn btn-sm btn-dim" onclick="extendPreShowTimer(5)">+5m</button>
+            <button class="btn btn-sm btn-dim" onclick="extendPreShowTimer(10)">+10m</button>
+          </div>
+        </div>
+
+        <div id="ps-timer-status" class="hint" style="margin-top:8px">No timer set</div>
+      </div>
+
+      <!-- Ticker -->
+      <div class="card">
+        <div class="card-title">Ticker</div>
+        <div class="upload-row" style="gap:6px;margin-top:8px">
+          <button id="ps-ticker-show-btn" class="btn btn-primary" onclick="api('/api/ticker',{visible:true})">SHOW TICKER</button>
+          <button id="ps-ticker-hide-btn" class="btn btn-dim"     onclick="api('/api/ticker',{visible:false})">HIDE TICKER</button>
+        </div>
+        <p class="hint" style="margin-top:8px">Content, label and manual entries are in the <a onclick="switchToTab('ticker')" href="#" style="color:var(--primary)">Ticker</a> tab. All graphics share the same feed.</p>
+      </div>
+
+      <!-- Tonight's schedule (read-only preview) -->
+      <div class="card">
+        <div class="card-title">Tonight's Matches</div>
+        <p class="hint" style="margin-bottom:8px">Auto-populated from the active schedule day. Manage in <a onclick="switchToTab('schedule')" href="#" style="color:var(--primary)">Schedule</a>.</p>
+        <div id="ps-schedule-preview" style="font-size:13px;color:rgba(255,255,255,0.6)">—</div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         TICKER
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-ticker">
+      <div class="tab-header">
+        <h1>Ticker</h1>
+      </div>
+      <p class="hint" style="margin-bottom:16px">The ticker is a shared broadcast feed — the same content appears on every graphic that supports it (Break Screen, Pre-show, and any future graphics).</p>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px">
+
+        <!-- Left: visibility + content -->
+        <div>
+          <div class="card">
+            <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Visibility</span>
+              <div style="display:flex;gap:6px">
+                <button id="showbtn-ticker" class="btn btn-sm btn-primary" onclick="api('/api/ticker',{visible:true})">SHOW</button>
+                <button id="hidebtn-ticker" class="btn btn-sm btn-danger"  onclick="api('/api/ticker',{visible:false})">HIDE</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Content Mode</div>
+            <div class="field-row" style="margin-top:8px">
+              <label>Source</label>
+              <div class="radio-group">
+                <label><input type="radio" name="ticker-content" value="auto"   onchange="api('/api/ticker',{autoMode:true})"> Auto from schedule</label>
+                <label><input type="radio" name="ticker-content" value="manual" onchange="api('/api/ticker',{autoMode:false})"> Manual</label>
+              </div>
+            </div>
+
+            <!-- Auto preview -->
+            <div id="ticker-auto-preview" style="display:none;margin-top:10px">
+              <p class="hint" style="margin-bottom:6px">Items auto-generated from tonight's schedule. Updates live as games complete.</p>
+              <div id="ticker-auto-items-list"></div>
+            </div>
+
+            <!-- Manual items -->
+            <div id="ticker-manual-section" style="margin-top:10px">
+              <div id="ticker-items-list" style="margin-bottom:8px"></div>
+              <button class="btn btn-sm" onclick="addTickerItem()">+ Add Item</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: label -->
+        <div>
+          <div class="card">
+            <div class="card-title">Label</div>
+            <div class="field-row" style="margin-top:8px;margin-bottom:8px">
+              <label>Style</label>
+              <div class="radio-group">
+                <label><input type="radio" name="ticker-label-mode" value="text" onchange="api('/api/ticker',{labelMode:'text'})"> Text</label>
+                <label><input type="radio" name="ticker-label-mode" value="logo" onchange="setTickerLabelLogo()"> Logo</label>
+                <label><input type="radio" name="ticker-label-mode" value="none" onchange="api('/api/ticker',{labelMode:'none'})"> None</label>
+              </div>
+            </div>
+            <div id="ticker-label-text-row" class="field-row" style="margin-bottom:0">
+              <label>Text</label>
+              <input type="text" id="ticker-label-text" value="NEWS" oninput="api('/api/ticker',{labelText:this.value})">
+            </div>
+            <div id="ticker-label-logo-row" style="display:none;margin-top:8px">
+              <p class="hint" style="margin-bottom:6px">Select from your broadcast logo library.</p>
+              <div id="ticker-label-logo-grid" class="draft-logo-grid"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         DRAFT (data entry — GAME section)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-draft">
+      <div class="tab-header">
+        <h1>Draft</h1>
+        <button class="btn btn-sm btn-primary" onclick="startDraftPhase()" id="btn-start-draft">▶ Start Draft</button>
+        <button class="btn btn-sm btn-danger"  onclick="resetDraft()">Reset Draft</button>
+        <button class="btn btn-sm btn-secondary" onclick="replayDraftIntro()" title="Re-trigger the graphic intro animation without changing any draft data">↺ Replay Intro</button>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Side Assignment</div>
+        <div class="field-row" style="flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap">
+          <label style="white-space:nowrap">Blue Side</label>
+          <div class="radio-group">
+            <label><input type="radio" name="draft-blue" value="team1" id="draft-blue-t1" onchange="api('/api/draft',{blueSideTeam:'team1'})"> <span id="draft-t1-label">Team 1</span></label>
+            <label><input type="radio" name="draft-blue" value="team2" id="draft-blue-t2" onchange="api('/api/draft',{blueSideTeam:'team2'})"> <span id="draft-t2-label">Team 2</span></label>
+          </div>
+        </div>
+        <div class="field-row" style="flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
+          <label style="white-space:nowrap">Side Chosen By</label>
+          <div class="radio-group">
+            <label><input type="radio" name="draft-side-chooser" value="team1" id="draft-sc-t1" onchange="api('/api/draft',{sideChooser:'team1'})"> <span id="draft-sc-t1-label">Team 1</span></label>
+            <label><input type="radio" name="draft-side-chooser" value="team2" id="draft-sc-t2" onchange="api('/api/draft',{sideChooser:'team2'})"> <span id="draft-sc-t2-label">Team 2</span></label>
+          </div>
+        </div>
+        <div class="field-row" style="flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
+          <label style="white-space:nowrap">Bans First</label>
+          <div class="radio-group">
+            <label><input type="radio" name="draft-ban-first" value="blue" id="draft-ban-first-blue" onchange="api('/api/draft',{banFirstTeam:'blue'})"> <span style="color:var(--primary)">Blue Side</span></label>
+            <label><input type="radio" name="draft-ban-first" value="red"  id="draft-ban-first-red"  onchange="api('/api/draft',{banFirstTeam:'red'})">  <span style="color:var(--danger)">Red Side</span></label>
+          </div>
+        </div>
+        <div id="draft-step-indicator" style="margin-top:8px;font-size:12px;color:var(--text-dim);font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em"></div>
+      </div>
+
+      <div id="draft-tab-timer-row" class="draft-tab-timer-row" style="display:none">
+        <div class="draft-tab-timer-track"><div id="draft-tab-timer-bar" class="draft-tab-timer-bar"></div></div>
+        <span id="draft-tab-timer-secs" class="draft-tab-timer-secs">60</span><span class="draft-tab-timer-unit">s</span>
+      </div>
+
+      <div id="draft-board"></div>
+
+      <div id="draft-role-assign"></div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Commit to Series Tracker</div>
+        <p class="hint">Pushes picks from this draft into the Series Tracker fearless pool for the current game.</p>
+        <button class="btn btn-primary btn-sm" onclick="commitDraftToSeries()">Push Picks to Series Tracker</button>
+        <div id="draft-commit-msg" class="hint" style="margin-top:8px;display:none;color:var(--primary)"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         BROADCAST THEME
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-theme">
+      <div class="tab-header"><h1>Broadcast Theme</h1></div>
+
+      <div class="theme-two-col">
+
+        <!-- ── Left column ── -->
+        <div>
+
+          <!-- Colour Palette -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Colour Palette</div>
+            <p class="hint">4 core colours used across all graphics. Name each slot for your own reference, then set the colour.</p>
+            <div class="theme-palette-header">
+              <span>Slot Name</span>
+              <span>Colour</span>
+              <span>Hex</span>
+            </div>
+            <div class="theme-palette-slot">
+              <input type="text"  id="ts-pname-0"   class="theme-slot-name" placeholder="e.g. Primary"   onchange="patchPaletteName(0,this.value)">
+              <input type="color" id="ts-pswatch-0" class="theme-swatch"    oninput="syncPaletteSwatch(0,this.value)">
+              <input type="text"  id="ts-phex-0"    class="theme-hex-inp"   maxlength="7" spellcheck="false" oninput="syncPaletteHex(0,this.value)">
+            </div>
+            <div class="theme-palette-slot">
+              <input type="text"  id="ts-pname-1"   class="theme-slot-name" placeholder="e.g. Secondary" onchange="patchPaletteName(1,this.value)">
+              <input type="color" id="ts-pswatch-1" class="theme-swatch"    oninput="syncPaletteSwatch(1,this.value)">
+              <input type="text"  id="ts-phex-1"    class="theme-hex-inp"   maxlength="7" spellcheck="false" oninput="syncPaletteHex(1,this.value)">
+            </div>
+            <div class="theme-palette-slot">
+              <input type="text"  id="ts-pname-2"   class="theme-slot-name" placeholder="e.g. Light"     onchange="patchPaletteName(2,this.value)">
+              <input type="color" id="ts-pswatch-2" class="theme-swatch"    oninput="syncPaletteSwatch(2,this.value)">
+              <input type="text"  id="ts-phex-2"    class="theme-hex-inp"   maxlength="7" spellcheck="false" oninput="syncPaletteHex(2,this.value)">
+            </div>
+            <div class="theme-palette-slot">
+              <input type="text"  id="ts-pname-3"   class="theme-slot-name" placeholder="e.g. Dark"      onchange="patchPaletteName(3,this.value)">
+              <input type="color" id="ts-pswatch-3" class="theme-swatch"    oninput="syncPaletteSwatch(3,this.value)">
+              <input type="text"  id="ts-phex-3"    class="theme-hex-inp"   maxlength="7" spellcheck="false" oninput="syncPaletteHex(3,this.value)">
+            </div>
+          </div>
+
+          <!-- Team Side Accents -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Team Side Accents</div>
+            <p class="hint">Used in draft, H2H and other graphics to differentiate team sides.</p>
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Blue Side</span>
+              <input type="color" id="ts-blue-swatch" class="theme-swatch"  oninput="syncAccentSwatch('blue',this.value)">
+              <input type="text"  id="ts-blue-hex"    class="theme-hex-inp" maxlength="7" spellcheck="false" oninput="syncAccentHex('blue',this.value)">
+            </div>
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Red Side</span>
+              <input type="color" id="ts-red-swatch" class="theme-swatch"  oninput="syncAccentSwatch('red',this.value)">
+              <input type="text"  id="ts-red-hex"    class="theme-hex-inp" maxlength="7" spellcheck="false" oninput="syncAccentHex('red',this.value)">
+            </div>
+          </div>
+
+        </div><!-- /left col -->
+
+        <!-- ── Right column ── -->
+        <div>
+
+          <!-- Background -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Graphic Background</div>
+            <div class="theme-pills" style="margin-bottom:14px">
+              <button class="theme-pill" id="ts-bg-transparent" onclick="setBgType('transparent')">Transparent</button>
+              <button class="theme-pill" id="ts-bg-color"       onclick="setBgType('color')">Solid Colour</button>
+              <button class="theme-pill" id="ts-bg-image"       onclick="setBgType('image')">Image</button>
+              <button class="theme-pill" id="ts-bg-animation"   onclick="setBgType('animation')">Animated</button>
+            </div>
+            <div id="ts-bg-color-row" style="display:none">
+              <div class="theme-palette-slot">
+                <span class="theme-fixed-label">Colour</span>
+                <input type="color" id="ts-bgcolor-swatch" class="theme-swatch"  oninput="syncBgColor(this.value)">
+                <input type="text"  id="ts-bgcolor-hex"    class="theme-hex-inp" maxlength="7" spellcheck="false" oninput="syncBgColorHex(this.value)">
+              </div>
+            </div>
+            <div id="ts-bg-image-row" style="display:none">
+              <div class="field-row"><label>Image URL</label>
+                <div class="upload-row">
+                  <input type="text" id="ts-bg-img-url" placeholder="/uploads/…" oninput="patchSettings({bgImage:this.value})">
+                  <button class="btn btn-sm" onclick="g('ts-bg-img-file').click()">Upload</button>
+                  <input type="file" id="ts-bg-img-file" accept="image/*" style="display:none" onchange="uploadThemeBg(this)">
+                </div>
+              </div>
+            </div>
+            <div id="ts-bg-animation-row" style="display:none">
+              <div class="theme-pills" style="flex-wrap:wrap;gap:6px;margin-bottom:12px">
+                <button class="theme-pill" id="ts-bganim-particles" onclick="setBgAnim('particles')">Particles</button>
+                <button class="theme-pill" id="ts-bganim-scanlines" onclick="setBgAnim('scanlines')">Scanlines</button>
+                <button class="theme-pill" id="ts-bganim-grid"      onclick="setBgAnim('grid')">Grid</button>
+                <button class="theme-pill" id="ts-bganim-hexgrid"   onclick="setBgAnim('hexgrid')">Hex Grid</button>
+                <button class="theme-pill" id="ts-bganim-diamonds"  onclick="setBgAnim('diamonds')">Diamonds</button>
+                <button class="theme-pill" id="ts-bganim-dotwave"   onclick="setBgAnim('dotwave')">Dot Wave</button>
+                <button class="theme-pill" id="ts-bganim-lines"     onclick="setBgAnim('lines')">Lines</button>
+                <button class="theme-pill" id="ts-bganim-rings"     onclick="setBgAnim('rings')">Rings</button>
+                <button class="theme-pill" id="ts-bganim-circuit"   onclick="setBgAnim('circuit')">Circuit</button>
+                <button class="theme-pill" id="ts-bganim-rain"      onclick="setBgAnim('rain')">Rain</button>
+                <button class="theme-pill" id="ts-bganim-fog"       onclick="setBgAnim('fog')">Fog</button>
+                <button class="theme-pill" id="ts-bganim-wave"      onclick="setBgAnim('wave')">Wave</button>
+              </div>
+              <div class="theme-palette-slot" style="margin-bottom:10px">
+                <span class="theme-fixed-label">Base Colour</span>
+                <input type="color" id="ts-animcolor-swatch" class="theme-swatch"  oninput="syncBgColor(this.value)">
+                <input type="text"  id="ts-animcolor-hex"    class="theme-hex-inp" maxlength="7" spellcheck="false" oninput="syncBgColorHex(this.value)">
+              </div>
+              <span class="theme-anim-label">Speed</span>
+              <div class="theme-pills" style="margin-top:4px;margin-bottom:12px">
+                <button class="theme-pill" id="ts-bgspeed-slow"   onclick="setBgSpeed('slow')">Slow</button>
+                <button class="theme-pill" id="ts-bgspeed-medium" onclick="setBgSpeed('medium')">Medium</button>
+                <button class="theme-pill" id="ts-bgspeed-fast"   onclick="setBgSpeed('fast')">Fast</button>
+              </div>
+              <div class="field-row" style="align-items:center;gap:10px">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                  <input type="checkbox" id="ts-fog-layer" onchange="patchSettings({bgFogLayer:this.checked})">
+                  <span>Fog overlay (bottom layer)</span>
+                </label>
+              </div>
+              <div class="field-row" id="ts-fog-intensity-row" style="display:none;margin-top:6px">
+                <label>Fog intensity</label>
+                <input type="range" id="ts-fog-intensity" min="10" max="100" value="50"
+                  oninput="patchSettings({bgFogIntensity:parseInt(this.value)})">
+              </div>
+            </div>
+          </div>
+
+          <!-- Broadcast Logos -->
+          <div class="card">
+            <div class="card-title">Broadcast Logos</div>
+            <p class="hint">Upload and name the logos for this broadcast. Each graphic lets you choose which logo appears in each slot.</p>
+            <div id="ts-logos-list"></div>
+            <button class="btn btn-sm btn-primary" onclick="addThemeLogo()" style="margin-top:8px">+ Add Logo</button>
+            <div class="theme-anim-row" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+              <span class="theme-anim-label">Sponsor Logos</span>
+              <p class="hint" style="margin:2px 0 6px">Managed in <a onclick="switchToTab('tournament')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Tournament Setup</a>.</p>
+              <div id="ts-sponsors-preview"></div>
+            </div>
+          </div>
+
+        </div><!-- /right col -->
+
+      </div><!-- /theme-two-col -->
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         DRAFT OVERLAY (graphic control — GRAPHICS section)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-draft-gfx">
+      <div class="tab-header"><h1>Draft Overlay</h1></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px">
+
+        <!-- Left: visibility + layout -->
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Overlay</div>
+            <p class="hint" id="draft-gfx-status" style="margin-bottom:12px"></p>
+            <div class="gfx-toggle-row">
+              <button id="showbtn-draft" class="btn btn-primary" onclick="showGraphic('draft')">SHOW</button>
+              <button id="hidebtn-draft" class="btn btn-danger"  onclick="hideGraphic('draft')">HIDE</button>
+            </div>
+            <p class="hint" style="margin-top:10px">URL: <a href="/graphics/draft/" target="_blank" style="color:var(--primary)">/graphics/draft/</a></p>
+          </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Layout</div>
+            <div class="radio-group">
+              <label><input type="radio" name="draft-layout" value="standard" onchange="patchSettings({draftLayout:'standard'})"> Standard</label>
+              <label><input type="radio" name="draft-layout" value="classic"  onchange="patchSettings({draftLayout:'classic'})"> Classic <span style="color:var(--text-dim);font-size:11px;font-weight:400;text-transform:none;letter-spacing:0">(coming soon)</span></label>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Phase Label</div>
+            <p class="hint" style="margin-bottom:8px">Brightness of the phase text (e.g. PHASE 1 BANS) over the camera background.</p>
+            <div class="theme-pills">
+              <button class="theme-pill" data-phase-contrast="subtle" onclick="patchSettings({draftPhaseContrast:'subtle'})">Subtle</button>
+              <button class="theme-pill" data-phase-contrast="bold"   onclick="patchSettings({draftPhaseContrast:'bold'})">Bold</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Centre Logo</div>
+            <p class="hint" style="margin-bottom:8px">Select from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the first logo added.</p>
+            <div id="draft-logo-grid" class="draft-logo-grid"></div>
+          </div>
+        </div>
+
+        <!-- Right: timer -->
+        <div>
+          <div class="card">
+            <div class="card-title">Pick/Ban Timer</div>
+            <div class="field-row">
+              <label>Duration per step (seconds)</label>
+              <input type="number" id="draft-timer-dur" min="5" max="300" value="60" style="width:80px"
+                     onchange="api('/api/draft',{timerDuration:Number(this.value)})">
+            </div>
+            <div class="field-row" style="margin-top:8px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;color:var(--text);font-size:13px">
+                <input type="checkbox" id="draft-timer-visible" onchange="api('/api/draft',{timerVisible:this.checked})">
+                Show timer on overlay
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px">
+              <button class="btn btn-sm btn-primary" onclick="startDraftTimer()">▶ Start / Reset</button>
+              <button class="btn btn-sm btn-danger"  onclick="api('/api/draft',{timerEnd:null})">✕ Clear</button>
+            </div>
+            <div id="draft-timer-display" class="hint" style="margin-top:8px;font-size:14px;color:var(--primary)"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         BRACKET
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-bracket">
+      <div class="tab-header"><h1>Bracket Overlay</h1></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px">
+
+        <!-- Left: overlay controls -->
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Logo</div>
+            <div class="field-row" style="margin-bottom:8px">
+              <label>Show on overlay</label>
+              <button id="bracket-logo-show-on"  class="btn btn-sm" onclick="patchBracket({showLogo:true})">On</button>
+              <button id="bracket-logo-show-off" class="btn btn-sm btn-active" onclick="patchBracket({showLogo:false})">Off</button>
+            </div>
+            <p class="hint" style="margin-bottom:8px">Selects from your broadcast logo library. Auto uses the tournament logo.</p>
+            <div id="bracket-logo-grid" class="draft-logo-grid"></div>
+            <div class="field-row" style="margin-top:10px;margin-bottom:0;gap:10px">
+              <label style="white-space:nowrap">Logo Size</label>
+              <input type="range" id="bracket-logo-scale" min="3" max="18" step="0.5" value="7" style="flex:1" oninput="patchBracket({logoScale:parseFloat(this.value)});g('bracket-logo-scale-val').textContent=this.value+'vh'">
+              <span id="bracket-logo-scale-val" style="min-width:38px;text-align:right;font-size:12px;color:var(--text-dim)">7vh</span>
+            </div>
+            <div class="field-row" style="margin-top:8px;margin-bottom:0">
+              <label>Position</label>
+              <button id="bracket-logo-pos-left"   class="btn btn-sm btn-active" onclick="patchBracket({logoPosition:'left'})">Left</button>
+              <button id="bracket-logo-pos-center" class="btn btn-sm"            onclick="patchBracket({logoPosition:'center'})">Centre</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="gfx-toggle-row">
+              <button id="showbtn-bracket" class="btn btn-primary" onclick="showGraphic('bracket')">SHOW</button>
+              <button id="hidebtn-bracket" class="btn btn-danger"  onclick="hideGraphic('bracket')">HIDE</button>
+            </div>
+            <p class="hint" style="margin-top:10px;margin-bottom:0">Bracket rounds are managed in <a onclick="switchToTab('playoffs')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Tournament → Playoffs</a>.</p>
+          </div>
+        </div>
+
+        <!-- Right: info -->
+        <div>
+          <div class="card">
+            <div class="card-title">Layout</div>
+            <p class="hint">Single or double elimination is set in <a onclick="switchToTab('tournament')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Tournament → Setup</a> under Playoff Format. Generate the bracket structure from <a onclick="switchToTab('playoffs')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Tournament → Playoffs</a>.</p>
+            <p class="hint" style="margin-top:8px">Double elimination: upper bracket fills the top two-thirds, lower bracket the bottom third, grand final on the far right.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         GROUP STAGE GFX
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-groups-gfx">
+      <div class="tab-header"><h1>Group Stage Overlay</h1></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px">
+
+        <div>
+          <!-- Logo -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Logo</div>
+            <div class="field-row" style="margin-bottom:8px">
+              <label>Show on overlay</label>
+              <button id="groups-logo-show-on"  class="btn btn-sm" onclick="patchGroupStage({showLogo:true})">On</button>
+              <button id="groups-logo-show-off" class="btn btn-sm btn-active" onclick="patchGroupStage({showLogo:false})">Off</button>
+            </div>
+            <p class="hint" style="margin-bottom:8px">Selects from your broadcast logo library. Auto uses the tournament logo.</p>
+            <div id="groups-logo-grid" class="draft-logo-grid"></div>
+            <div class="field-row" style="margin-top:10px;margin-bottom:0;gap:10px">
+              <label style="white-space:nowrap">Logo Size</label>
+              <input type="range" id="groups-logo-scale" min="3" max="18" step="0.5" value="7" style="flex:1"
+                     oninput="patchGroupStage({logoScale:parseFloat(this.value)});g('groups-logo-scale-val').textContent=this.value+'vh'">
+              <span id="groups-logo-scale-val" style="min-width:38px;text-align:right;font-size:12px;color:var(--text-dim)">7vh</span>
+            </div>
+            <div class="field-row" style="margin-top:8px;margin-bottom:0">
+              <label>Position</label>
+              <button id="groups-logo-pos-left"   class="btn btn-sm btn-active" onclick="patchGroupStage({logoPosition:'left'})">Left</button>
+              <button id="groups-logo-pos-center" class="btn btn-sm"            onclick="patchGroupStage({logoPosition:'center'})">Centre</button>
+            </div>
+          </div>
+
+          <!-- Show / Hide -->
+          <div class="card">
+            <div class="gfx-toggle-row">
+              <button id="showbtn-groupStage" class="btn btn-primary" onclick="showGraphic('groupStage')">SHOW</button>
+              <button id="hidebtn-groupStage" class="btn btn-danger"  onclick="hideGraphic('groupStage')">HIDE</button>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <!-- Display mode -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Display Mode</div>
+            <p class="hint" style="margin-bottom:10px"><strong>Group Stage</strong> — all teams shown equally, no qualifier highlights. Use during active group play.<br><br><strong>Final Standings</strong> — top qualifiers highlighted with accent, others dimmed. Use when groups are decided.</p>
+            <div style="display:flex;gap:8px">
+              <button id="groups-mode-live"  class="btn btn-sm btn-active" onclick="patchGroupStage({mode:'live'})">Group Stage</button>
+              <button id="groups-mode-final" class="btn btn-sm"            onclick="patchGroupStage({mode:'final'})">Final Standings</button>
+            </div>
+          </div>
+
+          <!-- Info -->
+          <div class="card">
+            <p class="hint">Group membership is managed in <a onclick="switchToTab('groups')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Tournament → Groups</a>. W–L records are derived live from completed Group Stage schedule games.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         TOURNAMENT STRUCTURE GFX
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-tournament-structure-gfx">
+      <div class="tab-header"><h1>Tournament Structure Overlay</h1></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:960px">
+
+        <!-- Left column: graphic controls -->
+        <div>
+          <!-- Logo -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Logo</div>
+            <div class="field-row" style="margin-bottom:8px">
+              <label>Show on overlay</label>
+              <button id="ts-gfx-logo-on"  class="btn btn-sm" onclick="patchTournamentStructureGfx({showLogo:true})">On</button>
+              <button id="ts-gfx-logo-off" class="btn btn-sm btn-active" onclick="patchTournamentStructureGfx({showLogo:false})">Off</button>
+            </div>
+            <div class="field-row" style="margin-top:10px;margin-bottom:0;gap:10px">
+              <label style="white-space:nowrap">Logo Size</label>
+              <input type="range" id="ts-gfx-logo-scale" min="3" max="18" step="0.5" value="7" style="flex:1"
+                     oninput="patchTournamentStructureGfx({logoScale:parseFloat(this.value)});g('ts-gfx-logo-scale-val').textContent=this.value+'vh'">
+              <span id="ts-gfx-logo-scale-val" style="min-width:38px;text-align:right;font-size:12px;color:var(--text-dim)">7vh</span>
+            </div>
+            <div class="field-row" style="margin-top:8px;margin-bottom:0">
+              <label>Position</label>
+              <button id="ts-gfx-logo-pos-left"   class="btn btn-sm btn-active" onclick="patchTournamentStructureGfx({logoPosition:'left'})">Left</button>
+              <button id="ts-gfx-logo-pos-center" class="btn btn-sm"            onclick="patchTournamentStructureGfx({logoPosition:'center'})">Centre</button>
+            </div>
+          </div>
+
+          <!-- Display Title -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Display Title</div>
+            <p class="hint" style="margin-bottom:10px">Optional title shown on the overlay. The tournament profile name is never shown automatically.</p>
+            <div class="field-row" style="margin-bottom:8px">
+              <input type="text" id="ts-gfx-display-title" placeholder="e.g. Oceanic Resurrection S2" style="flex:1"
+                     oninput="patchTournamentStructureGfx({displayTitle:this.value})">
+            </div>
+            <div class="field-row" style="margin-bottom:0">
+              <label>Show title</label>
+              <button id="ts-gfx-title-on"  class="btn btn-sm" onclick="patchTournamentStructureGfx({showTitle:true})">On</button>
+              <button id="ts-gfx-title-off" class="btn btn-sm btn-active" onclick="patchTournamentStructureGfx({showTitle:false})">Off</button>
+            </div>
+          </div>
+
+          <!-- Info bar alignment -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Info Bar Alignment</div>
+            <div class="field-row" style="margin-bottom:0">
+              <label>Align</label>
+              <button id="ts-gfx-align-left"   class="btn btn-sm btn-active" onclick="patchTournamentStructureGfx({infoBarAlign:'left'})">Left</button>
+              <button id="ts-gfx-align-center" class="btn btn-sm"            onclick="patchTournamentStructureGfx({infoBarAlign:'center'})">Centre</button>
+            </div>
+          </div>
+
+          <!-- Show / Hide -->
+          <div class="card">
+            <div class="gfx-toggle-row">
+              <button id="showbtn-tournamentStructure" class="btn btn-primary" onclick="showGraphic('tournamentStructure')">SHOW</button>
+              <button id="hidebtn-tournamentStructure" class="btn btn-danger"  onclick="hideGraphic('tournamentStructure')">HIDE</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column: show/hide toggles only — values set in Tournament Setup -->
+        <div>
+          <div class="card">
+            <div class="card-title">Content Visibility</div>
+            <p class="hint" style="margin-bottom:14px">Toggle which optional info appears on the overlay. Values are entered in <a onclick="switchToTab('tournament')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Tournament Setup</a>.</p>
+            <div class="field-row">
+              <label>Dates</label>
+              <button id="ts-gfx-dates-on"       class="btn btn-sm" onclick="api('/api/tournament',{showDates:true})">On</button>
+              <button id="ts-gfx-dates-off"      class="btn btn-sm btn-active" onclick="api('/api/tournament',{showDates:false})">Off</button>
+            </div>
+            <div class="field-row" style="padding-left:8px">
+              <label style="color:var(--text-dim)">Date Format</label>
+              <select id="ts-gfx-date-fmt" onchange="patchTournamentStructureGfx({dateFormat:this.value})" style="flex:1;max-width:160px">
+                <option value="mond">Jan 1</option>
+                <option value="dmon">1 Jan</option>
+                <option value="mondfull">January 1</option>
+                <option value="ddmm">DD/MM</option>
+              </select>
+            </div>
+            <div class="field-row" style="padding-left:8px">
+              <label style="color:var(--text-dim)">Show Year <span class="hint" style="margin:0">(cross-year only)</span></label>
+              <button id="ts-gfx-year-on"  class="btn btn-sm" onclick="patchTournamentStructureGfx({showYear:true})">On</button>
+              <button id="ts-gfx-year-off" class="btn btn-sm btn-active" onclick="patchTournamentStructureGfx({showYear:false})">Off</button>
+            </div>
+            <div class="field-row">
+              <label>Region</label>
+              <button id="ts-gfx-region-on"      class="btn btn-sm" onclick="api('/api/tournament',{showRegion:true})">On</button>
+              <button id="ts-gfx-region-off"     class="btn btn-sm btn-active" onclick="api('/api/tournament',{showRegion:false})">Off</button>
+            </div>
+            <div class="field-row">
+              <label>Patch / Version</label>
+              <button id="ts-gfx-patch-on"       class="btn btn-sm" onclick="api('/api/tournament',{showPatch:true})">On</button>
+              <button id="ts-gfx-patch-off"      class="btn btn-sm btn-active" onclick="api('/api/tournament',{showPatch:false})">Off</button>
+            </div>
+            <div class="field-row" id="ts-gfx-tiebreaker-row">
+              <label>Tiebreaker Rule</label>
+              <button id="ts-gfx-tiebreaker-on"  class="btn btn-sm" onclick="api('/api/tournament',{showTiebreaker:true})">On</button>
+              <button id="ts-gfx-tiebreaker-off" class="btn btn-sm btn-active" onclick="api('/api/tournament',{showTiebreaker:false})">Off</button>
+            </div>
+            <div class="field-row" style="margin-bottom:0">
+              <label>Location</label>
+              <button id="ts-gfx-tech-on"  class="btn btn-sm" onclick="api('/api/tournament',{showLocation:true})">On</button>
+              <button id="ts-gfx-tech-off" class="btn btn-sm btn-active" onclick="api('/api/tournament',{showLocation:false})">Off</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         PRIZEPOOL
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-prizepool">
+      <div class="tab-header"><h1>Prizepool</h1></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:1100px">
+
+        <!-- Left: graphic controls -->
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Logo</div>
+            <div class="field-row" style="margin-bottom:8px">
+              <label>Show on overlay</label>
+              <button id="pp-logo-on"  class="btn btn-sm" onclick="patchPrizepool({showLogo:true})">On</button>
+              <button id="pp-logo-off" class="btn btn-sm btn-active" onclick="patchPrizepool({showLogo:false})">Off</button>
+            </div>
+            <div class="field-row" style="margin-top:10px;margin-bottom:0;gap:10px">
+              <label style="white-space:nowrap">Logo Size</label>
+              <input type="range" id="pp-logo-scale" min="3" max="18" step="0.5" value="7" style="flex:1"
+                     oninput="patchPrizepool({logoScale:parseFloat(this.value)});g('pp-logo-scale-val').textContent=this.value+'vh'">
+              <span id="pp-logo-scale-val" style="min-width:38px;text-align:right;font-size:12px;color:var(--text-dim)">7vh</span>
+            </div>
+            <div class="field-row" style="margin-top:8px;margin-bottom:0">
+              <label>Position</label>
+              <button id="pp-logo-pos-left"   class="btn btn-sm btn-active" onclick="patchPrizepool({logoPosition:'left'})">Left</button>
+              <button id="pp-logo-pos-center" class="btn btn-sm"            onclick="patchPrizepool({logoPosition:'center'})">Centre</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="gfx-toggle-row">
+              <button id="showbtn-prizepool" class="btn btn-primary" onclick="showGraphic('prizepool')">SHOW</button>
+              <button id="hidebtn-prizepool" class="btn btn-danger"  onclick="hideGraphic('prizepool')">HIDE</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: prize entries -->
+        <div>
+          <div class="card">
+            <div class="card-title">Prize Entries</div>
+            <p class="hint" style="margin-bottom:12px">Entries display in order. Highlight the top prize for Grand Final treatment. Placements appear in a compact list; Bonus entries appear as cards.</p>
+            <div id="pp-entries-list"></div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn btn-sm btn-primary" onclick="ppAddEntry('placement')">+ Placement</button>
+              <button class="btn btn-sm" onclick="ppAddEntry('bonus')">+ Bonus / Sponsor Award</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         BG OUTPUT
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-bgoutput">
+      <div class="tab-header"><h1>Background Output</h1></div>
+      <p class="hint" style="margin-bottom:16px">A standalone full-screen background page you can use as a persistent source in OBS or your vision mixer. Transparent overlays (scoreboard, lower third, etc.) sit on top of it. Controls are independent of the Broadcast Theme background.</p>
+
+      <div style="max-width:560px">
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Background Type</div>
+            <div class="theme-pills" style="margin-bottom:14px">
+              <button class="theme-pill" id="bgo-bg-transparent" onclick="setBgoType('transparent')">Transparent</button>
+              <button class="theme-pill" id="bgo-bg-color"       onclick="setBgoType('color')">Solid Colour</button>
+              <button class="theme-pill" id="bgo-bg-image"       onclick="setBgoType('image')">Image</button>
+              <button class="theme-pill" id="bgo-bg-animation"   onclick="setBgoType('animation')">Animated</button>
+            </div>
+            <div id="bgo-bg-color-row" style="display:none">
+              <div class="theme-palette-slot">
+                <span class="theme-fixed-label">Colour</span>
+                <input type="color" id="bgo-color-swatch" class="theme-swatch" oninput="patchBgo({bgColor:this.value})">
+                <input type="text"  id="bgo-color-hex"    class="theme-hex-inp" maxlength="7" spellcheck="false" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){g('bgo-color-swatch').value=this.value;patchBgo({bgColor:this.value})}">
+              </div>
+            </div>
+            <div id="bgo-bg-image-row" style="display:none">
+              <div class="field-row"><label>Image URL</label>
+                <div class="upload-row">
+                  <input type="text" id="bgo-img-url" placeholder="/uploads/…" oninput="patchBgo({bgImage:this.value})">
+                  <button class="btn btn-sm" onclick="g('bgo-img-file').click()">Upload</button>
+                  <input type="file" id="bgo-img-file" accept="image/*" style="display:none" onchange="uploadBgoImage(this)">
+                </div>
+              </div>
+            </div>
+            <div id="bgo-bg-animation-row" style="display:none">
+              <div class="theme-pills" style="flex-wrap:wrap;gap:6px;margin-bottom:12px">
+                <button class="theme-pill" id="bgo-anim-particles" onclick="setBgoAnim('particles')">Particles</button>
+                <button class="theme-pill" id="bgo-anim-scanlines" onclick="setBgoAnim('scanlines')">Scanlines</button>
+                <button class="theme-pill" id="bgo-anim-grid"      onclick="setBgoAnim('grid')">Grid</button>
+                <button class="theme-pill" id="bgo-anim-hexgrid"   onclick="setBgoAnim('hexgrid')">Hex Grid</button>
+                <button class="theme-pill" id="bgo-anim-diamonds"  onclick="setBgoAnim('diamonds')">Diamonds</button>
+                <button class="theme-pill" id="bgo-anim-dotwave"   onclick="setBgoAnim('dotwave')">Dot Wave</button>
+                <button class="theme-pill" id="bgo-anim-lines"     onclick="setBgoAnim('lines')">Lines</button>
+                <button class="theme-pill" id="bgo-anim-rings"     onclick="setBgoAnim('rings')">Rings</button>
+                <button class="theme-pill" id="bgo-anim-circuit"   onclick="setBgoAnim('circuit')">Circuit</button>
+                <button class="theme-pill" id="bgo-anim-rain"      onclick="setBgoAnim('rain')">Rain</button>
+                <button class="theme-pill" id="bgo-anim-fog"       onclick="setBgoAnim('fog')">Fog</button>
+                <button class="theme-pill" id="bgo-anim-wave"      onclick="setBgoAnim('wave')">Wave</button>
+              </div>
+              <div class="theme-palette-slot" style="margin-bottom:10px">
+                <span class="theme-fixed-label">Base Colour</span>
+                <input type="color" id="bgo-animcolor-swatch" class="theme-swatch" oninput="patchBgo({bgColor:this.value})">
+                <input type="text"  id="bgo-animcolor-hex"    class="theme-hex-inp" maxlength="7" spellcheck="false" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){g('bgo-animcolor-swatch').value=this.value;patchBgo({bgColor:this.value})}">
+              </div>
+              <span class="theme-anim-label">Speed</span>
+              <div class="theme-pills" style="margin-top:4px;margin-bottom:12px">
+                <button class="theme-pill" id="bgo-speed-slow"   onclick="setBgoSpeed('slow')">Slow</button>
+                <button class="theme-pill" id="bgo-speed-medium" onclick="setBgoSpeed('medium')">Medium</button>
+                <button class="theme-pill" id="bgo-speed-fast"   onclick="setBgoSpeed('fast')">Fast</button>
+              </div>
+              <div class="field-row" style="align-items:center;gap:10px">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+                  <input type="checkbox" id="bgo-fog-layer" onchange="patchBgo({bgFogLayer:this.checked})">
+                  <span>Fog overlay (bottom layer)</span>
+                </label>
+              </div>
+              <div class="field-row" id="bgo-fog-intensity-row" style="display:none;margin-top:6px">
+                <label>Fog intensity</label>
+                <input type="range" id="bgo-fog-intensity" min="10" max="100" value="50"
+                  oninput="patchBgo({bgFogIntensity:parseInt(this.value)})">
+              </div>
+            </div>
+          </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         BREAK SCREEN
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-break">
+      <div class="tab-header"><h1>Break Screen</h1></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px">
+
+        <!-- Left: overlay controls -->
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Center Logo</div>
+            <p class="hint" style="margin-bottom:8px">Selects from your broadcast logo library. Auto uses the first logo added.</p>
+            <div id="break-center-logo-grid" class="draft-logo-grid"></div>
+            <div class="field-row" style="margin-top:10px;margin-bottom:0;gap:10px">
+              <label style="white-space:nowrap">Logo Size</label>
+              <input type="range" id="break-logo-scale" min="2" max="16" step="0.5" value="8" style="flex:1"
+                     oninput="g('break-logo-scale-val').textContent=this.value+'vh';patchBreak({centerLogoScale:parseFloat(this.value)})">
+              <span id="break-logo-scale-val" style="font-size:12px;color:var(--text-dim);white-space:nowrap;min-width:36px;text-align:right">8vh</span>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Overlay</div>
+            <div class="field-row">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:400">
+                <input type="checkbox" id="break-show-tourn-name" onchange="patchBreak({showTournName:this.checked})">
+                Show tournament name below logo
+              </label>
+            </div>
+            <div class="field-row"><label>Main Message</label><input type="text" id="break-msg" value="BE RIGHT BACK" oninput="patchBreak({message:this.value})"></div>
+            <div class="field-row"><label>Subtext</label><input type="text" id="break-sub" placeholder="We'll be back shortly…" oninput="patchBreak({subtext:this.value})"></div>
+            <div class="field-row"><label>Upcoming</label><input type="text" id="break-next" placeholder="Auto from schedule — type to override" oninput="patchBreak({nextMatch:this.value})"></div>
+            <div class="field-row"><label>Timer</label>
+              <div style="flex:1">
+                <div class="upload-row" style="gap:6px">
+                  <input type="number" id="break-timer-min" placeholder="min" min="0" style="width:72px">
+                  <input type="number" id="break-timer-sec" placeholder="sec" min="0" max="59" style="width:72px">
+                  <button class="btn btn-sm" onclick="startBreakTimer()">Start</button>
+                  <button class="btn btn-sm btn-danger" onclick="clearBreakTimer()">Clear</button>
+                </div>
+                <div class="upload-row" style="gap:6px;margin-top:6px;align-items:center">
+                  <span style="color:rgba(255,255,255,0.35);font-size:11px">extend:</span>
+                  <button class="btn btn-sm" onclick="extendBreakTimer(1)" title="Add 1 minute">+1m</button>
+                  <button class="btn btn-sm" onclick="extendBreakTimer(5)" title="Add 5 minutes">+5m</button>
+                  <button class="btn btn-sm" onclick="extendBreakTimer(10)" title="Add 10 minutes">+10m</button>
+                </div>
+                <div class="upload-row" style="gap:6px;margin-top:8px;align-items:center">
+                  <span style="font-size:12px;color:var(--text-dim);white-space:nowrap">or target time:</span>
+                  <input id="break-target-time" type="time" style="width:100px">
+                  <button class="btn btn-sm btn-dim" onclick="setBreakTargetTime()">Set</button>
+                </div>
+              </div>
+            </div>
+            <div class="gfx-toggle-row" style="margin-top:16px">
+              <button id="showbtn-breakScreen" class="btn btn-primary" onclick="showGraphic('breakScreen')">SHOW</button>
+              <button id="hidebtn-breakScreen" class="btn btn-danger" onclick="hideGraphic('breakScreen')">HIDE</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Video Space (PIP)</span>
+              <div style="display:flex;gap:6px">
+                <button id="showbtn-pip" class="btn btn-sm btn-primary" onclick="patchBreak({pipMode:true})">ENABLE</button>
+                <button id="hidebtn-pip" class="btn btn-sm btn-danger"  onclick="patchBreak({pipMode:false})">DISABLE</button>
+              </div>
+            </div>
+            <p class="hint" style="margin-top:6px;margin-bottom:0">Shifts content into an L-layout over ~2 seconds, leaving the top-right 70% for a VMix video source. Timer and series info move to the bottom bar.</p>
+          </div>
+        </div>
+
+        <!-- Right: ticker (moved to its own tab) -->
+        <div>
+          <div class="card">
+            <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
+              <span>Ticker</span>
+              <div style="display:flex;gap:6px">
+                <button id="showbtn-ticker" class="btn btn-sm btn-primary" onclick="api('/api/ticker',{visible:true})">SHOW</button>
+                <button id="hidebtn-ticker" class="btn btn-sm btn-danger"  onclick="api('/api/ticker',{visible:false})">HIDE</button>
+              </div>
+            </div>
+            <p class="hint" style="margin-top:8px">Full ticker controls — content, items, label — are in the <a onclick="switchToTab('ticker')" href="#" style="color:var(--primary)">Ticker</a> tab.</p>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         WIN SCREEN
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-win">
+      <div class="tab-header"><h1>Win Screen</h1></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px">
+
+        <!-- Left column -->
+        <div>
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Overlay</div>
+            <p class="hint" id="win-auto-status" style="margin-bottom:12px">Auto-populated from last game result.</p>
+            <div class="gfx-toggle-row">
+              <button id="showbtn-winScreen" class="btn btn-primary" onclick="showGraphic('winScreen')">SHOW</button>
+              <button id="hidebtn-winScreen" class="btn btn-danger"  onclick="hideGraphic('winScreen')">HIDE</button>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Winning Team</div>
+            <p class="hint" style="margin-bottom:8px">Auto-set when you record a game result. Override here if needed.</p>
+            <div class="radio-group">
+              <label><input type="radio" name="win-team" value="team1" onchange="patchWin({team:'team1'})"> <span id="win-t1-label">Team 1</span></label>
+              <label><input type="radio" name="win-team" value="team2" onchange="patchWin({team:'team2'})"> <span id="win-t2-label">Team 2</span></label>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Message</div>
+            <p class="hint" style="margin-bottom:8px">Auto-set from series state. Override if needed.</p>
+            <input type="text" id="win-msg" value="WINS THE SERIES" oninput="patchWin({message:this.value})">
+          </div>
+        </div>
+
+        <!-- Right column: animation style -->
+        <div>
+          <div class="card">
+            <div class="card-title">Animation Style</div>
+            <p class="hint" style="margin-bottom:10px">Choose how the graphic enters and exits. SLAM gives the most coverage for clean scene transitions.</p>
+
+            <label class="win-style-option" id="win-style-blade">
+              <input type="radio" name="win-style" value="blade" onchange="patchWin({style:'blade'})">
+              <div class="win-style-preview win-preview-blade">
+                <div class="win-style-band"></div>
+              </div>
+              <div>
+                <div class="win-style-name">BLADE</div>
+                <div class="win-style-desc">Diagonal band sweeps across. Fast and punchy.</div>
+              </div>
+            </label>
+
+            <label class="win-style-option" id="win-style-burst">
+              <input type="radio" name="win-style" value="burst" onchange="patchWin({style:'burst'})">
+              <div class="win-style-preview win-preview-burst">
+                <div class="win-preview-burst-ring win-preview-burst-ring-1"></div>
+                <div class="win-preview-burst-ring win-preview-burst-ring-2"></div>
+                <div class="win-preview-burst-dot"></div>
+              </div>
+              <div>
+                <div class="win-style-name">BURST</div>
+                <div class="win-style-desc">Detonates from centre with shockwave rings.</div>
+              </div>
+            </label>
+
+            <label class="win-style-option" id="win-style-slam">
+              <input type="radio" name="win-style" value="slam" onchange="patchWin({style:'slam'})">
+              <div class="win-style-preview win-preview-slam">
+                <div class="win-style-card"></div>
+              </div>
+              <div>
+                <div class="win-style-name">SLAM</div>
+                <div class="win-style-desc">Full-screen overlay — best for scene transitions.</div>
+              </div>
+            </label>
+
+            <label class="win-style-option" id="win-style-split">
+              <input type="radio" name="win-style" value="split" onchange="patchWin({style:'split'})">
+              <div class="win-style-preview win-preview-split">
+                <div class="win-preview-split-l"></div>
+                <div class="win-preview-split-div"></div>
+              </div>
+              <div>
+                <div class="win-style-name">SPLIT</div>
+                <div class="win-style-desc">Team colour floods left, sharp divider line at centre.</div>
+              </div>
+            </label>
+
+            <label class="win-style-option" id="win-style-spotlight">
+              <input type="radio" name="win-style" value="spotlight" onchange="patchWin({style:'spotlight'})">
+              <div class="win-style-preview win-preview-spotlight">
+                <div class="win-preview-spotlight-beam"></div>
+                <div class="win-preview-spotlight-dot"></div>
+              </div>
+              <div>
+                <div class="win-style-name">SPOTLIGHT</div>
+                <div class="win-style-desc">Screen darkens, light beam crowns the winner with particle sparkles.</div>
+              </div>
+            </label>
+
+            <label class="win-style-option" id="win-style-wipe">
+              <input type="radio" name="win-style" value="wipe" onchange="patchWin({style:'wipe'})">
+              <div class="win-style-preview win-preview-wipe">
+                <div class="win-preview-wipe-top"></div>
+                <div class="win-preview-wipe-bot"></div>
+              </div>
+              <div>
+                <div class="win-style-name">WIPE</div>
+                <div class="win-style-desc">Cinematic letterbox bars close in, team name slices through with a light streak.</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         USERS
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <!-- Graphics token + output URLs -->
+    <section class="tab" id="tab-users">
+      <div class="tab-header">
+        <h1>Settings</h1>
+        <button class="btn btn-primary btn-sm" onclick="openNewUserForm()">+ New User</button>
+      </div>
+      <div class="card" style="max-width:640px;margin-bottom:20px">
+        <div class="card-title">Graphics Output URLs</div>
+        <p class="hint" style="margin-bottom:12px">Use these URLs as Browser Sources in OBS or vMix. The token allows read-only access without logging in.</p>
+        <div class="field-row"><label>Graphics Token</label>
+          <div class="upload-row">
+            <input type="text" id="gfx-token-display" readonly style="font-family:monospace;font-size:12px">
+            <button class="btn btn-sm" onclick="copyGfxToken()">Copy</button>
+            <button class="btn btn-sm btn-danger" onclick="regenerateGfxToken()">Regenerate</button>
+          </div>
+        </div>
+        <div id="gfx-url-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+
+      <!-- New user form -->
+      <div class="card" id="new-user-form" style="display:none;max-width:480px;margin-bottom:20px">
+        <div class="card-title">New User</div>
+        <div class="field-row"><label>Username</label><input type="text" id="nu-username" autocapitalize="none" spellcheck="false"></div>
+        <div class="field-row"><label>Password</label><input type="password" id="nu-password"></div>
+        <div class="field-row"><label>Role</label>
+          <select id="nu-role">
+            <option value="operator">Operator — show/hide graphics, score, timers</option>
+            <option value="admin">Admin — full access</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn btn-primary btn-sm" onclick="submitNewUser()">Create User</button>
+          <button class="btn btn-sm" onclick="closeNewUserForm()">Cancel</button>
+        </div>
+        <div class="users-msg" id="nu-msg"></div>
+      </div>
+
+      <!-- User list -->
+      <div class="card" style="max-width:640px">
+        <div class="card-title">Accounts</div>
+        <div id="users-list"><p class="hint">Loading…</p></div>
+      </div>
+
+      <!-- Change password panel -->
+      <div class="card" id="chpw-panel" style="display:none;max-width:480px;margin-top:16px">
+        <div class="card-title">Change Password — <span id="chpw-label"></span></div>
+        <input type="hidden" id="chpw-uid">
+        <div class="field-row"><label>New Password</label><input type="password" id="chpw-new" placeholder="Min. 6 characters"></div>
+        <div class="field-row"><label>Confirm Password</label><input type="password" id="chpw-confirm"></div>
+        <div style="display:flex;gap:10px;margin-top:4px">
+          <button class="btn btn-primary btn-sm" onclick="submitChangePassword()">Save Password</button>
+          <button class="btn btn-sm" onclick="closeChpwPanel()">Cancel</button>
+        </div>
+        <div class="users-msg" id="chpw-msg"></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- Profile load modal -->
+<div id="profile-load-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--primary);width:460px;padding:24px;box-shadow:0 0 40px rgba(31,250,255,0.15)">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--primary);letter-spacing:0.12em;margin-bottom:14px;text-transform:uppercase">Load Profile — <span id="plm-name" style="color:#fff"></span></div>
+    <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Choose what to restore:</p>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text)">
+      <label style="display:flex;align-items:center;gap:8px;opacity:0.5"><input type="checkbox" checked disabled> Tournament structure, stages &amp; groups</label>
+      <label style="display:flex;align-items:center;gap:8px;opacity:0.5"><input type="checkbox" checked disabled> Bracket configuration</label>
+      <label style="display:flex;align-items:center;gap:8px;opacity:0.5"><input type="checkbox" checked disabled> Active game setup &amp; rosters</label>
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="plm-restore-schedule" checked>
+        Broadcast schedule &nbsp;<span style="font-size:11px;color:var(--text-dim)">uncheck to keep your current schedule</span>
+      </label>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-primary btn-sm" onclick="confirmLoadProfile()">Load Profile</button>
+      <button class="btn btn-sm" onclick="closeProfileLoadModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Team picker modal -->
+<div id="team-picker-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--bg2);border:1px solid var(--primary);width:500px;max-height:65vh;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(31,250,255,0.15)">
+    <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--primary);letter-spacing:0.12em">LOAD TEAM — <span id="team-picker-slot-label">TEAM 1</span></span>
+      <button class="btn btn-sm" onclick="closeTeamPicker()">✕ Close</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:12px" id="team-picker-list"></div>
+  </div>
+</div>
+
+
+<!-- ── Live Control Bar ─────────────────────────────────────────────────────── -->
+<div id="live-bar">
+
+  <!-- Row 1: Graphic toggles -->
+  <div class="lbar-row">
+
+    <!-- Active game context -->
+    <span class="lbar-game-context" id="lbar-game-context"></span>
+    <div class="lbar-divider"></div>
+
+    <!-- Lower Third -->
+    <div class="lbar-group" id="lbar-group-lowerThird">
+      <button class="lbar-toggle" id="lbar-toggle-lowerThird" onclick="toggleGraphic('lowerThird')"><span class="lbar-dot" id="lbar-dot-lowerThird"></span>LOWER 3RD</button>
+    </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Head to Head -->
+    <div class="lbar-group" id="lbar-group-headToHead">
+      <button class="lbar-toggle" id="lbar-toggle-headToHead" onclick="toggleGraphic('headToHead')"><span class="lbar-dot" id="lbar-dot-headToHead"></span>H2H</button>
+    </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Draft -->
+    <div class="lbar-group" id="lbar-group-draft">
+      <button class="lbar-toggle" id="lbar-toggle-draft" onclick="toggleGraphic('draft')"><span class="lbar-dot" id="lbar-dot-draft"></span>DRAFT</button>
+    </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Bracket -->
+    <div class="lbar-group" id="lbar-group-bracket">
+      <button class="lbar-toggle" id="lbar-toggle-bracket" onclick="toggleGraphic('bracket')"><span class="lbar-dot" id="lbar-dot-bracket"></span>BRACKET</button>
+    </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Group Stage -->
+    <div class="lbar-group" id="lbar-group-groupStage">
+      <button class="lbar-toggle" id="lbar-toggle-groupStage" onclick="toggleGraphic('groupStage')"><span class="lbar-dot" id="lbar-dot-groupStage"></span>GROUPS</button>
+    </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Tournament Structure -->
+    <div class="lbar-group" id="lbar-group-tournamentStructure">
+      <button class="lbar-toggle" id="lbar-toggle-tournamentStructure" onclick="toggleGraphic('tournamentStructure')"><span class="lbar-dot" id="lbar-dot-tournamentStructure"></span>STRUCTURE</button>
+    </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Prizepool -->
+    <div class="lbar-group" id="lbar-group-prizepool">
+      <button class="lbar-toggle" id="lbar-toggle-prizepool" onclick="toggleGraphic('prizepool')"><span class="lbar-dot" id="lbar-dot-prizepool"></span>PRIZES</button>
+    </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Break Screen -->
+    <div class="lbar-group" id="lbar-group-breakScreen">
+      <button class="lbar-toggle" id="lbar-toggle-breakScreen" onclick="toggleGraphic('breakScreen')"><span class="lbar-dot" id="lbar-dot-breakScreen"></span>BREAK</button>
+      <input type="number" id="lbar-break-min" class="lbar-num" placeholder="m" min="0" max="99">
+      <span class="lbar-score-sep" style="font-size:14px">:</span>
+      <input type="number" id="lbar-break-sec" class="lbar-num" placeholder="s" min="0" max="59">
+      <button class="lbar-timer-btn" onclick="lbarStartTimer()" title="Start / adjust countdown">▶</button>
+      <button class="lbar-timer-btn lbar-timer-clear" onclick="clearBreakTimer()" title="Clear timer">✕</button>
+      <button class="lbar-timer-btn" onclick="extendBreakTimer(5)" title="Add 5 minutes to timer">+5m</button>
+      <span class="lbar-break-countdown" id="lbar-break-countdown"></span>
+      <button class="lbar-timer-btn" id="lbar-pip-btn" onclick="lbarTogglePip()" title="Toggle PIP mode">PIP</button>
+    </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Ticker -->
+    <div class="lbar-group" id="lbar-group-ticker">
+      <button class="lbar-toggle" id="lbar-toggle-ticker" onclick="toggleGraphic('ticker')"><span class="lbar-dot" id="lbar-dot-ticker"></span>TICKER</button>
+    </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Win Screen -->
+    <div class="lbar-group" id="lbar-group-winScreen">
+      <button class="lbar-toggle" id="lbar-toggle-winScreen" onclick="toggleGraphic('winScreen')"><span class="lbar-dot" id="lbar-dot-winScreen"></span>WIN</button>
+      <span class="lbar-win-team" id="lbar-win-indicator"></span>
+    </div>
+
+  </div><!-- /lbar-row -->
+</div><!-- /live-bar -->
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="champion-picker.js"></script>
+<script src="control.js"></script>
+</body>
+</html>
