@@ -832,36 +832,74 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
 /* ── Expanded body ── */
 .intel-player-body {
   display: none;
-  padding: 0 14px 12px;
+  padding: 10px 14px 14px;
   border-top: 1px solid rgba(255,255,255,0.06);
 }
-.intel-player-card.expanded .intel-player-body { display: block; }
+.intel-player-card.expanded .intel-player-body { display: flex; gap: 20px; }
 
-.intel-riot-id { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.03em; margin-bottom: 8px; }
+.intel-riot-id { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.55); letter-spacing: 0.04em; margin-bottom: 10px; }
 
 .intel-section-label {
   font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
-  color: rgba(255,255,255,0.35);
-  margin: 8px 0 4px;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 6px;
 }
 
-.intel-champs { display: flex; flex-direction: column; gap: 4px; }
-.intel-champ-row { display: flex; align-items: center; gap: 8px; }
-.intel-champ-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; min-width: 90px; }
-.intel-champ-games { font-size: 11px; color: rgba(255,255,255,0.5); min-width: 26px; }
-.intel-wr-bar  { flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; max-width: 80px; overflow: hidden; }
+/* Side-by-side: champ pool left, draft pick right */
+.intel-body-left  { flex: 1 1 0; min-width: 0; }
+.intel-body-right { flex: 0 0 200px; min-width: 0; }
+
+/* ── Champion pool table ── */
+.intel-champ-table { width: 100%; border-collapse: collapse; }
+.intel-champ-thead th {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  padding: 0 0 5px;
+  text-align: left;
+}
+.intel-champ-thead .col-bar  { width: 80px; }
+.intel-champ-thead .col-wr   { text-align: right; width: 38px; }
+.intel-champ-thead .col-games{ width: 36px; }
+
+.intel-champ-tbody tr { height: 22px; }
+.intel-champ-tbody td { padding: 2px 0; vertical-align: middle; }
+.col-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; padding-right: 8px; }
+.col-games { font-size: 12px; color: rgba(255,255,255,0.55); padding-right: 8px; }
+.col-bar   { padding-right: 8px; }
+.col-wr    { font-size: 12px; font-weight: 800; text-align: right; }
+
+.intel-wr-bar  { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
 .intel-wr-fill { height: 100%; border-radius: 2px; }
-.intel-champ-wr { font-size: 11px; font-weight: 800; min-width: 32px; text-align: right; }
-.intel-no-data  { font-size: 11px; font-style: italic; color: rgba(255,255,255,0.35); }
+.intel-no-data { font-size: 11px; font-style: italic; color: rgba(255,255,255,0.35); }
 
+/* ── Draft pick panel ── */
 .intel-draft-section {
-  margin-top: 10px; padding: 8px 10px;
+  padding: 10px;
   background: rgba(31,250,255,0.05);
-  border: 1px solid rgba(31,250,255,0.2);
+  border: 1px solid rgba(31,250,255,0.18);
   border-radius: 2px;
+  height: fit-content;
 }
-.intel-draft-label { font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: rgba(31,250,255,0.6); margin-bottom: 4px; }
-.intel-draft-stats { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; letter-spacing: 0.04em; color: #fff; }
+.intel-draft-champ-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 17px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em;
+  color: #fff;
+  margin-bottom: 8px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid rgba(31,250,255,0.15);
+}
+.intel-draft-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+.intel-draft-stat-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(31,250,255,0.55);
+  margin-bottom: 2px;
+}
+.intel-draft-stat-value {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 18px; font-weight: 800; letter-spacing: 0.03em;
+  color: #fff; line-height: 1;
+}
+.intel-draft-no-data { font-size: 11px; font-style: italic; color: rgba(255,255,255,0.35); }
 
 /* Tier colours — border matches text colour via currentColor on .intel-tier */
 .it-IRON        { color: #a0a0a0; background: rgba(90,90,90,0.2);    }

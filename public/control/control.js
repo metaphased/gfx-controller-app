@@ -1731,27 +1731,34 @@ function _intelRankSummaryHtml(rank) {
 
 function _intelChampsHtml(pool) {
   if (!pool || !pool.length) return '<span class="intel-no-data">No champion data fetched</span>';
-  return pool.slice(0, 7).map(function(c) {
+  const rows = pool.slice(0, 7).map(function(c) {
     const wr = Math.round(c.wins / c.games * 100);
-    return '<div class="intel-champ-row">' +
-      '<span class="intel-champ-name">' + escHtml(c.name) + '</span>' +
-      '<span class="intel-champ-games">' + c.games + 'g</span>' +
-      '<div class="intel-wr-bar"><div class="intel-wr-fill" style="width:' + wr + '%;background:' + _intelWrColor(wr) + '"></div></div>' +
-      '<span class="intel-champ-wr ' + _intelWrClass(wr) + '">' + wr + '%</span>' +
-    '</div>';
+    return '<tr>' +
+      '<td class="col-name">' + escHtml(c.name) + '</td>' +
+      '<td class="col-games">' + c.games + '</td>' +
+      '<td class="col-bar"><div class="intel-wr-bar"><div class="intel-wr-fill" style="width:' + wr + '%;background:' + _intelWrColor(wr) + '"></div></div></td>' +
+      '<td class="col-wr ' + _intelWrClass(wr) + '">' + wr + '%</td>' +
+    '</tr>';
   }).join('');
+  return '<table class="intel-champ-table">' +
+    '<thead class="intel-champ-thead"><tr>' +
+      '<th>Champion</th><th class="col-games">Games</th><th class="col-bar">Win Rate</th><th class="col-wr">%</th>' +
+    '</tr></thead>' +
+    '<tbody class="intel-champ-tbody">' + rows + '</tbody>' +
+  '</table>';
 }
 
 function _intelDraftHtml(ds) {
-  if (!ds) return '';
+  if (!ds) return '<div class="intel-draft-section"><span class="intel-draft-no-data">No draft data</span></div>';
   const kda = ds.kda ? ds.kda.k + ' / ' + ds.kda.d + ' / ' + ds.kda.a : '—';
   return '<div class="intel-draft-section">' +
-    '<div class="intel-draft-label">Draft Pick — ' + escHtml(ds.champ) + '</div>' +
-    '<div class="intel-draft-stats">' +
-      escHtml(String(ds.games)) + 'G &nbsp;·&nbsp; ' +
-      escHtml(String(ds.winRate)) + '% WR &nbsp;·&nbsp; ' +
-      escHtml(kda) + ' KDA &nbsp;·&nbsp; ' +
-      escHtml(String(ds.cs)) + ' CS/g' +
+    '<div class="intel-section-label">Draft Pick</div>' +
+    '<div class="intel-draft-champ-name">' + escHtml(ds.champ) + '</div>' +
+    '<div class="intel-draft-stats-grid">' +
+      '<div><div class="intel-draft-stat-label">Win Rate</div><div class="intel-draft-stat-value ' + _intelWrClass(ds.winRate) + '">' + escHtml(String(ds.winRate)) + '%</div></div>' +
+      '<div><div class="intel-draft-stat-label">Games</div><div class="intel-draft-stat-value">' + escHtml(String(ds.games)) + '</div></div>' +
+      '<div><div class="intel-draft-stat-label">K / D / A</div><div class="intel-draft-stat-value">' + escHtml(kda) + '</div></div>' +
+      '<div><div class="intel-draft-stat-label">CS / Game</div><div class="intel-draft-stat-value">' + escHtml(String(ds.cs)) + '</div></div>' +
     '</div>' +
   '</div>';
 }
@@ -1759,6 +1766,7 @@ function _intelDraftHtml(ds) {
 function _intelPlayerCard(p, cardKey) {
   const isExpanded = !!_intelExpanded[cardKey];
   const riotId     = p.riotId ? escHtml(p.riotId) + ' &nbsp;·&nbsp; ' + escHtml((p.opggRegion || '').toUpperCase()) : '';
+  const hasDraft   = !!p.draftChampStats;
 
   const header = '<div class="intel-player-header">' +
     '<span class="intel-role">' + escHtml(p.role || '') + '</span>' +
@@ -1768,10 +1776,12 @@ function _intelPlayerCard(p, cardKey) {
   '</div>';
 
   const body = '<div class="intel-player-body">' +
-    (riotId ? '<div class="intel-riot-id">' + riotId + '</div>' : '') +
-    '<div class="intel-section-label">Champion Pool</div>' +
-    '<div class="intel-champs">' + _intelChampsHtml(p.champPool || null) + '</div>' +
-    (p.draftChampStats ? _intelDraftHtml(p.draftChampStats) : '') +
+    '<div class="intel-body-left">' +
+      (riotId ? '<div class="intel-riot-id">' + riotId + '</div>' : '') +
+      '<div class="intel-section-label">Champion Pool</div>' +
+      _intelChampsHtml(p.champPool || null) +
+    '</div>' +
+    (hasDraft ? '<div class="intel-body-right">' + _intelDraftHtml(p.draftChampStats) + '</div>' : '') +
   '</div>';
 
   return '<div class="intel-player-card' + (isExpanded ? ' expanded' : '') + '" data-intel-key="' + escHtml(cardKey) + '" onclick="toggleIntelPlayer(\'' + cardKey + '\')">' +
