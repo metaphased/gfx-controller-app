@@ -244,10 +244,48 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: var(--ps-timer-w);
   flex-shrink: 0;
   border-bottom: none;
-  border-right: 1px solid rgba(255,255,255,0.07);
+  border-right: none; /* replaced by ::before so it can be clip-path animated */
   padding: 0;
+  position: relative;
   /* Gradient fades right edge so it doesn't read as a heavy dark block */
   background: linear-gradient(to right, var(--ps-panel) 75%, rgba(7,15,18,0.55));
+}
+
+/* ── Animated vertical divider line ────────────────────────────────────────
+   Drawn as a ::before so clip-path can shorten it from the bottom as the
+   ticker rises, perfectly tracking the ticker's top edge.                   */
+#ps-root.layout-side .ps-timer-section::before {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 1px;
+  height: 100%;
+  background: rgba(255,255,255,0.07);
+  pointer-events: none;
+}
+
+/* Ticker on (settled) — line stops at the ticker boundary */
+#ps-root.layout-side.ps-ticker-on .ps-timer-section::before {
+  clip-path: inset(0 0 var(--ps-ticker-h) 0);
+}
+
+/* Ticker entering — shorten line from bottom, tracking the rising ticker edge */
+#ps-root.layout-side.ps-ticker-entering .ps-timer-section::before {
+  animation: ps-line-shorten 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Ticker leaving — extend line back down, tracking the descending ticker edge */
+#ps-root.layout-side.ps-ticker-leaving .ps-timer-section::before {
+  animation: ps-line-extend 1.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+}
+
+@keyframes ps-line-shorten {
+  from { clip-path: inset(0 0 0 0); }
+  to   { clip-path: inset(0 0 var(--ps-ticker-h) 0); }
+}
+@keyframes ps-line-extend {
+  from { clip-path: inset(0 0 var(--ps-ticker-h) 0); }
+  to   { clip-path: inset(0 0 0 0); }
 }
 
 #ps-root.layout-side .ps-timer {
