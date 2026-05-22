@@ -30,9 +30,9 @@ window.GfxSettings = (function () {
       st.bgFogIntensity != null ? String(st.bgFogIntensity) : '50',
     ].join('|');
     if (bgKey === _lastBgKey) return;
-    _lastBgKey = bgKey;
 
     stopBgAnimation();
+    _lastBgKey = bgKey;
     switch (st.bgType) {
       case 'color':
         el.style.background = st.bgColor || '#070f12';
@@ -132,7 +132,7 @@ window.GfxSettings = (function () {
 
   function _startBgAnimation(container, type, sp, bgImgUrl) {
     _canvas = document.createElement('canvas');
-    _canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0';
+    _canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;will-change:transform';
     container.style.position = container.style.position || 'relative';
     container.insertBefore(_canvas, container.firstChild);
     _ctx = _canvas.getContext('2d');
