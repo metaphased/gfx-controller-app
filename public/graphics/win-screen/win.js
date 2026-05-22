@@ -31,6 +31,8 @@ socket.on('state', state => {
 
   const root = document.getElementById('win-root');
   if (style !== _style) {
+    if (_style === 'split')     stopSplitParticles();
+    if (_style === 'spotlight') stopSpotParticles();
     root.classList.remove('style-' + _style);
     root.classList.add('style-' + style);
     _style = style;
@@ -98,7 +100,61 @@ function setWinColor(hex) {
   root.style.setProperty('--win-col-a30', `rgba(${r},${g},${b},0.3)`);
   root.style.setProperty('--win-col-a12', `rgba(${r},${g},${b},0.12)`);
   root.style.setProperty('--win-col-a06', `rgba(${r},${g},${b},0.06)`);
+  root.style.setProperty('--win-col-a00', `rgba(${r},${g},${b},0)`);
   _spotAccent = [r, g, b];
+}
+
+// ── Split right-panel particle drift ─────────────────────────────────────────
+let _splitCanvas = null, _splitCtx = null, _splitAnimId = null;
+
+function startSplitParticles() {
+  stopSplitParticles();
+  const canvas = document.getElementById('ws-split-canvas');
+  if (!canvas) return;
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+  _splitCanvas = canvas;
+  _splitCtx    = canvas.getContext('2d');
+
+  const [r, g, b] = _spotAccent;
+
+  const particles = Array.from({ length: 80 }, () => ({
+    x:            canvas.width  * (0.52 + Math.random() * 0.44),
+    y:            Math.random()  * canvas.height,
+    vx:           (Math.random() - 0.5) * 0.25,
+    vy:           -(0.25 + Math.random() * 0.5),
+    rad:          0.5 + Math.random() * 2.0,
+    baseAlpha:    0.1 + Math.random() * 0.28,
+    twinklePhase: Math.random() * Math.PI * 2,
+    twinkleSpeed: 0.012 + Math.random() * 0.02,
+  }));
+
+  function frame() {
+    if (!_splitCanvas) return;
+    _splitCtx.clearRect(0, 0, _splitCanvas.width, _splitCanvas.height);
+    particles.forEach(p => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.twinklePhase += p.twinkleSpeed;
+      if (p.y < -5) {
+        p.y = _splitCanvas.height + 5;
+        p.x = _splitCanvas.width * (0.52 + Math.random() * 0.44);
+      }
+      const tw = 0.5 + 0.5 * Math.sin(p.twinklePhase);
+      _splitCtx.beginPath();
+      _splitCtx.arc(p.x, p.y, p.rad, 0, Math.PI * 2);
+      _splitCtx.fillStyle = `rgba(${r},${g},${b},${p.baseAlpha * tw})`;
+      _splitCtx.fill();
+    });
+    _splitAnimId = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function stopSplitParticles() {
+  if (_splitAnimId) { cancelAnimationFrame(_splitAnimId); _splitAnimId = null; }
+  if (_splitCtx && _splitCanvas) _splitCtx.clearRect(0, 0, _splitCanvas.width, _splitCanvas.height);
+  _splitCanvas = null; _splitCtx = null;
 }
 
 // ── Spotlight sparkle particles ───────────────────────────────────────────────
@@ -164,24 +220,22 @@ function fitSplitName() {
   if (_style !== 'split') return;
   const nameEl = document.getElementById('ws-name');
   if (!nameEl) return;
-  const textEl = nameEl.parentElement;
-  if (!textEl) return;
 
   nameEl.style.fontSize = '';
-  const available = textEl.offsetWidth;
-  if (available === 0) return; // not visible yet — animateIn's rAF will handle it
+  // nameEl.offsetWidth is already the parent's inner content width —
+  // block children are laid out at parent's width minus padding automatically.
+  const available = nameEl.offsetWidth;
+  if (available <= 0) return; // not in layout tree yet
 
-  if (nameEl.scrollWidth <= available) return; // fits at default 7vh, nothing to do
+  if (nameEl.scrollWidth <= available) return;
 
-  const minPx = Math.max(30, window.innerHeight * 0.038); // ~4vh floor
+  const minPx = Math.max(30, window.innerHeight * 0.038);
   const currentPx = parseFloat(getComputedStyle(nameEl).fontSize);
 
-  // Jump to approximate size in one shot using the overflow ratio
   let targetPx = Math.max(minPx, Math.floor(currentPx * (available / nameEl.scrollWidth)));
   nameEl.style.fontSize = targetPx + 'px';
 
-  // Fine-tune by 1px steps in case reflow shifts the balance slightly
-  while (nameEl.scrollWidth > available && targetPx > minPx) {
+  while (nameEl.scrollWidth > nameEl.offsetWidth && targetPx > minPx) {
     targetPx -= 1;
     nameEl.style.fontSize = targetPx + 'px';
   }
@@ -194,7 +248,7 @@ function animateIn() {
   void root.offsetWidth;
   root.classList.add('is-entering');
   if (_style === 'spotlight') startSpotParticles();
-  if (_style === 'split') requestAnimationFrame(fitSplitName);
+  if (_style === 'split') { startSplitParticles(); requestAnimationFrame(fitSplitName); }
   const dur = (ANIM_MS[_style] || ANIM_MS.blade).in;
   setTimeout(() => {
     root.classList.remove('is-entering');
@@ -207,6 +261,7 @@ function animateOut() {
   root.classList.remove('is-entering', 'is-visible');
   root.classList.add('is-exiting');
   stopSpotParticles();
+  stopSplitParticles();
   const dur = (ANIM_MS[_style] || ANIM_MS.blade).out;
   _outTimer = setTimeout(() => {
     root.classList.remove('is-exiting');

@@ -324,13 +324,14 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 .ws-split-panel-l {
   position: absolute;
-  top: 0; bottom: 0; left: 0; width: 52%;
-  background: linear-gradient(to right,
+  top: 0; bottom: 0; left: 0; width: 60%;
+  background: radial-gradient(ellipse 100% 100% at 0% 50%,
     var(--win-color)     0%,
-    var(--win-col-a70)   12%,
-    var(--win-col-a30)   36%,
-    var(--win-col-a12)   58%,
-    transparent          100%
+    var(--win-col-a70)   18%,
+    var(--win-col-a30)   42%,
+    var(--win-col-a12)   64%,
+    var(--win-col-a06)   82%,
+    var(--win-col-a00)   100%
   );
   transform-origin: left center;
 }
@@ -349,18 +350,26 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .style-split .ws-card {
-  top: 50%; left: 5vw;
-  right: auto;
-  max-width: 43vw;
-  transform: translateY(-50%);
+  top: 0; left: 0; right: 0; bottom: 0;
+  gap: 0;
 }
 .style-split .ws-logo {
-  width: 20vh; height: 20vh;
-  flex-shrink: 0;
+  flex: 0 0 50%;
+  height: 40vh;
+  align-self: center;
   filter: drop-shadow(0 0 3vw var(--win-col-a70));
 }
-.style-split .ws-text { min-width: 0; }
-.style-split .ws-name { white-space: nowrap; line-height: 0.9; }
+.style-split .ws-text {
+  flex: 0 0 50%;
+  min-width: 0;
+  padding: 0 4vw 0 5vw;
+}
+.style-split .ws-name {
+  font-size: 9vh;
+  white-space: nowrap;
+  line-height: 0.9;
+  text-shadow: 0 0 0.25vw var(--win-color);
+}
 
 /* ── Split animations ──────────────────────────────────────── */
 @keyframes ws-split-overlay-in  { from { opacity: 0; } to { opacity: 1; } }
@@ -369,7 +378,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 @keyframes ws-split-panel-out   { from { transform: scaleX(1); } to { transform: scaleX(0); } }
 @keyframes ws-split-divider-in  { from { opacity: 0; transform: scaleY(0.04); } to { opacity: 1; transform: scaleY(1); } }
 @keyframes ws-split-divider-out { from { opacity: 1; } to { opacity: 0; } }
-@keyframes ws-split-card-in     { from { opacity: 0; transform: translateY(calc(-50% + 2.5vh)); } to { opacity: 1; transform: translateY(-50%); } }
+@keyframes ws-split-card-in     { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ws-split-card-out    { from { opacity: 1; } to { opacity: 0; } }
 
 .style-split.is-entering .ws-split-overlay { animation: ws-split-overlay-in  0.22s ease both; }
@@ -380,6 +389,24 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .style-split.is-exiting  .ws-split-panel-l { animation: ws-split-panel-out   0.5s  cubic-bezier(0.7,0,1,0.4) 0.1s both; transform-origin: left center; }
 .style-split.is-exiting  .ws-split-divider { animation: ws-split-divider-out 0.28s ease both; }
 .style-split.is-exiting  .ws-split-overlay { animation: ws-split-overlay-out 0.4s  ease 0.35s both; }
+
+/* Divider line breathes slowly once the entry animation has settled */
+.style-split.is-visible .ws-split-divider {
+  animation: ws-split-divider-pulse 3.5s ease-in-out infinite;
+}
+@keyframes ws-split-divider-pulse {
+  0%, 100% { opacity: 1;    box-shadow: 0 0 22px var(--win-col-a70), 0 0 55px var(--win-col-a30); }
+  50%       { opacity: 0.35; box-shadow: 0 0 6px  var(--win-col-a30), 0 0 14px var(--win-col-a12); }
+}
+
+/* Right-panel particle canvas */
+.ws-split-particles {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  pointer-events: none;
+  display: none;
+}
+.style-split .ws-split-particles { display: block; }
 
 .style-split .ws-blade-bg, .style-split .ws-blade-line,
 .style-split .ws-burst-bg, .style-split .ws-burst-flash, .style-split .ws-burst-ring,
