@@ -1750,17 +1750,22 @@ function _intelChampsHtml(pool) {
   '</table>';
 }
 
+function _intelDraftKv(label, value, cls) {
+  return '<div><div class="intel-draft-kv-label">' + label + '</div>' +
+    '<div class="intel-draft-kv-value' + (cls ? ' ' + cls : '') + '">' + value + '</div></div>';
+}
+
 function _intelDraftHtml(ds) {
   if (!ds) return '<div class="intel-draft-section"><span class="intel-draft-no-data">No draft data</span></div>';
-  const kda = ds.kda ? ds.kda.k + '/' + ds.kda.d + '/' + ds.kda.a : '—';
+  const kda = ds.kda ? escHtml(ds.kda.k) + '/' + escHtml(ds.kda.d) + '/' + escHtml(ds.kda.a) : '—';
   return '<div class="intel-draft-section">' +
     '<div class="intel-section-label">Draft Pick</div>' +
     '<div class="intel-draft-champ-name">' + escHtml(ds.champ) + '</div>' +
-    '<div class="intel-draft-stats-grid">' +
-      '<div><div class="intel-draft-stat-label">Win Rate</div><div class="intel-draft-stat-value ' + _intelWrClass(ds.winRate) + '">' + escHtml(String(ds.winRate)) + '%</div></div>' +
-      '<div><div class="intel-draft-stat-label">Games</div><div class="intel-draft-stat-value">' + escHtml(String(ds.games)) + '</div></div>' +
-      '<div><div class="intel-draft-stat-label">K / D / A</div><div class="intel-draft-stat-value">' + escHtml(kda) + '</div></div>' +
-      '<div><div class="intel-draft-stat-label">CS / Game</div><div class="intel-draft-stat-value">' + escHtml(String(ds.cs)) + '</div></div>' +
+    '<div class="intel-draft-kv-list">' +
+      _intelDraftKv('Win Rate',  escHtml(String(ds.winRate)) + '%', _intelWrClass(ds.winRate)) +
+      _intelDraftKv('K / D / A', kda) +
+      _intelDraftKv('Games',     escHtml(String(ds.games))) +
+      _intelDraftKv('CS / Game', escHtml(String(ds.cs))) +
     '</div>' +
   '</div>';
 }
