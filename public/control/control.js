@@ -2378,10 +2378,6 @@ function syncLiveBar(s) {
     gameCtx.textContent = 'GAME ' + (m.currentGameNum || 1) + ' OF ' + formatNum + ' · ' + t1label + ' VS ' + t2label;
   }
 
-  // Game number counter in expanded row
-  const gameNumEl = g('lbar-game-num');
-  if (gameNumEl) gameNumEl.textContent = m.currentGameNum || 1;
-
   // Win team quick-set buttons — show team tags, highlight active
   const wt = s.winScreen && s.winScreen.team;
   const wt1btn = g('lbar-win-t1'), wt2btn = g('lbar-win-t2');
@@ -2411,15 +2407,6 @@ function syncLiveBar(s) {
 function lbarToggleExpand() {
   const bar = g('live-bar');
   if (bar) bar.classList.toggle('expanded');
-}
-
-function lbarStepGame(delta) {
-  const m = window._state && window._state.match;
-  if (!m) return;
-  const formatNum = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
-  const current   = m.currentGameNum || 1;
-  const next      = Math.max(1, Math.min(formatNum, current + delta));
-  api('/api/match', { currentGameNum: next });
 }
 
 function lbarSetWinTeam(team) {

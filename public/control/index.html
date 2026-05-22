@@ -1801,14 +1801,6 @@
   <!-- Row 2: Expanded controls — hidden until ▲ toggled -->
   <div class="lbar-row lbar-row-2" id="lbar-row-2">
 
-    <!-- Game counter -->
-    <span class="lbar-row2-label">GAME</span>
-    <button class="lbar-timer-btn" onclick="lbarStepGame(-1)">◀</button>
-    <span class="lbar-row2-val" id="lbar-game-num">1</span>
-    <button class="lbar-timer-btn" onclick="lbarStepGame(1)">▶</button>
-
-    <div class="lbar-divider"></div>
-
     <!-- Win team quick-set -->
     <span class="lbar-row2-label">WIN</span>
     <button class="lbar-timer-btn lbar-win-t1-btn" id="lbar-win-t1" onclick="lbarSetWinTeam('team1')">—</button>
@@ -1823,6 +1815,7 @@
     <input type="number" id="lbar-break-sec" class="lbar-num lbar-num-sm" placeholder="s" min="0" max="59">
     <button class="lbar-timer-btn" onclick="lbarStartTimer()">▶ START</button>
     <button class="lbar-timer-btn" onclick="extendBreakTimer(5)">+5m</button>
+    <button class="lbar-timer-btn" onclick="extendBreakTimer(10)">+10m</button>
     <button class="lbar-timer-btn lbar-timer-clear" onclick="clearBreakTimer()">✕ CLEAR</button>
     <span class="lbar-break-countdown" id="lbar-break-countdown"></span>
 
