@@ -775,18 +775,20 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   font-size: 16px; font-weight: 300; color: rgba(255,255,255,0.4); line-height: 1;
 }
 
-/* Timer inputs */
+/* Timer inputs — flex: 0 0 auto prevents stretching in flex row */
 .lbar-num {
-  width: 32px; height: 26px;
+  flex: 0 0 auto;
+  width: 28px; max-width: 28px; min-width: 0;
+  height: 24px;
   background: var(--bg3);
   border: 1px solid rgba(255,255,255,0.2);
   color: #fff;
-  font-size: 13px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
-  padding: 0 2px; text-align: center; outline: none;
+  font-size: 12px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  padding: 0; text-align: center; outline: none;
   box-sizing: border-box;
   -moz-appearance: textfield; appearance: textfield;
 }
-.lbar-num-sm { width: 22px; }
+.lbar-num-sm { width: 24px; max-width: 24px; }
 .lbar-num::-webkit-outer-spin-button,
 .lbar-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .lbar-num:focus { border-color: rgba(255,255,255,0.6); }
