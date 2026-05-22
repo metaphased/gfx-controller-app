@@ -786,9 +786,20 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   box-sizing: border-box;
   -moz-appearance: textfield; appearance: textfield;
 }
+.lbar-num-sm { width: 26px; }
 .lbar-num::-webkit-outer-spin-button,
 .lbar-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .lbar-num:focus { border-color: rgba(255,255,255,0.6); }
+
+/* Row 2 extras */
+.lbar-row2-val {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 18px; font-weight: 800; color: #fff;
+  min-width: 24px; text-align: center; line-height: 1;
+}
+.lbar-win-t1-btn.is-active, .lbar-win-t2-btn.is-active {
+  background: rgba(220,40,40,0.2); border-color: #e03030; color: #ff5555;
+}
 
 /* Live countdown display */
 .lbar-break-countdown {

@@ -42,10 +42,6 @@
     <div class="nav-section-label">GRAPHICS</div>
     <a class="nav-item" data-tab="theme">⬡ Broadcast Theme</a>
     <a class="nav-item" data-tab="bgoutput">⬡ BG Output</a>
-    <a class="nav-item" data-tab="scoreboard">
-      <span id="nav-dot-scoreboard" class="nav-status-dot"></span>
-      Scoreboard
-    </a>
     <a class="nav-item" data-tab="lowerthird">
       <span id="nav-dot-lowerthird" class="nav-status-dot"></span>
       Lower Third
@@ -598,26 +594,6 @@
     <!-- ══════════════════════════════════════════════════════════════════════
          SCOREBOARD
     ══════════════════════════════════════════════════════════════════════════ -->
-    <section class="tab" id="tab-scoreboard">
-      <div class="tab-header"><h1>Scoreboard</h1></div>
-      <div class="card" style="max-width:540px">
-        <div class="gfx-toggle-row">
-          <span>Scoreboard Visible</span>
-          <button id="showbtn-scoreboard" class="btn btn-primary" onclick="showGraphic('scoreboard')">SHOW</button>
-          <button id="hidebtn-scoreboard" class="btn btn-danger" onclick="hideGraphic('scoreboard')">HIDE</button>
-        </div>
-        <div class="live-score-panel">
-          <div class="ls-team"><span class="ls-name" id="ls-t1-name">Team 1</span>
-            <div class="score-btns"><button class="btn btn-icon" onclick="patchScore('team1',-1)">−</button><span class="score-val large" id="ls-t1-score">0</span><button class="btn btn-icon btn-primary" onclick="patchScore('team1',1)">+</button></div>
-          </div>
-          <div class="ls-sep">:</div>
-          <div class="ls-team"><span class="ls-name" id="ls-t2-name">Team 2</span>
-            <div class="score-btns"><button class="btn btn-icon" onclick="patchScore('team2',-1)">−</button><span class="score-val large" id="ls-t2-score">0</span><button class="btn btn-icon btn-primary" onclick="patchScore('team2',1)">+</button></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- ══════════════════════════════════════════════════════════════════════
          LOWER THIRD
     ══════════════════════════════════════════════════════════════════════════ -->
@@ -1822,19 +1798,34 @@
 <!-- ── Live Control Bar ─────────────────────────────────────────────────────── -->
 <div id="live-bar">
 
-  <!-- Row 2: Expanded controls (score + break timer) — hidden until toggled -->
+  <!-- Row 2: Expanded controls — hidden until ▲ toggled -->
   <div class="lbar-row lbar-row-2" id="lbar-row-2">
-    <span class="lbar-row2-label">SCORE</span>
-    <div id="lbar-score-wrap" class="lbar-score-wrap"></div>
+
+    <!-- Game counter -->
+    <span class="lbar-row2-label">GAME</span>
+    <button class="lbar-timer-btn" onclick="lbarStepGame(-1)">◀</button>
+    <span class="lbar-row2-val" id="lbar-game-num">1</span>
+    <button class="lbar-timer-btn" onclick="lbarStepGame(1)">▶</button>
+
     <div class="lbar-divider"></div>
+
+    <!-- Win team quick-set -->
+    <span class="lbar-row2-label">WIN</span>
+    <button class="lbar-timer-btn lbar-win-t1-btn" id="lbar-win-t1" onclick="lbarSetWinTeam('team1')">—</button>
+    <button class="lbar-timer-btn lbar-win-t2-btn" id="lbar-win-t2" onclick="lbarSetWinTeam('team2')">—</button>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Break timer -->
     <span class="lbar-row2-label">BREAK TIMER</span>
-    <input type="number" id="lbar-break-min" class="lbar-num" placeholder="m" min="0" max="99">
+    <input type="number" id="lbar-break-min" class="lbar-num lbar-num-sm" placeholder="m" min="0" max="99">
     <span class="lbar-sep-colon">:</span>
-    <input type="number" id="lbar-break-sec" class="lbar-num" placeholder="s" min="0" max="59">
-    <button class="lbar-timer-btn" onclick="lbarStartTimer()" title="Start / adjust countdown">▶ START</button>
-    <button class="lbar-timer-btn" onclick="extendBreakTimer(5)" title="Add 5 minutes">+5m</button>
-    <button class="lbar-timer-btn lbar-timer-clear" onclick="clearBreakTimer()" title="Clear timer">✕ CLEAR</button>
+    <input type="number" id="lbar-break-sec" class="lbar-num lbar-num-sm" placeholder="s" min="0" max="59">
+    <button class="lbar-timer-btn" onclick="lbarStartTimer()">▶ START</button>
+    <button class="lbar-timer-btn" onclick="extendBreakTimer(5)">+5m</button>
+    <button class="lbar-timer-btn lbar-timer-clear" onclick="clearBreakTimer()">✕ CLEAR</button>
     <span class="lbar-break-countdown" id="lbar-break-countdown"></span>
+
   </div>
 
   <!-- Row 1: Graphic toggles (always visible) -->
@@ -1844,9 +1835,6 @@
     <div class="lbar-divider"></div>
 
     <!-- Game graphics -->
-    <div class="lbar-group" id="lbar-group-scoreboard">
-      <button class="lbar-toggle" id="lbar-toggle-scoreboard" onclick="toggleGraphic('scoreboard')"><span class="lbar-dot" id="lbar-dot-scoreboard"></span>SCORE</button>
-    </div>
     <div class="lbar-group" id="lbar-group-lowerThird">
       <button class="lbar-toggle" id="lbar-toggle-lowerThird" onclick="toggleGraphic('lowerThird')"><span class="lbar-dot" id="lbar-dot-lowerThird"></span>LOWER 3RD</button>
     </div>
@@ -1876,9 +1864,6 @@
     <div class="lbar-divider"></div>
 
     <!-- Show flow -->
-    <div class="lbar-group" id="lbar-group-preShow">
-      <button class="lbar-toggle" id="lbar-toggle-preShow" onclick="lbarTogglePreShow()"><span class="lbar-dot" id="lbar-dot-preShow"></span>PRE-SHOW</button>
-    </div>
     <div class="lbar-group" id="lbar-group-breakScreen">
       <button class="lbar-toggle" id="lbar-toggle-breakScreen" onclick="toggleGraphic('breakScreen')"><span class="lbar-dot" id="lbar-dot-breakScreen"></span>BREAK</button>
       <button class="lbar-toggle lbar-pip-toggle" id="lbar-pip-btn" onclick="lbarTogglePip()" title="Toggle PIP mode">PIP</button>

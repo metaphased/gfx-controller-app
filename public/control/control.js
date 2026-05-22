@@ -2378,21 +2378,15 @@ function syncLiveBar(s) {
     gameCtx.textContent = 'GAME ' + (m.currentGameNum || 1) + ' OF ' + formatNum + ' · ' + t1label + ' VS ' + t2label;
   }
 
-  // Score controls in expanded row 2
-  const scoreWrap = g('lbar-score-wrap');
-  if (scoreWrap) {
-    const s1 = t1.score || 0, s2 = t2.score || 0;
-    scoreWrap.innerHTML =
-      '<span class="lbar-row2-label" style="color:' + escHtml(t1.color||'#fff') + '">' + escHtml(t1label) + '</span>' +
-      '<button class="lbar-score-btn" onclick="patchScore(\'team1\',-1)">−</button>' +
-      '<span class="lbar-score-val">' + s1 + '</span>' +
-      '<button class="lbar-score-btn lbar-score-add" onclick="patchScore(\'team1\',1)">+</button>' +
-      '<span style="padding:0 10px;color:rgba(255,255,255,0.25);font-family:\'Barlow Condensed\';font-size:18px">:</span>' +
-      '<button class="lbar-score-btn" onclick="patchScore(\'team2\',-1)">−</button>' +
-      '<span class="lbar-score-val">' + s2 + '</span>' +
-      '<button class="lbar-score-btn lbar-score-add" onclick="patchScore(\'team2\',1)">+</button>' +
-      '<span class="lbar-row2-label" style="color:' + escHtml(t2.color||'#fff') + ';margin-left:4px">' + escHtml(t2label) + '</span>';
-  }
+  // Game number counter in expanded row
+  const gameNumEl = g('lbar-game-num');
+  if (gameNumEl) gameNumEl.textContent = m.currentGameNum || 1;
+
+  // Win team quick-set buttons — show team tags, highlight active
+  const wt = s.winScreen && s.winScreen.team;
+  const wt1btn = g('lbar-win-t1'), wt2btn = g('lbar-win-t2');
+  if (wt1btn) { wt1btn.textContent = t1label; wt1btn.classList.toggle('is-active', wt === 'team1'); }
+  if (wt2btn) { wt2btn.textContent = t2label; wt2btn.classList.toggle('is-active', wt === 'team2'); }
 
   // PIP toggle — text changes + red when active
   const pipBtn = g('lbar-pip-btn');
@@ -2402,16 +2396,7 @@ function syncLiveBar(s) {
     pipBtn.textContent = pipActive ? '● PIP' : 'PIP';
   }
 
-  // Pre-show state (not in GRAPHIC_MAP)
-  const psActive = !!(s.preShow && s.preShow.visible);
-  const psBtn   = g('lbar-toggle-preShow');
-  const psDot   = g('lbar-dot-preShow');
-  const psGroup = g('lbar-group-preShow');
-  if (psBtn)   psBtn.className = 'lbar-toggle' + (psActive ? ' is-on' : '');
-  if (psDot)   psDot.classList.toggle('active', psActive);
-  if (psGroup) psGroup.classList.toggle('lbar-group-active', psActive);
-
-  // All other graphic toggles
+  // All graphic toggles (scoreboard removed from GRAPHIC_MAP is fine — elements won't exist)
   GRAPHIC_MAP.forEach(function(gfx) {
     const active  = s[gfx.key] && s[gfx.key].visible;
     const group   = g('lbar-group-'  + gfx.key);
@@ -2428,9 +2413,17 @@ function lbarToggleExpand() {
   if (bar) bar.classList.toggle('expanded');
 }
 
-function lbarTogglePreShow() {
-  const active = !!(window._state && window._state.preShow && window._state.preShow.visible);
-  api('/api/preShow', { visible: !active });
+function lbarStepGame(delta) {
+  const m = window._state && window._state.match;
+  if (!m) return;
+  const formatNum = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
+  const current   = m.currentGameNum || 1;
+  const next      = Math.max(1, Math.min(formatNum, current + delta));
+  api('/api/match', { currentGameNum: next });
+}
+
+function lbarSetWinTeam(team) {
+  api('/api/winScreen', { team });
 }
 
 function toggleGraphic(key) {
