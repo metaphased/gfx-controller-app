@@ -468,6 +468,21 @@ select option { background: var(--bg3); }
   border-bottom: 1px solid var(--border);
 }
 .player-row-edit:last-child { border-bottom: none; }
+.opgg-link {
+  display: inline-block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  border: 1px solid var(--primary);
+  border-radius: 2px;
+  color: var(--primary);
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity 0.15s;
+}
+.opgg-link:hover { opacity: 1; }
 .player-num {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 11px;

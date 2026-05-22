@@ -6,6 +6,7 @@ let bracketRounds = [];
 let bracketType   = 'single';
 const _pickerContainers = {};
 const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const OPGG_REGIONS  = ['kr','euw','na','eune','jp','oce','br','las','lan','ru','tr'];
 
 // ── Profile dirty tracking ─────────────────────────────────────────────────────
 // Produces a consistent JSON string regardless of object key insertion order.
@@ -1533,7 +1534,9 @@ function renderPlayerEditors(players) {
       html += list.map(function(p, i) {
         return '<div class="player-row-edit">' +
           '<div><div class="player-num">'+DEFAULT_ROLES[i]+'</div>' +
-            '<input type="text" data-team="'+team+'" data-index="'+i+'" data-field="handle" placeholder="Handle / IGN"></div>' +
+            '<input type="text" data-team="'+team+'" data-index="'+i+'" data-field="handle" placeholder="Handle / IGN">' +
+            '<a class="opgg-link" data-team="'+team+'" data-index="'+i+'" href="#" target="_blank" rel="noopener" style="display:none">op.gg ↗</a>' +
+          '</div>' +
           '<div><div class="player-num">Role</div>' +
             '<input type="text" data-team="'+team+'" data-index="'+i+'" data-field="role" placeholder="Role"></div>' +
           '<div><div class="player-num">Swap Sub</div>' +
@@ -1595,6 +1598,14 @@ function renderPlayerEditors(players) {
         const p = list[inp.dataset.index];
         if (p) inp.value = p[inp.dataset.field] || '';
       }
+    });
+
+    // Update op.gg profile links
+    container.querySelectorAll('.opgg-link').forEach(function(link) {
+      const p = list[parseInt(link.dataset.index)];
+      const url = p ? opggUrl(p.opggRegion, p.riotId) : '';
+      if (url) { link.href = url; link.style.display = ''; }
+      else      { link.href = '#'; link.style.display = 'none'; }
     });
 
     // Refresh swap dropdown options with current sub names
@@ -1788,6 +1799,21 @@ function updateEditLogoPreview(url) {
   p.innerHTML=url?'<img src="'+url+'" style="max-width:100%;max-height:100%;object-fit:contain">':'<span style="color:var(--text-dim);font-size:12px">Logo preview</span>';
 }
 
+function opggUrl(region, riotId) {
+  if (!region || !riotId) return '';
+  const parts = riotId.split('#');
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return '';
+  return 'https://www.op.gg/summoners/' + region + '/' + encodeURIComponent(parts[0]) + '-' + encodeURIComponent(parts[1]);
+}
+function opggRegionSelect(cls, dataAttr, selected) {
+  return '<select class="' + cls + '" ' + dataAttr + '>' +
+    '<option value="">Region</option>' +
+    OPGG_REGIONS.map(function(r) {
+      return '<option value="' + r + '"' + (r === selected ? ' selected' : '') + '>' + r.toUpperCase() + '</option>';
+    }).join('') +
+  '</select>';
+}
+
 function renderEditPlayers(players, subs) {
   const container=g('edit-team-players'); if(!container)return;
 
@@ -1798,6 +1824,12 @@ function renderEditPlayers(players, subs) {
     return '<div class="player-row-edit">'+
       '<div><div class="player-num">'+role+'</div><input type="text" class="ep-handle" data-index="'+i+'" placeholder="Handle / IGN" value="'+esc(p.handle||'')+'"></div>'+
       '<div><div class="player-num">Role</div><input type="text" class="ep-role" data-index="'+i+'" value="'+esc(p.role||role)+'" placeholder="'+role+'"></div>'+
+      '<div><div class="player-num">OP.GG</div>'+
+        '<div style="display:flex;gap:4px">'+
+          opggRegionSelect('ep-opgg-region','data-index="'+i+'"',p.opggRegion||'')+
+          '<input type="text" class="ep-riot-id" data-index="'+i+'" placeholder="Name#TAG" value="'+esc(p.riotId||'')+'" style="flex:1;min-width:0">'+
+        '</div>'+
+      '</div>'+
       '</div>';
   }).join('');
 
@@ -1818,10 +1850,13 @@ async function saveTeamEditor() {
   const name=(g('edit-team-name').value||'').trim();
   if (!name){alert('Team name is required.');return;}
   const players=DEFAULT_ROLES.map(function(_,i){
+    const c=g('edit-team-players');
     return {
-      handle:(g('edit-team-players').querySelector('.ep-handle[data-index="'+i+'"]')||{}).value||'',
-      name:'',
-      role:  (g('edit-team-players').querySelector('.ep-role[data-index="'+i+'"]')  ||{}).value||DEFAULT_ROLES[i],
+      handle:     (c.querySelector('.ep-handle[data-index="'+i+'"]')      ||{}).value||'',
+      name:       '',
+      role:       (c.querySelector('.ep-role[data-index="'+i+'"]')        ||{}).value||DEFAULT_ROLES[i],
+      opggRegion: (c.querySelector('.ep-opgg-region[data-index="'+i+'"]') ||{}).value||'',
+      riotId:     (c.querySelector('.ep-riot-id[data-index="'+i+'"]')     ||{}).value||'',
     };
   });
   const subs=[0,1,2].map(function(i){
