@@ -292,6 +292,7 @@ function syncUI(s) {
 
   renderSponsors(m.sponsorLogos || []);
   renderPlayerEditors(p);
+  renderIntelPanel(s);
   renderLTQuickGrid(p, m);
   renderDraftTab(s.draft, s);
   syncGraphicIndicators(s);
@@ -1702,52 +1703,166 @@ function renderPlayerEditors(players) {
 
 function updatePlayer(team, index, field, value) { api('/api/players', { team, index, data: { [field]: value } }); }
 
+// ── Match Intel Panel ──────────────────────────────────────────────────────────
+var _intelExpanded = {}; // key → true, persists across rebuilds
+
+function _intelWrClass(pct)  { return pct >= 60 ? 'it-wr-high' : pct >= 50 ? 'it-wr-mid' : 'it-wr-low'; }
+function _intelWrColor(pct)  { return pct >= 60 ? '#4dcc90'    : pct >= 50 ? '#f0cc44'    : '#f07070';   }
+
+function toggleIntelPlayer(key) {
+  var card = document.querySelector('[data-intel-key="' + key + '"]');
+  if (!card) return;
+  var isExpanded = card.classList.toggle('expanded');
+  _intelExpanded[key] = isExpanded;
+}
+
+function _intelRankSummaryHtml(rank) {
+  if (!rank || !rank.tier) return '<span class="intel-no-rank">Unranked</span>';
+  const tier   = rank.tier;
+  const noDiv  = tier === 'MASTER' || tier === 'GRANDMASTER' || tier === 'CHALLENGER';
+  const divStr = (!noDiv && rank.division && rank.division !== 'I') ? ' ' + rank.division : '';
+  const total  = (rank.wins || 0) + (rank.losses || 0);
+  const wr     = total ? Math.round(rank.wins / total * 100) : 0;
+  return '<span class="intel-tier it-' + escHtml(tier) + '">' + escHtml(tier) + escHtml(divStr) + '</span>' +
+         '<span class="intel-lp">' + (rank.lp || 0) + ' LP</span>' +
+         '<span class="intel-record">' + (rank.wins || 0) + 'W&nbsp;/&nbsp;' + (rank.losses || 0) + 'L</span>' +
+         '<span class="intel-wr ' + _intelWrClass(wr) + '">' + wr + '%</span>';
+}
+
+function _intelChampsHtml(pool) {
+  if (!pool || !pool.length) return '<span class="intel-no-data">No champion data fetched</span>';
+  const rows = pool.slice(0, 7).map(function(c) {
+    const wr = Math.round(c.wins / c.games * 100);
+    return '<tr>' +
+      '<td class="col-name">' + escHtml(c.name) + '</td>' +
+      '<td class="col-games">' + c.games + '</td>' +
+      '<td class="col-bar"><div class="intel-wr-bar"><div class="intel-wr-fill" style="width:' + wr + '%;background:' + _intelWrColor(wr) + '"></div></div></td>' +
+      '<td class="col-wr ' + _intelWrClass(wr) + '">' + wr + '%</td>' +
+    '</tr>';
+  }).join('');
+  return '<table class="intel-champ-table">' +
+    '<thead class="intel-champ-thead"><tr>' +
+      '<th class="col-name icht-left">Champion Pool</th>' +
+      '<th class="col-games icht-center">Games</th>' +
+      '<th class="col-bar icht-center" colspan="2">Win Rate</th>' +
+    '</tr></thead>' +
+    '<tbody class="intel-champ-tbody">' + rows + '</tbody>' +
+  '</table>';
+}
+
+function _intelDraftKv(label, value, cls) {
+  return '<div><div class="intel-draft-kv-label">' + label + '</div>' +
+    '<div class="intel-draft-kv-value' + (cls ? ' ' + cls : '') + '">' + value + '</div></div>';
+}
+
+function _intelDraftHtml(ds) {
+  if (!ds) return '<div class="intel-draft-section"><span class="intel-draft-no-data">No draft data</span></div>';
+  const kda = ds.kda ? escHtml(ds.kda.k) + '/' + escHtml(ds.kda.d) + '/' + escHtml(ds.kda.a) : '—';
+  return '<div class="intel-draft-section">' +
+    '<div class="intel-section-label">Draft Pick</div>' +
+    '<div class="intel-draft-champ-name">' + escHtml(ds.champ) + '</div>' +
+    '<div class="intel-draft-kv-list">' +
+      _intelDraftKv('Win Rate',  escHtml(String(ds.winRate)) + '%', _intelWrClass(ds.winRate)) +
+      _intelDraftKv('K / D / A', kda) +
+      _intelDraftKv('Games',     escHtml(String(ds.games))) +
+      _intelDraftKv('CS / Game', escHtml(String(ds.cs))) +
+    '</div>' +
+  '</div>';
+}
+
+function _intelPlayerCard(p, cardKey) {
+  const isExpanded = !!_intelExpanded[cardKey];
+  const riotId     = p.riotId ? escHtml(p.riotId) + ' &nbsp;·&nbsp; ' + escHtml((p.opggRegion || '').toUpperCase()) : '';
+  const hasDraft   = !!p.draftChampStats;
+
+  const header = '<div class="intel-player-header">' +
+    '<span class="intel-role">' + escHtml(p.role || '') + '</span>' +
+    '<span class="intel-handle">' + escHtml(p.handle || '—') + '</span>' +
+    '<div class="intel-rank-summary">' + _intelRankSummaryHtml(p.rank || null) + '</div>' +
+    '<span class="intel-toggle">▼</span>' +
+  '</div>';
+
+  const body = '<div class="intel-player-body">' +
+    '<div class="intel-body-left">' +
+      (riotId ? '<div class="intel-riot-id">' + riotId + '</div>' : '') +
+      _intelChampsHtml(p.champPool || null) +
+    '</div>' +
+    (hasDraft ? '<div class="intel-body-right">' + _intelDraftHtml(p.draftChampStats) + '</div>' : '') +
+  '</div>';
+
+  return '<div class="intel-player-card' + (isExpanded ? ' expanded' : '') + '" data-intel-key="' + escHtml(cardKey) + '" onclick="toggleIntelPlayer(\'' + cardKey + '\')">' +
+    header + body +
+  '</div>';
+}
+
+function _intelTeamCol(team, players, teamKey) {
+  const logoHtml = team.logo ? '<img class="intel-team-logo" src="' + escHtml(team.logo) + '" alt="">' : '<div class="intel-team-logo"></div>';
+  const border   = escHtml(team.color || '#1ffaff');
+  const cards    = (players || []).map(function(p, i) { return _intelPlayerCard(p, teamKey + '_' + i); }).join('');
+  return '<div class="intel-team-col">' +
+    '<div class="intel-team-header" style="border-left:3px solid ' + border + '">' +
+      logoHtml +
+      '<div><div class="intel-team-name">' + escHtml(team.name || 'Team') + '</div>' +
+           '<div class="intel-team-tag">' + escHtml(team.tag || '') + '</div></div>' +
+    '</div>' +
+    cards +
+  '</div>';
+}
+
+function renderIntelPanel(state) {
+  const grid = g('intel-grid');
+  if (!grid) return;
+  const match   = state.match   || {};
+  const players = state.players || {};
+  const makeKey = function(pl) {
+    return (pl || []).map(function(p) {
+      return (p.handle || '') + '|' + ((p.rank && p.rank.tier) || '') + '|' + ((p.rank && p.rank.lp) || '') + '|' + ((p.champPool || []).length) + '|' + (p.draftChampStats ? p.draftChampStats.champ : '');
+    }).join(';');
+  };
+  const key = ((match.team1 && match.team1.name) || '') + '|' + ((match.team2 && match.team2.name) || '') + '||' + makeKey(players.team1) + '|' + makeKey(players.team2);
+  if (grid.dataset.key === key) return;
+  grid.dataset.key = key;
+  grid.innerHTML = _intelTeamCol(match.team1 || {}, players.team1 || [], 'team1') + _intelTeamCol(match.team2 || {}, players.team2 || [], 'team2');
+}
+
 async function refreshChampPool() {
-  const btn = document.querySelector('[onclick="refreshChampPool()"]');
-  const status = g('ranks-status');
-  if (btn) { btn.disabled = true; btn.textContent = '↻ Fetching…'; }
-  if (status) status.textContent = 'Contacting op.gg…';
+  const btns = Array.from(document.querySelectorAll('[onclick="refreshChampPool()"]'));
+  const statEls = [g('ranks-status'), g('intel-status')].filter(Boolean);
+  btns.forEach(function(b) { b._origText = b.textContent; b.disabled = true; b.textContent = '↻ Fetching…'; });
+  statEls.forEach(function(el) { el.textContent = 'Contacting op.gg…'; });
   try {
     const r = await fetch('/api/champpool/refresh', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     });
-    if (!r.ok) { if (status) status.textContent = 'Server error ' + r.status + ' — try restarting the server.'; return; }
+    if (!r.ok) { statEls.forEach(function(el) { el.textContent = 'Server error ' + r.status + ' — try restarting the server.'; }); return; }
     const res = await r.json();
-    if (res && res.ok) {
-      const msg = res.updated.length
-        ? '✓ Champ pools updated: ' + res.updated.join(', ') + (res.errors.length ? ' — Errors: ' + res.errors.join(', ') : '')
-        : (res.errors.length ? 'Errors: ' + res.errors.join(', ') : 'No players with Riot ID found.');
-      if (status) status.textContent = msg;
-    } else {
-      if (status) status.textContent = 'Error: ' + ((res && res.error) || JSON.stringify(res));
-    }
+    const msg = (res && res.ok)
+      ? (res.updated.length ? '✓ Champ pools: ' + res.updated.join(', ') + (res.errors.length ? ' — Errors: ' + res.errors.join(', ') : '') : (res.errors.length ? 'Errors: ' + res.errors.join(', ') : 'No players with Riot ID found.'))
+      : 'Error: ' + ((res && res.error) || JSON.stringify(res));
+    statEls.forEach(function(el) { el.textContent = msg; });
   } catch(e) {
-    if (status) status.textContent = 'Request failed: ' + e.message;
+    statEls.forEach(function(el) { el.textContent = 'Request failed: ' + e.message; });
   }
-  if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh Champion Pools from op.gg'; }
+  btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '↻ Champ Pools'; });
 }
 
 async function refreshRanks() {
-  const btn = document.querySelector('[onclick="refreshRanks()"]');
-  const status = g('ranks-status');
-  if (btn) { btn.disabled = true; btn.textContent = '↻ Fetching…'; }
-  if (status) status.textContent = 'Contacting Riot API…';
+  const btns = Array.from(document.querySelectorAll('[onclick="refreshRanks()"]'));
+  const statEls = [g('ranks-status'), g('intel-status')].filter(Boolean);
+  btns.forEach(function(b) { b._origText = b.textContent; b.disabled = true; b.textContent = '↻ Fetching…'; });
+  statEls.forEach(function(el) { el.textContent = 'Contacting Riot API…'; });
   try {
     const res = await api('/api/ranks/refresh', {});
-    if (res && res.ok) {
-      const msg = res.updated.length
-        ? '✓ Updated: ' + res.updated.join(', ') + (res.errors.length ? ' — Errors: ' + res.errors.join(', ') : '')
-        : (res.errors.length ? 'Errors: ' + res.errors.join(', ') : 'No players with Riot ID found.');
-      if (status) status.textContent = msg;
-    } else {
-      if (status) status.textContent = 'Error: ' + ((res && res.error) || 'Unknown error');
-    }
+    const msg = (res && res.ok)
+      ? (res.updated.length ? '✓ Ranks: ' + res.updated.join(', ') + (res.errors.length ? ' — Errors: ' + res.errors.join(', ') : '') : (res.errors.length ? 'Errors: ' + res.errors.join(', ') : 'No players with Riot ID found.'))
+      : 'Error: ' + ((res && res.error) || 'Unknown error');
+    statEls.forEach(function(el) { el.textContent = msg; });
   } catch(e) {
-    if (status) status.textContent = 'Request failed.';
+    statEls.forEach(function(el) { el.textContent = 'Request failed.'; });
   }
-  if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh Ranks from Riot API'; }
+  btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '↻ Ranks'; });
 }
 
 // ── Sponsors ───────────────────────────────────────────────────────────────────

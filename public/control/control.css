@@ -777,3 +777,151 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
 .pp-entry-btns  { display: flex; gap: 4px; margin-left: auto; }
 .pp-edit-form   { padding: 12px 0 4px; border-top: 1px solid var(--border); margin-top: 8px; }
 .pp-edit-form .field-row { margin-bottom: 8px; }
+
+/* ── Match Intel Panel ────────────────────────────── */
+.intel-teams-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.intel-team-col { background: var(--bg2); border: 1px solid var(--border); border-radius: 4px; overflow: hidden; }
+
+.intel-team-header { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--bg3); border-bottom: 1px solid var(--border); }
+.intel-team-logo { width: 34px; height: 34px; object-fit: contain; flex-shrink: 0; }
+.intel-team-name { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; line-height: 1; color: #fff; }
+.intel-team-tag  { font-size: 9px; font-weight: 700; letter-spacing: 0.2em; color: rgba(255,255,255,0.5); margin-top: 2px; }
+
+/* ── Player card: collapsible ── */
+.intel-player-card { border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+.intel-player-card:last-child { border-bottom: none; }
+.intel-player-card:hover .intel-player-header { background: rgba(255,255,255,0.03); }
+
+.intel-player-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px;
+  transition: background 0.1s;
+}
+
+.intel-role {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(31,250,255,0.7);
+  min-width: 52px; flex-shrink: 0;
+}
+
+.intel-handle {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.04em; line-height: 1;
+  color: #fff;
+  flex: 1; min-width: 0;
+}
+
+.intel-rank-summary { display: flex; align-items: center; gap: 8px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+.intel-tier {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 2px 6px; border-radius: 2px;
+  border: 1px solid currentColor;
+}
+.intel-lp     { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.65); }
+.intel-record { font-size: 11px; color: rgba(255,255,255,0.45); }
+.intel-wr     { font-size: 12px; font-weight: 800; min-width: 34px; text-align: right; }
+.intel-no-rank { font-size: 11px; font-style: italic; color: rgba(255,255,255,0.35); }
+
+.intel-toggle { font-size: 10px; color: rgba(255,255,255,0.3); margin-left: 4px; flex-shrink: 0; transition: transform 0.15s; }
+.intel-player-card.expanded .intel-toggle { transform: rotate(180deg); }
+
+/* ── Expanded body ── */
+.intel-player-body {
+  display: none;
+  padding: 14px 18px 18px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+}
+.intel-player-card.expanded .intel-player-body { display: flex; gap: 24px; }
+
+.intel-riot-id { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.55); letter-spacing: 0.04em; margin-bottom: 12px; }
+
+.intel-section-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 8px;
+}
+
+/* Side-by-side: champ pool left, draft pick right */
+.intel-body-left  { flex: 1 1 0; min-width: 0; }
+.intel-body-right { flex: 0 0 250px; min-width: 0; }
+
+/* ── Champion pool table ── */
+.intel-champ-table { border-collapse: collapse; }
+.intel-champ-thead th {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  padding: 0 0 8px;
+  text-align: left;
+}
+
+/* Column layout — widths/spacing only, no font/colour (those go on tbody cells) */
+.col-name  { white-space: nowrap; padding-right: 24px; }
+.col-games { width: 54px; text-align: center; padding-right: 18px; white-space: nowrap; }
+.col-bar   { width: 110px; padding-right: 8px; }
+.col-wr    { width: 42px; text-align: right; white-space: nowrap; }
+
+/* Header text alignment */
+.intel-champ-thead th { text-align: left; }
+.intel-champ-thead .icht-center { text-align: center; }
+
+/* Data cell typography */
+.intel-champ-tbody .col-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; }
+.intel-champ-tbody .col-games { font-size: 14px; color: rgba(255,255,255,0.55); }
+.intel-champ-tbody .col-wr    { font-size: 14px; font-weight: 800; }
+
+.intel-champ-tbody tr { height: 28px; }
+.intel-champ-tbody td { padding: 3px 0; vertical-align: middle; }
+
+.intel-wr-bar  { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+.intel-wr-fill { height: 100%; border-radius: 3px; }
+.intel-no-data { font-size: 12px; font-style: italic; color: rgba(255,255,255,0.35); }
+
+/* ── Draft pick panel ── */
+.intel-draft-section {
+  padding: 10px 12px;
+  background: rgba(31,250,255,0.05);
+  border: 1px solid rgba(31,250,255,0.18);
+  border-radius: 2px;
+  display: flex; flex-direction: column;
+}
+.intel-draft-champ-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em;
+  color: #fff;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(31,250,255,0.15);
+  line-height: 1;
+}
+.intel-draft-kv-list { display: flex; flex-direction: column; gap: 10px; flex: 1; justify-content: space-evenly; }
+.intel-draft-kv-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(31,250,255,0.55);
+  margin-bottom: 2px;
+}
+.intel-draft-kv-value {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 28px; font-weight: 800; letter-spacing: 0.02em;
+  color: #fff; line-height: 1; white-space: nowrap;
+}
+.intel-draft-no-data { font-size: 11px; font-style: italic; color: rgba(255,255,255,0.35); }
+
+/* Tier colours — border matches text colour via currentColor on .intel-tier */
+.it-IRON        { color: #a0a0a0; background: rgba(90,90,90,0.2);    }
+.it-BRONZE      { color: #cd9b6a; background: rgba(140,85,40,0.2);   }
+.it-SILVER      { color: #c8d0dc; background: rgba(160,168,180,0.15);}
+.it-GOLD        { color: #f0cc44; background: rgba(212,175,55,0.15); }
+.it-PLATINUM    { color: #00e0d0; background: rgba(0,180,170,0.15);  }
+.it-EMERALD     { color: #4dcc90; background: rgba(45,155,100,0.15); }
+.it-DIAMOND     { color: #88b8f0; background: rgba(80,130,200,0.15); }
+.it-MASTER      { color: #c080f8; background: rgba(155,72,224,0.15); }
+.it-GRANDMASTER { color: #f07070; background: rgba(220,50,50,0.15);  }
+.it-CHALLENGER  { color: #00d4ff; background: rgba(0,200,255,0.12);  }
+/* WR colours */
+.it-wr-high { color: #4dcc90; }
+.it-wr-mid  { color: #f0cc44; }
+.it-wr-low  { color: #f07070; }
