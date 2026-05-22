@@ -565,6 +565,12 @@
     ══════════════════════════════════════════════════════════════════════════ -->
     <section class="tab" id="tab-players">
       <div class="tab-header"><h1>Players / Rosters</h1></div>
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="refreshRanks()">↻ Refresh Ranks from Riot API</button>
+          <span id="ranks-status" style="font-size:12px;color:var(--text-dim)">Fetches Solo Queue rank for all players with a Riot ID set.</span>
+        </div>
+      </div>
       <div class="grid2">
         <div class="card"><div class="card-title" id="players-t1-label">Team 1 Roster</div><div id="t1-roster"></div></div>
         <div class="card"><div class="card-title" id="players-t2-label">Team 2 Roster</div><div id="t2-roster"></div></div>

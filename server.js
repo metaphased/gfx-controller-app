@@ -1,8 +1,10 @@
+require('dotenv').config();
 const express  = require('express');
 const http     = require('http');
 const { Server } = require('socket.io');
 const path     = require('path');
 const fs       = require('fs');
+const fetch    = require('node-fetch');
 const multer   = require('multer');
 const csv      = require('csv-parser');
 const cors     = require('cors');
@@ -509,6 +511,72 @@ app.post('/api/prizepool/entry/reorder', requireAdmin, (req, res) => {
   broadcast(); res.json({ ok: true });
 });
 app.post('/api/ticker',      (req, res) => { Object.assign(state.ticker,      req.body); broadcast(); res.json({ok:true}); });
+
+// ── Riot API rank fetch ───────────────────────────────────────────────────────
+const RIOT_REGION_MAP = {
+  kr:   { platform: 'kr',    routing: 'asia'     },
+  euw:  { platform: 'euw1',  routing: 'europe'   },
+  na:   { platform: 'na1',   routing: 'americas' },
+  eune: { platform: 'eune1', routing: 'europe'   },
+  jp:   { platform: 'jp1',   routing: 'asia'     },
+  oce:  { platform: 'oc1',   routing: 'americas' }, // sea cluster blocked on dev keys
+  br:   { platform: 'br1',   routing: 'americas' },
+  las:  { platform: 'la2',   routing: 'americas' },
+  lan:  { platform: 'la1',   routing: 'americas' },
+  ru:   { platform: 'ru',    routing: 'europe'   },
+  tr:   { platform: 'tr1',   routing: 'europe'   },
+};
+
+app.post('/api/ranks/refresh', requireAdmin, async (req, res) => {
+  const key = process.env.RIOT_API_KEY;
+  if (!key) return res.status(500).json({ error: 'RIOT_API_KEY not set in .env' });
+
+  const updated = [], errors = [];
+
+  for (const slot of ['team1', 'team2']) {
+    const players = state.players[slot] || [];
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      if (!p.riotId || !p.opggRegion) continue;
+      const parts = p.riotId.split('#');
+      if (parts.length !== 2 || !parts[0] || !parts[1]) continue;
+      const [gameName, tagLine] = parts;
+      const region = RIOT_REGION_MAP[(p.opggRegion || '').toLowerCase()];
+      if (!region) { errors.push(`${p.handle}: unknown region "${p.opggRegion}"`); continue; }
+
+      try {
+        // 1 — Riot ID → PUUID (account-v1, routing cluster)
+        const acctR = await fetch(
+          `https://${region.routing}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(gameName)}/${encodeURIComponent(tagLine)}`,
+          { headers: { 'X-Riot-Token': key } }
+        );
+        if (!acctR.ok) throw new Error(`Account lookup ${acctR.status}`);
+        const acct = await acctR.json();
+
+        // 2 — PUUID → ranked entries directly (summoner ID no longer needed)
+        const rankR = await fetch(
+          `https://${region.platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${acct.puuid}`,
+          { headers: { 'X-Riot-Token': key } }
+        );
+        if (!rankR.ok) throw new Error(`Rank lookup ${rankR.status}`);
+        const entries = await rankR.json();
+
+        const solo = entries.find(e => e.queueType === 'RANKED_SOLO_5x5');
+        state.players[slot][i].rank = solo
+          ? { tier: solo.tier, division: solo.rank, lp: solo.leaguePoints, wins: solo.wins, losses: solo.losses }
+          : null;
+
+        updated.push(p.handle);
+        await new Promise(r => setTimeout(r, 120)); // stay within dev rate limits
+      } catch (err) {
+        errors.push(`${p.handle}: ${err.message}`);
+      }
+    }
+  }
+
+  broadcast();
+  res.json({ ok: true, updated, errors });
+});
 
 // Teams CRUD (admin only)
 app.get('/api/teams', (req, res) => res.json({ teams: loadTeams() }));
