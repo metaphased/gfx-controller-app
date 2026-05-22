@@ -1,6 +1,8 @@
 # Esports Broadcast GFX Controller
 
-Local broadcast graphics system for esports productions — built for vMix integration.
+A full-featured local broadcast graphics system for esports productions — built for OBS, vMix, and similar production software. Runs as a Node.js server with a real-time Socket.io control panel.
+
+---
 
 ## Quick Start
 
@@ -9,94 +11,187 @@ npm install
 npm start
 ```
 
-Then open:
-- **Control Panel** → http://localhost:3000/control/
+Open the control panel at **http://localhost:3000/control/**
+
+Use your admin credentials on first launch. All graphic URLs use a **token** for read-only access without requiring login.
 
 ---
 
-## vMix Setup — Add Web Browser Sources
+## Graphic Outputs
 
-In vMix, add each graphic as a **Web Browser** input:
+Add each URL as a **Browser Source** in OBS/vMix. Set width `1920`, height `1080`. Enable **Transparent Background** for overlays.
 
-| Graphic | URL |
-|---|---|
-| Scoreboard | `http://localhost:3000/graphics/scoreboard/` |
-| Lower Third | `http://localhost:3000/graphics/lower-third/` |
-| Head to Head | `http://localhost:3000/graphics/head2head/` |
-| Champ Select | `http://localhost:3000/graphics/champ-select/` |
-| Bracket | `http://localhost:3000/graphics/bracket/` |
-| Break Screen | `http://localhost:3000/graphics/break-screen/` |
-| Win Screen | `http://localhost:3000/graphics/win-screen/` |
+The token for each URL is shown in **Settings → Graphics Output URLs** in the control panel.
 
-**vMix Web Browser settings:**
-- Width: `1920`, Height: `1080`
-- Enable: "Transparent Background" ✓
-- All graphics except Break Screen and Win Screen are transparent overlays — layer them over your scenes
+| Graphic | URL | Type |
+|---|---|---|
+| Head to Head | `/graphics/head2head/?token=...` | Overlay |
+| Pre-show | `/graphics/pre-show/?token=...` | Full screen |
+| Draft Overlay | `/graphics/draft/?token=...` | Overlay |
+| Bracket | `/graphics/bracket/?token=...` | Full screen |
+| Group Stage | `/graphics/group-stage/?token=...` | Full screen |
+| Tournament Structure | `/graphics/tournament-structure/?token=...` | Full screen |
+| Prizepool | `/graphics/prizepool/?token=...` | Full screen |
+| BG Output | `/graphics/bg-output/?token=...` | Full screen (opaque) |
+| Break Screen | `/graphics/break-screen/?token=...` | Full screen |
+| Win Screen | `/graphics/win-screen/?token=...` | Full screen |
+| Scoreboard | `/graphics/scoreboard/?token=...` | Overlay |
+| Lower Third | `/graphics/lower-third/?token=...` | Overlay |
 
----
-
-## Control Panel Overview
-
-### Match Setup
-- Set team names, tags, logos, and accent colors
-- Configure tournament name, format, and game title
-- Upload sponsor logos (displayed on break screen)
-- Control scores with +/- buttons
-
-### Players / Rosters
-- Enter handle, real name, and role for each player (5 per team)
-- Used by Lower Third quick buttons, Head to Head, and Champ Select
-
-### Import Data
-- **Google Sheets** — Enter Sheet ID + API Key, pulls player data automatically
-- **JSON / CSV** — Upload files with columns: `team, handle, name, role, country`
-  - `team` column should be `1`, `2`, or the team name/tag
-
-### Graphics Control
-Each graphic section has SHOW / HIDE buttons that control visibility in real-time.
-
-**Scoreboard** — Top-of-screen score bar. Control scores directly from this tab.
-
-**Lower Third** — Customizable text overlay. Use Quick Player buttons to auto-populate from roster.
-
-**Head to Head** — Full-screen versus graphic. Pulls from Match Setup + Players automatically.
-
-**Champ Select** — Draft overlay. Enter image URLs or champion names for bans/picks. Set current phase.
-
-**Bracket** — Build your playoff bracket with rounds and matches. Mark matches complete to show scores.
-
-**Break Screen** — Full-screen break overlay with animated background. Supports countdown timer.
-
-**Win Screen** — Animated victory screen with particle effects. Select winning team and show.
+### BG Output
+A standalone **opaque** background page designed to be used as a persistent base layer in your production software. All other transparent overlays sit on top of it. Gives a consistent animated background across your entire show. Controlled independently from the main Broadcast Theme background.
 
 ---
 
-## Expanding the System
+## Control Panel — Section Guide
 
-### Adding a New Graphic
-1. Create `public/graphics/your-graphic/index.html`
-2. Connect to Socket.io and listen to `state` events
-3. Add your graphic to the control panel tabs
+### Tournament
+- **Profiles** — Save and load full show configurations (team data, settings, bracket, all GFX state). Use a new profile per tournament/day.
+- **Tournament Setup** — Tournament name, format (Bo1/Bo3/Bo5), playoff format (single/double elim), region, patch, location, dates, group stage toggle, tiebreaker rules, sponsor logos.
+- **Teams Database** — Full roster management. Team name, tag, logo, accent colour. Player handles, real names, roles. Logos and portraits can be uploaded or linked.
+- **Schedule** — Day-by-day match schedule. Link matches to bracket rounds. Set current active game. View draft history per game.
+- **Groups** — Group stage standings editor. Set qualifying cutoff lines per group.
+- **Playoffs** — Bracket editor for single or double elimination. Edit match results, mark complete.
 
-### Adding Game Support
-In the server state, `match.game` can be any string. Add new logic in graphic pages based on this value.
+### Game
+- **Game Setup** — Active match controls. Load teams from the schedule or directly. Manage series state, game number, format. Record game results with winner/loser. Restore completed games. View series/draft snapshots.
+- **Draft** — Draft phase controller. Set blue/red sides, advance steps manually or via auto-timer. Role assignment post-draft. Fearless draft tracking. Phase label (Subtle/Bold). Timer duration.
+- **Players / Rosters** — Per-team player list with roles for the active match. Used by Head to Head, Lower Third, and Draft overlays.
 
-### Google Sheets Format
-Your sheet should have a header row with at minimum:
+### Graphics
+
+#### Broadcast Theme
+Global visual settings applied to all graphics:
+- **Colour palette** — 4 swatchable slots (Primary, Secondary, Light, Dark) + Blue/Red side accents
+- **Graphic Background** — Transparent / Solid / Image / Animated. Background animations:
+  - Classic geometric (pulsing): Grid, Hex Grid, Diamonds, Dot Wave, Lines, Rings
+  - Atmospheric: Particles, Scanlines, Circuit, Rain, Fog, Wave (+ image distortion)
+- **Fog Layer** — Composable overlay that adds bottom-anchored fog on top of any background type
+- **Broadcast Logos** — Logo library used across all graphics (tournament emblem, wordmark, etc.)
+
+#### BG Output
+Independent background settings for the BG Output page. Same animation options as Broadcast Theme but controlled separately.
+
+#### Scoreboard
+Top-of-screen score bar overlay. Shows team tags, scores, game/series state.
+
+#### Lower Third
+Customisable text overlay. Quick-select buttons populate from the active roster.
+
+#### Head to Head
+Full-screen versus graphic. Spotlight mode (champion splash arts + player names) and Lineup mode. Pulls from Match Setup and Rosters automatically.
+
+#### Pre-show
+Full-screen countdown/schedule graphic. Two layouts:
+- **Centre** — Logo + countdown timer centred, schedule below
+- **Side** — Timer panel left, upcoming matches right
+
+Supports countdown timer, target-time mode, sponsor logos, bracket-linked TBD teams, live ticker.
+
+#### Ticker
+Scrolling news/results banner. Auto mode pulls from schedule results. Manual mode for custom items. Appears on Break Screen and Pre-show.
+
+#### Draft
+Full arena-style draft overlay. Features:
+- 5v5 ban/pick grid with champion art
+- Per-team fearless ban tracking
+- CCW timer ring with auto-reset on step advance
+- Phase label (Banning / Picking) in Subtle or Bold style
+- Role assignment post-draft syncs pick order to role slots
+- Arena layout (standard) — Classic layout placeholder pending
+
+#### Bracket
+Animated playoff bracket. Single or double elimination. Connector animations reveal when rounds complete. Section labels animate in. Shows scores, marks complete matches.
+
+#### Group Stage
+Group stage standings. Two modes:
+- **Live** — All teams equal, no qualifier distinction (during play)
+- **Final** — Qualifying indicator, cutoff line, eliminated teams dimmed
+
+#### Tournament Structure
+Info graphic showing the tournament format. Shows Group Stage + Playoffs cards or Playoffs only (solo layout). Info pills: Teams/Rosters, Dates (with cross-year detection), Region, Patch, Location.
+
+#### Prizepool
+Prize breakdown graphic. Add placement rows (1st, 2nd–3rd, etc.) and bonus/sponsor award cards with images. 1st place row gets an accent highlight treatment.
+
+#### Break Screen
+Full-screen break overlay. Features:
+- Custom message + subtext
+- Countdown timer (set minutes/seconds, extend by 5m from bottom bar)
+- Next match auto-derived from schedule
+- Sponsor logos
+- **PIP mode** — Compact layout showing live series state + score in a corner pip
+- Live ticker
+
+#### Win Screen
+Animated victory screen. 6 animation styles:
+- **Blade** — Parallelogram band sweeps across. Fast and punchy.
+- **Burst** — Detonates from centre with shockwave rings and colour flash.
+- **Slam** — Full-screen overlay, card slams in from right. Best for scene transitions.
+- **Split** — Team colour floods the left half, glowing divider at centre, content on left. Font auto-scales for long team names.
+- **Spotlight** — Screen dims, light cone descends from above, logo springs in with sparkle particles.
+- **Wipe** — Cinematic letterbox bars close from top and bottom, light streak sweeps across.
+
+Auto-populated from game results. Team colour drives all accent colours.
+
+---
+
+## Bottom Live Bar
+
+The persistent control bar at the bottom of the control panel gives one-click access to all toggles during a live show:
+
+`Game context | LOWER 3RD | H2H | DRAFT | BRACKET | GROUPS | STRUCTURE | PRIZES | BREAK + timer + PIP | TICKER | WIN`
+
+- Coloured dots indicate each graphic's live status
+- BREAK group includes timer inputs, ▶ start, ✕ clear, +5m extend, and PIP toggle
+- WIN indicator shows which team is currently set as winner
+
+---
+
+## Theming & Scaling
+
+All graphics use CSS `vh`/`vw` units. Changing your OBS/vMix browser source to 1440p or 4K scales everything automatically — no code changes needed.
+
+Team accent colours are set per-team and propagate to win screens, draft overlays, and all team-specific elements automatically.
+
+---
+
+## Authentication & Tokens
+
+The control panel requires login. Two roles:
+- **Admin** — Full access including bracket/group editing, settings, user management
+- **Operator** — Access to live show controls only (game setup, GFX triggers, etc.)
+
+Graphics use a read-only **graphics token** (shown in Settings → Graphics Output URLs). This allows OBS/vMix browser sources to connect without operator credentials. Regenerating the token invalidates all current OBS URLs — do this before a show to lock down access, not during.
+
+---
+
+## Profile System
+
+Profiles save the full show state: tournament config, bracket, schedule, team data, all GFX settings. Use a new profile for each tournament or show day. Loading a profile restores everything except the graphics token.
+
+---
+
+## File Structure
+
 ```
-team | handle | name | role | country
+server.js              — Express + Socket.io server, all API endpoints, state management
+public/
+  control/             — Control panel (HTML + CSS + JS, served at /control/)
+  graphics/
+    gfx-settings.js    — Shared GFX helper (theme, background animations, fog layer)
+    head2head/
+    pre-show/
+    draft/
+    bracket/
+    group-stage/
+    tournament-structure/
+    prizepool/
+    bg-output/
+    break-screen/
+    win-screen/
+    scoreboard/
+    lower-third/
+data/                  — Persisted state (profiles, uploads index) — not committed to git
+public/uploads/        — Uploaded images — not committed to git
 ```
-`team` should be `1` or `2`, or match your team name/tag.
-
-### Uploading Images
-Click any "Upload" button to add PNGs to the local `/public/uploads/` directory. Uploaded files persist between sessions.
-
----
-
-## Theming
-The base color scheme (defined in CSS variables on each page):
-- Background: `#0a1b20`
-- Accent: `#a7a38e`
-- Primary / Highlight: `#1ffaff`
-
-Team colors can be customized per-team in Match Setup and will propagate to all graphics.
