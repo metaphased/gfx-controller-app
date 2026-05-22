@@ -103,6 +103,8 @@
   <div id="meta-topbar">
     <span class="mtb-profile-label">ACTIVE PROFILE</span>
     <span class="mtb-profile-name" id="mtb-profile-name">No profile loaded</span>
+    <div class="mtb-sep"></div>
+    <span class="mtb-match-context" id="lbar-game-context"></span>
   </div>
 
   <!-- ── Main ─────────────────────────────────────────────────────────────── -->
@@ -1797,35 +1799,7 @@
 
 <!-- ── Live Control Bar ─────────────────────────────────────────────────────── -->
 <div id="live-bar">
-
-  <!-- Row 2: Expanded controls — hidden until ▲ toggled -->
-  <div class="lbar-row lbar-row-2" id="lbar-row-2">
-
-    <!-- Win team quick-set -->
-    <span class="lbar-row2-label">WIN</span>
-    <button class="lbar-timer-btn lbar-win-t1-btn" id="lbar-win-t1" onclick="lbarSetWinTeam('team1')">—</button>
-    <button class="lbar-timer-btn lbar-win-t2-btn" id="lbar-win-t2" onclick="lbarSetWinTeam('team2')">—</button>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Break timer -->
-    <span class="lbar-row2-label">BREAK TIMER</span>
-    <input type="number" id="lbar-break-min" class="lbar-num lbar-num-sm" placeholder="m" min="0" max="99" size="2">
-    <span class="lbar-sep-colon">:</span>
-    <input type="number" id="lbar-break-sec" class="lbar-num lbar-num-sm" placeholder="s" min="0" max="59" size="2">
-    <button class="lbar-timer-btn" onclick="lbarStartTimer()">▶ START</button>
-    <button class="lbar-timer-btn" onclick="extendBreakTimer(5)">+5m</button>
-    <button class="lbar-timer-btn" onclick="extendBreakTimer(10)">+10m</button>
-    <button class="lbar-timer-btn lbar-timer-clear" onclick="clearBreakTimer()">✕ CLEAR</button>
-    <span class="lbar-break-countdown" id="lbar-break-countdown"></span>
-
-  </div>
-
-  <!-- Row 1: Graphic toggles (always visible) -->
-  <div class="lbar-row" id="lbar-row-1">
-
-    <span class="lbar-game-context" id="lbar-game-context"></span>
-    <div class="lbar-divider"></div>
+  <div class="lbar-row">
 
     <!-- Game graphics -->
     <div class="lbar-group" id="lbar-group-lowerThird">
@@ -1856,22 +1830,39 @@
 
     <div class="lbar-divider"></div>
 
-    <!-- Show flow -->
+    <!-- Break screen + timer -->
     <div class="lbar-group" id="lbar-group-breakScreen">
       <button class="lbar-toggle" id="lbar-toggle-breakScreen" onclick="toggleGraphic('breakScreen')"><span class="lbar-dot" id="lbar-dot-breakScreen"></span>BREAK</button>
-      <button class="lbar-toggle lbar-pip-toggle" id="lbar-pip-btn" onclick="lbarTogglePip()" title="Toggle PIP mode">PIP</button>
+      <button class="lbar-toggle lbar-pip-toggle" id="lbar-pip-btn" onclick="lbarTogglePip()">PIP</button>
+      <div class="lbar-inner-divider"></div>
+      <input type="number" id="lbar-break-min" class="lbar-num" placeholder="m" min="0" max="99" size="2">
+      <span class="lbar-sep-colon">:</span>
+      <input type="number" id="lbar-break-sec" class="lbar-num" placeholder="s" min="0" max="59" size="2">
+      <button class="lbar-timer-btn" onclick="lbarStartTimer()">▶</button>
+      <button class="lbar-timer-btn" onclick="extendBreakTimer(5)">+5m</button>
+      <button class="lbar-timer-btn" onclick="extendBreakTimer(10)">+10m</button>
+      <button class="lbar-timer-btn lbar-timer-clear" onclick="clearBreakTimer()">✕</button>
+      <span class="lbar-break-countdown" id="lbar-break-countdown"></span>
     </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Ticker -->
     <div class="lbar-group" id="lbar-group-ticker">
       <button class="lbar-toggle" id="lbar-toggle-ticker" onclick="toggleGraphic('ticker')"><span class="lbar-dot" id="lbar-dot-ticker"></span>TICKER</button>
     </div>
+
+    <div class="lbar-divider"></div>
+
+    <!-- Win screen + team selector -->
     <div class="lbar-group" id="lbar-group-winScreen">
       <button class="lbar-toggle" id="lbar-toggle-winScreen" onclick="toggleGraphic('winScreen')"><span class="lbar-dot" id="lbar-dot-winScreen"></span>WIN</button>
+      <div class="lbar-inner-divider"></div>
+      <button class="lbar-timer-btn lbar-win-t1-btn" id="lbar-win-t1" onclick="lbarSetWinTeam('team1')">—</button>
+      <button class="lbar-timer-btn lbar-win-t2-btn" id="lbar-win-t2" onclick="lbarSetWinTeam('team2')">—</button>
     </div>
 
-    <!-- Expand toggle (pushes to right edge) -->
-    <button class="lbar-expand-btn" id="lbar-expand-btn" onclick="lbarToggleExpand()" title="Show score &amp; timer controls">▲</button>
-
-  </div><!-- /lbar-row-1 -->
+  </div><!-- /lbar-row -->
 </div><!-- /live-bar -->
 
 <script src="/socket.io/socket.io.js"></script>

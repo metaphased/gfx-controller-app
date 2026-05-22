@@ -2404,11 +2404,6 @@ function syncLiveBar(s) {
   });
 }
 
-function lbarToggleExpand() {
-  const bar = g('live-bar');
-  if (bar) bar.classList.toggle('expanded');
-}
-
 function lbarSetWinTeam(team) {
   api('/api/winScreen', { team });
 }

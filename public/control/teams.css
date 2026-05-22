@@ -591,25 +591,6 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   overflow-x: auto;
 }
 
-/* Row 2: expandable controls — hidden by default */
-.lbar-row-2 {
-  display: none;
-  height: 44px;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
-  gap: 8px;
-  padding: 0 16px;
-  align-items: center;
-}
-#live-bar.expanded .lbar-row-2 { display: flex; }
-#live-bar.expanded .lbar-expand-btn { transform: rotate(180deg); }
-
-.lbar-row2-label {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
-  color: rgba(255,255,255,0.3);
-  white-space: nowrap; flex-shrink: 0;
-  padding-right: 4px;
-}
 
 /* Each graphic control group */
 .lbar-group {
@@ -633,6 +614,14 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   background: rgba(255,255,255,0.1);
   flex-shrink: 0;
   margin: 0 4px;
+}
+/* Separator inside a group (e.g. WIN toggle vs team selectors) */
+.lbar-inner-divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(255,255,255,0.15);
+  flex-shrink: 0;
+  margin: 0 6px;
 }
 
 .lbar-game-context {
@@ -694,21 +683,6 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 /* PIP toggle: same on/off logic but separate class so it can sit inline with BREAK */
 .lbar-pip-toggle { font-size: 10px; padding: 3px 8px; }
 
-/* Expand button */
-.lbar-expand-btn {
-  margin-left: auto;
-  height: 100%;
-  padding: 0 16px;
-  background: transparent;
-  border: none;
-  border-left: 1px solid rgba(255,255,255,0.1);
-  color: rgba(255,255,255,0.3);
-  font-size: 10px;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: color 0.15s, transform 0.2s;
-}
-.lbar-expand-btn:hover { color: rgba(255,255,255,0.7); }
 
 /* Score controls in bar */
 .lbar-score-wrap {
@@ -793,12 +767,6 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 .lbar-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .lbar-num:focus { border-color: rgba(255,255,255,0.6); }
 
-/* Row 2 extras */
-.lbar-row2-val {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 18px; font-weight: 800; color: #fff;
-  min-width: 24px; text-align: center; line-height: 1;
-}
 .lbar-win-t1-btn.is-active, .lbar-win-t2-btn.is-active {
   background: rgba(220,40,40,0.2); border-color: #e03030; color: #ff5555;
 }
