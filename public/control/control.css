@@ -467,6 +467,10 @@ select option { background: var(--bg3); }
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
 }
+/* Teams DB editor gets 4 equal columns: Handle | Role | Region | Riot ID */
+#edit-team-players .player-row-edit {
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
 .player-row-edit:last-child { border-bottom: none; }
 .opgg-link {
   display: inline-block;

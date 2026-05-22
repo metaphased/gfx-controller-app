@@ -1534,8 +1534,10 @@ function renderPlayerEditors(players) {
       html += list.map(function(p, i) {
         return '<div class="player-row-edit">' +
           '<div><div class="player-num">'+DEFAULT_ROLES[i]+'</div>' +
-            '<input type="text" data-team="'+team+'" data-index="'+i+'" data-field="handle" placeholder="Handle / IGN">' +
-            '<a class="opgg-link" data-team="'+team+'" data-index="'+i+'" href="#" target="_blank" rel="noopener" style="display:none">op.gg ↗</a>' +
+            '<div style="display:flex;align-items:center;gap:5px">' +
+              '<input type="text" data-team="'+team+'" data-index="'+i+'" data-field="handle" placeholder="Handle / IGN" style="flex:1;min-width:0">' +
+              '<a class="opgg-link" data-team="'+team+'" data-index="'+i+'" href="#" target="_blank" rel="noopener" style="display:none">op.gg ↗</a>' +
+            '</div>' +
           '</div>' +
           '<div><div class="player-num">Role</div>' +
             '<input type="text" data-team="'+team+'" data-index="'+i+'" data-field="role" placeholder="Role"></div>' +
@@ -1824,11 +1826,11 @@ function renderEditPlayers(players, subs) {
     return '<div class="player-row-edit">'+
       '<div><div class="player-num">'+role+'</div><input type="text" class="ep-handle" data-index="'+i+'" placeholder="Handle / IGN" value="'+esc(p.handle||'')+'"></div>'+
       '<div><div class="player-num">Role</div><input type="text" class="ep-role" data-index="'+i+'" value="'+esc(p.role||role)+'" placeholder="'+role+'"></div>'+
-      '<div><div class="player-num">OP.GG</div>'+
-        '<div style="display:flex;gap:4px">'+
-          opggRegionSelect('ep-opgg-region','data-index="'+i+'"',p.opggRegion||'')+
-          '<input type="text" class="ep-riot-id" data-index="'+i+'" placeholder="Name#TAG" value="'+esc(p.riotId||'')+'" style="flex:1;min-width:0">'+
-        '</div>'+
+      '<div><div class="player-num">Region</div>'+
+        opggRegionSelect('ep-opgg-region','data-index="'+i+'"',p.opggRegion||'')+
+      '</div>'+
+      '<div><div class="player-num">Riot ID</div>'+
+        '<input type="text" class="ep-riot-id" data-index="'+i+'" placeholder="Name#TAG" value="'+esc(p.riotId||'')+'">'+
       '</div>'+
       '</div>';
   }).join('');

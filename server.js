@@ -426,17 +426,17 @@ app.post('/api/match/load-team', requireAdmin, (req, res) => {
   const team = loadTeams().find(t => t.id === teamId);
   if (!team) return res.status(404).json({ error: 'Team not found' });
   const score = state.match[slot] ? state.match[slot].score : 0;
-  state.match[slot] = { name: team.name||'', tag: team.tag||'', logo: team.logo||'', color: team.color||'#1ffaff', score };
+  state.match[slot] = { name: team.name||'', tag: team.tag||'', logo: team.logo||'', color: team.color||'#1ffaff', score, teamId: team.id };
   const tp = team.players || [];
   DEFAULT_ROLES.forEach((role, i) => {
     const p = tp[i] || {};
-    state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true };
+    state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'' };
   });
   const subsKey = slot + 'subs';
   const ts = team.subs || [];
   state.players[subsKey] = [0,1,2].map(i => {
     const s = ts[i] || {};
-    return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false };
+    return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'' };
   });
   broadcast(); res.json({ ok: true });
 });
@@ -525,25 +525,41 @@ app.post('/api/teams/save', requireAdmin, (req, res) => {
   }
   saveTeams(teams);
 
-  // If this team is currently loaded into the active match, sync live state so
-  // Game Setup, Draft, Roster, and all graphics reflect the updated name/tag/logo/color
-  if (inc.id && state.match.scheduleDayId && state.match.scheduleGameId) {
-    const _day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
-    const _sg  = _day && _day.games.find(g => g.id === state.match.scheduleGameId);
-    if (_sg) {
-      ['team1', 'team2'].forEach(slot => {
-        if (_sg[slot + 'Id'] === inc.id && state.match[slot]) {
-          Object.assign(state.match[slot], {
-            name:  inc.name  || '',
-            tag:   inc.tag   || '',
-            logo:  inc.logo  != null ? inc.logo  : state.match[slot].logo,
-            color: inc.color != null ? inc.color : state.match[slot].color,
-          });
-        }
+  // Sync live state for any active-match slot that has this team loaded
+  if (inc.id) {
+    let synced = false;
+    ['team1', 'team2'].forEach(slot => {
+      const slotMatch = state.match[slot];
+      // Match by stored teamId (direct loads) or schedule reference
+      const matchById  = slotMatch && slotMatch.teamId === inc.id;
+      const _day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
+      const _sg  = _day && _day.games.find(g => g.id === state.match.scheduleGameId);
+      const matchBySched = _sg && _sg[slot + 'Id'] === inc.id && slotMatch;
+      if (!matchById && !matchBySched) return;
+
+      // Sync match header (name / tag / logo / colour)
+      Object.assign(slotMatch, {
+        name:  inc.name  || '',
+        tag:   inc.tag   || '',
+        logo:  inc.logo  != null ? inc.logo  : slotMatch.logo,
+        color: inc.color != null ? inc.color : slotMatch.color,
       });
-      deriveTodayGames();
-      broadcast();
-    }
+
+      // Sync players + subs so roster, H2H, draft all reflect the updated team
+      const tp = inc.players || [];
+      DEFAULT_ROLES.forEach((role, i) => {
+        const p = tp[i] || {};
+        state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'' };
+      });
+      const subsKey = slot + 'subs';
+      const ts = inc.subs || [];
+      state.players[subsKey] = [0,1,2].map(i => {
+        const s = ts[i] || {};
+        return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'' };
+      });
+      synced = true;
+    });
+    if (synced) { deriveTodayGames(); broadcast(); }
   }
 
   res.json({ ok: true, team: inc });
