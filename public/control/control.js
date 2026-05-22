@@ -1704,24 +1704,33 @@ function renderPlayerEditors(players) {
 function updatePlayer(team, index, field, value) { api('/api/players', { team, index, data: { [field]: value } }); }
 
 // ── Match Intel Panel ──────────────────────────────────────────────────────────
-function _intelWrClass(pct)  { return pct >= 60 ? 'it-wr-high' : pct >= 50 ? 'it-wr-mid' : 'it-wr-low'; }
-function _intelWrColor(pct)  { return pct >= 60 ? '#4dcc90' : pct >= 50 ? '#f0cc44' : '#f07070'; }
+var _intelExpanded = {}; // key → true, persists across rebuilds
 
-function _intelRankHtml(rank) {
-  if (!rank || !rank.tier) return '<span class="intel-no-rank">No rank data</span>';
-  const tier = rank.tier;
-  const noDiv = tier === 'MASTER' || tier === 'GRANDMASTER' || tier === 'CHALLENGER';
+function _intelWrClass(pct)  { return pct >= 60 ? 'it-wr-high' : pct >= 50 ? 'it-wr-mid' : 'it-wr-low'; }
+function _intelWrColor(pct)  { return pct >= 60 ? '#4dcc90'    : pct >= 50 ? '#f0cc44'    : '#f07070';   }
+
+function toggleIntelPlayer(key) {
+  var card = document.querySelector('[data-intel-key="' + key + '"]');
+  if (!card) return;
+  var isExpanded = card.classList.toggle('expanded');
+  _intelExpanded[key] = isExpanded;
+}
+
+function _intelRankSummaryHtml(rank) {
+  if (!rank || !rank.tier) return '<span class="intel-no-rank">Unranked</span>';
+  const tier   = rank.tier;
+  const noDiv  = tier === 'MASTER' || tier === 'GRANDMASTER' || tier === 'CHALLENGER';
   const divStr = (!noDiv && rank.division && rank.division !== 'I') ? ' ' + rank.division : '';
-  const total = (rank.wins || 0) + (rank.losses || 0);
-  const wr = total ? Math.round(rank.wins / total * 100) : 0;
+  const total  = (rank.wins || 0) + (rank.losses || 0);
+  const wr     = total ? Math.round(rank.wins / total * 100) : 0;
   return '<span class="intel-tier it-' + escHtml(tier) + '">' + escHtml(tier) + escHtml(divStr) + '</span>' +
          '<span class="intel-lp">' + (rank.lp || 0) + ' LP</span>' +
-         '<span class="intel-record">' + (rank.wins || 0) + 'W / ' + (rank.losses || 0) + 'L</span>' +
+         '<span class="intel-record">' + (rank.wins || 0) + 'W&nbsp;/&nbsp;' + (rank.losses || 0) + 'L</span>' +
          '<span class="intel-wr ' + _intelWrClass(wr) + '">' + wr + '%</span>';
 }
 
 function _intelChampsHtml(pool) {
-  if (!pool || !pool.length) return '<span class="intel-no-data">No champion data</span>';
+  if (!pool || !pool.length) return '<span class="intel-no-data">No champion data fetched</span>';
   return pool.slice(0, 7).map(function(c) {
     const wr = Math.round(c.wins / c.games * 100);
     return '<div class="intel-champ-row">' +
@@ -1739,35 +1748,48 @@ function _intelDraftHtml(ds) {
   return '<div class="intel-draft-section">' +
     '<div class="intel-draft-label">Draft Pick — ' + escHtml(ds.champ) + '</div>' +
     '<div class="intel-draft-stats">' +
-      escHtml(String(ds.games)) + 'G &nbsp;·&nbsp; ' + escHtml(String(ds.winRate)) + '% WR &nbsp;·&nbsp; ' + escHtml(kda) + ' KDA &nbsp;·&nbsp; ' + escHtml(String(ds.cs)) + ' CS/g' +
+      escHtml(String(ds.games)) + 'G &nbsp;·&nbsp; ' +
+      escHtml(String(ds.winRate)) + '% WR &nbsp;·&nbsp; ' +
+      escHtml(kda) + ' KDA &nbsp;·&nbsp; ' +
+      escHtml(String(ds.cs)) + ' CS/g' +
     '</div>' +
   '</div>';
 }
 
-function _intelPlayerCard(p) {
-  const riotId = p.riotId ? escHtml(p.riotId) + ' · ' + escHtml((p.opggRegion || '').toUpperCase()) : '';
-  return '<div class="intel-player-card">' +
-    '<div class="intel-player-top">' +
-      '<span class="intel-role">' + escHtml(p.role || '') + '</span>' +
-      '<span class="intel-handle">' + escHtml(p.handle || '—') + '</span>' +
-      (riotId ? '<span class="intel-riot-id">' + riotId + '</span>' : '') +
-    '</div>' +
-    '<div class="intel-rank-row">' + _intelRankHtml(p.rank || null) + '</div>' +
+function _intelPlayerCard(p, cardKey) {
+  const isExpanded = !!_intelExpanded[cardKey];
+  const riotId     = p.riotId ? escHtml(p.riotId) + ' &nbsp;·&nbsp; ' + escHtml((p.opggRegion || '').toUpperCase()) : '';
+
+  const header = '<div class="intel-player-header">' +
+    '<span class="intel-role">' + escHtml(p.role || '') + '</span>' +
+    '<span class="intel-handle">' + escHtml(p.handle || '—') + '</span>' +
+    '<div class="intel-rank-summary">' + _intelRankSummaryHtml(p.rank || null) + '</div>' +
+    '<span class="intel-toggle">▼</span>' +
+  '</div>';
+
+  const body = '<div class="intel-player-body">' +
+    (riotId ? '<div class="intel-riot-id">' + riotId + '</div>' : '') +
+    '<div class="intel-section-label">Champion Pool</div>' +
     '<div class="intel-champs">' + _intelChampsHtml(p.champPool || null) + '</div>' +
     (p.draftChampStats ? _intelDraftHtml(p.draftChampStats) : '') +
   '</div>';
+
+  return '<div class="intel-player-card' + (isExpanded ? ' expanded' : '') + '" data-intel-key="' + escHtml(cardKey) + '" onclick="toggleIntelPlayer(\'' + cardKey + '\')">' +
+    header + body +
+  '</div>';
 }
 
-function _intelTeamCol(team, players) {
+function _intelTeamCol(team, players, teamKey) {
   const logoHtml = team.logo ? '<img class="intel-team-logo" src="' + escHtml(team.logo) + '" alt="">' : '<div class="intel-team-logo"></div>';
   const border   = escHtml(team.color || '#1ffaff');
+  const cards    = (players || []).map(function(p, i) { return _intelPlayerCard(p, teamKey + '_' + i); }).join('');
   return '<div class="intel-team-col">' +
     '<div class="intel-team-header" style="border-left:3px solid ' + border + '">' +
       logoHtml +
       '<div><div class="intel-team-name">' + escHtml(team.name || 'Team') + '</div>' +
            '<div class="intel-team-tag">' + escHtml(team.tag || '') + '</div></div>' +
     '</div>' +
-    (players || []).map(_intelPlayerCard).join('') +
+    cards +
   '</div>';
 }
 
@@ -1784,7 +1806,7 @@ function renderIntelPanel(state) {
   const key = ((match.team1 && match.team1.name) || '') + '|' + ((match.team2 && match.team2.name) || '') + '||' + makeKey(players.team1) + '|' + makeKey(players.team2);
   if (grid.dataset.key === key) return;
   grid.dataset.key = key;
-  grid.innerHTML = _intelTeamCol(match.team1 || {}, players.team1 || []) + _intelTeamCol(match.team2 || {}, players.team2 || []);
+  grid.innerHTML = _intelTeamCol(match.team1 || {}, players.team1 || [], 'team1') + _intelTeamCol(match.team2 || {}, players.team2 || [], 'team2');
 }
 
 async function refreshChampPool() {
