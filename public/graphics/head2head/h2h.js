@@ -195,13 +195,15 @@ function renderAll(state) {
       { prefix: 't2', players: t2Players },
     ];
     slotMap.forEach(function(s) {
+      var picks = s.prefix === 't1' ? t1Picks : t2Picks;
       for (var i = 0; i < 5; i++) {
         var el = $(('h2h-stats-' + s.prefix + '-' + i));
         if (!el) continue;
         var player = s.players.find(function(p) { return normalizeRole(p.role) === ROLES[i]; }) || {};
         var stats  = player.draftChampStats || null;
         var tokens = champCfg[ROLE_LABELS[i]] || [];
-        el.innerHTML = buildStatsStripHtml(stats, tokens);
+        var champName = champNameFromUrl(picks[i] || '');
+        el.innerHTML = buildStatsStripHtml(stats, tokens, champName);
       }
     });
   } else {
@@ -214,8 +216,9 @@ function renderAll(state) {
   }
 }
 
-function buildStatsStripHtml(stats, tokens) {
-  if (!stats) return '<span class="h2h-stat-no-data">No ranked data this season</span>';
+function buildStatsStripHtml(stats, tokens, champName) {
+  var champ = (stats && stats.champ) || champName || 'this champion';
+  if (!stats) return '<span class="h2h-stat-no-data">No Solo Queue data on ' + champ + ' this season</span>';
   if (!tokens || !tokens.length) return '';
 
   function pill(label, value) {
@@ -224,13 +227,13 @@ function buildStatsStripHtml(stats, tokens) {
 
   return tokens.map(function(tok) {
     switch (tok) {
-      case 'winRate': return pill('WR',     stats.winRate + '%');
-      case 'games':   return pill('Games',  stats.games + 'g');
-      case 'kda':     return pill('KDA',    stats.kda.k + '/' + stats.kda.d + '/' + stats.kda.a);
-      case 'cs':      return pill('CS/g',   stats.cs);
-      case 'kp':      return pill('KP',     stats.kp + '%');
-      case 'damage':  return pill('DMG/g',  Math.round(stats.damage / 1000) + 'k');
-      case 'vision':  return pill('Vision', stats.vision);
+      case 'winRate': return pill('Win Rate',                 stats.winRate + '%');
+      case 'games':   return pill('As ' + champ + ' this season', stats.games + ' Games');
+      case 'kda':     return pill('Average K/D/A',           stats.kda.k + '/' + stats.kda.d + '/' + stats.kda.a);
+      case 'cs':      return pill('Average CS',              stats.cs);
+      case 'kp':      return pill('Kill Participation',      stats.kp + '%');
+      case 'damage':  return pill('Avg Damage',              Math.round(stats.damage / 1000) + 'k');
+      case 'vision':  return pill('Avg Vision',              stats.vision);
       default:        return '';
     }
   }).join('');

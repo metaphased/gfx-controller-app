@@ -609,12 +609,17 @@ function parseChampPool(text) {
   return pool;
 }
 
+function normChampKey(s) {
+  // Strip apostrophes, spaces, dots, ampersands — handles Kai'Sa→kaisa, Cho'Gath→chogath etc.
+  return s.toLowerCase().replace(/['\s.&]/g, '');
+}
+
 function parseChampStatsForChamp(text, targetChamp) {
   // Matches MyChampionStat("Name",play,win,lose,Basic(k,d,a,cs,kp,dmg,vs))
   const re = /MyChampionStat\("([^"]+)",(\d+),(\d+),(\d+),Basic\(([^)]+)\)\)/g;
   let m;
   while ((m = re.exec(text)) !== null) {
-    if (m[1].toLowerCase() !== targetChamp.toLowerCase()) continue;
+    if (normChampKey(m[1]) !== normChampKey(targetChamp)) continue;
     const play = parseInt(m[2]);
     if (!play) return null;
     const wins = parseInt(m[3]);
