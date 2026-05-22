@@ -144,7 +144,12 @@ function buildPillsHtml(t, ts, teams) {
   var subs      = t.maxSubsPerTeam != null ? t.maxSubsPerTeam : 0;
   var rosterStr = players + ' Player' + (players !== 1 ? 's' : '');
   if (subs > 0) rosterStr += ' + ' + subs + ' Sub' + (subs !== 1 ? 's' : '');
-  pills += pillHtml('Rosters', teamCount ? teamCount + ' Teams · ' + rosterStr : rosterStr);
+  if (teamCount) {
+    pills += pillHtml('Rosters', teamCount + ' Teams · ' + rosterStr);
+  } else if (players !== 5 || subs > 0) {
+    // Only show roster pill when something non-default has been set
+    pills += pillHtml('Rosters', rosterStr);
+  }
 
   if (t.showDates && (t.startDate || t.endDate)) {
     var dfmt = ts.dateFormat || 'mond';
