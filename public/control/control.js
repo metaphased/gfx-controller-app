@@ -262,6 +262,11 @@ function syncUI(s) {
   }
   const _h2hLb = g('h2h-lineup-btn');
   if (_h2hLb) _h2hLb.className = 'btn ' + (h2hMode === 'lineup' ? 'btn-active-gfx' : 'btn-primary');
+  const h2hAnim = h2h.animStyle || 'standard';
+  ['standard', 'impact', 'drop'].forEach(function(s2) {
+    const btn = g('h2h-anim-' + s2);
+    if (btn) btn.className = 'btn btn-sm ' + (h2hAnim === s2 ? 'btn-active-gfx' : 'btn-dim');
+  });
   const _h2hPrev = g('h2h-match-preview');
   if (_h2hPrev) {
     const _mt1 = (s.match && s.match.team1) || {}; const _mt2 = (s.match && s.match.team2) || {};
@@ -870,6 +875,7 @@ function applyDraftRoles() {
 // ── Head to Head ───────────────────────────────────────────────────────────────
 function patchH2H(data) { api('/api/headToHead', data); }
 function setH2HSpotlight(roleIdx) { patchH2H({ mode: 'spotlight', spotlightRole: roleIdx }); }
+function setH2HAnimStyle(style) { patchH2H({ animStyle: style }); }
 function setH2HLineup()           { patchH2H({ mode: 'lineup' }); }
 function setH2HNext() {
   const h2h  = (window._state || {}).headToHead || {};

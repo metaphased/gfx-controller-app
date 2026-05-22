@@ -189,10 +189,20 @@ function renderAll(state) {
 // ── Socket ────────────────────────────────────────────────────────────────────
 socket.on('state', function(state) {
   var root    = $('h2h-root');
-  var visible = !!(state.headToHead && state.headToHead.visible);
+  var h2h     = state.headToHead || {};
+  var visible = !!h2h.visible;
 
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyBackground(root, state);
+
+  // Apply anim class BEFORE animateIn so the correct keyframes fire
+  if (root) {
+    var animStyle = h2h.animStyle || 'standard';
+    if (!root.classList.contains('anim-' + animStyle)) {
+      root.classList.remove('anim-standard', 'anim-impact', 'anim-drop');
+      root.classList.add('anim-' + animStyle);
+    }
+  }
 
   if (visible !== _lastVisible) {
     if (visible) animateIn();

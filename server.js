@@ -188,7 +188,7 @@ const makeDefault = () => ({
   },
   scoreboard:  { visible: false },
   lowerThird:  { visible: false, text: '', subtext: '', supertext: '', side: 'left', teamColor: '' },
-  headToHead:  { visible: false, mode: 'spotlight', spotlightRole: 0 },
+  headToHead:  { visible: false, mode: 'spotlight', spotlightRole: 0, animStyle: 'standard' },
   preShow:     { visible: false, timerEnd: null, logoUrl: '', logoScale: 8, hideLogo: false, headerText: '', hideHeaderText: false, timerLabel: '', layout: 'center' },
   draft: {
     visible: false,
