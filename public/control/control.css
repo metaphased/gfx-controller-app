@@ -847,7 +847,7 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
 
 /* Side-by-side: champ pool left, draft pick right */
 .intel-body-left  { flex: 1 1 0; min-width: 0; }
-.intel-body-right { flex: 0 0 200px; min-width: 0; }
+.intel-body-right { flex: 0 0 230px; min-width: 0; }
 
 /* ── Champion pool table ── */
 .intel-champ-table { border-collapse: collapse; }
@@ -895,8 +895,8 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
 }
 .intel-draft-stat-value {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 18px; font-weight: 800; letter-spacing: 0.03em;
-  color: #fff; line-height: 1;
+  font-size: 16px; font-weight: 800; letter-spacing: 0.03em;
+  color: #fff; line-height: 1; white-space: nowrap;
 }
 .intel-draft-no-data { font-size: 11px; font-style: italic; color: rgba(255,255,255,0.35); }
 

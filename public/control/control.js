@@ -1742,7 +1742,7 @@ function _intelChampsHtml(pool) {
   }).join('');
   return '<table class="intel-champ-table">' +
     '<thead class="intel-champ-thead"><tr>' +
-      '<th></th><th class="col-games">Games</th><th class="col-bar">Win Rate</th><th class="col-wr"></th>' +
+      '<th class="col-name">Champion Pool</th><th class="col-games">Games</th><th class="col-bar">Win Rate</th><th class="col-wr"></th>' +
     '</tr></thead>' +
     '<tbody class="intel-champ-tbody">' + rows + '</tbody>' +
   '</table>';
@@ -1750,7 +1750,7 @@ function _intelChampsHtml(pool) {
 
 function _intelDraftHtml(ds) {
   if (!ds) return '<div class="intel-draft-section"><span class="intel-draft-no-data">No draft data</span></div>';
-  const kda = ds.kda ? ds.kda.k + ' / ' + ds.kda.d + ' / ' + ds.kda.a : '—';
+  const kda = ds.kda ? ds.kda.k + '/' + ds.kda.d + '/' + ds.kda.a : '—';
   return '<div class="intel-draft-section">' +
     '<div class="intel-section-label">Draft Pick</div>' +
     '<div class="intel-draft-champ-name">' + escHtml(ds.champ) + '</div>' +
@@ -1778,7 +1778,6 @@ function _intelPlayerCard(p, cardKey) {
   const body = '<div class="intel-player-body">' +
     '<div class="intel-body-left">' +
       (riotId ? '<div class="intel-riot-id">' + riotId + '</div>' : '') +
-      '<div class="intel-section-label">Champion Pool</div>' +
       _intelChampsHtml(p.champPool || null) +
     '</div>' +
     (hasDraft ? '<div class="intel-body-right">' + _intelDraftHtml(p.draftChampStats) + '</div>' : '') +
