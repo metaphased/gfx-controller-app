@@ -88,8 +88,8 @@
   top: -1px;
 }
 .nav-status-dot.active {
-  background: #1ffaff;
-  box-shadow: 0 0 6px rgba(31,250,255,0.8);
+  background: #e03030;
+  box-shadow: 0 0 6px rgba(220,40,40,0.8);
 }
 
 /* ── Operator page layout ────────────────────────────────────────────────────── */
@@ -333,8 +333,8 @@
   top: -1px;
 }
 .nav-status-dot.active {
-  background: #1ffaff;
-  box-shadow: 0 0 6px rgba(31,250,255,0.8);
+  background: #e03030;
+  box-shadow: 0 0 6px rgba(220,40,40,0.8);
 }
 
 /* Active/dim state for regular tab SHOW/HIDE buttons */
