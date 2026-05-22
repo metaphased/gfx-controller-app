@@ -832,53 +832,53 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
 /* ── Expanded body ── */
 .intel-player-body {
   display: none;
-  padding: 10px 14px 14px;
+  padding: 14px 18px 18px;
   border-top: 1px solid rgba(255,255,255,0.06);
 }
-.intel-player-card.expanded .intel-player-body { display: flex; gap: 20px; }
+.intel-player-card.expanded .intel-player-body { display: flex; gap: 24px; }
 
-.intel-riot-id { font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.55); letter-spacing: 0.04em; margin-bottom: 10px; }
+.intel-riot-id { font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.55); letter-spacing: 0.04em; margin-bottom: 12px; }
 
 .intel-section-label {
-  font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
   color: rgba(255,255,255,0.4);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 /* Side-by-side: champ pool left, draft pick right */
 .intel-body-left  { flex: 1 1 0; min-width: 0; }
-.intel-body-right { flex: 0 0 230px; min-width: 0; }
+.intel-body-right { flex: 0 0 250px; min-width: 0; }
 
 /* ── Champion pool table ── */
 .intel-champ-table { border-collapse: collapse; }
 .intel-champ-thead th {
-  font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
   color: rgba(255,255,255,0.4);
-  padding: 0 0 5px;
+  padding: 0 0 8px;
   text-align: left;
 }
 
 /* Column layout — widths/spacing only, no font/colour (those go on tbody cells) */
-.col-name  { white-space: nowrap; padding-right: 20px; }
-.col-games { width: 48px; text-align: center; padding-right: 16px; white-space: nowrap; }
-.col-bar   { width: 90px; padding-right: 6px; }
-.col-wr    { width: 36px; text-align: right; white-space: nowrap; }
+.col-name  { white-space: nowrap; padding-right: 24px; }
+.col-games { width: 54px; text-align: center; padding-right: 18px; white-space: nowrap; }
+.col-bar   { width: 110px; padding-right: 8px; }
+.col-wr    { width: 42px; text-align: right; white-space: nowrap; }
 
-/* Header text — all th share the same dim label style */
+/* Header text alignment */
 .intel-champ-thead th { text-align: left; }
 .intel-champ-thead .icht-center { text-align: center; }
 
 /* Data cell typography */
-.intel-champ-tbody .col-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; }
-.intel-champ-tbody .col-games { font-size: 12px; color: rgba(255,255,255,0.55); }
-.intel-champ-tbody .col-wr    { font-size: 12px; font-weight: 800; }
+.intel-champ-tbody .col-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; }
+.intel-champ-tbody .col-games { font-size: 14px; color: rgba(255,255,255,0.55); }
+.intel-champ-tbody .col-wr    { font-size: 14px; font-weight: 800; }
 
-.intel-champ-tbody tr { height: 22px; }
-.intel-champ-tbody td { padding: 2px 0; vertical-align: middle; }
+.intel-champ-tbody tr { height: 28px; }
+.intel-champ-tbody td { padding: 3px 0; vertical-align: middle; }
 
-.intel-wr-bar  { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
-.intel-wr-fill { height: 100%; border-radius: 2px; }
-.intel-no-data { font-size: 11px; font-style: italic; color: rgba(255,255,255,0.35); }
+.intel-wr-bar  { height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; }
+.intel-wr-fill { height: 100%; border-radius: 3px; }
+.intel-no-data { font-size: 12px; font-style: italic; color: rgba(255,255,255,0.35); }
 
 /* ── Draft pick panel ── */
 .intel-draft-section {
@@ -890,22 +890,22 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
 }
 .intel-draft-champ-name {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 20px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em;
+  font-size: 26px; font-weight: 900; text-transform: uppercase; letter-spacing: 0.05em;
   color: #fff;
-  margin-bottom: 8px;
-  padding-bottom: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
   border-bottom: 1px solid rgba(31,250,255,0.15);
   line-height: 1;
 }
-.intel-draft-kv-list { display: flex; flex-direction: column; gap: 8px; flex: 1; justify-content: space-evenly; }
+.intel-draft-kv-list { display: flex; flex-direction: column; gap: 10px; flex: 1; justify-content: space-evenly; }
 .intel-draft-kv-label {
-  font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
   color: rgba(31,250,255,0.55);
-  margin-bottom: 1px;
+  margin-bottom: 2px;
 }
 .intel-draft-kv-value {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 22px; font-weight: 800; letter-spacing: 0.02em;
+  font-size: 28px; font-weight: 800; letter-spacing: 0.02em;
   color: #fff; line-height: 1; white-space: nowrap;
 }
 .intel-draft-no-data { font-size: 11px; font-style: italic; color: rgba(255,255,255,0.35); }
