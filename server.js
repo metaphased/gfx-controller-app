@@ -245,6 +245,14 @@ const makeDefault = () => ({
       bgSpeed:         'medium',   // 'slow' | 'medium' | 'fast'
     },
     logoSet: { logos: [] },        // [{ name: string, url: string }]
+    h2hChampStats: {
+      enabled: false,
+      Top:     ['winRate', 'games', 'kda', 'cs'],
+      Jungle:  ['winRate', 'games', 'kda', 'kp'],
+      Mid:     ['winRate', 'games', 'kda', 'cs'],
+      ADC:     ['winRate', 'games', 'kda', 'cs'],
+      Support: ['winRate', 'games', 'kda', 'kp', 'vision'],
+    },
   },
 });
 
@@ -601,6 +609,37 @@ function parseChampPool(text) {
   return pool;
 }
 
+function normChampKey(s) {
+  // Strip apostrophes, spaces, dots, ampersands — handles Kai'Sa→kaisa, Cho'Gath→chogath etc.
+  return s.toLowerCase().replace(/['\s.&]/g, '');
+}
+
+function parseChampStatsForChamp(text, targetChamp) {
+  // Matches MyChampionStat("Name",play,win,lose,Basic(k,d,a,cs,kp,dmg,vs))
+  const re = /MyChampionStat\("([^"]+)",(\d+),(\d+),(\d+),Basic\(([^)]+)\)\)/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    if (normChampKey(m[1]) !== normChampKey(targetChamp)) continue;
+    const play = parseInt(m[2]);
+    if (!play) return null;
+    const wins = parseInt(m[3]);
+    const [kt, dt, at, cst, kpt, dmgt, vst] = m[5].split(',').map(Number);
+    return {
+      champ:   m[1],
+      games:   play,
+      wins,
+      losses:  parseInt(m[4]),
+      winRate: Math.round(wins / play * 100),
+      kda:     { k: (kt/play).toFixed(1), d: (dt/play).toFixed(1), a: (at/play).toFixed(1) },
+      cs:      (cst/play).toFixed(1),
+      kp:      Math.round(kpt / play * 100),   // stored as fraction sum → % per game
+      damage:  Math.round(dmgt / play),
+      vision:  (vst/play).toFixed(1),
+    };
+  }
+  return null; // champion not in ranked pool this season
+}
+
 app.post('/api/champpool/refresh', requireAdmin, async (req, res) => {
   const updated = [], errors = [];
 
@@ -626,6 +665,48 @@ app.post('/api/champpool/refresh', requireAdmin, async (req, res) => {
         await new Promise(r => setTimeout(r, 300));
       } catch (err) {
         errors.push(`${p.handle}: ${err.message}`);
+      }
+    }
+  }
+
+  broadcast();
+  res.json({ ok: true, updated, errors });
+});
+
+app.post('/api/champstats/draft', requireAdmin, async (req, res) => {
+  const t1Picks = state.draft.team1RolePicks || [];
+  const t2Picks = state.draft.team2RolePicks || [];
+  const updated = [], errors = [];
+
+  function champFromUrl(url) {
+    if (!url) return '';
+    return url.split('/').pop().replace(/\.[^.]+$/, '').replace(/_\d+$/, '');
+  }
+
+  for (const [slot, picks] of [['team1', t1Picks], ['team2', t2Picks]]) {
+    const players = state.players[slot] || [];
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      const champName = champFromUrl(picks[i]);
+      if (!p.riotId || !p.opggRegion || !champName) continue;
+      const parts = p.riotId.split('#');
+      if (parts.length !== 2 || !parts[0] || !parts[1]) continue;
+
+      try {
+        const text = await opggCall('lol_get_summoner_profile', {
+          game_name: parts[0],
+          tag_line:  parts[1],
+          region:    p.opggRegion.toUpperCase(),
+          desired_output_fields: [
+            'data.summoner.ranked_most_champions.my_champion_stats[].{champion_name,play,win,lose}',
+            'data.summoner.ranked_most_champions.my_champion_stats[].basic.{kill,death,assist,cs,kill_participation,damage_to_champion,vision_score}',
+          ]
+        });
+        state.players[slot][i].draftChampStats = parseChampStatsForChamp(text, champName);
+        updated.push(p.handle + '(' + champName + ')');
+        await new Promise(r => setTimeout(r, 300));
+      } catch (err) {
+        errors.push(p.handle + ': ' + err.message);
       }
     }
   }

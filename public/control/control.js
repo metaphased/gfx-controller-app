@@ -273,6 +273,7 @@ function syncUI(s) {
     const _mt1 = (s.match && s.match.team1) || {}; const _mt2 = (s.match && s.match.team2) || {};
     _h2hPrev.textContent = (_mt1.name || _mt1.tag || '—') + ' vs ' + (_mt2.name || _mt2.tag || '—');
   }
+  syncH2hChampStatsUI((s.settings || {}).h2hChampStats || {});
 
   // ── Pre-show sync ──────────────────────────────────────────────────────────
   syncPreShowUI(s.preShow || {}, s.settings || {}, s.todayGames || [], s.ticker || {});
@@ -870,10 +871,86 @@ function applyDraftRoles() {
     const msg = g('role-assign-msg');
     if (msg) { msg.style.display = 'block'; msg.textContent = '✓ Roles applied — graphic and series tracker updated'; }
     setTimeout(function() { const m2 = g('role-assign-msg'); if (m2) m2.style.display = 'none'; }, 3000);
+    // Auto-fetch champion stats for each player's drafted champion
+    fetchDraftChampStats();
   });
 }
 
+async function fetchDraftChampStats() {
+  const msg = g('role-assign-msg');
+  try {
+    const r = await fetch('/api/champstats/draft', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+    if (!r.ok) return;
+    const res = await r.json();
+    if (msg && res.updated && res.updated.length) {
+      msg.style.display = 'block';
+      msg.textContent = '✓ Champ stats fetched: ' + res.updated.join(', ');
+      setTimeout(function() { if (msg) msg.style.display = 'none'; }, 4000);
+    }
+  } catch(e) { /* non-critical, fail silently */ }
+}
+
 // ── Head to Head ───────────────────────────────────────────────────────────────
+const H2H_STAT_TOKENS = [
+  { key: 'winRate', label: 'Win Rate' },
+  { key: 'games',   label: 'Games'    },
+  { key: 'kda',     label: 'KDA'      },
+  { key: 'cs',      label: 'CS/g'     },
+  { key: 'kp',      label: 'KP%'      },
+  { key: 'damage',  label: 'DMG/g'    },
+  { key: 'vision',  label: 'Vision'   },
+];
+const H2H_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+
+function patchH2hChampStats(data) { api('/api/settings', { h2hChampStats: Object.assign({}, ((window._state||{}).settings||{}).h2hChampStats, data) }); }
+
+function toggleH2hStatToken(role, token, enabled) {
+  const cfg = JSON.parse(JSON.stringify(((window._state||{}).settings||{}).h2hChampStats || {}));
+  const current = cfg[role] || [];
+  cfg[role] = enabled ? [...new Set([...current, token])] : current.filter(function(t) { return t !== token; });
+  api('/api/settings', { h2hChampStats: cfg });
+}
+
+function syncH2hChampStatsUI(cfg) {
+  const el = g('h2h-champ-stats-enabled');
+  if (el) el.checked = !!cfg.enabled;
+
+  const grid = g('h2h-champ-stats-grid');
+  if (!grid) return;
+  if (grid.dataset.built) {
+    // Just update checkbox states
+    H2H_ROLES.forEach(function(role) {
+      const active = cfg[role] || [];
+      H2H_STAT_TOKENS.forEach(function(tok) {
+        const cb = g('h2h-stat-' + role + '-' + tok.key);
+        if (cb) cb.checked = active.indexOf(tok.key) !== -1;
+      });
+    });
+    return;
+  }
+  grid.dataset.built = '1';
+
+  // Header row
+  var html = '<div style="display:grid;grid-template-columns:70px repeat('+H2H_STAT_TOKENS.length+',1fr);gap:4px;align-items:center;font-size:10px;color:var(--text-dim);font-weight:700;letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">';
+  html += '<div></div>';
+  H2H_STAT_TOKENS.forEach(function(tok) { html += '<div style="text-align:center">'+tok.label+'</div>'; });
+  html += '</div>';
+
+  H2H_ROLES.forEach(function(role) {
+    const active = cfg[role] || [];
+    html += '<div style="display:grid;grid-template-columns:70px repeat('+H2H_STAT_TOKENS.length+',1fr);gap:4px;align-items:center;margin-bottom:4px">';
+    html += '<div style="font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:0.08em">'+role.toUpperCase()+'</div>';
+    H2H_STAT_TOKENS.forEach(function(tok) {
+      const checked = active.indexOf(tok.key) !== -1 ? 'checked' : '';
+      html += '<div style="text-align:center"><input type="checkbox" id="h2h-stat-'+role+'-'+tok.key+'" '+checked+
+        ' onchange="toggleH2hStatToken(\''+role+'\',\''+tok.key+'\',this.checked)"></div>';
+    });
+    html += '</div>';
+  });
+
+  grid.innerHTML = html;
+}
+
 function patchH2H(data) { api('/api/headToHead', data); }
 function setH2HSpotlight(roleIdx) { patchH2H({ mode: 'spotlight', spotlightRole: roleIdx }); }
 function setH2HAnimStyle(style) { patchH2H({ animStyle: style }); }
@@ -1631,17 +1708,23 @@ async function refreshChampPool() {
   if (btn) { btn.disabled = true; btn.textContent = '↻ Fetching…'; }
   if (status) status.textContent = 'Contacting op.gg…';
   try {
-    const res = await api('/api/champpool/refresh', {});
+    const r = await fetch('/api/champpool/refresh', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({})
+    });
+    if (!r.ok) { if (status) status.textContent = 'Server error ' + r.status + ' — try restarting the server.'; return; }
+    const res = await r.json();
     if (res && res.ok) {
       const msg = res.updated.length
         ? '✓ Champ pools updated: ' + res.updated.join(', ') + (res.errors.length ? ' — Errors: ' + res.errors.join(', ') : '')
         : (res.errors.length ? 'Errors: ' + res.errors.join(', ') : 'No players with Riot ID found.');
       if (status) status.textContent = msg;
     } else {
-      if (status) status.textContent = 'Error: ' + ((res && res.error) || 'Unknown error');
+      if (status) status.textContent = 'Error: ' + ((res && res.error) || JSON.stringify(res));
     }
   } catch(e) {
-    if (status) status.textContent = 'Request failed.';
+    if (status) status.textContent = 'Request failed: ' + e.message;
   }
   if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh Champion Pools from op.gg'; }
 }
