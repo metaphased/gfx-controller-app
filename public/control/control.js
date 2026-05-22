@@ -1742,7 +1742,9 @@ function _intelChampsHtml(pool) {
   }).join('');
   return '<table class="intel-champ-table">' +
     '<thead class="intel-champ-thead"><tr>' +
-      '<th class="col-name">Champion Pool</th><th class="col-games">Games</th><th class="col-bar">Win Rate</th><th class="col-wr"></th>' +
+      '<th class="col-name icht-left">Champion Pool</th>' +
+      '<th class="col-games icht-center">Games</th>' +
+      '<th class="col-bar icht-center" colspan="2">Win Rate</th>' +
     '</tr></thead>' +
     '<tbody class="intel-champ-tbody">' + rows + '</tbody>' +
   '</table>';

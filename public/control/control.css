@@ -859,10 +859,14 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
 }
 
 /* Column widths applied to all cells (thead + tbody) via shared class */
-.col-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; white-space: nowrap; padding-right: 14px; }
-.col-games { width: 40px; font-size: 12px; color: rgba(255,255,255,0.55); padding-right: 10px; white-space: nowrap; }
-.col-bar   { width: 90px; padding-right: 10px; }
+.col-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; white-space: nowrap; padding-right: 20px; }
+.col-games { width: 48px; font-size: 12px; color: rgba(255,255,255,0.55); text-align: center; padding-right: 16px; white-space: nowrap; }
+.col-bar   { width: 90px; padding-right: 6px; }
 .col-wr    { width: 36px; font-size: 12px; font-weight: 800; text-align: right; white-space: nowrap; }
+
+/* Header alignment helpers */
+.icht-left   { text-align: left; }
+.icht-center { text-align: center; }
 
 .intel-champ-tbody tr { height: 22px; }
 .intel-champ-tbody td { padding: 2px 0; vertical-align: middle; }
