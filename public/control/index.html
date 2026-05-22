@@ -1822,91 +1822,78 @@
 <!-- ── Live Control Bar ─────────────────────────────────────────────────────── -->
 <div id="live-bar">
 
-  <!-- Row 1: Graphic toggles -->
-  <div class="lbar-row">
+  <!-- Row 2: Expanded controls (score + break timer) — hidden until toggled -->
+  <div class="lbar-row lbar-row-2" id="lbar-row-2">
+    <span class="lbar-row2-label">SCORE</span>
+    <div id="lbar-score-wrap" class="lbar-score-wrap"></div>
+    <div class="lbar-divider"></div>
+    <span class="lbar-row2-label">BREAK TIMER</span>
+    <input type="number" id="lbar-break-min" class="lbar-num" placeholder="m" min="0" max="99">
+    <span class="lbar-sep-colon">:</span>
+    <input type="number" id="lbar-break-sec" class="lbar-num" placeholder="s" min="0" max="59">
+    <button class="lbar-timer-btn" onclick="lbarStartTimer()" title="Start / adjust countdown">▶ START</button>
+    <button class="lbar-timer-btn" onclick="extendBreakTimer(5)" title="Add 5 minutes">+5m</button>
+    <button class="lbar-timer-btn lbar-timer-clear" onclick="clearBreakTimer()" title="Clear timer">✕ CLEAR</button>
+    <span class="lbar-break-countdown" id="lbar-break-countdown"></span>
+  </div>
 
-    <!-- Active game context -->
+  <!-- Row 1: Graphic toggles (always visible) -->
+  <div class="lbar-row" id="lbar-row-1">
+
     <span class="lbar-game-context" id="lbar-game-context"></span>
     <div class="lbar-divider"></div>
 
-    <!-- Lower Third -->
+    <!-- Game graphics -->
+    <div class="lbar-group" id="lbar-group-scoreboard">
+      <button class="lbar-toggle" id="lbar-toggle-scoreboard" onclick="toggleGraphic('scoreboard')"><span class="lbar-dot" id="lbar-dot-scoreboard"></span>SCORE</button>
+    </div>
     <div class="lbar-group" id="lbar-group-lowerThird">
       <button class="lbar-toggle" id="lbar-toggle-lowerThird" onclick="toggleGraphic('lowerThird')"><span class="lbar-dot" id="lbar-dot-lowerThird"></span>LOWER 3RD</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Head to Head -->
     <div class="lbar-group" id="lbar-group-headToHead">
       <button class="lbar-toggle" id="lbar-toggle-headToHead" onclick="toggleGraphic('headToHead')"><span class="lbar-dot" id="lbar-dot-headToHead"></span>H2H</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Draft -->
     <div class="lbar-group" id="lbar-group-draft">
       <button class="lbar-toggle" id="lbar-toggle-draft" onclick="toggleGraphic('draft')"><span class="lbar-dot" id="lbar-dot-draft"></span>DRAFT</button>
     </div>
 
     <div class="lbar-divider"></div>
 
-    <!-- Bracket -->
+    <!-- Tournament graphics -->
     <div class="lbar-group" id="lbar-group-bracket">
       <button class="lbar-toggle" id="lbar-toggle-bracket" onclick="toggleGraphic('bracket')"><span class="lbar-dot" id="lbar-dot-bracket"></span>BRACKET</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Group Stage -->
     <div class="lbar-group" id="lbar-group-groupStage">
       <button class="lbar-toggle" id="lbar-toggle-groupStage" onclick="toggleGraphic('groupStage')"><span class="lbar-dot" id="lbar-dot-groupStage"></span>GROUPS</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Tournament Structure -->
     <div class="lbar-group" id="lbar-group-tournamentStructure">
       <button class="lbar-toggle" id="lbar-toggle-tournamentStructure" onclick="toggleGraphic('tournamentStructure')"><span class="lbar-dot" id="lbar-dot-tournamentStructure"></span>STRUCTURE</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Prizepool -->
     <div class="lbar-group" id="lbar-group-prizepool">
       <button class="lbar-toggle" id="lbar-toggle-prizepool" onclick="toggleGraphic('prizepool')"><span class="lbar-dot" id="lbar-dot-prizepool"></span>PRIZES</button>
     </div>
 
     <div class="lbar-divider"></div>
 
-    <!-- Break Screen -->
+    <!-- Show flow -->
+    <div class="lbar-group" id="lbar-group-preShow">
+      <button class="lbar-toggle" id="lbar-toggle-preShow" onclick="lbarTogglePreShow()"><span class="lbar-dot" id="lbar-dot-preShow"></span>PRE-SHOW</button>
+    </div>
     <div class="lbar-group" id="lbar-group-breakScreen">
       <button class="lbar-toggle" id="lbar-toggle-breakScreen" onclick="toggleGraphic('breakScreen')"><span class="lbar-dot" id="lbar-dot-breakScreen"></span>BREAK</button>
-      <input type="number" id="lbar-break-min" class="lbar-num" placeholder="m" min="0" max="99">
-      <span class="lbar-score-sep" style="font-size:14px">:</span>
-      <input type="number" id="lbar-break-sec" class="lbar-num" placeholder="s" min="0" max="59">
-      <button class="lbar-timer-btn" onclick="lbarStartTimer()" title="Start / adjust countdown">▶</button>
-      <button class="lbar-timer-btn lbar-timer-clear" onclick="clearBreakTimer()" title="Clear timer">✕</button>
-      <button class="lbar-timer-btn" onclick="extendBreakTimer(5)" title="Add 5 minutes to timer">+5m</button>
-      <span class="lbar-break-countdown" id="lbar-break-countdown"></span>
-      <button class="lbar-timer-btn" id="lbar-pip-btn" onclick="lbarTogglePip()" title="Toggle PIP mode">PIP</button>
+      <button class="lbar-toggle lbar-pip-toggle" id="lbar-pip-btn" onclick="lbarTogglePip()" title="Toggle PIP mode">PIP</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Ticker -->
     <div class="lbar-group" id="lbar-group-ticker">
       <button class="lbar-toggle" id="lbar-toggle-ticker" onclick="toggleGraphic('ticker')"><span class="lbar-dot" id="lbar-dot-ticker"></span>TICKER</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Win Screen -->
     <div class="lbar-group" id="lbar-group-winScreen">
       <button class="lbar-toggle" id="lbar-toggle-winScreen" onclick="toggleGraphic('winScreen')"><span class="lbar-dot" id="lbar-dot-winScreen"></span>WIN</button>
-      <span class="lbar-win-team" id="lbar-win-indicator"></span>
     </div>
 
-  </div><!-- /lbar-row -->
+    <!-- Expand toggle (pushes to right edge) -->
+    <button class="lbar-expand-btn" id="lbar-expand-btn" onclick="lbarToggleExpand()" title="Show score &amp; timer controls">▲</button>
+
+  </div><!-- /lbar-row-1 -->
 </div><!-- /live-bar -->
 
 <script src="/socket.io/socket.io.js"></script>

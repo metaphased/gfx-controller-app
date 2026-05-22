@@ -573,108 +573,142 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 #live-bar {
   position: fixed;
   bottom: 0;
-  /* align with main content area, not sidebar */
   left: var(--sidebar-w);
   right: 0;
   background: #060d10;
-  border-top: 1px solid rgba(31,250,255,0.2);
+  border-top: 1px solid rgba(255,255,255,0.12);
   z-index: 500;
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.5);
+  box-shadow: 0 -6px 32px rgba(0,0,0,0.6);
 }
 
+/* Row 1: always visible toggle row */
 .lbar-row {
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  height: 54px;
+  padding: 0 0 0 16px;
+  height: 48px;
   gap: 0;
   overflow-x: auto;
+}
+
+/* Row 2: expandable controls — hidden by default */
+.lbar-row-2 {
+  display: none;
+  height: 44px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  gap: 8px;
+  padding: 0 16px;
+  align-items: center;
+}
+#live-bar.expanded .lbar-row-2 { display: flex; }
+#live-bar.expanded .lbar-expand-btn { transform: rotate(180deg); }
+
+.lbar-row2-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255,255,255,0.3);
+  white-space: nowrap; flex-shrink: 0;
+  padding-right: 4px;
 }
 
 /* Each graphic control group */
 .lbar-group {
   display: flex;
   align-items: center;
-  gap: 5px;
-  padding: 0 12px;
+  gap: 4px;
+  padding: 0 8px;
   height: 100%;
   flex-shrink: 0;
   transition: background 0.15s;
-  border-bottom: 2px solid transparent;
+  border-top: 2px solid transparent;
 }
 .lbar-group-active {
-  background: rgba(31,250,255,0.04);
-  border-bottom-color: var(--primary);
+  background: rgba(220,40,40,0.06);
+  border-top-color: #e03030;
 }
 
 .lbar-divider {
   width: 1px;
-  height: 28px;
-  background: rgba(167,163,142,0.15);
+  height: 24px;
+  background: rgba(255,255,255,0.1);
   flex-shrink: 0;
+  margin: 0 4px;
 }
 
 .lbar-game-context {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(167,163,142,0.5);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
   white-space: nowrap;
-  padding: 0 14px;
+  padding: 0 12px;
   flex-shrink: 0;
 }
 
 .lbar-dot {
   display: inline-block;
-  width: 6px; height: 6px;
+  width: 5px; height: 5px;
   border-radius: 50%;
-  background: rgba(167,163,142,0.2);
+  background: rgba(255,255,255,0.2);
   flex-shrink: 0;
   transition: background 0.2s, box-shadow 0.2s;
 }
 .lbar-dot.active {
-  background: #1ffaff;
-  box-shadow: 0 0 6px rgba(31,250,255,0.9);
+  background: #e03030;
+  box-shadow: 0 0 5px rgba(220,40,40,0.8);
 }
 
-/* Pill toggle button */
+/* Pill toggle button — off state: clearly readable */
 .lbar-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: 5px 12px;
-  border-radius: 20px;
-  border: 1px solid rgba(167,163,142,0.2);
-  background: transparent;
-  color: rgba(167,163,142,0.35);
+  font-size: 11px; font-weight: 800; letter-spacing: 0.15em; text-transform: uppercase;
+  padding: 4px 10px;
+  border-radius: 3px;
+  border: 1px solid rgba(255,255,255,0.22);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.65);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.12s;
   white-space: nowrap;
   flex-shrink: 0;
 }
 .lbar-toggle:hover {
-  border-color: rgba(167,163,142,0.5);
-  color: var(--accent);
+  border-color: rgba(255,255,255,0.5);
+  color: #fff;
+  background: rgba(255,255,255,0.08);
 }
+/* Live / on state: red */
 .lbar-toggle.is-on {
-  background: rgba(31,250,255,0.1);
-  border-color: var(--primary);
-  color: var(--primary);
-  box-shadow: 0 0 10px rgba(31,250,255,0.15);
+  background: rgba(220,40,40,0.18);
+  border-color: #e03030;
+  color: #ff5555;
+  box-shadow: 0 0 8px rgba(220,40,40,0.2);
 }
 .lbar-toggle.is-on:hover {
-  background: rgba(255,68,68,0.1);
-  border-color: var(--danger);
-  color: var(--danger);
-  box-shadow: none;
+  background: rgba(220,40,40,0.28);
+  border-color: #ff4444;
+  color: #ff6666;
 }
+/* PIP toggle: same on/off logic but separate class so it can sit inline with BREAK */
+.lbar-pip-toggle { font-size: 10px; padding: 3px 8px; }
+
+/* Expand button */
+.lbar-expand-btn {
+  margin-left: auto;
+  height: 100%;
+  padding: 0 16px;
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.3);
+  font-size: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s, transform 0.2s;
+}
+.lbar-expand-btn:hover { color: rgba(255,255,255,0.7); }
 
 /* Score controls in bar */
 .lbar-score-wrap {
@@ -735,64 +769,54 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   line-height: 1;
 }
 
-/* Timer inputs — height matches the timer buttons */
-.lbar-num {
-  width: 28px;
-  height: 24px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-size: 12px;
+/* Colon separator in timer row */
+.lbar-sep-colon {
   font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 600;
-  padding: 0 2px;
-  text-align: center;
-  outline: none;
+  font-size: 16px; font-weight: 300; color: rgba(255,255,255,0.4); line-height: 1;
+}
+
+/* Timer inputs */
+.lbar-num {
+  width: 32px; height: 26px;
+  background: var(--bg3);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: #fff;
+  font-size: 13px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700;
+  padding: 0 2px; text-align: center; outline: none;
   box-sizing: border-box;
-  -moz-appearance: textfield;
-  appearance: textfield;
+  -moz-appearance: textfield; appearance: textfield;
 }
 .lbar-num::-webkit-outer-spin-button,
 .lbar-num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.lbar-num:focus { border-color: var(--primary); }
+.lbar-num:focus { border-color: rgba(255,255,255,0.6); }
 
 /* Live countdown display */
 .lbar-break-countdown {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 15px;
-  font-weight: 700;
-  color: var(--primary);
-  min-width: 34px;
-  text-align: center;
-  letter-spacing: 0.04em;
+  font-size: 18px; font-weight: 800; letter-spacing: 0.06em;
+  color: #fff; min-width: 42px; text-align: center;
   transition: color 0.3s;
 }
 .lbar-break-countdown.expired { color: var(--danger); }
 .lbar-timer-btn {
-  height: 24px;
-  font-size: 11px;
-  padding: 0 7px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  color: var(--accent);
+  height: 26px;
+  font-size: 11px; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: 0.1em;
+  padding: 0 8px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.2);
+  color: rgba(255,255,255,0.7);
   cursor: pointer;
   transition: all 0.12s;
-  box-sizing: border-box;
-  line-height: 1;
+  box-sizing: border-box; line-height: 1; white-space: nowrap; flex-shrink: 0;
 }
-.lbar-timer-btn:hover { border-color: var(--primary); color: var(--primary); }
+.lbar-timer-btn:hover { border-color: rgba(255,255,255,0.6); color: #fff; }
 .lbar-timer-clear:hover { border-color: var(--danger); color: var(--danger); }
 
-/* Win team indicator in bar (read-only, auto-set from series result) */
-.lbar-win-team {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
-  color: var(--primary); padding: 2px 8px;
-  background: rgba(31,250,255,0.06); border: 1px solid rgba(31,250,255,0.2);
-}
-
-/* Push main content above the bar */
-.main { padding-bottom: 70px; }
+/* Push main content above the bar (row1 48px + possible row2 44px + border) */
+.main { padding-bottom: 56px; }
+#live-bar.expanded ~ .main,
+.main { padding-bottom: 56px; }
+#live-bar.expanded + * { padding-bottom: 100px; }
 
 /* ── Stage formats ────────────────────────────────────────────────────────────── */
 .stage-format-grid { display: flex; flex-direction: column; gap: 0; }
