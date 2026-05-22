@@ -1625,6 +1625,27 @@ function renderPlayerEditors(players) {
 
 function updatePlayer(team, index, field, value) { api('/api/players', { team, index, data: { [field]: value } }); }
 
+async function refreshChampPool() {
+  const btn = document.querySelector('[onclick="refreshChampPool()"]');
+  const status = g('ranks-status');
+  if (btn) { btn.disabled = true; btn.textContent = '↻ Fetching…'; }
+  if (status) status.textContent = 'Contacting op.gg…';
+  try {
+    const res = await api('/api/champpool/refresh', {});
+    if (res && res.ok) {
+      const msg = res.updated.length
+        ? '✓ Champ pools updated: ' + res.updated.join(', ') + (res.errors.length ? ' — Errors: ' + res.errors.join(', ') : '')
+        : (res.errors.length ? 'Errors: ' + res.errors.join(', ') : 'No players with Riot ID found.');
+      if (status) status.textContent = msg;
+    } else {
+      if (status) status.textContent = 'Error: ' + ((res && res.error) || 'Unknown error');
+    }
+  } catch(e) {
+    if (status) status.textContent = 'Request failed.';
+  }
+  if (btn) { btn.disabled = false; btn.textContent = '↻ Refresh Champion Pools from op.gg'; }
+}
+
 async function refreshRanks() {
   const btn = document.querySelector('[onclick="refreshRanks()"]');
   const status = g('ranks-status');

@@ -578,6 +578,62 @@ app.post('/api/ranks/refresh', requireAdmin, async (req, res) => {
   res.json({ ok: true, updated, errors });
 });
 
+// ── op.gg champion pool fetch ─────────────────────────────────────────────────
+async function opggCall(toolName, args) {
+  const r = await fetch('https://mcp-api.op.gg/mcp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({ jsonrpc: '2.0', method: 'tools/call', params: { name: toolName, arguments: args }, id: 1 }),
+  });
+  if (!r.ok) throw new Error(`op.gg HTTP ${r.status}`);
+  const json = await r.json();
+  if (json.error) throw new Error(json.error.message || 'op.gg error');
+  return (json.result && json.result.content && json.result.content[0] && json.result.content[0].text) || '';
+}
+
+function parseChampPool(text) {
+  const pool = [];
+  const re = /MyChampionStat\("([^"]+)",(\d+),(\d+),(\d+)\)/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    pool.push({ name: m[1], games: parseInt(m[2]), wins: parseInt(m[3]), losses: parseInt(m[4]) });
+  }
+  return pool;
+}
+
+app.post('/api/champpool/refresh', requireAdmin, async (req, res) => {
+  const updated = [], errors = [];
+
+  for (const slot of ['team1', 'team2']) {
+    const players = state.players[slot] || [];
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      if (!p.riotId || !p.opggRegion) continue;
+      const parts = p.riotId.split('#');
+      if (parts.length !== 2 || !parts[0] || !parts[1]) continue;
+
+      try {
+        const text = await opggCall('lol_get_summoner_profile', {
+          game_name: parts[0],
+          tag_line:  parts[1],
+          region:    p.opggRegion.toUpperCase(),
+          desired_output_fields: [
+            'data.summoner.ranked_most_champions.my_champion_stats[].{champion_name,play,win,lose}'
+          ]
+        });
+        state.players[slot][i].champPool = parseChampPool(text);
+        updated.push(p.handle);
+        await new Promise(r => setTimeout(r, 300));
+      } catch (err) {
+        errors.push(`${p.handle}: ${err.message}`);
+      }
+    }
+  }
+
+  broadcast();
+  res.json({ ok: true, updated, errors });
+});
+
 // Teams CRUD (admin only)
 app.get('/api/teams', (req, res) => res.json({ teams: loadTeams() }));
 app.post('/api/teams/save', requireAdmin, (req, res) => {
