@@ -857,16 +857,15 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
   padding: 0 0 5px;
   text-align: left;
 }
-.intel-champ-thead .col-bar  { width: 80px; }
-.intel-champ-thead .col-wr   { text-align: right; width: 38px; }
-.intel-champ-thead .col-games{ width: 36px; }
+
+/* Column widths applied to all cells (thead + tbody) via shared class */
+.col-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; white-space: nowrap; padding-right: 14px; }
+.col-games { width: 40px; font-size: 12px; color: rgba(255,255,255,0.55); padding-right: 10px; white-space: nowrap; }
+.col-bar   { width: 90px; padding-right: 10px; }
+.col-wr    { width: 36px; font-size: 12px; font-weight: 800; text-align: right; white-space: nowrap; }
 
 .intel-champ-tbody tr { height: 22px; }
 .intel-champ-tbody td { padding: 2px 0; vertical-align: middle; }
-.col-name  { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #fff; padding-right: 8px; }
-.col-games { font-size: 12px; color: rgba(255,255,255,0.55); padding-right: 8px; }
-.col-bar   { padding-right: 8px; }
-.col-wr    { font-size: 12px; font-weight: 800; text-align: right; }
 
 .intel-wr-bar  { height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
 .intel-wr-fill { height: 100%; border-radius: 2px; }
