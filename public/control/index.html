@@ -42,10 +42,6 @@
     <div class="nav-section-label">GRAPHICS</div>
     <a class="nav-item" data-tab="theme">⬡ Broadcast Theme</a>
     <a class="nav-item" data-tab="bgoutput">⬡ BG Output</a>
-    <a class="nav-item" data-tab="scoreboard">
-      <span id="nav-dot-scoreboard" class="nav-status-dot"></span>
-      Scoreboard
-    </a>
     <a class="nav-item" data-tab="lowerthird">
       <span id="nav-dot-lowerthird" class="nav-status-dot"></span>
       Lower Third
@@ -107,6 +103,8 @@
   <div id="meta-topbar">
     <span class="mtb-profile-label">ACTIVE PROFILE</span>
     <span class="mtb-profile-name" id="mtb-profile-name">No profile loaded</span>
+    <div class="mtb-sep"></div>
+    <span class="mtb-match-context" id="lbar-game-context"></span>
   </div>
 
   <!-- ── Main ─────────────────────────────────────────────────────────────── -->
@@ -598,26 +596,6 @@
     <!-- ══════════════════════════════════════════════════════════════════════
          SCOREBOARD
     ══════════════════════════════════════════════════════════════════════════ -->
-    <section class="tab" id="tab-scoreboard">
-      <div class="tab-header"><h1>Scoreboard</h1></div>
-      <div class="card" style="max-width:540px">
-        <div class="gfx-toggle-row">
-          <span>Scoreboard Visible</span>
-          <button id="showbtn-scoreboard" class="btn btn-primary" onclick="showGraphic('scoreboard')">SHOW</button>
-          <button id="hidebtn-scoreboard" class="btn btn-danger" onclick="hideGraphic('scoreboard')">HIDE</button>
-        </div>
-        <div class="live-score-panel">
-          <div class="ls-team"><span class="ls-name" id="ls-t1-name">Team 1</span>
-            <div class="score-btns"><button class="btn btn-icon" onclick="patchScore('team1',-1)">−</button><span class="score-val large" id="ls-t1-score">0</span><button class="btn btn-icon btn-primary" onclick="patchScore('team1',1)">+</button></div>
-          </div>
-          <div class="ls-sep">:</div>
-          <div class="ls-team"><span class="ls-name" id="ls-t2-name">Team 2</span>
-            <div class="score-btns"><button class="btn btn-icon" onclick="patchScore('team2',-1)">−</button><span class="score-val large" id="ls-t2-score">0</span><button class="btn btn-icon btn-primary" onclick="patchScore('team2',1)">+</button></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- ══════════════════════════════════════════════════════════════════════
          LOWER THIRD
     ══════════════════════════════════════════════════════════════════════════ -->
@@ -1821,74 +1799,50 @@
 
 <!-- ── Live Control Bar ─────────────────────────────────────────────────────── -->
 <div id="live-bar">
-
-  <!-- Row 1: Graphic toggles -->
   <div class="lbar-row">
 
-    <!-- Active game context -->
-    <span class="lbar-game-context" id="lbar-game-context"></span>
-    <div class="lbar-divider"></div>
-
-    <!-- Lower Third -->
+    <!-- Game graphics -->
     <div class="lbar-group" id="lbar-group-lowerThird">
       <button class="lbar-toggle" id="lbar-toggle-lowerThird" onclick="toggleGraphic('lowerThird')"><span class="lbar-dot" id="lbar-dot-lowerThird"></span>LOWER 3RD</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Head to Head -->
     <div class="lbar-group" id="lbar-group-headToHead">
       <button class="lbar-toggle" id="lbar-toggle-headToHead" onclick="toggleGraphic('headToHead')"><span class="lbar-dot" id="lbar-dot-headToHead"></span>H2H</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Draft -->
     <div class="lbar-group" id="lbar-group-draft">
       <button class="lbar-toggle" id="lbar-toggle-draft" onclick="toggleGraphic('draft')"><span class="lbar-dot" id="lbar-dot-draft"></span>DRAFT</button>
     </div>
 
     <div class="lbar-divider"></div>
 
-    <!-- Bracket -->
+    <!-- Tournament graphics -->
     <div class="lbar-group" id="lbar-group-bracket">
       <button class="lbar-toggle" id="lbar-toggle-bracket" onclick="toggleGraphic('bracket')"><span class="lbar-dot" id="lbar-dot-bracket"></span>BRACKET</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Group Stage -->
     <div class="lbar-group" id="lbar-group-groupStage">
       <button class="lbar-toggle" id="lbar-toggle-groupStage" onclick="toggleGraphic('groupStage')"><span class="lbar-dot" id="lbar-dot-groupStage"></span>GROUPS</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Tournament Structure -->
     <div class="lbar-group" id="lbar-group-tournamentStructure">
       <button class="lbar-toggle" id="lbar-toggle-tournamentStructure" onclick="toggleGraphic('tournamentStructure')"><span class="lbar-dot" id="lbar-dot-tournamentStructure"></span>STRUCTURE</button>
     </div>
-
-    <div class="lbar-divider"></div>
-
-    <!-- Prizepool -->
     <div class="lbar-group" id="lbar-group-prizepool">
       <button class="lbar-toggle" id="lbar-toggle-prizepool" onclick="toggleGraphic('prizepool')"><span class="lbar-dot" id="lbar-dot-prizepool"></span>PRIZES</button>
     </div>
 
     <div class="lbar-divider"></div>
 
-    <!-- Break Screen -->
+    <!-- Break screen + timer -->
     <div class="lbar-group" id="lbar-group-breakScreen">
       <button class="lbar-toggle" id="lbar-toggle-breakScreen" onclick="toggleGraphic('breakScreen')"><span class="lbar-dot" id="lbar-dot-breakScreen"></span>BREAK</button>
-      <input type="number" id="lbar-break-min" class="lbar-num" placeholder="m" min="0" max="99">
-      <span class="lbar-score-sep" style="font-size:14px">:</span>
-      <input type="number" id="lbar-break-sec" class="lbar-num" placeholder="s" min="0" max="59">
-      <button class="lbar-timer-btn" onclick="lbarStartTimer()" title="Start / adjust countdown">▶</button>
-      <button class="lbar-timer-btn lbar-timer-clear" onclick="clearBreakTimer()" title="Clear timer">✕</button>
-      <button class="lbar-timer-btn" onclick="extendBreakTimer(5)" title="Add 5 minutes to timer">+5m</button>
+      <button class="lbar-toggle lbar-pip-toggle" id="lbar-pip-btn" onclick="lbarTogglePip()">PIP</button>
+      <div class="lbar-inner-divider"></div>
+      <input type="number" id="lbar-break-min" class="lbar-num" placeholder="m" min="0" max="99" size="2">
+      <span class="lbar-sep-colon">:</span>
+      <input type="number" id="lbar-break-sec" class="lbar-num" placeholder="s" min="0" max="59" size="2">
+      <button class="lbar-timer-btn" onclick="lbarStartTimer()">▶</button>
+      <button class="lbar-timer-btn" onclick="extendBreakTimer(5)">+5m</button>
+      <button class="lbar-timer-btn" onclick="extendBreakTimer(10)">+10m</button>
+      <button class="lbar-timer-btn lbar-timer-clear" onclick="clearBreakTimer()">✕</button>
       <span class="lbar-break-countdown" id="lbar-break-countdown"></span>
-      <button class="lbar-timer-btn" id="lbar-pip-btn" onclick="lbarTogglePip()" title="Toggle PIP mode">PIP</button>
     </div>
 
     <div class="lbar-divider"></div>
@@ -1900,10 +1854,12 @@
 
     <div class="lbar-divider"></div>
 
-    <!-- Win Screen -->
+    <!-- Win screen + team selector -->
     <div class="lbar-group" id="lbar-group-winScreen">
       <button class="lbar-toggle" id="lbar-toggle-winScreen" onclick="toggleGraphic('winScreen')"><span class="lbar-dot" id="lbar-dot-winScreen"></span>WIN</button>
-      <span class="lbar-win-team" id="lbar-win-indicator"></span>
+      <div class="lbar-inner-divider"></div>
+      <button class="lbar-timer-btn lbar-win-t1-btn" id="lbar-win-t1" onclick="lbarSetWinTeam('team1')">—</button>
+      <button class="lbar-timer-btn lbar-win-t2-btn" id="lbar-win-t2" onclick="lbarSetWinTeam('team2')">—</button>
     </div>
 
   </div><!-- /lbar-row -->

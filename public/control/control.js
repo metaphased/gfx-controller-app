@@ -2366,32 +2366,33 @@ function syncOpsWinTeamNames(m) {
 
 // ── Live Bar ───────────────────────────────────────────────────────────────────
 function syncLiveBar(s) {
-  const m = s.match;
-  const t1label = m.team1.tag || m.team1.name || 'T1';
-  const t2label = m.team2.tag || m.team2.name || 'T2';
+  const m  = s.match;
+  const t1 = m.team1 || {}, t2 = m.team2 || {};
+  const t1label = t1.tag || t1.name || 'T1';
+  const t2label = t2.tag || t2.name || 'T2';
 
-  // Active game context indicator
+  // Active game context
   const gameCtx = g('lbar-game-context');
   if (gameCtx) {
     const formatNum = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
     gameCtx.textContent = 'GAME ' + (m.currentGameNum || 1) + ' OF ' + formatNum + ' · ' + t1label + ' VS ' + t2label;
   }
 
-  // Win screen: show whichever team is currently set
-  const winInd = g('lbar-win-indicator');
-  if (winInd) {
-    const wt = s.winScreen && s.winScreen.team;
-    winInd.textContent = wt === 'team1' ? t1label : wt === 'team2' ? t2label : '—';
-  }
+  // Win team quick-set buttons — show team tags, highlight active
+  const wt = s.winScreen && s.winScreen.team;
+  const wt1btn = g('lbar-win-t1'), wt2btn = g('lbar-win-t2');
+  if (wt1btn) { wt1btn.textContent = t1label; wt1btn.classList.toggle('is-active', wt === 'team1'); }
+  if (wt2btn) { wt2btn.textContent = t2label; wt2btn.classList.toggle('is-active', wt === 'team2'); }
 
-  // PIP button active state
+  // PIP toggle — text changes + red when active
   const pipBtn = g('lbar-pip-btn');
   if (pipBtn) {
     const pipActive = !!(s.breakScreen && s.breakScreen.pipMode);
-    pipBtn.classList.toggle('is-on', pipActive);
+    pipBtn.className = 'lbar-toggle lbar-pip-toggle' + (pipActive ? ' is-on' : '');
+    pipBtn.textContent = pipActive ? '● PIP' : 'PIP';
   }
 
-  // Per-graphic toggle pill states and group highlight
+  // All graphic toggles (scoreboard removed from GRAPHIC_MAP is fine — elements won't exist)
   GRAPHIC_MAP.forEach(function(gfx) {
     const active  = s[gfx.key] && s[gfx.key].visible;
     const group   = g('lbar-group-'  + gfx.key);
@@ -2401,6 +2402,10 @@ function syncLiveBar(s) {
     if (dot)     dot.classList.toggle('active', !!active);
     if (toggleB) toggleB.className = 'lbar-toggle' + (active ? ' is-on' : '');
   });
+}
+
+function lbarSetWinTeam(team) {
+  api('/api/winScreen', { team });
 }
 
 function toggleGraphic(key) {
