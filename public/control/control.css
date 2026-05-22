@@ -850,7 +850,7 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
 .intel-body-right { flex: 0 0 200px; min-width: 0; }
 
 /* ── Champion pool table ── */
-.intel-champ-table { width: 100%; border-collapse: collapse; }
+.intel-champ-table { border-collapse: collapse; }
 .intel-champ-thead th {
   font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase;
   color: rgba(255,255,255,0.4);
