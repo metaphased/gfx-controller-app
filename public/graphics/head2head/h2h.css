@@ -227,6 +227,46 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-size: 1.6vh;
 }
 
+/* ── Champion stats strip ─────────────────────────────────────────────────── */
+.h2h-stats-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5vw;
+  margin-top: 0.9vh;
+  opacity: 0;
+  transition: opacity 0.35s ease 0.35s;
+}
+.h2h-row.active .h2h-stats-strip { opacity: 1; }
+
+.h2h-stat-pill {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25vw;
+  background: rgba(0,0,0,0.38);
+  padding: 0.25vh 0.6vw;
+  border-radius: 2px;
+}
+.h2h-stat-pill-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1vh; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: rgba(255,255,255,0.38);
+}
+.h2h-stat-pill-value {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.55vh; font-weight: 800;
+  letter-spacing: 0.03em;
+  color: #fff;
+}
+.h2h-stat-no-data {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.1vh; font-weight: 600;
+  color: rgba(255,255,255,0.2);
+  letter-spacing: 0.08em;
+  margin-top: 0.6vh;
+  font-style: italic;
+}
+
 /* ── Compact row: small text hint inside centre (role only, no icon) ────── */
 /* When extremely compact, hide the role icon and just show label */
 #h2h-root.mode-spotlight .h2h-row:not(.active) .h2h-role-icon  { width: 3.5vh; height: 3.5vh; }

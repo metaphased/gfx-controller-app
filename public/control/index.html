@@ -689,6 +689,17 @@
         </div>
       </div>
 
+      <!-- Champion stats strip -->
+      <div class="card">
+        <div class="card-title">Champion Stats Strip</div>
+        <p class="hint" style="margin-bottom:10px">Fetched automatically when draft roles are committed. Shown in spotlight rows.</p>
+        <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer">
+          <input type="checkbox" id="h2h-champ-stats-enabled" onchange="patchH2hChampStats({enabled:this.checked})">
+          <span style="font-size:13px">Show stats in H2H spotlight</span>
+        </label>
+        <div id="h2h-champ-stats-grid"></div>
+      </div>
+
       <!-- Show / hide -->
       <div class="card">
         <div class="gfx-toggle-row">

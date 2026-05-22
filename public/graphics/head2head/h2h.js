@@ -90,6 +90,7 @@ function buildRowHTML(i, t1Picks, t2Picks, t1Players, t2Players) {
       '<div class="h2h-player-info">' +
         '<div class="h2h-champ-name">' + t1ChampName + '</div>' +
         '<div class="h2h-player-handle">' + (t1Player.handle || '') + '</div>' +
+        '<div class="h2h-stats-strip" id="h2h-stats-t1-' + i + '"></div>' +
       '</div>' +
     '</div>' +
     '<div class="h2h-centre">' +
@@ -100,6 +101,7 @@ function buildRowHTML(i, t1Picks, t2Picks, t1Players, t2Players) {
       '<div class="h2h-player-info">' +
         '<div class="h2h-champ-name">' + t2ChampName + '</div>' +
         '<div class="h2h-player-handle">' + (t2Player.handle || '') + '</div>' +
+        '<div class="h2h-stats-strip" id="h2h-stats-t2-' + i + '"></div>' +
       '</div>' +
     '</div>'
   );
@@ -184,6 +186,54 @@ function renderAll(state) {
   Array.from(rowsEl.children).forEach(function(row, i) {
     row.classList.toggle('active', mode === 'spotlight' && i === spotlight);
   });
+
+  // ── Champion stats strips ─────────────────────────────────────────────────
+  var champCfg = settings.h2hChampStats || {};
+  if (champCfg.enabled) {
+    var slotMap = [
+      { prefix: 't1', players: t1Players },
+      { prefix: 't2', players: t2Players },
+    ];
+    slotMap.forEach(function(s) {
+      for (var i = 0; i < 5; i++) {
+        var el = $(('h2h-stats-' + s.prefix + '-' + i));
+        if (!el) continue;
+        var player = s.players.find(function(p) { return normalizeRole(p.role) === ROLES[i]; }) || {};
+        var stats  = player.draftChampStats || null;
+        var tokens = champCfg[ROLE_LABELS[i]] || [];
+        el.innerHTML = buildStatsStripHtml(stats, tokens);
+      }
+    });
+  } else {
+    // Clear strips when disabled
+    for (var si = 0; si < 5; si++) {
+      var e1 = $('h2h-stats-t1-' + si), e2 = $('h2h-stats-t2-' + si);
+      if (e1) e1.innerHTML = '';
+      if (e2) e2.innerHTML = '';
+    }
+  }
+}
+
+function buildStatsStripHtml(stats, tokens) {
+  if (!stats) return '<span class="h2h-stat-no-data">No ranked data this season</span>';
+  if (!tokens || !tokens.length) return '';
+
+  function pill(label, value) {
+    return '<div class="h2h-stat-pill"><span class="h2h-stat-pill-label">' + label + '</span><span class="h2h-stat-pill-value">' + value + '</span></div>';
+  }
+
+  return tokens.map(function(tok) {
+    switch (tok) {
+      case 'winRate': return pill('WR',     stats.winRate + '%');
+      case 'games':   return pill('Games',  stats.games + 'g');
+      case 'kda':     return pill('KDA',    stats.kda.k + '/' + stats.kda.d + '/' + stats.kda.a);
+      case 'cs':      return pill('CS/g',   stats.cs);
+      case 'kp':      return pill('KP',     stats.kp + '%');
+      case 'damage':  return pill('DMG/g',  Math.round(stats.damage / 1000) + 'k');
+      case 'vision':  return pill('Vision', stats.vision);
+      default:        return '';
+    }
+  }).join('');
 }
 
 // ── Socket ────────────────────────────────────────────────────────────────────
