@@ -102,6 +102,7 @@ app.use('/login',    express.static(path.join(__dirname, 'public', 'login')));
 app.use('/graphics', express.static(path.join(__dirname, 'public', 'graphics')));
 app.use('/uploads',  express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
+app.use('/fonts',    express.static(path.join(__dirname, 'public', 'fonts')));
 
 // Root redirect
 app.get('/', (req, res) => {
