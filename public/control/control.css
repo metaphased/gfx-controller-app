@@ -2,6 +2,11 @@
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&family=Inter:wght@400;500&family=Hubot+Sans:wght@400;500&family=Space+Grotesk:wght@400;500&family=Figtree:wght@400;500&family=Poppins:wght@400;500&family=Outfit:wght@400;500&family=Darker+Grotesque:wght@400;500;700&family=Sora:wght@400;500&family=Oxygen:wght@400;700&display=swap');
 @import url('https://api.fontshare.com/v2/css?f[]=switzer@400,500&display=swap');
 
+@font-face { font-family: 'Nacelle'; font-weight: 400; font-style: normal; src: url('../fonts/nacelle/Nacelle-Regular.otf') format('opentype'); }
+@font-face { font-family: 'Nacelle'; font-weight: 600; font-style: normal; src: url('../fonts/nacelle/Nacelle-SemiBold.otf') format('opentype'); }
+@font-face { font-family: 'Nacelle'; font-weight: 700; font-style: normal; src: url('../fonts/nacelle/Nacelle-Bold.otf') format('opentype'); }
+@font-face { font-family: 'Nacelle'; font-weight: 800; font-style: normal; src: url('../fonts/nacelle/Nacelle-Heavy.otf') format('opentype'); }
+
 :root {
   --bg: #070f12;
   --bg2: #0a1b20;

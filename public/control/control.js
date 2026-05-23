@@ -2675,6 +2675,7 @@ var FONT_OPTIONS = [
   { name: 'Darker Grotesque', label: 'Darker Grotesque', sample: 'Condensed grotesque with personality' },
   { name: 'Sora',             label: 'Sora',             sample: 'Japanese-influenced geometric sans' },
   { name: 'Oxygen',           label: 'Oxygen',           sample: 'KDE project — crisp and legible' },
+  { name: 'Nacelle',          label: 'Nacelle',          sample: 'Self-hosted — clean geometric grotesque' },
 ];
 
 function initFontPicker() {
