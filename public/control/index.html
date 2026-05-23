@@ -426,7 +426,7 @@
         <div id="gs-game-list" style="margin-top:10px"></div>
       </div>
 
-      <div id="gs-active-indicator" style="display:none;padding:8px 14px;background:rgba(31,250,255,0.06);border:1px solid rgba(31,250,255,0.22);font-size:12px;color:var(--primary);margin-bottom:16px;font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em"></div>
+      <div id="gs-active-indicator" style="display:none;padding:8px 14px;background:rgba(31,250,255,0.06);border:1px solid rgba(31,250,255,0.22);font-size:12px;color:var(--primary);margin-bottom:16px;font-family:var(--ui-font),sans-serif;letter-spacing:0.06em"></div>
 
       <div class="grid2">
         <div class="card">
@@ -535,7 +535,7 @@
       <!-- Import section inline in Teams tab -->
       <div style="margin-top:32px;padding-top:20px;border-top:1px solid var(--border)">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-          <h2 style="font-family:'Barlow Condensed',sans-serif;font-size:18px;font-weight:800;color:var(--accent);letter-spacing:0.1em;text-transform:uppercase">Import Team Data</h2>
+          <h2 style="font-family:var(--ui-font),sans-serif;font-size:18px;font-weight:800;color:var(--accent);letter-spacing:0.1em;text-transform:uppercase">Import Team Data</h2>
         </div>
         <div class="grid2">
           <div class="card">
@@ -911,7 +911,7 @@
             <label><input type="radio" name="draft-ban-first" value="red"  id="draft-ban-first-red"  onchange="api('/api/draft',{banFirstTeam:'red'})">  <span style="color:var(--danger)">Red Side</span></label>
           </div>
         </div>
-        <div id="draft-step-indicator" style="margin-top:8px;font-size:12px;color:var(--text-dim);font-family:'Barlow Condensed',sans-serif;letter-spacing:0.06em"></div>
+        <div id="draft-step-indicator" style="margin-top:8px;font-size:12px;color:var(--text-dim);font-family:var(--ui-font),sans-serif;letter-spacing:0.06em"></div>
       </div>
 
       <div id="draft-tab-timer-row" class="draft-tab-timer-row" style="display:none">
@@ -1772,7 +1772,7 @@
 <!-- Profile load modal -->
 <div id="profile-load-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--bg2);border:1px solid var(--primary);width:460px;padding:24px;box-shadow:0 0 40px rgba(31,250,255,0.15)">
-    <div style="font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700;color:var(--primary);letter-spacing:0.12em;margin-bottom:14px;text-transform:uppercase">Load Profile — <span id="plm-name" style="color:#fff"></span></div>
+    <div style="font-family:var(--ui-font),sans-serif;font-size:15px;font-weight:700;color:var(--primary);letter-spacing:0.12em;margin-bottom:14px;text-transform:uppercase">Load Profile — <span id="plm-name" style="color:#fff"></span></div>
     <p style="font-size:13px;color:var(--text-dim);margin-bottom:14px">Choose what to restore:</p>
     <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px;font-size:13px;color:var(--text)">
       <label style="display:flex;align-items:center;gap:8px;opacity:0.5"><input type="checkbox" checked disabled> Tournament structure, stages &amp; groups</label>
@@ -1794,7 +1794,7 @@
 <div id="team-picker-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center">
   <div style="background:var(--bg2);border:1px solid var(--primary);width:500px;max-height:65vh;display:flex;flex-direction:column;box-shadow:0 0 40px rgba(31,250,255,0.15)">
     <div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
-      <span style="font-family:'Barlow Condensed',sans-serif;font-size:16px;font-weight:700;color:var(--primary);letter-spacing:0.12em">LOAD TEAM — <span id="team-picker-slot-label">TEAM 1</span></span>
+      <span style="font-family:var(--ui-font),sans-serif;font-size:16px;font-weight:700;color:var(--primary);letter-spacing:0.12em">LOAD TEAM — <span id="team-picker-slot-label">TEAM 1</span></span>
       <button class="btn btn-sm" onclick="closeTeamPicker()">✕ Close</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding:12px" id="team-picker-list"></div>

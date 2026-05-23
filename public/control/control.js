@@ -2724,6 +2724,8 @@ document.addEventListener('DOMContentLoaded', function() {
       const tabEl = g('tab-' + savedTab);
       if (tabEl) tabEl.classList.add('active');
     }
+    if (savedTab === 'users')    loadUsersTab();
+    if (savedTab === 'profiles') loadProfilesTab();
   }
 });
 
@@ -3026,6 +3028,8 @@ function switchToTab(tabKey) {
   if (navEl) navEl.classList.add('active');
   if (tabEl) tabEl.classList.add('active');
   loadTeamsCache();
+  if (tabKey === 'users')    loadUsersTab();
+  if (tabKey === 'profiles') loadProfilesTab();
   localStorage.setItem('gfx_ctrl_tab', tabKey);
 }
 

@@ -52,8 +52,8 @@ body {
   margin-left: auto;
 }
 .mtb-profile-name {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 13px; font-weight: 600; letter-spacing: 0.06em;
+  font-family: var(--ui-font), sans-serif;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .mtb-sep {
@@ -62,7 +62,7 @@ body {
   margin: 0 14px; flex-shrink: 0;
 }
 .mtb-match-context {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
   color: rgba(255,255,255,0.5); white-space: nowrap; flex-shrink: 0;
 }
@@ -82,7 +82,7 @@ body {
 
 .logo {
   padding: 20px 18px 16px;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 20px;
   font-weight: 800;
   letter-spacing: 0.1em;
@@ -113,7 +113,7 @@ body {
   cursor: pointer;
   border-left: 2px solid transparent;
   transition: all 0.15s;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   letter-spacing: 0.04em;
 }
 .nav-item:hover { color: var(--text); background: rgba(255,255,255,0.03); }
@@ -149,10 +149,11 @@ body {
   z-index: 10;
 }
 .connection-status {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
-  font-weight: 600;
-  letter-spacing: 0.1em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 .connection-status.connected { color: #2ecc71; }
 .connection-status.disconnected { color: var(--danger); }
@@ -169,7 +170,7 @@ body {
 .sidebar-logout {
   display: block;
   margin-top: 8px;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -201,7 +202,7 @@ body {
   flex-wrap: wrap;
 }
 .profile-name {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 18px;
   font-weight: 800;
   color: var(--text);
@@ -243,7 +244,7 @@ body {
   align-items: flex-start;
 }
 .profile-rename-input {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 18px;
   font-weight: 800;
   background: var(--bg3);
@@ -273,7 +274,7 @@ body {
 }
 .user-row:last-child { border-bottom: none; }
 .user-name {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
@@ -322,7 +323,7 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .tab-header h1 {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 28px;
   font-weight: 800;
   color: var(--primary);
@@ -338,7 +339,7 @@ body {
   margin-bottom: 16px;
 }
 .card-title {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.2em;
@@ -403,7 +404,7 @@ select option { background: var(--bg3); }
   align-items: center;
   justify-content: center;
   padding: 8px 18px;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -499,7 +500,7 @@ select option { background: var(--bg3); }
 }
 .opgg-link:hover { opacity: 1; }
 .player-num {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 11px;
   color: var(--text-dim);
   font-weight: 700;
