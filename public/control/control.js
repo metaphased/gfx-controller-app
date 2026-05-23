@@ -99,6 +99,7 @@ document.querySelectorAll('.nav-item').forEach(navEl => {
     if (tab) tab.classList.add('active');
     if (navEl.dataset.tab === 'teams')    renderTeamsList();
     if (navEl.dataset.tab === 'schedule') renderSchedule();
+    if (navEl.dataset.tab === 'home')     renderDashboard(window._state);
     localStorage.setItem('gfx_ctrl_tab', navEl.dataset.tab);
   });
 });
@@ -202,6 +203,93 @@ function syncTopBar(s) {
     window._activeProfileId = newId;
     updateProfileDirtyBar(false);
     if (newId && !_savedProfileSnapshotStr) _pendingSnapshotRestore = true;
+  }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+function renderDashboard(s) {
+  if (!s) return;
+  var homeTab = g('tab-home');
+  if (!homeTab || !homeTab.classList.contains('active')) return;
+  var m = s.match || {};
+  var t = s.tournament || {};
+  var todayGames = s.todayGames || [];
+
+  // Match card
+  var matchEl = g('dash-match');
+  if (matchEl) {
+    var sg = m.seriesGames || [];
+    var sc1 = sg.filter(function(x) { return x.winner === 'team1'; }).length;
+    var sc2 = sg.filter(function(x) { return x.winner === 'team2'; }).length;
+    var t1 = m.team1 || {}, t2 = m.team2 || {};
+    var hasTeams = !!(t1.name || t2.name);
+    matchEl.innerHTML = '<div class="card-title">Active Match</div>' +
+      (hasTeams
+        ? '<div class="dash-match-teams">' +
+            '<div class="dash-team-block">' +
+              (t1.logo ? '<img class="dash-team-logo" src="' + escHtml(t1.logo) + '" onerror="this.style.display=\'none\'">' : '') +
+              '<div class="dash-team-name">' + escHtml(t1.name || t1.tag || '—') + '</div>' +
+            '</div>' +
+            '<div class="dash-score-val">' + sc1 + ' – ' + sc2 + '</div>' +
+            '<div class="dash-team-block">' +
+              (t2.logo ? '<img class="dash-team-logo" src="' + escHtml(t2.logo) + '" onerror="this.style.display=\'none\'">' : '') +
+              '<div class="dash-team-name">' + escHtml(t2.name || t2.tag || '—') + '</div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="dash-match-meta">' + escHtml(m.format || '') + (m.tournament ? ' · ' + escHtml(m.tournament) : '') + '</div>'
+        : '<p class="dash-empty">No active match set up.</p>');
+  }
+
+  // Tournament card
+  var tournEl = g('dash-tournament');
+  if (tournEl) {
+    var hasTournament = !!(t.name || m.tournament);
+    tournEl.innerHTML = '<div class="card-title">Tournament</div>' +
+      (hasTournament
+        ? '<div class="dash-tourn-name">' + escHtml(t.name || m.tournament || '') + '</div>' +
+          '<div class="dash-tourn-meta">' +
+            (m.game    ? 'Game: ' + escHtml(m.game) + '<br>' : '') +
+            (m.format  ? 'Format: ' + escHtml(m.format) + '<br>' : '') +
+          '</div>'
+        : '<p class="dash-empty">No tournament configured.</p>');
+  }
+
+  // Schedule card
+  var schedEl = g('dash-schedule');
+  if (schedEl) {
+    schedEl.innerHTML = '<div class="card-title">Today\'s Schedule</div>' +
+      (todayGames.length
+        ? '<div class="dash-sched-list">' +
+            todayGames.map(function(sg) {
+              var r = sg.result;
+              var cls = 'dash-sched-row' + (sg.isCurrent ? ' is-current' : '');
+              var resultHtml = (r && r.completed)
+                ? '<span class="dash-sched-result">' + r.team1SeriesScore + '–' + r.team2SeriesScore + '</span>'
+                : '';
+              return '<div class="' + cls + '">' +
+                escHtml(sg.team1.name || sg.team1.tag || '?') +
+                '<span class="dash-sched-vs">vs</span>' +
+                escHtml(sg.team2.name || sg.team2.tag || '?') +
+                resultHtml +
+              '</div>';
+            }).join('') +
+          '</div>'
+        : '<p class="dash-empty">No schedule day loaded.</p>');
+  }
+
+  // Graphics card
+  var gfxEl = g('dash-graphics');
+  if (gfxEl) {
+    gfxEl.innerHTML = '<div class="card-title">Live Graphics</div>' +
+      '<div class="dash-gfx-grid">' +
+        GRAPHIC_MAP.map(function(gfx) {
+          var active = s[gfx.key] && s[gfx.key].visible;
+          return '<div class="dash-gfx-item">' +
+            '<div class="dash-gfx-dot' + (active ? ' is-live' : '') + '"></div>' +
+            escHtml(gfx.label) +
+          '</div>';
+        }).join('') +
+      '</div>';
   }
 }
 
@@ -316,6 +404,7 @@ function syncUI(s) {
   }
 
   syncTopBar(s);
+  renderDashboard(s);
   if (s.settings) syncThemeTab(s.settings);
   if (s.settings) syncGfxToken(s.settings);
   if (s.settings) renderBreakCenterLogoPicker(s.settings);
@@ -1869,7 +1958,7 @@ async function refreshRanks() {
 function renderSponsors(logos) {
   const el = g('sponsor-list'); if (!el) return;
   el.innerHTML = logos.map(function(url, i) {
-    return '<div class="sponsor-chip"><img src="'+url+'" alt=""><span style="max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px">'+url.split('/').pop()+'</span><button onclick="removeSponsor('+i+')">✕</button></div>';
+    return '<div class="sponsor-chip"><img src="'+url+'" alt=""><button onclick="removeSponsor('+i+')" title="Remove">✕</button></div>';
   }).join('');
 }
 function addSponsor() { triggerUpload('sponsor-file', function(url) { const logos=((window._state&&window._state.match&&window._state.match.sponsorLogos)||[]).concat([url]); api('/api/match',{sponsorLogos:logos}); }); }
@@ -2664,8 +2753,8 @@ function closeProfileLoadModal() {
 
 // ── Font picker ──────────────────────────────────────────────────────────────
 var FONT_OPTIONS = [
-  { name: 'Barlow',           label: 'Barlow',           sample: 'Default — humanist grotesque' },
-  { name: 'Inter',            label: 'Inter',            sample: 'Clean neo-grotesque, screen-optimised' },
+  { name: 'Inter',            label: 'Inter',            sample: 'Default — clean neo-grotesque, screen-optimised' },
+  { name: 'Barlow',           label: 'Barlow',           sample: 'Humanist grotesque' },
   { name: 'Hubot Sans',       label: 'Hubot Sans',       sample: 'GitHub\'s open-source variable font' },
   { name: 'Switzer',          label: 'Switzer',          sample: 'Contemporary geometric grotesque' },
   { name: 'Space Grotesk',    label: 'Space Grotesk',    sample: 'Technical geometric, distinct forms' },
@@ -2697,7 +2786,7 @@ function setUiFont(fontName) {
 function renderFontPicker() {
   var grid = g('font-picker-grid');
   if (!grid) return;
-  var current = localStorage.getItem('gfx_ui_font') || 'Barlow';
+  var current = localStorage.getItem('gfx_ui_font') || 'Inter';
   grid.innerHTML = FONT_OPTIONS.map(function(f) {
     var active = f.name === current ? ' is-active' : '';
     return '<button class="font-option' + active + '" onclick="setUiFont(\'' + f.name.replace(/'/g, "\\'") + '\')" style="font-family:\'' + f.name + '\',sans-serif">'
@@ -2726,6 +2815,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     if (savedTab === 'users')    loadUsersTab();
     if (savedTab === 'profiles') loadProfilesTab();
+    if (savedTab === 'home')     renderDashboard(window._state);
   }
 });
 
@@ -2795,10 +2885,10 @@ document.querySelectorAll('.nav-item[data-tab="users"]').forEach(el => {
   el.addEventListener('click', function() { loadUsersTab(); renderFontPicker(); });
 });
 
-// Populate session info in sidebar
+// Populate session info in top bar
 fetch('/api/auth/me').then(r => r.json()).then(data => {
-  const el = g('sidebar-session');
-  if (el && data.user) el.textContent = data.user.username + ' (' + data.user.role + ')';
+  const el = g('mtb-session');
+  if (el && data.user) el.textContent = data.user.username;
 }).catch(() => {});
 
 // ── Tournament Setup ───────────────────────────────────────────────────────────
@@ -3030,6 +3120,7 @@ function switchToTab(tabKey) {
   loadTeamsCache();
   if (tabKey === 'users')    loadUsersTab();
   if (tabKey === 'profiles') loadProfilesTab();
+  if (tabKey === 'home')     renderDashboard(window._state);
   localStorage.setItem('gfx_ctrl_tab', tabKey);
 }
 
@@ -3450,7 +3541,7 @@ function previewBracketGeneration() {
 
   // Build preview HTML
   const totalMatches = rounds.reduce((sum, r) => sum + r.matches.length, 0);
-  let html = '<p class="hint" style="margin-bottom:12px">';
+  let html = '<p style="margin-bottom:12px;font-size:1em;font-weight:500;color:var(--accent)">';
   html += bracketSize + '-slot bracket · ' + teamsInBracket + ' teams';
   if (byes > 0) html += ' · <strong>' + byes + ' BYE' + (byes > 1 ? 's' : '') + '</strong> (top seed' + (byes > 1 ? 's' : '') + ' advance round 1 automatically)';
   html += ' · ' + rounds.length + ' rounds · ' + totalMatches + ' total matches';

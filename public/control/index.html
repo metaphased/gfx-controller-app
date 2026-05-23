@@ -15,91 +15,90 @@
   <nav class="sidebar">
     <div class="logo"><span class="logo-accent">Meta</span><span class="logo-text">GFX</span></div>
 
-    <!-- Profile dirty / save bar — shown when active profile has unsaved changes -->
-    <div id="profile-save-bar" class="profile-save-bar" style="display:none">
-      <div class="psb-text">
-        <span class="psb-label">Unsaved changes</span>
-        <span class="psb-name" id="psb-name"></span>
+    <div class="sidebar-nav">
+      <!-- Profile dirty / save bar — shown when active profile has unsaved changes -->
+      <div id="profile-save-bar" class="profile-save-bar" style="display:none">
+        <div class="psb-text">
+          <span class="psb-label">Unsaved changes</span>
+          <span class="psb-name" id="psb-name"></span>
+        </div>
+        <button class="btn btn-primary btn-sm psb-btn" onclick="saveActiveProfileChanges()">↑ Update</button>
       </div>
-      <button class="btn btn-primary btn-sm psb-btn" onclick="saveActiveProfileChanges()">↑ Update</button>
+
+      <a class="nav-item active" data-tab="home" id="nav-item-home">⬡ Dashboard</a>
+
+      <div class="nav-section-label">TOURNAMENT</div>
+      <a class="nav-item" data-tab="tournament">⬡ Tournament Setup</a>
+      <a class="nav-item" data-tab="teams">⬡ Teams Database</a>
+      <a class="nav-item" data-tab="schedule">⬡ Schedule</a>
+      <a class="nav-item" data-tab="groups" id="nav-item-groups" style="display:none">⬡ Groups</a>
+      <a class="nav-item" data-tab="playoffs">⬡ Playoffs</a>
+
+      <div class="nav-section-label">GAME</div>
+      <a class="nav-item" data-tab="game">⬡ Game Setup</a>
+      <a class="nav-item" data-tab="draft">⬡ Draft</a>
+      <a class="nav-item" data-tab="players">⬡ Players / Rosters</a>
+      <a class="nav-item" data-tab="intel">⬡ Match Intel</a>
+
+      <div class="nav-section-label">GRAPHICS</div>
+      <a class="nav-item" data-tab="theme">⬡ Broadcast Theme</a>
+      <a class="nav-item" data-tab="bgoutput">⬡ BG Output</a>
+      <a class="nav-item" data-tab="preshow">⬡ Pre-show</a>
+      <a class="nav-item" data-tab="break">⬡ Break Screen</a>
+      <a class="nav-item" data-tab="lowerthird">
+        <span id="nav-dot-lowerthird" class="nav-status-dot"></span>
+        Lower Third
+      </a>
+      <a class="nav-item" data-tab="h2h">
+        <span id="nav-dot-h2h" class="nav-status-dot"></span>
+        Head to Head
+      </a>
+      <a class="nav-item" data-tab="ticker">
+        <span id="nav-dot-ticker" class="nav-status-dot"></span>
+        Ticker
+      </a>
+      <a class="nav-item" data-tab="draft-gfx">
+        <span id="nav-dot-draft-gfx" class="nav-status-dot"></span>
+        Draft
+      </a>
+      <a class="nav-item" data-tab="bracket">
+        <span id="nav-dot-bracket" class="nav-status-dot"></span>
+        Bracket
+      </a>
+      <a class="nav-item" data-tab="groups-gfx">
+        <span id="nav-dot-groups-gfx" class="nav-status-dot"></span>
+        Group Stage
+      </a>
+      <a class="nav-item" data-tab="tournament-structure-gfx">
+        <span id="nav-dot-tournament-structure-gfx" class="nav-status-dot"></span>
+        Tournament Structure
+      </a>
+      <a class="nav-item" data-tab="prizepool">
+        <span id="nav-dot-prizepool" class="nav-status-dot"></span>
+        Prizepool
+      </a>
+      <a class="nav-item" data-tab="win">
+        <span id="nav-dot-win" class="nav-status-dot"></span>
+        Win Screen
+      </a>
+
+      <div class="nav-section-label">SYSTEM</div>
+      <a class="nav-item" data-tab="profiles" id="nav-item-profiles">⬡ Profiles</a>
+      <a class="nav-item" data-tab="users">⬡ Settings</a>
+
+      <div class="nav-section-label">OUTPUT URLS</div>
+      <div class="url-list" id="url-list"></div>
     </div>
 
-    <div class="nav-section-label">TOURNAMENT</div>
-    <a class="nav-item active" data-tab="profiles" id="nav-item-profiles">⬡ Profiles</a>
-    <a class="nav-item" data-tab="tournament">⬡ Tournament Setup</a>
-    <a class="nav-item" data-tab="teams">⬡ Teams Database</a>
-    <a class="nav-item" data-tab="schedule">⬡ Schedule</a>
-    <a class="nav-item" data-tab="groups" id="nav-item-groups" style="display:none">⬡ Groups</a>
-    <a class="nav-item" data-tab="playoffs">⬡ Playoffs</a>
-
-    <div class="nav-section-label">GAME</div>
-    <a class="nav-item" data-tab="game">⬡ Game Setup</a>
-    <a class="nav-item" data-tab="draft">⬡ Draft</a>
-    <a class="nav-item" data-tab="players">⬡ Players / Rosters</a>
-    <a class="nav-item" data-tab="intel">⬡ Match Intel</a>
-
-    <div class="nav-section-label">GRAPHICS</div>
-    <a class="nav-item" data-tab="theme">⬡ Broadcast Theme</a>
-    <a class="nav-item" data-tab="bgoutput">⬡ BG Output</a>
-    <a class="nav-item" data-tab="lowerthird">
-      <span id="nav-dot-lowerthird" class="nav-status-dot"></span>
-      Lower Third
-    </a>
-    <a class="nav-item" data-tab="h2h">
-      <span id="nav-dot-h2h" class="nav-status-dot"></span>
-      Head to Head
-    </a>
-    <a class="nav-item" data-tab="preshow">
-      <span id="nav-dot-preshow" class="nav-status-dot"></span>
-      Pre-show
-    </a>
-    <a class="nav-item" data-tab="ticker">
-      <span id="nav-dot-ticker" class="nav-status-dot"></span>
-      Ticker
-    </a>
-    <a class="nav-item" data-tab="draft-gfx">
-      <span id="nav-dot-draft-gfx" class="nav-status-dot"></span>
-      Draft
-    </a>
-    <a class="nav-item" data-tab="bracket">
-      <span id="nav-dot-bracket" class="nav-status-dot"></span>
-      Bracket
-    </a>
-    <a class="nav-item" data-tab="groups-gfx">
-      <span id="nav-dot-groups-gfx" class="nav-status-dot"></span>
-      Group Stage
-    </a>
-    <a class="nav-item" data-tab="tournament-structure-gfx">
-      <span id="nav-dot-tournament-structure-gfx" class="nav-status-dot"></span>
-      Tournament Structure
-    </a>
-    <a class="nav-item" data-tab="prizepool">
-      <span id="nav-dot-prizepool" class="nav-status-dot"></span>
-      Prizepool
-    </a>
-    <a class="nav-item" data-tab="break">
-      <span id="nav-dot-break" class="nav-status-dot"></span>
-      Break Screen
-    </a>
-    <a class="nav-item" data-tab="win">
-      <span id="nav-dot-win" class="nav-status-dot"></span>
-      Win Screen
-    </a>
-
-    <div class="nav-section-label">SYSTEM</div>
-    <a class="nav-item" data-tab="users">⬡ Settings</a>
-
-    <div class="nav-section-label">OUTPUT URLS</div>
-    <div class="url-list" id="url-list"></div>
     <div class="sidebar-footer">
       <div class="connection-status" id="conn-status">⬤ Connecting…</div>
-      <div class="sidebar-session" id="sidebar-session"></div>
       <a class="sidebar-logout" href="/api/auth/logout">Log Out</a>
     </div>
   </nav>
 
   <!-- ── Top bar ───────────────────────────────────────────────────────────── -->
   <div id="meta-topbar">
+    <span class="mtb-session" id="mtb-session"></span>
     <span class="mtb-profile-label">ACTIVE PROFILE</span>
     <span class="mtb-profile-name" id="mtb-profile-name">No profile loaded</span>
     <div class="mtb-sep"></div>
@@ -110,9 +109,22 @@
   <main class="main">
 
 <!-- ══════════════════════════════════════════════════════════════════════
+         DASHBOARD
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab active" id="tab-home">
+      <div class="tab-header"><h1>Dashboard</h1></div>
+      <div class="dash-grid">
+        <div class="card" id="dash-match"></div>
+        <div class="card" id="dash-tournament"></div>
+        <div class="card" id="dash-schedule"></div>
+        <div class="card" id="dash-graphics"></div>
+      </div>
+    </section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
          PROFILES
     ══════════════════════════════════════════════════════════════════════════ -->
-    <section class="tab active" id="tab-profiles">
+    <section class="tab" id="tab-profiles">
       <div class="tab-header">
         <h1>Profiles</h1>
         <button class="btn btn-primary btn-sm" onclick="openSaveProfileForm()">+ Save as New Profile</button>
@@ -550,8 +562,24 @@
           <div class="card">
             <div class="card-title">JSON / CSV Import</div>
             <p class="hint">CSV/JSON columns: <code>team, handle, role</code><br>Creates or updates teams in the Teams Database.</p>
-            <div class="field-row"><label>JSON File</label><div class="upload-row"><input type="file" id="json-file" accept=".json"><button class="btn btn-sm" onclick="importJson()">Import</button></div></div>
-            <div class="field-row"><label>CSV File</label><div class="upload-row"><input type="file" id="csv-file" accept=".csv"><button class="btn btn-sm" onclick="importCsv()">Import</button></div></div>
+            <div class="field-row">
+              <label>JSON File</label>
+              <div class="upload-row">
+                <input type="file" id="json-file" accept=".json" style="display:none" onchange="document.getElementById('json-file-name').textContent=this.files[0]?this.files[0].name:'No file chosen'">
+                <label for="json-file" class="btn btn-sm">Choose File</label>
+                <span class="file-name-label" id="json-file-name">No file chosen</span>
+                <button class="btn btn-sm" onclick="importJson()">Import</button>
+              </div>
+            </div>
+            <div class="field-row">
+              <label>CSV File</label>
+              <div class="upload-row">
+                <input type="file" id="csv-file" accept=".csv" style="display:none" onchange="document.getElementById('csv-file-name').textContent=this.files[0]?this.files[0].name:'No file chosen'">
+                <label for="csv-file" class="btn btn-sm">Choose File</label>
+                <span class="file-name-label" id="csv-file-name">No file chosen</span>
+                <button class="btn btn-sm" onclick="importCsv()">Import</button>
+              </div>
+            </div>
             <div class="import-result" id="import-result"></div>
           </div>
         </div>
