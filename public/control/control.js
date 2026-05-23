@@ -2662,9 +2662,55 @@ function closeProfileLoadModal() {
   });
 })();
 
+// ── Font picker ──────────────────────────────────────────────────────────────
+var FONT_OPTIONS = [
+  { name: 'Barlow',           label: 'Barlow',           sample: 'Default — humanist grotesque' },
+  { name: 'Inter',            label: 'Inter',            sample: 'Clean neo-grotesque, screen-optimised' },
+  { name: 'Hubot Sans',       label: 'Hubot Sans',       sample: 'GitHub\'s open-source variable font' },
+  { name: 'Switzer',          label: 'Switzer',          sample: 'Contemporary geometric grotesque' },
+  { name: 'Space Grotesk',    label: 'Space Grotesk',    sample: 'Technical geometric, distinct forms' },
+  { name: 'Figtree',          label: 'Figtree',          sample: 'Rounded, approachable geometric' },
+  { name: 'Poppins',          label: 'Poppins',          sample: 'Geometric, uniform stroke weight' },
+  { name: 'Outfit',           label: 'Outfit',           sample: 'Geometric variable, clean numerals' },
+  { name: 'Darker Grotesque', label: 'Darker Grotesque', sample: 'Condensed grotesque with personality' },
+  { name: 'Sora',             label: 'Sora',             sample: 'Japanese-influenced geometric sans' },
+  { name: 'Oxygen',           label: 'Oxygen',           sample: 'KDE project — crisp and legible' },
+];
+
+function initFontPicker() {
+  var saved = localStorage.getItem('gfx_ui_font');
+  if (saved) applyUiFont(saved, false);
+  renderFontPicker();
+}
+
+function applyUiFont(fontName, save) {
+  document.documentElement.style.setProperty('--ui-font', "'" + fontName + "'");
+  if (save !== false) localStorage.setItem('gfx_ui_font', fontName);
+}
+
+function setUiFont(fontName) {
+  applyUiFont(fontName, true);
+  renderFontPicker();
+}
+
+function renderFontPicker() {
+  var grid = g('font-picker-grid');
+  if (!grid) return;
+  var current = localStorage.getItem('gfx_ui_font') || 'Barlow';
+  grid.innerHTML = FONT_OPTIONS.map(function(f) {
+    var active = f.name === current ? ' is-active' : '';
+    return '<button class="font-option' + active + '" onclick="setUiFont(\'' + f.name.replace(/'/g, "\\'") + '\')" style="font-family:\'' + f.name + '\',sans-serif">'
+      + '<span class="font-option-name">' + f.label + '</span>'
+      + '<span class="font-option-sample">' + f.sample + '</span>'
+      + '</button>';
+  }).join('');
+}
+
 document.addEventListener('DOMContentLoaded', function() {
   const m = g('profile-load-modal');
   if (m) m.addEventListener('click', function(e) { if (e.target === m) closeProfileLoadModal(); });
+
+  initFontPicker();
 
   // Restore last active tab from previous session
   const savedTab = localStorage.getItem('gfx_ctrl_tab');
@@ -2743,7 +2789,7 @@ document.querySelectorAll('.nav-item[data-tab="profiles"]').forEach(el => {
 
 // Load users when the users tab is opened
 document.querySelectorAll('.nav-item[data-tab="users"]').forEach(el => {
-  el.addEventListener('click', loadUsersTab);
+  el.addEventListener('click', function() { loadUsersTab(); renderFontPicker(); });
 });
 
 // Populate session info in sidebar

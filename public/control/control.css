@@ -1,5 +1,6 @@
 /* control.css — Esports GFX Control Panel */
-@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&family=Inter:wght@400;500&family=Hubot+Sans:wght@400;500&family=Space+Grotesk:wght@400;500&family=Figtree:wght@400;500&family=Poppins:wght@400;500&family=Outfit:wght@400;500&family=Darker+Grotesque:wght@400;500;700&family=Sora:wght@400;500&family=Oxygen:wght@400;700&display=swap');
+@import url('https://api.fontshare.com/v2/css?f[]=switzer@400,500&display=swap');
 
 :root {
   --bg: #070f12;
@@ -12,12 +13,13 @@
   --text: #e8e6df;
   --text-dim: rgba(232,230,223,0.5);
   --sidebar-w: 220px;
+  --ui-font: 'Barlow';
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-  font-family: 'Barlow', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   background: var(--bg);
   color: var(--text);
   height: 100vh;
@@ -370,7 +372,7 @@ input[type=text], input[type=number], select, textarea {
   color: var(--text);
   padding: 8px 10px;
   font-size: 13px;
-  font-family: 'Barlow', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   width: 100%;
   outline: none;
   transition: border-color 0.15s;
@@ -679,7 +681,7 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
   color: var(--text);
   padding: 6px 8px;
   font-size: 13px;
-  font-family: 'Barlow', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   outline: none;
 }
 .champ-search-input:focus { border-color: var(--primary); }
@@ -935,3 +937,34 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
 .it-wr-high { color: #4dcc90; }
 .it-wr-mid  { color: #f0cc44; }
 .it-wr-low  { color: #f07070; }
+
+/* ── Font picker ────────────────────────────────────── */
+#font-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+.font-option {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s, background 0.15s;
+}
+.font-option:hover { border-color: rgba(255,255,255,0.3); background: rgba(255,255,255,0.04); }
+.font-option.is-active { border-color: var(--primary); background: rgba(31,250,255,0.06); }
+.font-option-name {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.2;
+}
+.font-option-sample {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.4;
+}

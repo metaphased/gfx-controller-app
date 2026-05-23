@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MetaGFX</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&family=Inter:wght@400;500&family=Hubot+Sans:wght@400;500&family=Space+Grotesk:wght@400;500&family=Figtree:wght@400;500&family=Poppins:wght@400;500&family=Outfit:wght@400;500&family=Darker+Grotesque:wght@400;500;700&family=Sora:wght@400;500&family=Oxygen:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=switzer@400,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="control.css">
 <link rel="stylesheet" href="champion-picker.css">
 <link rel="stylesheet" href="teams.css">
@@ -1710,6 +1711,12 @@
         <h1>Settings</h1>
         <button class="btn btn-primary btn-sm" onclick="openNewUserForm()">+ New User</button>
       </div>
+      <div class="card" style="max-width:760px;margin-bottom:20px">
+        <div class="card-title">Control Panel Font</div>
+        <p class="hint" style="margin-bottom:14px">Select the body font used throughout the control panel. Barlow Condensed is kept for data-dense labels regardless of this setting.</p>
+        <div id="font-picker-grid"></div>
+      </div>
+
       <div class="card" style="max-width:640px;margin-bottom:20px">
         <div class="card-title">Graphics Output URLs</div>
         <p class="hint" style="margin-bottom:12px">Use these URLs as Browser Sources in OBS or vMix. The token allows read-only access without logging in.</p>

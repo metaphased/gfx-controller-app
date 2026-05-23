@@ -39,7 +39,7 @@
   color: var(--text);
   padding: 6px 8px;
   font-size: 13px;
-  font-family: 'Barlow', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   outline: none;
 }
 .champ-search-input:focus { border-color: var(--primary); }
