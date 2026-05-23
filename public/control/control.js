@@ -457,9 +457,11 @@ function patchLT(data) { api('/api/lowerThird', data); }
 
 function renderLTQuickGrid(players, match) {
   const grid = g('lt-player-grid'); if (!grid) return;
+  const t1 = (players.team1||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team1.name, teamTag:match.team1.tag, teamColor:match.team1.color}));
+  const t2 = (players.team2||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team2.name, teamTag:match.team2.tag, teamColor:match.team2.color}));
   const all = [];
-  (players.team1||[]).forEach(p => { if (p.handle||p.name) all.push({...p, teamName:match.team1.name, teamTag:match.team1.tag, teamColor:match.team1.color}); });
-  (players.team2||[]).forEach(p => { if (p.handle||p.name) all.push({...p, teamName:match.team2.name, teamTag:match.team2.tag, teamColor:match.team2.color}); });
+  const len = Math.max(t1.length, t2.length);
+  for (let i = 0; i < len; i++) { if (t1[i]) all.push(t1[i]); if (t2[i]) all.push(t2[i]); }
   grid._players = all;
   grid.innerHTML = all.map((p,i) =>
     '<button class="player-quick-btn" onclick="quickLT('+i+')">' +
@@ -567,18 +569,13 @@ function renderDraftTab(draft, state) {
   if (!board.dataset.built || board.dataset.banFirst !== banFirstTeam) {
     board.dataset.built   = '1';
     board.dataset.banFirst = banFirstTeam;
-    let html = '';
-    let lastPhase = null;
-    DRAFT_SEQUENCE.forEach(function(step, i) {
-      if (step.phase !== lastPhase) {
-        if (lastPhase !== null) html += '</div>';
-        html += '<div class="draft-phase-section"><div class="draft-phase-header">' + DRAFT_PHASE_LABELS[step.phase] + '</div>';
-        lastPhase = step.phase;
-      }
-      // physicalSide: 'blue' = step.side matches banFirstTeam (first actor is that side)
-      const physSide = step.side === banFirstTeam ? 'blue' : 'red';
-      html +=
-        '<div class="draft-step-row" id="draft-step-' + i + '">' +
+
+    function buildPhaseSection(phaseName) {
+      let s = '<div class="draft-phase-section"><div class="draft-phase-header">' + DRAFT_PHASE_LABELS[phaseName] + '</div>';
+      DRAFT_SEQUENCE.forEach(function(step, i) {
+        if (step.phase !== phaseName) return;
+        const physSide = step.side === banFirstTeam ? 'blue' : 'red';
+        s += '<div class="draft-step-row" id="draft-step-' + i + '">' +
           '<span class="draft-step-num">' + (i+1) + '</span>' +
           '<span class="draft-side-badge draft-side-' + physSide + '">' + physSide.toUpperCase() + '</span>' +
           '<span class="draft-type-badge draft-type-' + step.type + '">' + step.type.toUpperCase() + '</span>' +
@@ -586,9 +583,13 @@ function renderDraftTab(draft, state) {
           '<div class="draft-picker-wrap" id="draft-picker-' + i + '"></div>' +
           '<span class="draft-clock-badge" id="draft-clock-' + i + '" style="display:none">ON THE CLOCK</span>' +
         '</div>';
-    });
-    if (lastPhase !== null) html += '</div>';
-    board.innerHTML = html;
+      });
+      return s + '</div>';
+    }
+
+    board.innerHTML =
+      '<div class="draft-phase-pair">' + buildPhaseSection('bans1') + buildPhaseSection('picks1') + '</div>' +
+      '<div class="draft-phase-pair">' + buildPhaseSection('bans2') + buildPhaseSection('picks2') + '</div>';
 
     // Build champion pickers for all steps
     DRAFT_SEQUENCE.forEach(function(_, i) {
@@ -633,9 +634,14 @@ function renderDraftTab(draft, state) {
     const clockEl = g('draft-clock-' + i);
     if (clockEl) clockEl.style.display = (i + 1 === currentStep) ? 'inline-block' : 'none';
 
-    // Update disabled champion list for fearless enforcement
+    // Update disabled champion list and locked state
     const pc = _draftPickerContainers[i];
-    if (pc) pc._disabledNames = fearless && usedForFearless.size > 0 ? usedForFearless : null;
+    if (pc) {
+      pc._disabledNames = fearless && usedForFearless.size > 0 ? usedForFearless : null;
+      const isFuture  = currentStep > 0 && currentStep <= 20 && (i + 1 > currentStep);
+      const isPausedCurrent = _draftPaused && (i + 1 === currentStep);
+      Champions.setPickerLocked(pc, isFuture || isPausedCurrent);
+    }
   });
 
   // Role assignment card (shown when draft is complete)
@@ -661,18 +667,41 @@ function renderDraftTab(draft, state) {
   if (bfb) bfb.checked = banFirstTeam === 'blue';
   if (bfr) bfr.checked = banFirstTeam === 'red';
 
-  // Step status indicator
+  // Lock / unlock side assignment card based on whether draft is in progress
+  const setupCard = g('draft-setup-card');
+  const startWrap = g('draft-start-wrap');
+  const draftInProgress = currentStep > 0;
+  if (setupCard) setupCard.classList.toggle('draft-setup-locked', draftInProgress);
+  if (startWrap) startWrap.style.display = draftInProgress ? 'none' : 'block';
+  ['draft-blue-t1','draft-blue-t2','draft-sc-t1','draft-sc-t2','draft-ban-first-blue','draft-ban-first-red'].forEach(function(id) {
+    const el = g(id); if (el) el.disabled = draftInProgress;
+  });
+
+  // Status bar (step indicator + pause/reset buttons)
+  const statusBar = g('draft-status-bar');
+  const pauseBtn  = g('btn-draft-pause');
+  if (statusBar) {
+    statusBar.style.display = draftInProgress ? 'flex' : 'none';
+    statusBar.classList.toggle('draft-paused', _draftPaused);
+  }
+  const activeStep = currentStep > 0 && currentStep <= 20;
+  if (pauseBtn) {
+    pauseBtn.style.display = activeStep ? 'inline-block' : 'none';
+    pauseBtn.textContent   = _draftPaused ? '▶ Resume' : '⏸ Pause';
+    pauseBtn.className     = _draftPaused ? 'btn btn-sm btn-primary' : 'btn btn-sm btn-secondary';
+  }
+
+  // Step status indicator text
   const ind = g('draft-step-indicator');
   if (ind) {
-    if (currentStep === 0) {
-      ind.textContent = 'Draft not started — assign sides then fill picks in order';
-    } else if (currentStep > 20) {
+    if (currentStep > 20) {
       ind.textContent = '✓ Draft complete';
-    } else {
+    } else if (currentStep > 0) {
       const s = DRAFT_SEQUENCE[currentStep - 1];
       const physSide = s.side === banFirstTeam ? 'blue' : 'red';
       const nm = physSide === 'blue' ? (blueTeam.tag || blueTeam.name || 'Blue') : (redTeam.tag || redTeam.name || 'Red');
-      ind.textContent = 'Step ' + currentStep + ' / 20 — ' + nm + ' · ' + s.type.toUpperCase() + ' (' + DRAFT_PHASE_LABELS[s.phase] + ')';
+      const pauseLabel = _draftPaused ? '⏸  PAUSED  ·  ' : '';
+      ind.textContent = pauseLabel + 'Step ' + currentStep + ' / 20 — ' + nm + ' · ' + s.type.toUpperCase() + ' (' + DRAFT_PHASE_LABELS[s.phase] + ')';
     }
   }
 
@@ -698,6 +727,27 @@ function renderDraftTab(draft, state) {
   }
 }
 
+let _draftPaused = false;
+let _draftPauseRemaining = null; // ms remaining when paused
+
+function toggleDraftPause() {
+  _draftPaused = !_draftPaused;
+  if (_draftPaused) {
+    // Save remaining time and clear server timer
+    const draft = (window._state || {}).draft || {};
+    _draftPauseRemaining = draft.timerEnd ? Math.max(0, draft.timerEnd - Date.now()) : null;
+    if (draft.timerEnd) api('/api/draft', { timerEnd: null });
+  } else {
+    // Resume: restore server timer with saved remaining time
+    if (_draftPauseRemaining !== null && _draftPauseRemaining > 0) {
+      api('/api/draft', { timerEnd: Date.now() + _draftPauseRemaining });
+    }
+    _draftPauseRemaining = null;
+  }
+  const s = window._state;
+  if (s && s.draft) renderDraftTab(s.draft, s);
+}
+
 function draftSetPick(stepIndex, champUrl) {
   const d = window._state && window._state.draft;
   const picks = d ? (d.picks || Array(20).fill('')).slice() : Array(20).fill('');
@@ -720,6 +770,8 @@ function startDraftPhase() {
 
 function resetDraft() {
   if (!confirm('Reset the current draft? All picks will be cleared.')) return;
+  _draftPaused = false;
+  _draftPauseRemaining = null;
   const board = g('draft-board');
   if (board) { board.innerHTML = ''; board.removeAttribute('data-built'); }
   Object.keys(_draftPickerContainers).forEach(function(k) { delete _draftPickerContainers[k]; });
@@ -860,7 +912,7 @@ function buildRaDOM(container, draft, t1DraftPicks, t2DraftPicks, t1Label, t2Lab
         teamHtml(t1DraftPicks, 't1', t1Label, t1SideLbl) +
         teamHtml(t2DraftPicks, 't2', t2Label, t2SideLbl) +
       '</div>' +
-      '<div id="role-assign-msg" style="display:none;margin-top:10px;font-size:12px;color:var(--primary);font-family:\'Barlow Condensed\',sans-serif;letter-spacing:0.06em"></div>' +
+      '<div id="role-assign-msg" style="display:none;margin-top:10px;font-size:12px;color:var(--primary);font-family:var(--ui-font),sans-serif;letter-spacing:0.04em"></div>' +
     '</div>';
 
   // Drag sources (source pills + assigned pills)
@@ -1278,10 +1330,16 @@ function renderTickerItems(ticker) {
   list.innerHTML = items.map(function(item, i) {
     return '<div class="ticker-item-row">' +
       '<span class="ticker-item-num">' + (i + 1) + '</span>' +
-      '<input type="text" class="ticker-item-text" value="' + escHtml(item.text || '') + '" placeholder="Ticker text…" onchange="patchTickerItem(' + i + ',\'text\',this.value)">' +
+      '<input type="search" class="ticker-item-text" autocomplete="off" data-form-type="other" data-lpignore="true" readonly value="' + escHtml(item.text || '') + '" placeholder="Ticker text…" onchange="patchTickerItem(' + i + ',\'text\',this.value)">' +
       '<button class="btn btn-sm btn-danger" onclick="removeTickerItem(' + i + ')">×</button>' +
       '</div>';
   }).join('');
+  list.querySelectorAll('.ticker-item-text').forEach(function(input) {
+    input.addEventListener('focus', function() {
+      var el = input;
+      setTimeout(function() { el.removeAttribute('readonly'); }, 50);
+    });
+  });
 }
 
 function syncTickerUI(ticker, state) {
@@ -1693,100 +1751,105 @@ function renderPlayerEditors(players) {
     const list    = players[team] || [];
     const subList = players[team+'subs'] || [];
 
-    // ── Build DOM structure once only ──
-    if (!container.dataset.built) {
-      container.dataset.built = '1';
+    // ── Starters: build DOM once (holds the swap change listener) ──────────
+    if (!container.querySelector('.roster-starter-sec')) {
+      const starterSec = document.createElement('div');
+      starterSec.className = 'roster-starter-sec';
 
       let html = '<div class="roster-section-label">STARTING LINEUP</div>';
       html += list.map(function(p, i) {
         return '<div class="player-row-edit">' +
           '<div><div class="player-num">'+DEFAULT_ROLES[i]+'</div>' +
             '<div style="display:flex;align-items:center;gap:5px">' +
-              '<input type="text" data-team="'+team+'" data-index="'+i+'" data-field="handle" placeholder="Handle / IGN" style="flex:1;min-width:0">' +
-              '<a class="opgg-link" data-team="'+team+'" data-index="'+i+'" href="#" target="_blank" rel="noopener" style="display:none">op.gg ↗</a>' +
+              '<div class="player-val-display" data-index="'+i+'" data-field="handle"></div>' +
+              '<a class="opgg-link" data-index="'+i+'" href="#" target="_blank" rel="noopener" style="display:none">op.gg ↗</a>' +
             '</div>' +
           '</div>' +
           '<div><div class="player-num">Role</div>' +
-            '<input type="text" data-team="'+team+'" data-index="'+i+'" data-field="role" placeholder="Role"></div>' +
+            '<div class="player-val-display" data-index="'+i+'" data-field="role"></div></div>' +
           '<div><div class="player-num">Swap Sub</div>' +
-            '<select class="sub-swap-sel" data-team="'+team+'" data-player-index="'+i+'" title="Swap with sub">' +
-              '<option value="">—</option>' +
+            '<select class="sub-swap-sel" data-team="'+team+'" data-player-index="'+i+'">' +
+              '<option value="">Swap sub...</option>' +
             '</select>' +
           '</div>' +
           '</div>';
       }).join('');
+      starterSec.innerHTML = html;
 
-      html += '<div class="roster-section-label" style="margin-top:14px">SUBSTITUTES</div>';
-      html += subList.map(function(s, i) {
-        return '<div class="player-row-edit sub-row">' +
-          '<div><div class="player-num">Sub '+(i+1)+'</div>' +
-            '<input type="text" data-team="'+team+'" data-subindex="'+i+'" data-field="handle" placeholder="Handle / IGN"></div>' +
-          '<div><div class="player-num">Role</div>' +
-            '<input type="text" data-team="'+team+'" data-subindex="'+i+'" data-field="role" placeholder="Role"></div>' +
-          '<div></div>' +
-          '</div>';
-      }).join('');
-
-      container.innerHTML = html;
-
-      // Input handler
-      container.addEventListener('input', function(e) {
-        const inp = e.target; if (inp.tagName !== 'INPUT') return;
-        if (inp.dataset.subindex !== undefined) {
-          api('/api/subs', { team, index: parseInt(inp.dataset.subindex), data: { [inp.dataset.field]: inp.value } });
-        } else if (inp.dataset.index !== undefined) {
-          api('/api/players', { team, index: parseInt(inp.dataset.index), data: { [inp.dataset.field]: inp.value } });
-        }
-      });
-
-      // Swap select handler — reads current list/subList from state at time of change
-      container.addEventListener('change', function(e) {
+      starterSec.addEventListener('change', function(e) {
         const sel = e.target;
         if (!sel.classList.contains('sub-swap-sel')) return;
         const playerIndex = parseInt(sel.dataset.playerIndex);
         const subIndex    = parseInt(sel.value);
         if (isNaN(subIndex)) return;
-        const currentList    = (window._state && window._state.players && window._state.players[team]) || [];
-        const currentSubList = (window._state && window._state.players && window._state.players[team+'subs']) || [];
-        const pName = (currentList[playerIndex]    && (currentList[playerIndex].handle    || currentList[playerIndex].name))    || ('Player '+(playerIndex+1));
-        const sName = (currentSubList[subIndex]    && (currentSubList[subIndex].handle    || currentSubList[subIndex].name))    || ('Sub '+(subIndex+1));
+        const curList    = (window._state && window._state.players && window._state.players[team]) || [];
+        const curSubs    = (window._state && window._state.players && window._state.players[team+'subs']) || [];
+        const pName = (curList[playerIndex]  && (curList[playerIndex].handle  || curList[playerIndex].name))  || ('Player '+(playerIndex+1));
+        const sName = (curSubs[subIndex]     && (curSubs[subIndex].handle     || curSubs[subIndex].name))     || ('Sub '+(subIndex+1));
         if (confirm('Swap ' + pName + ' with ' + sName + '?')) {
           api('/api/players/swap', { team, playerIndex, subIndex });
         }
         sel.value = '';
       });
-    } // end if !container.dataset.built
 
-    // Update values every state tick — skip focused inputs to preserve typing
-    container.querySelectorAll('input').forEach(function(inp) {
-      if (document.activeElement === inp) return;
-      if (inp.dataset.subindex !== undefined) {
-        const s = subList[inp.dataset.subindex];
-        if (s) inp.value = s[inp.dataset.field] || '';
-      } else if (inp.dataset.index !== undefined) {
-        const p = list[inp.dataset.index];
-        if (p) inp.value = p[inp.dataset.field] || '';
-      }
+      container.appendChild(starterSec);
+    }
+
+    // ── Subs: rebuild each tick so visibility tracks live data ─────────────
+    let subSec = container.querySelector('.roster-sub-sec');
+    if (!subSec) {
+      subSec = document.createElement('div');
+      subSec.className = 'roster-sub-sec';
+      container.appendChild(subSec);
+    }
+    const activeSubs = subList.filter(function(s) { return s && (s.handle || s.name); });
+    if (activeSubs.length) {
+      let subHtml = '<div class="roster-section-label" style="margin-top:14px">SUBSTITUTES</div>';
+      subHtml += activeSubs.map(function(s, i) {
+        return '<div class="player-row-edit sub-row">' +
+          '<div><div class="player-num">Sub '+(i+1)+'</div>' +
+            '<div class="player-val-display"></div></div>' +
+          '<div><div class="player-num">Role</div>' +
+            '<div class="player-val-display"></div></div>' +
+          '<div></div>' +
+          '</div>';
+      }).join('');
+      subSec.innerHTML = subHtml;
+      const rows = subSec.querySelectorAll('.sub-row');
+      activeSubs.forEach(function(s, i) {
+        const divs = rows[i] && rows[i].querySelectorAll('.player-val-display');
+        if (!divs) return;
+        if (divs[0]) divs[0].textContent = s.handle || s.name || '';
+        if (divs[1]) divs[1].textContent = s.role || '';
+      });
+    } else {
+      subSec.innerHTML = '';
+    }
+
+    // ── Sync starter display values ────────────────────────────────────────
+    const starterSec = container.querySelector('.roster-starter-sec');
+    if (!starterSec) return;
+
+    starterSec.querySelectorAll('.player-val-display').forEach(function(div) {
+      const p = list[parseInt(div.dataset.index)];
+      div.textContent = (p && p[div.dataset.field]) || '';
     });
 
-    // Update op.gg profile links
-    container.querySelectorAll('.opgg-link').forEach(function(link) {
+    starterSec.querySelectorAll('.opgg-link').forEach(function(link) {
       const p = list[parseInt(link.dataset.index)];
       const url = p ? opggUrl(p.opggRegion, p.riotId) : '';
       if (url) { link.href = url; link.style.display = ''; }
       else      { link.href = '#'; link.style.display = 'none'; }
     });
 
-    // Refresh swap dropdown options with current sub names
-    container.querySelectorAll('.sub-swap-sel').forEach(function(sel) {
+    starterSec.querySelectorAll('.sub-swap-sel').forEach(function(sel) {
       sel.innerHTML = '<option value="">Swap sub...</option>' +
         subList.map(function(s, si) {
-          return (s.handle || s.name)
-            ? '<option value="' + si + '">⇕ ' + (s.handle || s.name).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</option>'
+          return (s && (s.handle || s.name))
+            ? '<option value="'+si+'">⇕ '+(s.handle||s.name).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</option>'
             : '';
         }).join('');
     });
-
   });
 }
 
@@ -2418,9 +2481,11 @@ function syncOperatorPage(s) {
 function renderOpsLTQuickGrid(players, match) {
   const grid = g('ops-lt-player-grid');
   if (!grid) return;
+  const t1 = (players.team1||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team1.name, teamTag:match.team1.tag, teamColor:match.team1.color}));
+  const t2 = (players.team2||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team2.name, teamTag:match.team2.tag, teamColor:match.team2.color}));
   const all = [];
-  (players.team1||[]).forEach(p => { if (p.handle||p.name) all.push({...p, teamName:match.team1.name, teamTag:match.team1.tag, teamColor:match.team1.color}); });
-  (players.team2||[]).forEach(p => { if (p.handle||p.name) all.push({...p, teamName:match.team2.name, teamTag:match.team2.tag, teamColor:match.team2.color}); });
+  const len = Math.max(t1.length, t2.length);
+  for (let i = 0; i < len; i++) { if (t1[i]) all.push(t1[i]); if (t2[i]) all.push(t2[i]); }
   grid._players = all;
   // Only rebuild if player list changed
   const sig = all.map(p=>p.handle+p.name+p.role+p.teamName).join('|');
@@ -3300,7 +3365,7 @@ function renderStandingsAndSeedings(state) {
     (t.groups || []).forEach(grp => {
       const rows = standings[grp.id] || [];
       html += '<div class="standings-group"><div class="standings-group-title">' + escHtml(grp.name) + '</div>';
-      html += '<table class="standings-table"><thead><tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>GD</th><th></th></tr></thead><tbody>';
+      html += '<table class="standings-table"><thead><tr><th>#</th><th>Team</th><th>W</th><th>L</th><th>+/−</th><th></th></tr></thead><tbody>';
       rows.forEach((e, i) => {
         const q = i < qualN, gd = e.gw - e.gl, played = e.sw + e.sl;
         html += '<tr class="' + (q ? 'standings-qualifies' : '') + '">' +
@@ -3594,6 +3659,8 @@ function loadTeamsCache() {
       renderGroupsList(s.tournament);
       renderStandingsAndSeedings(s);
     }
+    // Re-render game picker now that teams are loaded (may have rendered with empty cache)
+    if (_gsSelectedDayId) renderScheduleGamePicker(_gsSelectedDayId);
   }).catch(() => {});
 }
 
@@ -3898,10 +3965,12 @@ function addScheduleDay() {
 }
 
 // ── Game Setup ─────────────────────────────────────────────────────────────────
-let _gsSelectedDayId = null; // persists across tab switches and state re-renders
+let _gsSelectedDayId = localStorage.getItem('gfx_gs_day') || null;
 
 function onGsDayChange(dayId) {
   _gsSelectedDayId = dayId || null;
+  if (dayId) localStorage.setItem('gfx_gs_day', dayId);
+  else localStorage.removeItem('gfx_gs_day');
   renderScheduleGamePicker(dayId);
 }
 
@@ -3920,13 +3989,14 @@ function renderGsDaySelect(s) {
 
   if (target) {
     _gsSelectedDayId = target;
-    renderScheduleGamePicker(target);
+    // Only render picker immediately if teams are already cached; otherwise loadTeamsCache will re-render
+    if ((window._cachedTeams || []).length > 0) renderScheduleGamePicker(target);
   } else {
     _gsSelectedDayId = null;
     // Auto-select today's date if nothing was previously chosen
     const today = new Date().toISOString().slice(0,10);
     const todayDay = schedule.find(d => d.date === today);
-    if (todayDay) { sel.value = todayDay.id; _gsSelectedDayId = todayDay.id; renderScheduleGamePicker(todayDay.id); }
+    if (todayDay) { sel.value = todayDay.id; _gsSelectedDayId = todayDay.id; if ((window._cachedTeams || []).length > 0) renderScheduleGamePicker(todayDay.id); }
     else { const list = g('gs-game-list'); if (list) list.innerHTML = ''; }
   }
 }
@@ -4357,7 +4427,9 @@ function renderSeriesTracker(s) {
       '<span class="sg-side-badge sg-side-' + t1SideLbl.toLowerCase() + '">' + t1n + ' ' + t1SideLbl + '</span>' +
       '<span class="sg-side-badge sg-side-' + t2SideLbl.toLowerCase() + '" style="margin-left:6px">' + t2n + ' ' + t2SideLbl + '</span></div>';
     if (sideChooser) {
-      html += '<div class="sg-field-row"><label>Side Choice</label><span class="sg-info-text">' + chooserTag + ' chose ' + chosenSide + ' · ' + banFirstTeam.toUpperCase() + ' bans first</span></div>';
+      const _sideCol = chosenSide === 'BLUE' ? '#3bbfff' : '#ff6b6b';
+      const _banCol  = banFirstTeam.toUpperCase() === 'BLUE' ? '#3bbfff' : '#ff6b6b';
+      html += '<div class="sg-field-row"><label>Side Choice</label><span class="sg-info-text">' + chooserTag + ' chose <span style="color:' + _sideCol + ';font-weight:700">' + chosenSide + '</span> · <span style="color:' + _banCol + ';font-weight:700">' + banFirstTeam.toUpperCase() + '</span> bans first</span></div>';
     }
     // Winner radio + confirm — edit mode only
     if (_gsEditMode) {
