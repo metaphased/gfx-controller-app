@@ -209,6 +209,8 @@ function syncTopBar(s) {
 }
 
 // ── Dashboard ─────────────────────────────────────────────────────────────────
+var _DASH_GAME_NAMES = { lol: 'League of Legends', valorant: 'VALORANT', cs2: 'CS2', generic: 'Other' };
+
 function renderDashboard(s) {
   if (!s) return;
   var homeTab = g('tab-home');
@@ -216,6 +218,7 @@ function renderDashboard(s) {
   var m = s.match || {};
   var t = s.tournament || {};
   var todayGames = s.todayGames || [];
+  var currentTG = todayGames.find(function(sg) { return sg.isCurrent; }) || null;
 
   // Match card
   var matchEl = g('dash-match');
@@ -225,6 +228,12 @@ function renderDashboard(s) {
     var sc2 = sg.filter(function(x) { return x.winner === 'team2'; }).length;
     var t1 = m.team1 || {}, t2 = m.team2 || {};
     var hasTeams = !!(t1.name || t2.name);
+    var stageLabel = currentTG ? currentTG.stage : '';
+    var formatNum = parseInt((m.format || 'Bo3').replace(/[Bb][Oo]/,'')) || 3;
+    var metaStr = (stageLabel ? escHtml(stageLabel) + ' &nbsp;–&nbsp; ' : '') + escHtml(m.format || '');
+    var gameProgress = (formatNum > 1 && m.currentGameNum > 1)
+      ? '<div class="dash-match-gamenum">GAME ' + m.currentGameNum + ' &nbsp;·&nbsp; ' + sc1 + '–' + sc2 + ' in series</div>'
+      : '';
     matchEl.innerHTML = '<div class="card-title">Active Match</div>' +
       (hasTeams
         ? '<div class="dash-match-teams">' +
@@ -238,7 +247,8 @@ function renderDashboard(s) {
               '<div class="dash-team-name">' + escHtml(t2.name || t2.tag || '—') + '</div>' +
             '</div>' +
           '</div>' +
-          '<div class="dash-match-meta">' + escHtml(m.format || '') + (m.tournament ? ' · ' + escHtml(m.tournament) : '') + '</div>'
+          gameProgress +
+          '<div class="dash-match-meta">' + metaStr + '</div>'
         : '<p class="dash-empty">No active match set up.</p>');
   }
 
@@ -246,12 +256,19 @@ function renderDashboard(s) {
   var tournEl = g('dash-tournament');
   if (tournEl) {
     var hasTournament = !!(t.name || m.tournament);
+    var gameCode = m.game || t.game || '';
+    var gameFull = _DASH_GAME_NAMES[gameCode] || gameCode;
+    var fmtParts = [];
+    if (t.hasGroupStage) fmtParts.push('Group Stage');
+    if (t.playoffFormat === 'doubleElim') fmtParts.push('Double Elim Playoffs');
+    else if (t.playoffFormat === 'singleElim' || (!t.hasGroupStage && t.totalTeams > 0)) fmtParts.push('Single Elim Playoffs');
+    var fmtStr = fmtParts.join(' + ');
     tournEl.innerHTML = '<div class="card-title">Tournament</div>' +
       (hasTournament
         ? '<div class="dash-tourn-name">' + escHtml(t.name || m.tournament || '') + '</div>' +
           '<div class="dash-tourn-meta">' +
-            (m.game    ? 'Game: ' + escHtml(m.game) + '<br>' : '') +
-            (m.format  ? 'Format: ' + escHtml(m.format) + '<br>' : '') +
+            (gameFull ? escHtml(gameFull) + '<br>' : '') +
+            (fmtStr   ? escHtml(fmtStr)   + '<br>' : '') +
           '</div>'
         : '<p class="dash-empty">No tournament configured.</p>');
   }
@@ -259,24 +276,61 @@ function renderDashboard(s) {
   // Schedule card
   var schedEl = g('dash-schedule');
   if (schedEl) {
-    schedEl.innerHTML = '<div class="card-title">Today\'s Schedule</div>' +
-      (todayGames.length
-        ? '<div class="dash-sched-list">' +
-            todayGames.map(function(sg) {
-              var r = sg.result;
-              var cls = 'dash-sched-row' + (sg.isCurrent ? ' is-current' : '');
-              var resultHtml = (r && r.completed)
-                ? '<span class="dash-sched-result">' + r.team1SeriesScore + '–' + r.team2SeriesScore + '</span>'
-                : '';
-              return '<div class="' + cls + '">' +
-                escHtml(sg.team1.name || sg.team1.tag || '?') +
-                '<span class="dash-sched-vs">vs</span>' +
-                escHtml(sg.team2.name || sg.team2.tag || '?') +
-                resultHtml +
-              '</div>';
-            }).join('') +
-          '</div>'
-        : '<p class="dash-empty">No schedule day loaded.</p>');
+    var schedDay = null;
+    if (m.scheduleDayId && t.schedule) {
+      schedDay = (t.schedule || []).find(function(d) { return d.id === m.scheduleDayId; });
+    }
+    var dateStr = '';
+    if (schedDay && schedDay.date) {
+      var dp = schedDay.date.split('-');
+      var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      if (dp.length === 3) dateStr = parseInt(dp[2]) + ' ' + (MONTHS[parseInt(dp[1]) - 1] || dp[1]) + ' ' + dp[0];
+    } else if (schedDay && schedDay.label) {
+      dateStr = schedDay.label;
+    }
+    var titleHtml = '<div class="card-title">Today\'s Schedule' +
+      (dateStr ? '<span class="dash-sched-date">' + escHtml(dateStr) + '</span>' : '') +
+      '</div>';
+    if (todayGames.length) {
+      var lastStage = null;
+      var rows = '';
+      todayGames.forEach(function(sg) {
+        if (sg.stage && sg.stage !== lastStage) {
+          rows += '<div class="dash-sched-stage">' + escHtml(sg.stage) + '</div>';
+          lastStage = sg.stage;
+        }
+        var r = sg.result;
+        var isCompleted = r && r.completed;
+        var cls = 'dash-sched-row' + (sg.isCurrent ? ' is-current' : '');
+        var rightHtml = '';
+        if (isCompleted) {
+          rightHtml = '<span class="dash-sched-result">' + r.team1SeriesScore + '–' + r.team2SeriesScore + '</span>' +
+                      '<span class="dash-sched-fmt">' + escHtml(sg.format || '') + '</span>';
+        } else if (sg.isCurrent) {
+          var liveS1 = (m.team1 && m.team1.score) || 0;
+          var liveS2 = (m.team2 && m.team2.score) || 0;
+          var fmtN = parseInt((sg.format || 'Bo3').replace(/[Bb][Oo]/,'')) || 3;
+          rightHtml = '<span class="dash-sched-live">LIVE</span>';
+          if (fmtN > 1 && (liveS1 > 0 || liveS2 > 0)) {
+            rightHtml += '<span class="dash-sched-result">' + liveS1 + '–' + liveS2 + '</span>';
+          }
+          rightHtml += '<span class="dash-sched-fmt">' + escHtml(sg.format || '') + '</span>';
+        } else {
+          rightHtml = '<span class="dash-sched-fmt">' + escHtml(sg.format || '') + '</span>';
+        }
+        rows += '<div class="' + cls + '">' +
+          '<span class="dash-sched-teams">' +
+            escHtml(sg.team1.name || sg.team1.tag || '?') +
+            '<span class="dash-sched-vs">vs</span>' +
+            escHtml(sg.team2.name || sg.team2.tag || '?') +
+          '</span>' +
+          '<span class="dash-sched-right">' + rightHtml + '</span>' +
+        '</div>';
+      });
+      schedEl.innerHTML = titleHtml + '<div class="dash-sched-list">' + rows + '</div>';
+    } else {
+      schedEl.innerHTML = titleHtml + '<p class="dash-empty">No schedule day loaded.</p>';
+    }
   }
 
   // Graphics card

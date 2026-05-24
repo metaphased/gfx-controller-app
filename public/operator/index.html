@@ -51,12 +51,9 @@ body {
   overflow: hidden;
 }
 .topbar-logo {
-  font-family: 'Barlow Condensed', sans-serif;
-  font-size: 15px; font-weight: 800; letter-spacing: 0.1em;
-  color: var(--text); flex-shrink: 0;
-  display: flex; align-items: baseline; gap: 0;
+  display: flex; align-items: center; flex-shrink: 0;
 }
-.topbar-logo .accent { color: var(--primary); }
+.topbar-logo img { height: 26px; width: auto; display: block; }
 .topbar-badge {
   font-family: var(--ui-font), sans-serif;
   font-size: 9px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
@@ -430,7 +427,7 @@ body {
 
 <!-- ── Topbar ── -->
 <div class="topbar">
-  <div class="topbar-logo"><span class="accent">Meta</span>GFX</div>
+  <div class="topbar-logo"><img src="/fonts/metagfx-logo.png" alt="MetaGFX"></div>
   <div class="topbar-badge">Operator</div>
 
   <div class="tb-sep"></div>

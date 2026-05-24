@@ -94,18 +94,12 @@ body {
 }
 
 .logo {
-  padding: 20px 18px 16px;
-  font-family: var(--ui-font), sans-serif;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: 0.1em;
+  padding: 8px 18px 7px;
   border-bottom: 1px solid var(--border);
   display: flex;
-  align-items: baseline;
-  gap: 6px;
+  align-items: center;
 }
-.logo-accent { color: var(--primary); }
-.logo-text { color: var(--text-dim); font-size: 13px; letter-spacing: 0.2em; }
+.logo img { height: 50px; width: auto; display: block; }
 
 .nav-section-label {
   font-size: 10px;
@@ -1230,15 +1224,42 @@ input[type=search]::-webkit-search-decoration { display: none; }
   text-transform: uppercase;
 }
 
+.dash-match-gamenum {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.85em;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  text-align: center;
+  margin-bottom: 6px;
+}
+
 /* Schedule card */
 .dash-sched-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
+.dash-sched-stage {
+  font-size: 0.72em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 8px 0 2px;
+  border-top: 1px solid var(--border);
+  margin-top: 2px;
+}
+.dash-sched-stage:first-child {
+  border-top: none;
+  padding-top: 2px;
+  margin-top: 0;
+}
 .dash-sched-row {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
   font-size: 1em;
   font-weight: 500;
@@ -1253,17 +1274,58 @@ input[type=search]::-webkit-search-decoration { display: none; }
   border-left: 2px solid var(--primary);
   padding-left: 8px;
 }
+.dash-sched-teams {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
 .dash-sched-vs {
   color: var(--text-dim);
   font-size: 0.8em;
+  flex-shrink: 0;
+}
+.dash-sched-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex-shrink: 0;
 }
 .dash-sched-result {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.1em;
   font-weight: 700;
-  margin-left: auto;
   white-space: nowrap;
+}
+.dash-sched-fmt {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 0.85em;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.dash-sched-live {
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--danger);
+  background: rgba(220,40,40,0.15);
+  border: 1px solid rgba(220,40,40,0.3);
+  padding: 1px 5px;
+  border-radius: 2px;
+  white-space: nowrap;
+}
+.dash-sched-date {
+  font-size: 0.78em;
+  font-weight: 400;
+  color: var(--text-dim);
+  margin-left: 10px;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 /* Graphics status card */

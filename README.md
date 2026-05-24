@@ -16,7 +16,8 @@ npm install
 npm start
 ```
 
-Control panel: `http://localhost:3000`
+Control panel: `http://localhost:3000/control`  
+Operator view: `http://localhost:3000/operator`
 
 On first run the server auto-creates a default admin account:
 - **Username:** `admin`
@@ -85,6 +86,7 @@ Create additional users in **Settings → Accounts**.
 
 - Real-time state sync across all browser tabs and graphics via Socket.io
 - Profile system — save/restore full tournament configurations per event
+- Dashboard — active match, tournament info, live schedule with scores and BOx status, live graphics status
 - Draft overlay with role-commit → auto-fetch champion stats from op.gg MCP (optional, separate setup)
 - Match Intel panel — live rank, champion pool, and draft stats for both teams
 - Pick/ban timer with pause/resume — timer freezes on the overlay when paused
