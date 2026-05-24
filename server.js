@@ -578,7 +578,7 @@ app.post('/api/ranks/refresh', requireAdmin, async (req, res) => {
           : null;
 
         updated.push(p.handle);
-        await new Promise(r => setTimeout(r, 120)); // stay within dev rate limits
+        await new Promise(r => setTimeout(r, 120)); // stay within rate limits
       } catch (err) {
         errors.push(`${p.handle}: ${err.message}`);
       }

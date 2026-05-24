@@ -5,7 +5,31 @@
       "Bash(node --check public/control/control.js)",
       "Bash(node --check \"g:/Broadcast Workfiles/GFX Controller App/public/control/control.js\")",
       "Bash(node --check \"g:/Broadcast Workfiles/GFX Controller App/public/graphics/draft/draft.js\")",
-      "Bash(Test-Path \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\\\\public\\\\graphics\\\\head2head\\\\index.html\")"
+      "Bash(Test-Path \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\\\\public\\\\graphics\\\\head2head\\\\index.html\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" add public/graphics/gfx-settings.js public/graphics/pre-show/pre-show.css)",
+      "Bash(git -C 'g:\\\\Broadcast Workfiles\\\\GFX Controller App' commit -m ' *)",
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" push)",
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" status)",
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" diff --stat)",
+      "Bash(gh api *)",
+      "mcp__opgg__lol_get_summoner_profile",
+      "Bash(node -e ' *)",
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" add server.js public/control/index.html public/control/control.js)",
+      "Bash(node --check \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\\\\public\\\\graphics\\\\head2head\\\\h2h.js\")",
+      "Bash(node --check \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\\\\public\\\\control\\\\control.js\")",
+      "Bash(node --check \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\\\\server.js\")",
+      "Bash(git checkout *)",
+      "Bash(node -e \"const fs=require\\('fs'\\); const js=fs.readFileSync\\('public/control/control.js','utf8'\\); const html=fs.readFileSync\\('public/control/index.html','utf8'\\); const css=fs.readFileSync\\('public/control/control.css','utf8'\\); console.log\\('JS size:', js.length, 'HTML size:', html.length, 'CSS size:', css.length\\); const idMatches = html.match\\(/id=\\\\\"\\(showbtn-[^\\\\\"]+|hidebtn-[^\\\\\"]+|ctrl-dot-[^\\\\\"]+\\)\\\\\"/g\\); console.log\\('Control bar IDs:', idMatches.join\\('\\\\n'\\)\\);\")",
+      "Bash(git merge *)",
+      "PowerShell(Get-ChildItem \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\\\\\" -MaxDepth 1 | Where-Object { $_.Name -match '\\\\.\\(md|txt|json\\)$' -or $_.Name -match '^[A-Z]' } | Select-Object Name)",
+      "Bash(netstat -ano)",
+      "Bash(node -e \"require\\('playwright'\\); console.log\\('playwright available'\\)\")",
+      "Bash(npx --yes playwright@latest --version)",
+      "Bash(npx playwright@1.60.0 --yes screenshot http://localhost:3000/login/ \"C:/Users/Toby/operator-login.png\")",
+      "Bash(dir \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\")"
     ]
   }
 }
