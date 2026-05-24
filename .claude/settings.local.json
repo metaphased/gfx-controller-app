@@ -29,7 +29,8 @@
       "Bash(node -e \"require\\('playwright'\\); console.log\\('playwright available'\\)\")",
       "Bash(npx --yes playwright@latest --version)",
       "Bash(npx playwright@1.60.0 --yes screenshot http://localhost:3000/login/ \"C:/Users/Toby/operator-login.png\")",
-      "Bash(dir \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\")"
+      "Bash(dir \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\")",
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" log --oneline -5)"
     ]
   }
 }

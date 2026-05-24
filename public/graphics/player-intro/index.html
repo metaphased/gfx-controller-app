@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Player Intro</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=Barlow:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="player-intro.css">
+</head>
+<body>
+
+<div id="pi-root" class="layout-panel" style="display:none">
+
+  <!-- ── Layout: Nameplate Panel (centred overlay, non-fullscreen) ──────────── -->
+  <div class="pi-layout pi-panel">
+    <div class="pi-panel-box">
+      <div class="pi-panel-header">
+        <div class="pi-panel-team-hdr pi-panel-t1-hdr" id="pi-panel-t1-hdr">
+          <div class="pi-panel-logo" id="pi-panel-t1-logo"></div>
+          <div class="pi-panel-team-name" id="pi-panel-t1-name"></div>
+        </div>
+        <div class="pi-panel-centre-zone">
+          <img id="pi-panel-centre-img" style="display:none" alt="">
+          <div class="pi-panel-vs" id="pi-panel-vs">VS</div>
+        </div>
+        <div class="pi-panel-team-hdr pi-panel-t2-hdr" id="pi-panel-t2-hdr">
+          <div class="pi-panel-team-name" id="pi-panel-t2-name"></div>
+          <div class="pi-panel-logo" id="pi-panel-t2-logo"></div>
+        </div>
+      </div>
+      <div class="pi-panel-body">
+        <div class="pi-panel-col" id="pi-panel-t1-rows"></div>
+        <div class="pi-panel-divider"></div>
+        <div class="pi-panel-col pi-panel-col-right" id="pi-panel-t2-rows"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Layout: Team Card Stack (full-screen, left/right split) ────────────── -->
+  <div class="pi-layout pi-stack">
+    <div class="pi-stack-half pi-stack-t1" id="pi-stack-t1">
+      <div class="pi-stack-team-block">
+        <div class="pi-stack-logo" id="pi-stack-t1-logo"></div>
+        <div class="pi-stack-name" id="pi-stack-t1-name"></div>
+      </div>
+      <div class="pi-stack-players" id="pi-stack-t1-players"></div>
+    </div>
+    <div class="pi-stack-divider">
+      <div class="pi-stack-divider-centre">
+        <img id="pi-stack-centre-img" style="display:none" alt="">
+        <div class="pi-stack-vs" id="pi-stack-vs">VS</div>
+      </div>
+    </div>
+    <div class="pi-stack-half pi-stack-t2" id="pi-stack-t2">
+      <div class="pi-stack-team-block">
+        <div class="pi-stack-logo" id="pi-stack-t2-logo"></div>
+        <div class="pi-stack-name" id="pi-stack-t2-name"></div>
+      </div>
+      <div class="pi-stack-players" id="pi-stack-t2-players"></div>
+    </div>
+  </div>
+
+  <!-- ── Layout: Nameplate Bar (bottom-anchored overlay) ───────────────────── -->
+  <div class="pi-layout pi-bar">
+    <div class="pi-bar-band">
+      <div class="pi-bar-side pi-bar-t1" id="pi-bar-t1">
+        <div class="pi-bar-logo" id="pi-bar-t1-logo"></div>
+        <div class="pi-bar-players" id="pi-bar-t1-players"></div>
+        <div class="pi-bar-team-name pi-bar-t1-name" id="pi-bar-t1-team-name"></div>
+      </div>
+      <div class="pi-bar-centre">
+        <img id="pi-bar-centre-img" style="display:none" alt="">
+        <div class="pi-bar-vs" id="pi-bar-vs">VS</div>
+      </div>
+      <div class="pi-bar-side pi-bar-t2" id="pi-bar-t2">
+        <div class="pi-bar-team-name pi-bar-t2-name" id="pi-bar-t2-team-name"></div>
+        <div class="pi-bar-players" id="pi-bar-t2-players"></div>
+        <div class="pi-bar-logo" id="pi-bar-t2-logo"></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/graphics/gfx-settings.js"></script>
+<script src="player-intro.js"></script>
+</body>
+</html>
