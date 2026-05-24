@@ -37,7 +37,7 @@ function profileSnapshotStr(state) {
 }
 
 function setProfileSnapshot(snapshotData) {
-  _savedProfileSnapshotStr = snapshotData ? stableStr(snapshotData) : null;
+  _savedProfileSnapshotStr = snapshotData ? profileSnapshotStr(snapshotData) : null;
   updateProfileDirtyBar(false);
 }
 
@@ -170,7 +170,7 @@ function syncGfxToken(settings) {
   const base    = window.location.origin + '/';
   listEl.innerHTML = GFX_OUTPUTS.map(o =>
     '<div style="display:flex;align-items:center;gap:8px">' +
-    '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.1em;color:var(--text-dim);width:130px;flex-shrink:0">' + escHtml(o.label) + '</span>' +
+    '<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);width:130px;flex-shrink:0">' + escHtml(o.label) + '</span>' +
     '<input type="text" readonly value="' + escHtml(base + o.path + (token ? '?token=' + token : '')) + '" style="flex:1;font-family:monospace;font-size:11px" onclick="this.select()">' +
     '<button class="btn btn-sm" onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">Copy</button>' +
     '</div>'
@@ -203,6 +203,8 @@ function syncTopBar(s) {
     window._activeProfileId = newId;
     updateProfileDirtyBar(false);
     if (newId && !_savedProfileSnapshotStr) _pendingSnapshotRestore = true;
+    var profilesTab = g('tab-profiles');
+    if (profilesTab && profilesTab.classList.contains('active')) loadProfilesTab();
   }
 }
 
@@ -350,7 +352,9 @@ function syncUI(s) {
     if (_rb) _rb.className = 'btn btn-sm ' + (h2hMode === 'spotlight' && h2hRole === _ri ? 'btn-active-gfx' : 'btn-dim');
   }
   const _h2hLb = g('h2h-lineup-btn');
-  if (_h2hLb) _h2hLb.className = 'btn ' + (h2hMode === 'lineup' ? 'btn-active-gfx' : 'btn-primary');
+  if (_h2hLb) _h2hLb.className = 'btn btn-sm ' + (h2hMode === 'lineup' ? 'btn-active-gfx' : 'btn-dim');
+  const _h2hVs = g('h2h-view-spotlight');
+  if (_h2hVs) _h2hVs.className = 'btn btn-sm ' + (h2hMode !== 'lineup' ? 'btn-active-gfx' : 'btn-dim');
   const h2hAnim = h2h.animStyle || 'standard';
   ['standard', 'impact', 'drop'].forEach(function(s2) {
     const btn = g('h2h-anim-' + s2);
@@ -367,13 +371,20 @@ function syncUI(s) {
   syncPreShowUI(s.preShow || {}, s.settings || {}, s.todayGames || [], s.ticker || {});
 
   const pipActive = !!(s.breakScreen && s.breakScreen.pipMode);
-  const pipShowBtn = g('showbtn-pip'); const pipHideBtn = g('hidebtn-pip');
-  if (pipShowBtn) pipShowBtn.className = 'btn btn-sm ' + (pipActive ? 'btn-active-gfx' : 'btn-primary');
-  if (pipHideBtn) pipHideBtn.className = 'btn btn-sm ' + (pipActive ? 'btn-danger' : 'btn-dim');
+  const pipBtn = g('ctrlbtn-pip');
+  if (pipBtn) pipBtn.className = 'lbar-toggle lbar-pip-toggle' + (pipActive ? ' is-on' : '');
+  const pipDot = g('ctrl-dot-pip');
+  if (pipDot) pipDot.classList.toggle('active', pipActive);
+  const pipGrp = g('ctrlgrp-pip');
+  if (pipGrp) pipGrp.classList.toggle('is-live', pipActive);
   const tickerActive = !!(s.ticker && s.ticker.visible);
-  const tickerShowBtn = g('showbtn-ticker'); const tickerHideBtn = g('hidebtn-ticker');
-  if (tickerShowBtn) tickerShowBtn.className = 'btn btn-sm ' + (tickerActive ? 'btn-active-gfx' : 'btn-primary');
-  if (tickerHideBtn) tickerHideBtn.className = 'btn btn-sm ' + (tickerActive ? 'btn-danger' : 'btn-dim');
+  // Break screen ctrl-bar ticker shortcut (mirrors main ticker state)
+  const bTickerBtn = g('ctrlbtn-ticker-b');
+  if (bTickerBtn) bTickerBtn.className = 'lbar-toggle' + (tickerActive ? ' is-on' : '');
+  const bTickerDot = g('ctrl-dot-ticker-break');
+  if (bTickerDot) bTickerDot.classList.toggle('active', tickerActive);
+  const bTickerGrp = g('ctrlgrp-ticker-break');
+  if (bTickerGrp) bTickerGrp.classList.toggle('is-live', tickerActive);
   syncTickerUI(s.ticker || {}, s);
   syncWinTab(s.winScreen || {}, s.match || {});
   syncBgoTab(s.bgOutput || {});
@@ -1098,15 +1109,23 @@ function setH2HSpotlight(roleIdx) { patchH2H({ mode: 'spotlight', spotlightRole:
 function setH2HAnimStyle(style) { patchH2H({ animStyle: style }); }
 function setH2HLineup()           { patchH2H({ mode: 'lineup' }); }
 function setH2HNext() {
-  const h2h  = (window._state || {}).headToHead || {};
-  const next = ((h2h.spotlightRole !== undefined ? h2h.spotlightRole : -1) + 1);
-  if (next >= 5) setH2HLineup();
-  else patchH2H({ mode: 'spotlight', spotlightRole: next });
+  const h2h = (window._state || {}).headToHead || {};
+  if (h2h.mode === 'lineup') {
+    patchH2H({ mode: 'spotlight', spotlightRole: 0 });
+  } else {
+    const next = (h2h.spotlightRole !== undefined ? h2h.spotlightRole : -1) + 1;
+    if (next >= 5) setH2HLineup();
+    else patchH2H({ mode: 'spotlight', spotlightRole: next });
+  }
 }
 function setH2HPrev() {
-  const h2h  = (window._state || {}).headToHead || {};
-  const prev = Math.max(0, (h2h.spotlightRole || 0) - 1);
-  patchH2H({ mode: 'spotlight', spotlightRole: prev });
+  const h2h = (window._state || {}).headToHead || {};
+  if (h2h.mode === 'lineup') {
+    patchH2H({ mode: 'spotlight', spotlightRole: 4 });
+  } else {
+    const prev = Math.max(0, (h2h.spotlightRole !== undefined ? h2h.spotlightRole : 0) - 1);
+    patchH2H({ mode: 'spotlight', spotlightRole: prev });
+  }
 }
 
 // ── Break / Win ────────────────────────────────────────────────────────────────
@@ -1182,8 +1201,8 @@ function syncPreShowUI(ps, settings, todayGames, ticker) {
   // Layout buttons
   const _plc = g('ps-layout-center'), _pls = g('ps-layout-side');
   const _isSide = ps.layout === 'side';
-  if (_plc) _plc.className = 'btn btn-sm ' + (_isSide ? 'btn-dim'     : 'btn-primary');
-  if (_pls) _pls.className = 'btn btn-sm ' + (_isSide ? 'btn-primary' : 'btn-dim');
+  if (_plc) _plc.className = 'btn btn-sm ' + (_isSide ? 'btn-dim'        : 'btn-active-gfx');
+  if (_pls) _pls.className = 'btn btn-sm ' + (_isSide ? 'btn-active-gfx' : 'btn-dim');
   // Logo controls
   const _showLogoChk = g('ps-show-logo');
   if (_showLogoChk) _showLogoChk.checked = !ps.hideLogo;
@@ -1215,8 +1234,8 @@ function syncPreShowUI(ps, settings, todayGames, ticker) {
   // Ticker show/hide buttons
   const _tsb = g('ps-ticker-show-btn'), _thb = g('ps-ticker-hide-btn');
   const _tickerOn = !!(ticker && ticker.visible);
-  if (_tsb) _tsb.className = 'btn ' + (_tickerOn ? 'btn-active-gfx' : 'btn-primary');
-  if (_thb) _thb.className = 'btn ' + (_tickerOn ? 'btn-danger'     : 'btn-dim');
+  if (_tsb) _tsb.className = 'btn ' + (_tickerOn ? 'btn-active-gfx' : 'btn-dim');
+  if (_thb) _thb.className = 'btn ' + (_tickerOn ? 'btn-dim'        : 'btn-active-gfx');
 
   const prevEl = g('ps-schedule-preview');
   if (prevEl) {
@@ -2343,7 +2362,6 @@ const GRAPHIC_MAP = [
 ];
 
 // ── Draft GFX tab ─────────────────────────────────────────────────────────────
-let _draftTimerInterval = null;
 
 function startDraftTimer() {
   const durEl = g('draft-timer-dur');
@@ -2370,20 +2388,8 @@ function syncDraftGfxTab(draft, settings) {
   if (durEl && document.activeElement !== durEl) durEl.value = draft.timerDuration || 60;
   const visEl = g('draft-timer-visible');
   if (visEl) visEl.checked = !!draft.timerVisible;
-
-  // Live countdown display
-  if (_draftTimerInterval) clearInterval(_draftTimerInterval);
-  const dispEl = g('draft-timer-display');
-  if (draft.timerEnd && draft.timerVisible) {
-    _draftTimerInterval = setInterval(() => {
-      if (!dispEl) return;
-      const rem  = Math.max(0, draft.timerEnd - Date.now());
-      const secs = Math.ceil(rem / 1000);
-      dispEl.textContent = rem > 0 ? '⏱ ' + secs + 's remaining' : '⏱ Time up';
-    }, 250);
-  } else {
-    if (dispEl) dispEl.textContent = '';
-  }
+  const visEl2 = g('draft-timer-visible-main');
+  if (visEl2) visEl2.checked = !!draft.timerVisible;
 
   // Centre logo picker
   const logos = (settings && settings.logoSet && settings.logoSet.logos) || [];
@@ -2423,15 +2429,17 @@ function syncGraphicIndicators(s) {
   GRAPHIC_MAP.forEach(function(gfx) {
     const active = s[gfx.key] && s[gfx.key].visible;
     // Sidebar dot
-    const dot = g('nav-dot-' + gfx.tab);
-    if (dot) {
-      dot.className = 'nav-status-dot' + (active ? ' active' : '');
-    }
-    // Individual tab SHOW/HIDE buttons
-    const showBtn = g('showbtn-' + gfx.key);
-    const hideBtn = g('hidebtn-' + gfx.key);
-    if (showBtn) showBtn.className = 'btn ' + (active ? 'btn-active-gfx' : 'btn-primary');
-    if (hideBtn) hideBtn.className = 'btn ' + (active ? 'btn-danger' : 'btn-dim');
+    const navDot = g('nav-dot-' + gfx.tab);
+    if (navDot) navDot.className = 'nav-status-dot' + (active ? ' active' : '');
+    // Ctrl-bar toggle button
+    const ctrlBtn = g('ctrlbtn-' + gfx.key);
+    if (ctrlBtn) ctrlBtn.className = 'lbar-toggle' + (active ? ' is-on' : '');
+    // Ctrl-bar dot
+    const ctrlDot = g('ctrl-dot-' + gfx.key);
+    if (ctrlDot) ctrlDot.classList.toggle('active', !!active);
+    // Ctrl-bar group
+    const ctrlGrp = g('ctrlgrp-' + gfx.key);
+    if (ctrlGrp) ctrlGrp.classList.toggle('is-live', !!active);
   });
 }
 
@@ -2588,17 +2596,37 @@ function lbarStartTimer() {
 }
 
 // ── User management ────────────────────────────────────────────────────────────
+var _editingUserId = null;
+
+function toggleUserEdit(id) {
+  const prev = _editingUserId;
+  if (prev) {
+    const el = g('user-actions-' + prev); if (el) el.style.display = 'none';
+    const btn = g('user-edit-btn-' + prev); if (btn) btn.textContent = 'Edit';
+  }
+  if (prev === id) { _editingUserId = null; return; }
+  _editingUserId = id;
+  const el = g('user-actions-' + id); if (el) el.style.display = 'flex';
+  const btn = g('user-edit-btn-' + id); if (btn) btn.textContent = 'Done';
+}
+
 function loadUsersTab() {
+  _editingUserId = null;
   fetch('/api/users').then(r => r.json()).then(data => {
     const list = g('users-list');
     if (!list) return;
     if (!data.users || data.users.length === 0) { list.innerHTML = '<p class="hint">No users found.</p>'; return; }
     list.innerHTML = data.users.map(u =>
       '<div class="user-row" id="user-row-' + u.id + '">' +
-      '<span class="user-name">' + escHtml(u.username) + '</span>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
       '<span class="user-role user-role-' + u.role + '">' + u.role + '</span>' +
-      '<button class="btn btn-sm" onclick="openChpwPanel(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Change Password</button>' +
+      '<span class="user-name">' + escHtml(u.username) + '</span>' +
+      '<button class="btn btn-sm" id="user-edit-btn-' + u.id + '" onclick="toggleUserEdit(\'' + u.id + '\')">Edit</button>' +
+      '</div>' +
+      '<div id="user-actions-' + u.id + '" style="display:none;gap:6px;justify-content:flex-end">' +
+      '<button class="btn btn-sm" onclick="openChpwPanel(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Password</button>' +
       '<button class="btn btn-sm btn-danger" onclick="deleteUser(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Delete</button>' +
+      '</div>' +
       '</div>'
     ).join('');
   }).catch(() => { const l = g('users-list'); if (l) l.innerHTML = '<p class="hint" style="color:var(--danger)">Failed to load users.</p>'; });
@@ -2607,6 +2635,7 @@ function loadUsersTab() {
 function openNewUserForm() {
   g('new-user-form').style.display = 'block';
   g('nu-username').value = ''; g('nu-password').value = '';
+  g('nu-password').setAttribute('readonly', '');
   g('nu-role').value = 'operator';
   showUsersMsg('nu-msg', '', '');
   g('nu-username').focus();
@@ -2627,6 +2656,7 @@ function openChpwPanel(uid, username) {
   g('chpw-uid').value = uid;
   g('chpw-label').textContent = username;
   g('chpw-new').value = ''; g('chpw-confirm').value = '';
+  g('chpw-new').setAttribute('readonly', ''); g('chpw-confirm').setAttribute('readonly', '');
   showUsersMsg('chpw-msg', '', '');
   g('chpw-panel').style.display = 'block';
   g('chpw-new').focus();
@@ -2666,16 +2696,17 @@ function showUsersMsg(id, text, type) {
 function escHtml(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
 // ── Profiles ───────────────────────────────────────────────────────────────────
-function loadProfilesTab() {
+function loadProfilesTab(skipDirtyCheck) {
   fetch('/api/profiles').then(r => r.json()).then(data => {
     const profiles = data.profiles || [];
-    renderProfilesList(profiles);
-    // Restore dirty-tracking snapshot after a page refresh
+    // Restore dirty-tracking snapshot before rendering so isDirty is accurate on first render
     if (_pendingSnapshotRestore && window._activeProfileId && !_savedProfileSnapshotStr) {
       _pendingSnapshotRestore = false;
       const p = profiles.find(function(x) { return x.id === window._activeProfileId; });
       if (p && p.data) setProfileSnapshot(p.data);
     }
+    renderProfilesList(profiles);
+    if (!skipDirtyCheck) checkProfileDirty();
   }).catch(() => {
     const el = g('profiles-list'); if (el) el.innerHTML = '<p class="hint" style="color:var(--danger)">Failed to load profiles.</p>';
   });
@@ -2692,7 +2723,6 @@ function renderProfilesList(profiles) {
     const d = p.data || {};
     const t = d.tournament || {};
     const m = d.match || {};
-    const tournName = m.tournament || p.name;
     const game = gameLabels[m.game] || m.game || '—';
     // Summary info
     const parts = [];
@@ -2703,17 +2733,17 @@ function renderProfilesList(profiles) {
       ? t.numGroups * (t.qualifiersPerGroup || 2)
       : (t.totalTeams || 0);
     if (totalTeams > 0) parts.push(totalTeams + '-team ' + (t.playoffFormat === 'doubleElim' ? 'double elim' : 'playoff'));
-    const schedDays = (t.schedule || []).length;
     const schedGames = (t.schedule || []).reduce((s, day) => s + (day.games || []).length, 0);
     if (schedGames > 0) parts.push(schedGames + ' game' + (schedGames > 1 ? 's' : '') + ' scheduled');
     const created = new Date(p.createdAt).toLocaleDateString();
     const updated = new Date(p.updatedAt).toLocaleDateString();
     const isActive = window._activeProfileId === p.id;
+    const isDirty = isActive && _savedProfileSnapshotStr && profileSnapshotStr(window._state) !== _savedProfileSnapshotStr;
 
     return '<div class="profile-card' + (isActive ? ' profile-card-active' : '') + '" id="prof-card-' + p.id + '">' +
       '<div class="profile-card-header">' +
         '<div>' +
-          '<div class="profile-name" id="prof-name-' + p.id + '">' + escHtml(tournName) + '</div>' +
+          '<div class="profile-name" id="prof-name-' + p.id + '">' + escHtml(p.name) + '</div>' +
           '<div class="profile-meta">' +
             '<span class="profile-game-badge">' + escHtml(game) + '</span>' +
             (parts.length ? '<span class="profile-summary">' + escHtml(parts.join(' · ')) + '</span>' : '') +
@@ -2721,10 +2751,9 @@ function renderProfilesList(profiles) {
           '<div class="profile-dates">Saved ' + escHtml(created) + (updated !== created ? ' · Updated ' + escHtml(updated) : '') + '</div>' +
         '</div>' +
         '<div class="profile-card-btns">' +
-          (isActive && _savedProfileSnapshotStr && profileSnapshotStr(window._state) !== _savedProfileSnapshotStr
-            ? '<span class="profile-dirty-badge">⚠ Unsaved</span>' : '') +
+          (isDirty ? '<span class="profile-dirty-badge">⚠ Unsaved</span>' : '') +
           '<button class="btn btn-sm btn-primary" onclick="loadProfile(\'' + p.id + '\')">' + (isActive ? '● Active' : 'Load') + '</button>' +
-          '<button class="btn btn-sm' + (isActive && _savedProfileSnapshotStr && profileSnapshotStr(window._state) !== _savedProfileSnapshotStr ? ' btn-primary' : '') + '" onclick="updateProfile(\'' + p.id + '\')">Update</button>' +
+          (isActive ? '<button class="btn btn-sm' + (isDirty ? ' btn-primary' : '') + '" onclick="updateProfile(\'' + p.id + '\')">Update</button>' : '') +
           '<button class="btn btn-sm" onclick="renameProfileInline(\'' + p.id + '\')">Rename</button>' +
           '<button class="btn btn-sm btn-danger" onclick="deleteProfile(\'' + p.id + '\')">Delete</button>' +
         '</div>' +
@@ -2747,6 +2776,20 @@ function openSaveProfileForm() {
 }
 function closeSaveProfileForm() {
   const el = g('save-profile-form'); if (el) el.style.display = 'none';
+}
+
+function submitNewEmptyProfile() {
+  const name = g('new-profile-name') && g('new-profile-name').value.trim();
+  if (!name) { showProfileMsg('save-profile-msg', 'Please enter a profile name.', 'error'); return; }
+  fetch('/api/profiles/save-empty', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name }) })
+    .then(r => r.json()).then(data => {
+      if (data.ok) {
+        closeSaveProfileForm();
+        loadProfilesTab();
+      } else {
+        showProfileMsg('save-profile-msg', data.error || 'Failed to create profile.', 'error');
+      }
+    });
 }
 
 function submitSaveProfile() {
@@ -2783,7 +2826,7 @@ function confirmLoadProfile() {
     .then(r => r.json()).then(data => {
       if (data.ok) {
         if (data.savedSnapshot) setProfileSnapshot(data.savedSnapshot);
-        loadProfilesTab();
+        loadProfilesTab(true); // skip dirty check — window._state not yet updated via WS
       } else alert(data.error || 'Failed to load profile.');
     });
 }
@@ -2816,56 +2859,19 @@ function closeProfileLoadModal() {
   });
 })();
 
-// ── Font picker ──────────────────────────────────────────────────────────────
-var FONT_OPTIONS = [
-  { name: 'Inter',            label: 'Inter',            sample: 'Default — clean neo-grotesque, screen-optimised' },
-  { name: 'Barlow',           label: 'Barlow',           sample: 'Humanist grotesque' },
-  { name: 'Hubot Sans',       label: 'Hubot Sans',       sample: 'GitHub\'s open-source variable font' },
-  { name: 'Switzer',          label: 'Switzer',          sample: 'Contemporary geometric grotesque' },
-  { name: 'Space Grotesk',    label: 'Space Grotesk',    sample: 'Technical geometric, distinct forms' },
-  { name: 'Figtree',          label: 'Figtree',          sample: 'Rounded, approachable geometric' },
-  { name: 'Poppins',          label: 'Poppins',          sample: 'Geometric, uniform stroke weight' },
-  { name: 'Outfit',           label: 'Outfit',           sample: 'Geometric variable, clean numerals' },
-  { name: 'Darker Grotesque', label: 'Darker Grotesque', sample: 'Condensed grotesque with personality' },
-  { name: 'Sora',             label: 'Sora',             sample: 'Japanese-influenced geometric sans' },
-  { name: 'Oxygen',           label: 'Oxygen',           sample: 'KDE project — crisp and legible' },
-  { name: 'Nacelle',          label: 'Nacelle',          sample: 'Self-hosted — clean geometric grotesque' },
-];
-
-function initFontPicker() {
-  var saved = localStorage.getItem('gfx_ui_font');
-  if (saved) applyUiFont(saved, false);
-  renderFontPicker();
-}
-
-function applyUiFont(fontName, save) {
-  document.documentElement.style.setProperty('--ui-font', "'" + fontName + "'");
-  if (save !== false) localStorage.setItem('gfx_ui_font', fontName);
-}
-
-function setUiFont(fontName) {
-  applyUiFont(fontName, true);
-  renderFontPicker();
-}
-
-function renderFontPicker() {
-  var grid = g('font-picker-grid');
-  if (!grid) return;
-  var current = localStorage.getItem('gfx_ui_font') || 'Inter';
-  grid.innerHTML = FONT_OPTIONS.map(function(f) {
-    var active = f.name === current ? ' is-active' : '';
-    return '<button class="font-option' + active + '" onclick="setUiFont(\'' + f.name.replace(/'/g, "\\'") + '\')" style="font-family:\'' + f.name + '\',sans-serif">'
-      + '<span class="font-option-name">' + f.label + '</span>'
-      + '<span class="font-option-sample">' + f.sample + '</span>'
-      + '</button>';
-  }).join('');
-}
 
 document.addEventListener('DOMContentLoaded', function() {
   const m = g('profile-load-modal');
   if (m) m.addEventListener('click', function(e) { if (e.target === m) closeProfileLoadModal(); });
 
-  initFontPicker();
+  // Autofill suppression — readonly trick for both text and password inputs
+  ['ts-gfx-display-title', 'win-msg', 'chpw-new', 'chpw-confirm', 'nu-password'].forEach(function(id) {
+    var el = g(id);
+    if (el) el.addEventListener('focus', function() {
+      var inp = el;
+      setTimeout(function() { inp.removeAttribute('readonly'); }, 50);
+    });
+  });
 
   // Restore last active tab from previous session
   const savedTab = localStorage.getItem('gfx_ctrl_tab');
@@ -2947,7 +2953,7 @@ document.querySelectorAll('.nav-item[data-tab="profiles"]').forEach(el => {
 
 // Load users when the users tab is opened
 document.querySelectorAll('.nav-item[data-tab="users"]').forEach(el => {
-  el.addEventListener('click', function() { loadUsersTab(); renderFontPicker(); });
+  el.addEventListener('click', loadUsersTab);
 });
 
 // Populate session info in top bar
@@ -4727,8 +4733,10 @@ function renderPrizepoolEntries(entries) {
     return (
       '<div class="pp-entry-row" id="pp-row-' + escHtml(e.id) + '">' +
         '<div class="pp-entry-summary">' +
-          '<span class="pp-entry-badge ' + typeCls + '">' + typeLabel + '</span>' +
-          (e.highlight ? '<span class="pp-entry-badge pp-badge-gf">★ Grand Final</span>' : '') +
+          '<div class="pp-entry-badges">' +
+            '<span class="pp-entry-badge ' + typeCls + '">' + typeLabel + '</span>' +
+            (e.highlight ? '<span class="pp-entry-badge pp-badge-gf">★ Grand Final</span>' : '') +
+          '</div>' +
           '<span class="pp-entry-label">' + escHtml(e.label || '(no label)') + '</span>' +
           '<span class="pp-entry-value">' + escHtml(e.value || '') + '</span>' +
           '<div class="pp-entry-btns">' +

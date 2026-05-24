@@ -60,11 +60,20 @@ window.Champions = (function() {
     }
 
     const input = document.createElement('input');
-    input.type = 'text';
+    input.type = 'search';
     input.className = 'champ-search-input';
-    input.placeholder = _list.length ? 'Search champion…' : 'No champions found in /public/champions/';
+    input.placeholder = 'Search champion…';
     input.value = current ? current.name : '';
-    input.autocomplete = 'off';
+    input.setAttribute('autocomplete', 'off');
+    input.setAttribute('data-form-type', 'other');
+    input.setAttribute('data-lpignore', 'true');
+    // Readonly trick: Chrome skips credential autofill for readonly inputs.
+    // Remove readonly 50ms after focus — Chrome has already decided not to show the picker.
+    input.setAttribute('readonly', '');
+    input.addEventListener('focus', function() {
+      const el = input;
+      setTimeout(function() { el.removeAttribute('readonly'); }, 50);
+    });
 
     const clearBtn = document.createElement('button');
     clearBtn.className = 'champ-clear-btn btn btn-sm';
@@ -90,9 +99,16 @@ window.Champions = (function() {
 
     function positionDropdown() {
       const rect = input.getBoundingClientRect();
-      dropdown.style.top   = (rect.bottom + 4) + 'px';
+      const spaceBelow = window.innerHeight - rect.bottom - 8;
       dropdown.style.left  = rect.left + 'px';
       dropdown.style.width = rect.width + 'px';
+      if (spaceBelow < 240 && rect.top > spaceBelow) {
+        dropdown.style.top    = 'auto';
+        dropdown.style.bottom = (window.innerHeight - rect.top + 4) + 'px';
+      } else {
+        dropdown.style.top    = (rect.bottom + 4) + 'px';
+        dropdown.style.bottom = 'auto';
+      }
     }
 
     function hideDropdown() { dropdown.style.display = 'none'; }
@@ -175,6 +191,7 @@ window.Champions = (function() {
     });
 
     input.addEventListener('blur', function() {
+      input.setAttribute('readonly', ''); // re-arm for next focus
       setTimeout(function() {
         hideDropdown();
         const match = findByName(input.value);
@@ -191,6 +208,13 @@ window.Champions = (function() {
     wrapper.appendChild(input);
     wrapper.appendChild(clearBtn);
     container.appendChild(wrapper);
+  }
+
+  function setPickerLocked(container, locked) {
+    const input = container.querySelector('.champ-search-input');
+    const clearBtn = container.querySelector('.champ-clear-btn');
+    if (input) input.disabled = !!locked;
+    if (clearBtn) clearBtn.disabled = !!locked;
   }
 
   function updatePickerValue(container, nameOrUrl) {
@@ -212,5 +236,5 @@ window.Champions = (function() {
     }
   }
 
-  return { load, getList, findByName, getUrl, buildPicker, updatePickerValue };
+  return { load, getList, findByName, getUrl, buildPicker, updatePickerValue, setPickerLocked };
 })();

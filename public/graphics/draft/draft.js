@@ -193,6 +193,10 @@ function renderAll(state) {
   // timer-val stays in layout flow at all times (display never toggled) to avoid
   // the flex recentre that shifts the logo row up when it appears.
   // Opacity is managed by runIntroAnimation (→0) and animateDraftStart (anim-slide-up-sm).
+  if (!draft.timerEnd && _lastTimerEnd) {
+    _lastTimerEnd = null;
+    if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
+  }
   if (showTimer && draftActive && draft.timerEnd && draft.timerEnd !== _lastTimerEnd) {
     _lastTimerEnd = draft.timerEnd;
     _lastDuration = draft.timerDuration || 60;

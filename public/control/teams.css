@@ -339,15 +339,15 @@
 
 /* Active/dim state for regular tab SHOW/HIDE buttons */
 .btn-active-gfx {
-  background: rgba(31,250,255,0.2) !important;
-  border-color: var(--primary) !important;
-  color: var(--primary) !important;
-  box-shadow: 0 0 8px rgba(31,250,255,0.25);
+  background: rgba(220,40,40,0.18) !important;
+  border-color: #e03030 !important;
+  color: #ff5555 !important;
+  box-shadow: 0 0 8px rgba(220,40,40,0.2);
 }
 .btn-dim {
-  background: rgba(255,68,68,0.04);
-  border-color: rgba(255,68,68,0.2);
-  color: rgba(255,68,68,0.4);
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.45);
 }
 
 /* ── Broadcast Theme tab ──────────────────────────────────────────────────────── */
@@ -1400,7 +1400,7 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 }
 
 .win-style-name {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 13px; font-weight: 800; letter-spacing: 0.1em;
   color: var(--text);
   text-transform: uppercase;

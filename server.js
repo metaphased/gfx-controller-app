@@ -284,6 +284,7 @@ function snapshotForProfile() {
   // Settings snapshot — exclude graphicsToken so each install keeps its own auth token
   const settingsSnap = JSON.parse(JSON.stringify(state.settings || {}));
   delete settingsSnap.graphicsToken;
+  const pp = state.prizepool || {};
   return {
     tournament: JSON.parse(JSON.stringify(state.tournament)),
     bracket: { title: state.bracket.title, rounds: JSON.parse(JSON.stringify(state.bracket.rounds)) },
@@ -292,6 +293,7 @@ function snapshotForProfile() {
       ({ team1, team2, game, format, tournament, tournamentLogo, sponsorLogos,
          fearlessDraft, currentGameNum, seriesGames, scheduleDayId, scheduleGameId }))(state.match),
     players: JSON.parse(JSON.stringify(state.players)),
+    prizepool: { showLogo: pp.showLogo, logoScale: pp.logoScale, logoPosition: pp.logoPosition, entries: JSON.parse(JSON.stringify(pp.entries || [])) },
     settings: settingsSnap,
   };
 }
@@ -1214,6 +1216,35 @@ app.post('/api/profiles/save', requireAdmin, (req, res) => {
   res.json({ ok: true, profile, savedSnapshot: profile.data });
 });
 
+app.post('/api/profiles/save-empty', requireAdmin, (req, res) => {
+  const { name } = req.body;
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Profile name required' });
+  const profiles = loadProfiles();
+  // Use system defaults — don't inherit colours/logos from whatever is currently loaded
+  const defaultSettingsSnap = JSON.parse(JSON.stringify(makeDefault().settings));
+  delete defaultSettingsSnap.graphicsToken;
+  const emptyTeam = { name: '', tag: '', color: '#1ffaff', logo: '' };
+  const profile = {
+    id: 'prof_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    name: name.trim(),
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    data: {
+      tournament: {},
+      bracket: { title: '', rounds: [] },
+      match: { team1: { ...emptyTeam }, team2: { ...emptyTeam }, game: 'lol', format: 'bo3',
+               tournament: name.trim(), tournamentLogo: '', sponsorLogos: [],
+               fearlessDraft: false, currentGameNum: 1, seriesGames: [] },
+      players: { team1: [], team2: [] },
+      prizepool: { showLogo: false, logoScale: 7, logoPosition: 'left', entries: [] },
+      settings: defaultSettingsSnap,
+    },
+  };
+  profiles.unshift(profile);
+  saveProfiles(profiles);
+  res.json({ ok: true, profile });
+});
+
 app.post('/api/profiles/update', requireAdmin, (req, res) => {
   const { id } = req.body;
   if (!id) return res.status(400).json({ error: 'Profile id required' });
@@ -1245,6 +1276,13 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
     keep.forEach(k => { if (d.match[k] !== undefined) state.match[k] = d.match[k]; });
   }
   if (d.players) deepMerge(state.players, d.players);
+  if (d.prizepool) {
+    const { entries, showLogo, logoScale, logoPosition } = d.prizepool;
+    if (entries     !== undefined) state.prizepool.entries      = JSON.parse(JSON.stringify(entries));
+    if (showLogo    !== undefined) state.prizepool.showLogo     = showLogo;
+    if (logoScale   !== undefined) state.prizepool.logoScale    = logoScale;
+    if (logoPosition !== undefined) state.prizepool.logoPosition = logoPosition;
+  }
   if (d.settings) {
     const incoming = JSON.parse(JSON.stringify(d.settings));
     delete incoming.graphicsToken; // never restore token from profile
