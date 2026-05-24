@@ -425,12 +425,16 @@ function syncUI(s) {
 
   // ── Player Intro sync ──────────────────────────────────────────────────────
   const _pi = s.playerIntro || {};
-  syncPlayerIntroLayoutBtns(_pi.layout || 'B');
-  syncPlayerIntroAnimBtns(_pi.layout || 'B', _pi.animVariant || 'slide');
+  syncPlayerIntroLayoutBtns(_pi.layout || 'panel');
+  syncPlayerIntroAnimBtns(_pi.layout || 'panel', _pi.animVariant || 'rise');
   const _piLogoBtn = g('pi-toggle-logo');
   if (_piLogoBtn) _piLogoBtn.textContent = 'Logo: ' + (_pi.showLogo !== false ? 'On' : 'Off');
   const _piRankBtn = g('pi-toggle-rank');
   if (_piRankBtn) _piRankBtn.textContent = 'Rank: ' + (_pi.showRank ? 'On' : 'Off');
+  const _piChampsBtn = g('pi-toggle-champs');
+  if (_piChampsBtn) _piChampsBtn.textContent = 'Champs: ' + (_pi.showChamps ? 'On' : 'Off');
+  syncPiBgBtns(_pi.piBg || 'transparent');
+  renderPiLogoPicker(_pi, s.settings || {});
 
   // ── Pre-show sync ──────────────────────────────────────────────────────────
   syncPreShowUI(s.preShow || {}, s.settings || {}, s.todayGames || [], s.ticker || {});
@@ -1197,18 +1201,21 @@ function setH2HPrev() {
 function patchPlayerIntro(data) { api('/api/playerIntro', data); }
 
 const PI_ANIMS = {
-  B: [['slide', 'Slide'], ['stagger', 'Stagger'], ['cinematic', 'Cinematic']],
-  C: [['slide', 'Slide'], ['fan', 'Fan'], ['rise', 'Rise']],
+  panel: [['rise', 'Rise'], ['stagger', 'Stagger'], ['fade', 'Fade']],
+  stack: [['split', 'Split'], ['rise', 'Rise'], ['fade', 'Fade']],
+  bar:   [['slide', 'Slide'], ['fade', 'Fade']],
 };
 
 function syncPlayerIntroLayoutBtns(layout) {
-  const btnB = g('pi-layout-B'); if (btnB) btnB.className = 'btn btn-sm ' + (layout === 'B' ? 'btn-active-gfx' : 'btn-dim');
-  const btnC = g('pi-layout-C'); if (btnC) btnC.className = 'btn btn-sm ' + (layout === 'C' ? 'btn-active-gfx' : 'btn-dim');
+  ['panel', 'stack', 'bar'].forEach(function(id) {
+    const btn = g('pi-layout-' + id);
+    if (btn) btn.className = 'btn btn-sm ' + (layout === id ? 'btn-active-gfx' : 'btn-dim');
+  });
 }
 
 function syncPlayerIntroAnimBtns(layout, active) {
   const container = g('pi-anim-btns'); if (!container) return;
-  const anims = PI_ANIMS[layout] || PI_ANIMS.B;
+  const anims = PI_ANIMS[layout] || PI_ANIMS.panel;
   container.innerHTML = anims.map(function(pair) {
     return '<button class="btn btn-sm ' + (pair[0] === active ? 'btn-active-gfx' : 'btn-dim') + '" onclick="setPlayerIntroAnim(\'' + pair[0] + '\')">' + pair[1] + '</button>';
   }).join('');
@@ -1230,6 +1237,22 @@ function togglePlayerIntroLogo() {
 function togglePlayerIntroRank() {
   const pi = (window._state && window._state.playerIntro) || {};
   patchPlayerIntro({ showRank: !pi.showRank });
+}
+
+function togglePlayerIntroChamps() {
+  const pi = (window._state && window._state.playerIntro) || {};
+  patchPlayerIntro({ showChamps: !pi.showChamps });
+}
+
+function setPiBackground(type) {
+  patchPlayerIntro({ piBg: type });
+}
+
+function syncPiBgBtns(piBg) {
+  ['transparent', 'dark', 'global'].forEach(function(t) {
+    const btn = g('pi-bg-' + t);
+    if (btn) btn.className = 'btn btn-sm ' + (piBg === t ? 'btn-active-gfx' : 'btn-dim');
+  });
 }
 
 // ── Break / Win ────────────────────────────────────────────────────────────────
@@ -1429,6 +1452,27 @@ function renderH2HLogoPicker(settings) {
     return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '"' +
       ' data-logo-url="' + escHtml(t.url) + '"' +
       ' onclick="patchSettings({h2hLogoUrl:this.dataset.logoUrl})">' +
+      (t.url
+        ? '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(t.url) + ')"></div>'
+        : '<div class="draft-logo-tile-img"><span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;color:var(--text-dim);letter-spacing:0.08em">AUTO</span></div>') +
+      '<div class="draft-logo-tile-label">' + escHtml(t.label) + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function renderPiLogoPicker(pi, settings) {
+  const grid = g('pi-logo-grid');
+  if (!grid) return;
+  const logos = ((settings && settings.logoSet && settings.logoSet.logos) || []);
+  const selectedUrl = (pi && pi.piLogoUrl) || '';
+  const tiles = [{ url: '', label: 'Auto' }].concat(
+    logos.map(function(l) { return { url: l.url || '', label: l.name || '' }; })
+  );
+  grid.innerHTML = tiles.map(function(t) {
+    const active = t.url === '' ? !selectedUrl : t.url === selectedUrl;
+    return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '"' +
+      ' data-logo-url="' + escHtml(t.url) + '"' +
+      ' onclick="patchPlayerIntro({piLogoUrl:this.dataset.logoUrl})">' +
       (t.url
         ? '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(t.url) + ')"></div>'
         : '<div class="draft-logo-tile-img"><span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;color:var(--text-dim);letter-spacing:0.08em">AUTO</span></div>') +

@@ -776,19 +776,29 @@
           </div>
           <div class="gfx-ctrl-group">
             <span class="gfx-ctrl-section-label">Layout</span>
-            <button id="pi-layout-B" class="btn btn-sm btn-active-gfx" onclick="setPlayerIntroLayout('B')">Mirror / Split</button>
-            <button id="pi-layout-C" class="btn btn-sm btn-dim"        onclick="setPlayerIntroLayout('C')">Champ Showcase</button>
-          </div>
-          <div class="gfx-ctrl-group">
-            <span class="gfx-ctrl-section-label">Options</span>
-            <button id="pi-toggle-logo" class="btn btn-sm btn-dim" onclick="togglePlayerIntroLogo()">Logo: On</button>
-            <button id="pi-toggle-rank" class="btn btn-sm btn-dim" onclick="togglePlayerIntroRank()">Rank: Off</button>
+            <button id="pi-layout-panel" class="btn btn-sm btn-active-gfx" onclick="setPlayerIntroLayout('panel')">Nameplate</button>
+            <button id="pi-layout-stack" class="btn btn-sm btn-dim"        onclick="setPlayerIntroLayout('stack')">Team Stack</button>
+            <button id="pi-layout-bar"   class="btn btn-sm btn-dim"        onclick="setPlayerIntroLayout('bar')">Bar</button>
           </div>
         </div>
         <div class="gfx-ctrl-row">
           <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Options</span>
+            <button id="pi-toggle-logo"   class="btn btn-sm btn-dim" onclick="togglePlayerIntroLogo()">Logo: On</button>
+            <button id="pi-toggle-rank"   class="btn btn-sm btn-dim" onclick="togglePlayerIntroRank()">Rank: Off</button>
+            <button id="pi-toggle-champs" class="btn btn-sm btn-dim" onclick="togglePlayerIntroChamps()">Champs: Off</button>
+          </div>
+          <div class="gfx-ctrl-group">
             <span class="gfx-ctrl-section-label">Animation</span>
             <span id="pi-anim-btns"></span>
+          </div>
+        </div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Background</span>
+            <button id="pi-bg-transparent" class="btn btn-sm btn-active-gfx" onclick="setPiBackground('transparent')">Transparent</button>
+            <button id="pi-bg-dark"        class="btn btn-sm btn-dim"        onclick="setPiBackground('dark')">Dark</button>
+            <button id="pi-bg-global"      class="btn btn-sm btn-dim"        onclick="setPiBackground('global')">Global Theme</button>
           </div>
         </div>
       </div>
@@ -797,15 +807,16 @@
         <div class="ps-col">
           <div class="card">
             <div class="card-title">About Player Intro</div>
-            <p class="hint">Full-screen graphic introducing both teams and all 5 players before a series. Uses op.gg champion pool data for splash art and Riot API for rank badges.</p>
-            <p class="hint" style="margin-top:8px">Make sure champion pools and rank data have been fetched in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel before going live.</p>
+            <p class="hint">Pre-series graphic introducing both rosters. Three layouts: <strong>Nameplate</strong> (centred overlay panel), <strong>Team Stack</strong> (full-screen left/right split), <strong>Bar</strong> (bottom-anchored band).</p>
+            <p class="hint" style="margin-top:8px">Rank and champion data are optional — fetch them first in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel. Champs shows most-played champion; disable to keep the focus on player names only.</p>
           </div>
         </div>
 
         <div class="ps-col">
           <div class="card">
             <div class="card-title">Centre Logo</div>
-            <p class="hint">Uses the same logo selection as <a onclick="switchToTab('h2h')" href="#" style="color:var(--primary)">Head to Head</a> — set it there.</p>
+            <p class="hint" style="margin-bottom:8px">Select from your <a onclick="switchToTab('theme')" href="#" style="color:var(--primary)">Broadcast Logos</a> library. Auto uses the <a onclick="switchToTab('h2h')" href="#" style="color:var(--primary)">H2H</a> selection.</p>
+            <div id="pi-logo-grid" class="draft-logo-grid"></div>
           </div>
         </div>
 

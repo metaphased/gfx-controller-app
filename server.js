@@ -192,7 +192,7 @@ const makeDefault = () => ({
   scoreboard:  { visible: false },
   lowerThird:  { visible: false, text: '', subtext: '', supertext: '', side: 'left', teamColor: '' },
   headToHead:  { visible: false, mode: 'spotlight', spotlightRole: 0, animStyle: 'standard' },
-  playerIntro: { visible: false, layout: 'B', animVariant: 'slide', showLogo: true, showRank: false },
+  playerIntro: { visible: false, layout: 'panel', animVariant: 'rise', showLogo: true, showRank: false, showChamps: false, piBg: 'transparent', piLogoUrl: '' },
   preShow:     { visible: false, timerEnd: null, logoUrl: '', logoScale: 8, hideLogo: false, headerText: '', hideHeaderText: false, timerLabel: '', layout: 'center' },
   draft: {
     visible: false,
