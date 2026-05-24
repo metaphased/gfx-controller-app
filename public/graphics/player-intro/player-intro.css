@@ -1,0 +1,476 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
+
+:root {
+  --pi-header-h:  10vh;
+  --pi-row-h:     18vh;  /* 5 × 18 = 90vh body */
+  --pi-centre-w:  10vw;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ROOT
+   ═══════════════════════════════════════════════════════════════════════════ */
+#pi-root {
+  width: 100vw; height: 100vh;
+  position: relative;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+#pi-root.visible { opacity: 1; }
+
+/* ── Layout visibility switch ─────────────────────────────────────────────── */
+.pi-layout-b,
+.pi-layout-c {
+  display: none;
+  width: 100%; height: 100%;
+  flex-direction: column;
+}
+#pi-root.layout-B .pi-layout-b { display: flex; }
+#pi-root.layout-C .pi-layout-c { display: flex; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   SHARED ELEMENTS
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pi-team-logo {
+  width: 7vh; height: 7vh;
+  flex-shrink: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.pi-team-name {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 4.8vh; font-weight: 900;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  color: #fff;
+  line-height: 1;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYOUT B — MIRROR / SPLIT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Header bar ─────────────────────────────────────────────────────────── */
+.pi-header {
+  height: var(--pi-header-h);
+  display: flex;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.pi-header-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+  padding: 0 3vw;
+  background: rgba(0,0,0,0.72);
+  border-bottom: 2px solid var(--team-color, var(--gfx-c1));
+}
+.pi-header-right { flex-direction: row-reverse; }
+
+.pi-header-centre {
+  width: var(--pi-centre-w);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.85);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.pi-header-centre img {
+  max-height: 7vh;
+  max-width: calc(var(--pi-centre-w) - 2vw);
+  object-fit: contain;
+}
+
+/* ── Rows container ─────────────────────────────────────────────────────── */
+.pi-rows {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #07101a;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Individual row ─────────────────────────────────────────────────────── */
+.pi-row {
+  height: var(--pi-row-h);
+  display: flex;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  position: relative;
+}
+
+/* ── Champion cards ─────────────────────────────────────────────────────── */
+.pi-card {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: #0a0f18;
+  background-size: cover;
+  background-repeat: no-repeat;
+}
+.pi-card-left  { background-position: 60% 20%; }
+.pi-card-right { background-position: 40% 20%; }
+
+/* Gradient: fade toward centre + bottom text scrim */
+.pi-card-left::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to right, transparent 45%, rgba(4,8,16,0.88) 100%),
+    linear-gradient(to top,   rgba(4,8,16,0.92) 0%, rgba(4,8,16,0.45) 35%, rgba(4,8,16,0.1) 65%, transparent 100%);
+}
+.pi-card-right::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to left,  transparent 45%, rgba(4,8,16,0.88) 100%),
+    linear-gradient(to top,   rgba(4,8,16,0.92) 0%, rgba(4,8,16,0.45) 35%, rgba(4,8,16,0.1) 65%, transparent 100%);
+}
+
+/* ── Player info (bottom of card) ─────────────────────────────────────── */
+.pi-player-info {
+  position: absolute;
+  bottom: 0;
+  z-index: 2;
+  padding: 1.4vh 2.2vw;
+}
+.pi-card-left  .pi-player-info { left:  0; }
+.pi-card-right .pi-player-info { right: 0; text-align: right; }
+
+.pi-handle {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 4.4vh; font-weight: 900;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: #fff;
+  line-height: 1;
+}
+
+.pi-rank {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.5vh; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--gfx-c1);
+  margin-top: 0.5vh;
+  line-height: 1;
+}
+
+/* ── Centre column: role icon + label ───────────────────────────────────── */
+.pi-row-centre {
+  width: var(--pi-centre-w);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.8vh;
+  background: #07101a;
+  border-left:  1px solid rgba(255,255,255,0.07);
+  border-right: 1px solid rgba(255,255,255,0.07);
+  position: relative;
+  z-index: 3;
+}
+
+.pi-role-icon {
+  width: 5.5vh; height: 5.5vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: brightness(0) invert(1);
+  opacity: 0.5;
+}
+
+.pi-role-label {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3vh; font-weight: 700;
+  letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255,255,255,0.38);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LAYOUT C — CHAMPION SHOWCASE  (vertical split: T1 top, T2 bottom)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pi-c-team-header {
+  height: 8vh;
+  display: flex;
+  align-items: center;
+  gap: 2vw;
+  padding: 0 4vw;
+  background: rgba(0,0,0,0.78);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+.pi-c-header-t1 { border-bottom: 2px solid var(--gfx-blue); }
+.pi-c-header-t2 { flex-direction: row-reverse; border-top: 2px solid var(--gfx-red); }
+
+/* Cards strip fills remaining vertical space */
+.pi-c-cards {
+  flex: 1;
+  display: flex;
+  position: relative;
+  z-index: 1;
+  background: #07101a;
+  overflow: hidden;
+}
+
+/* Individual champion card */
+.pi-card-c {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: #0a0f18;
+  background-size: cover;
+  background-position: center 18%;
+  background-repeat: no-repeat;
+  border-right: 1px solid rgba(255,255,255,0.05);
+}
+.pi-card-c:last-child { border-right: none; }
+
+/* Bottom gradient + subtle edge fade */
+.pi-card-c::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to top, rgba(4,8,16,0.95) 0%, rgba(4,8,16,0.55) 22%, rgba(4,8,16,0.1) 50%, transparent 80%),
+    linear-gradient(to right, rgba(4,8,16,0.35) 0%, transparent 18%, transparent 82%, rgba(4,8,16,0.35) 100%);
+}
+
+/* Player info centred at bottom of card */
+.pi-card-c-info {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  z-index: 2;
+  padding: 1.2vh 0.5vw 1.5vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5vh;
+}
+
+.pi-card-c-role {
+  width: 4.5vh; height: 4.5vh;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: brightness(0) invert(1);
+  opacity: 0.55;
+  flex-shrink: 0;
+}
+
+.pi-card-c-handle {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 2.3vh; font-weight: 900;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: #fff;
+  line-height: 1;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.pi-card-c-rank {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 1.3vh; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--gfx-c1);
+  line-height: 1;
+  text-align: center;
+}
+
+/* Divider between T1 and T2 */
+.pi-c-divider {
+  height: 7vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.82);
+  border-top:    1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+.pi-c-divider img { max-height: 5.5vh; object-fit: contain; }
+
+.pi-c-vs {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 3.6vh; font-weight: 900;
+  letter-spacing: 0.35em; text-transform: uppercase;
+  color: rgba(255,255,255,0.32);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENTRY / EXIT ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@keyframes pi-slide-left  { from { transform: translateX(-6vw);  opacity: 0; } to { transform: translateX(0);   opacity: 1; } }
+@keyframes pi-slide-right { from { transform: translateX(6vw);   opacity: 0; } to { transform: translateX(0);   opacity: 1; } }
+@keyframes pi-rise        { from { transform: translateY(20px);  opacity: 0; } to { transform: translateY(0);   opacity: 1; } }
+@keyframes pi-drop        { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0);   opacity: 1; } }
+@keyframes pi-exit-left   { to   { transform: translateX(-5vw);  opacity: 0; } }
+@keyframes pi-exit-right  { to   { transform: translateX(5vw);   opacity: 0; } }
+@keyframes pi-sink        { to   { transform: translateY(16px);  opacity: 0; } }
+@keyframes pi-float-up    { to   { transform: translateY(-16px); opacity: 0; } }
+
+/* ── Layout B: Slide variant (default) ──────────────────────────────────── */
+#pi-root.pi-entering .pi-header-centre,
+#pi-root.pi-entering .pi-row-centre {
+  animation: pi-rise 0.65s cubic-bezier(0.25, 1, 0.5, 1) 0.2s both;
+}
+#pi-root.pi-entering .pi-header-left {
+  animation: pi-slide-left  0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.3s both;
+}
+#pi-root.pi-entering .pi-header-right {
+  animation: pi-slide-right 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.3s both;
+}
+#pi-root.pi-entering .pi-card-left  { animation: pi-slide-left  0.55s cubic-bezier(0.25, 1, 0.5, 1) both; }
+#pi-root.pi-entering .pi-card-right { animation: pi-slide-right 0.55s cubic-bezier(0.25, 1, 0.5, 1) both; }
+
+/* Per-row stagger on cards */
+#pi-root.pi-entering .pi-row:nth-child(1) .pi-card { animation-delay: 0.30s; }
+#pi-root.pi-entering .pi-row:nth-child(2) .pi-card { animation-delay: 0.37s; }
+#pi-root.pi-entering .pi-row:nth-child(3) .pi-card { animation-delay: 0.44s; }
+#pi-root.pi-entering .pi-row:nth-child(4) .pi-card { animation-delay: 0.51s; }
+#pi-root.pi-entering .pi-row:nth-child(5) .pi-card { animation-delay: 0.58s; }
+
+/* Exit: slide back out */
+#pi-root.pi-exiting .pi-header-centre,
+#pi-root.pi-exiting .pi-row-centre {
+  animation: pi-sink 0.4s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+}
+#pi-root.pi-exiting .pi-header-left  { animation: pi-exit-left  0.35s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+#pi-root.pi-exiting .pi-header-right { animation: pi-exit-right 0.35s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+#pi-root.pi-exiting .pi-card-left    { animation: pi-exit-left  0.4s  cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+#pi-root.pi-exiting .pi-card-right   { animation: pi-exit-right 0.4s  cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+
+/* Reversed stagger for exit */
+#pi-root.pi-exiting .pi-row:nth-child(5) .pi-card { animation-delay: 0s;    }
+#pi-root.pi-exiting .pi-row:nth-child(4) .pi-card { animation-delay: 0.04s; }
+#pi-root.pi-exiting .pi-row:nth-child(3) .pi-card { animation-delay: 0.08s; }
+#pi-root.pi-exiting .pi-row:nth-child(2) .pi-card { animation-delay: 0.12s; }
+#pi-root.pi-exiting .pi-row:nth-child(1) .pi-card { animation-delay: 0.16s; }
+
+/* ── Layout B: Stagger variant ──────────────────────────────────────────── */
+@keyframes pi-stagger-in { from { transform: translateY(12px) scaleY(0.92); opacity: 0; } to { transform: none; opacity: 1; } }
+
+#pi-root.anim-stagger.pi-entering .pi-header-left,
+#pi-root.anim-stagger.pi-entering .pi-header-right {
+  animation: pi-stagger-in 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.1s both;
+}
+#pi-root.anim-stagger.pi-entering .pi-header-centre,
+#pi-root.anim-stagger.pi-entering .pi-row-centre {
+  animation: pi-rise 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.15s both;
+}
+/* Override card slide — rows stagger in from bottom */
+#pi-root.anim-stagger.pi-entering .pi-card-left,
+#pi-root.anim-stagger.pi-entering .pi-card-right {
+  animation: pi-stagger-in 0.45s cubic-bezier(0.25, 1, 0.5, 1) both;
+}
+#pi-root.anim-stagger.pi-entering .pi-row:nth-child(1) .pi-card { animation-delay: 0.22s; }
+#pi-root.anim-stagger.pi-entering .pi-row:nth-child(2) .pi-card { animation-delay: 0.30s; }
+#pi-root.anim-stagger.pi-entering .pi-row:nth-child(3) .pi-card { animation-delay: 0.38s; }
+#pi-root.anim-stagger.pi-entering .pi-row:nth-child(4) .pi-card { animation-delay: 0.46s; }
+#pi-root.anim-stagger.pi-entering .pi-row:nth-child(5) .pi-card { animation-delay: 0.54s; }
+
+/* ── Layout B: Cinematic variant ────────────────────────────────────────── */
+@keyframes pi-letterbox-top    { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes pi-letterbox-bottom { from { transform: translateY(100%);  } to { transform: translateY(0); } }
+@keyframes pi-fade-through      { from { opacity: 0; } 30% { opacity: 0; } to { opacity: 1; } }
+
+#pi-root.anim-cinematic.pi-entering .pi-header-left,
+#pi-root.anim-cinematic.pi-entering .pi-header-right,
+#pi-root.anim-cinematic.pi-entering .pi-header-centre {
+  animation: pi-letterbox-top 0.55s cubic-bezier(0.25, 1, 0.5, 1) 0.05s both;
+}
+#pi-root.anim-cinematic.pi-entering .pi-card-left,
+#pi-root.anim-cinematic.pi-entering .pi-card-right,
+#pi-root.anim-cinematic.pi-entering .pi-row-centre {
+  animation: pi-fade-through 1s ease 0.05s both;
+}
+#pi-root.anim-cinematic.pi-entering .pi-row:nth-child(1) .pi-card,
+#pi-root.anim-cinematic.pi-entering .pi-row:nth-child(2) .pi-card,
+#pi-root.anim-cinematic.pi-entering .pi-row:nth-child(3) .pi-card,
+#pi-root.anim-cinematic.pi-entering .pi-row:nth-child(4) .pi-card,
+#pi-root.anim-cinematic.pi-entering .pi-row:nth-child(5) .pi-card { animation-delay: 0.05s; }
+#pi-root.anim-cinematic.pi-entering .pi-row:nth-child(1) .pi-row-centre,
+#pi-root.anim-cinematic.pi-entering .pi-row:nth-child(2) .pi-row-centre,
+#pi-root.anim-cinematic.pi-entering .pi-row:nth-child(3) .pi-row-centre,
+#pi-root.anim-cinematic.pi-entering .pi-row:nth-child(4) .pi-row-centre,
+#pi-root.anim-cinematic.pi-entering .pi-row:nth-child(5) .pi-row-centre { animation-delay: 0.05s; }
+
+/* ── Layout C: Slide variant (default for C) ────────────────────────────── */
+#pi-root.pi-entering .pi-c-team-header { animation: pi-rise 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.1s both; }
+#pi-root.pi-entering .pi-c-divider     { animation: pi-rise 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.15s both; }
+
+/* T1 cards slide from left, T2 from right, staggered */
+#pi-root.pi-entering #pi-c-t1-cards .pi-card-c { animation: pi-slide-left  0.55s cubic-bezier(0.25, 1, 0.5, 1) both; }
+#pi-root.pi-entering #pi-c-t2-cards .pi-card-c { animation: pi-slide-right 0.55s cubic-bezier(0.25, 1, 0.5, 1) both; }
+
+#pi-root.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(1) { animation-delay: 0.20s; }
+#pi-root.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(2) { animation-delay: 0.27s; }
+#pi-root.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(3) { animation-delay: 0.34s; }
+#pi-root.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(4) { animation-delay: 0.41s; }
+#pi-root.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(5) { animation-delay: 0.48s; }
+#pi-root.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(1) { animation-delay: 0.20s; }
+#pi-root.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(2) { animation-delay: 0.27s; }
+#pi-root.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(3) { animation-delay: 0.34s; }
+#pi-root.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(4) { animation-delay: 0.41s; }
+#pi-root.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(5) { animation-delay: 0.48s; }
+
+/* Layout C exit */
+#pi-root.pi-exiting .pi-c-team-header { animation: pi-sink 0.4s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+#pi-root.pi-exiting .pi-c-divider     { animation: pi-sink 0.4s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+#pi-root.pi-exiting #pi-c-t1-cards .pi-card-c { animation: pi-exit-left  0.4s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+#pi-root.pi-exiting #pi-c-t2-cards .pi-card-c { animation: pi-exit-right 0.4s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+#pi-root.pi-exiting #pi-c-t1-cards .pi-card-c:nth-child(5) { animation-delay: 0s;    }
+#pi-root.pi-exiting #pi-c-t1-cards .pi-card-c:nth-child(4) { animation-delay: 0.04s; }
+#pi-root.pi-exiting #pi-c-t1-cards .pi-card-c:nth-child(3) { animation-delay: 0.08s; }
+#pi-root.pi-exiting #pi-c-t1-cards .pi-card-c:nth-child(2) { animation-delay: 0.12s; }
+#pi-root.pi-exiting #pi-c-t1-cards .pi-card-c:nth-child(1) { animation-delay: 0.16s; }
+#pi-root.pi-exiting #pi-c-t2-cards .pi-card-c:nth-child(5) { animation-delay: 0s;    }
+#pi-root.pi-exiting #pi-c-t2-cards .pi-card-c:nth-child(4) { animation-delay: 0.04s; }
+#pi-root.pi-exiting #pi-c-t2-cards .pi-card-c:nth-child(3) { animation-delay: 0.08s; }
+#pi-root.pi-exiting #pi-c-t2-cards .pi-card-c:nth-child(2) { animation-delay: 0.12s; }
+#pi-root.pi-exiting #pi-c-t2-cards .pi-card-c:nth-child(1) { animation-delay: 0.16s; }
+
+/* ── Layout C: Rise variant ─────────────────────────────────────────────── */
+@keyframes pi-rise-card { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+@keyframes pi-drop-card { from { transform: translateY(-40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+#pi-root.anim-rise.pi-entering .pi-c-team-header { animation: pi-drop 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.08s both; }
+#pi-root.anim-rise.pi-entering .pi-c-divider     { animation: pi-rise 0.5s cubic-bezier(0.25, 1, 0.5, 1) 0.1s both; }
+#pi-root.anim-rise.pi-entering #pi-c-t1-cards .pi-card-c { animation: pi-rise-card 0.55s cubic-bezier(0.25, 1, 0.5, 1) both; }
+#pi-root.anim-rise.pi-entering #pi-c-t2-cards .pi-card-c { animation: pi-rise-card 0.55s cubic-bezier(0.25, 1, 0.5, 1) both; }
+#pi-root.anim-rise.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(1),
+#pi-root.anim-rise.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(1) { animation-delay: 0.15s; }
+#pi-root.anim-rise.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(2),
+#pi-root.anim-rise.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(2) { animation-delay: 0.22s; }
+#pi-root.anim-rise.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(3),
+#pi-root.anim-rise.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(3) { animation-delay: 0.29s; }
+#pi-root.anim-rise.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(4),
+#pi-root.anim-rise.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(4) { animation-delay: 0.36s; }
+#pi-root.anim-rise.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(5),
+#pi-root.anim-rise.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(5) { animation-delay: 0.43s; }
+
+/* ── Layout C: Fan variant ──────────────────────────────────────────────── */
+/* T1: cards fan in left-to-right; T2: cards fan in right-to-left */
+#pi-root.anim-fan.pi-entering #pi-c-t1-cards .pi-card-c { animation: pi-slide-left  0.55s cubic-bezier(0.25, 1, 0.5, 1) both; }
+#pi-root.anim-fan.pi-entering #pi-c-t2-cards .pi-card-c { animation: pi-slide-right 0.55s cubic-bezier(0.25, 1, 0.5, 1) both; }
+#pi-root.anim-fan.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(1) { animation-delay: 0.18s; }
+#pi-root.anim-fan.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(2) { animation-delay: 0.26s; }
+#pi-root.anim-fan.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(3) { animation-delay: 0.34s; }
+#pi-root.anim-fan.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(4) { animation-delay: 0.42s; }
+#pi-root.anim-fan.pi-entering #pi-c-t1-cards .pi-card-c:nth-child(5) { animation-delay: 0.50s; }
+#pi-root.anim-fan.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(5) { animation-delay: 0.18s; }
+#pi-root.anim-fan.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(4) { animation-delay: 0.26s; }
+#pi-root.anim-fan.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(3) { animation-delay: 0.34s; }
+#pi-root.anim-fan.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(2) { animation-delay: 0.42s; }
+#pi-root.anim-fan.pi-entering #pi-c-t2-cards .pi-card-c:nth-child(1) { animation-delay: 0.50s; }

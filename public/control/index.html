@@ -53,6 +53,10 @@
         <span id="nav-dot-h2h" class="nav-status-dot"></span>
         Head to Head
       </a>
+      <a class="nav-item" data-tab="player-intro">
+        <span id="nav-dot-player-intro" class="nav-status-dot"></span>
+        Player Intro
+      </a>
       <a class="nav-item" data-tab="ticker">
         <span id="nav-dot-ticker" class="nav-status-dot"></span>
         Ticker
@@ -752,6 +756,58 @@
           </div>
 
         </div><!-- /ps-col right -->
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         PLAYER INTRO
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-player-intro">
+      <div class="tab-header"><h1>Player Intro</h1></div>
+      <div class="gfx-ctrl-bar">
+        <div class="gfx-ctrl-title">Player Intro Controls</div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group" id="ctrlgrp-playerIntro">
+            <span class="gfx-ctrl-section-label">Output</span>
+            <button class="lbar-toggle" id="ctrlbtn-playerIntro" onclick="toggleGraphic('playerIntro')">
+              <span class="lbar-dot" id="ctrl-dot-playerIntro"></span>PLAYER INTRO
+            </button>
+          </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Layout</span>
+            <button id="pi-layout-B" class="btn btn-sm btn-active-gfx" onclick="setPlayerIntroLayout('B')">Mirror / Split</button>
+            <button id="pi-layout-C" class="btn btn-sm btn-dim"        onclick="setPlayerIntroLayout('C')">Champ Showcase</button>
+          </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Options</span>
+            <button id="pi-toggle-logo" class="btn btn-sm btn-dim" onclick="togglePlayerIntroLogo()">Logo: On</button>
+            <button id="pi-toggle-rank" class="btn btn-sm btn-dim" onclick="togglePlayerIntroRank()">Rank: Off</button>
+          </div>
+        </div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Animation</span>
+            <span id="pi-anim-btns"></span>
+          </div>
+        </div>
+      </div>
+      <div class="ps-two-col">
+
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">About Player Intro</div>
+            <p class="hint">Full-screen graphic introducing both teams and all 5 players before a series. Uses op.gg champion pool data for splash art and Riot API for rank badges.</p>
+            <p class="hint" style="margin-top:8px">Make sure champion pools and rank data have been fetched in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel before going live.</p>
+          </div>
+        </div>
+
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Centre Logo</div>
+            <p class="hint">Uses the same logo selection as <a onclick="switchToTab('h2h')" href="#" style="color:var(--primary)">Head to Head</a> — set it there.</p>
+          </div>
+        </div>
 
       </div>
     </section>
@@ -1934,6 +1990,9 @@
     </div>
     <div class="lbar-group" id="lbar-group-headToHead">
       <button class="lbar-toggle" id="lbar-toggle-headToHead" onclick="toggleGraphic('headToHead')"><span class="lbar-dot" id="lbar-dot-headToHead"></span>H2H</button>
+    </div>
+    <div class="lbar-group" id="lbar-group-playerIntro">
+      <button class="lbar-toggle" id="lbar-toggle-playerIntro" onclick="toggleGraphic('playerIntro')"><span class="lbar-dot" id="lbar-dot-playerIntro"></span>INTRO</button>
     </div>
     <div class="lbar-group" id="lbar-group-draft">
       <button class="lbar-toggle" id="lbar-toggle-draft" onclick="toggleGraphic('draft')"><span class="lbar-dot" id="lbar-dot-draft"></span>DRAFT</button>

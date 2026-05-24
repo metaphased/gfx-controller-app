@@ -106,6 +106,7 @@ document.querySelectorAll('.nav-item').forEach(navEl => {
 
 // Output URL chips
 const GFX_PAGES = [
+  ['Player Intro',  'graphics/player-intro/'],
   ['Head to Head',  'graphics/head2head/'],
   ['Pre-show',      'graphics/pre-show/'],
   ['Draft',         'graphics/draft/'],
@@ -147,6 +148,7 @@ async function api(path, body) {
 
 // ── Graphics token + output URLs ───────────────────────────────────────────────
 const GFX_OUTPUTS = [
+  { label: 'Player Intro',           path: 'graphics/player-intro/' },
   { label: 'Head to Head',          path: 'graphics/head2head/' },
   { label: 'Pre-show',              path: 'graphics/pre-show/' },
   { label: 'Draft Overlay',         path: 'graphics/draft/' },
@@ -420,6 +422,15 @@ function syncUI(s) {
     _h2hPrev.textContent = (_mt1.name || _mt1.tag || '—') + ' vs ' + (_mt2.name || _mt2.tag || '—');
   }
   syncH2hChampStatsUI((s.settings || {}).h2hChampStats || {});
+
+  // ── Player Intro sync ──────────────────────────────────────────────────────
+  const _pi = s.playerIntro || {};
+  syncPlayerIntroLayoutBtns(_pi.layout || 'B');
+  syncPlayerIntroAnimBtns(_pi.layout || 'B', _pi.animVariant || 'slide');
+  const _piLogoBtn = g('pi-toggle-logo');
+  if (_piLogoBtn) _piLogoBtn.textContent = 'Logo: ' + (_pi.showLogo !== false ? 'On' : 'Off');
+  const _piRankBtn = g('pi-toggle-rank');
+  if (_piRankBtn) _piRankBtn.textContent = 'Rank: ' + (_pi.showRank ? 'On' : 'Off');
 
   // ── Pre-show sync ──────────────────────────────────────────────────────────
   syncPreShowUI(s.preShow || {}, s.settings || {}, s.todayGames || [], s.ticker || {});
@@ -1180,6 +1191,45 @@ function setH2HPrev() {
     const prev = Math.max(0, (h2h.spotlightRole !== undefined ? h2h.spotlightRole : 0) - 1);
     patchH2H({ mode: 'spotlight', spotlightRole: prev });
   }
+}
+
+// ── Player Intro ───────────────────────────────────────────────────────────────
+function patchPlayerIntro(data) { api('/api/playerIntro', data); }
+
+const PI_ANIMS = {
+  B: [['slide', 'Slide'], ['stagger', 'Stagger'], ['cinematic', 'Cinematic']],
+  C: [['slide', 'Slide'], ['fan', 'Fan'], ['rise', 'Rise']],
+};
+
+function syncPlayerIntroLayoutBtns(layout) {
+  const btnB = g('pi-layout-B'); if (btnB) btnB.className = 'btn btn-sm ' + (layout === 'B' ? 'btn-active-gfx' : 'btn-dim');
+  const btnC = g('pi-layout-C'); if (btnC) btnC.className = 'btn btn-sm ' + (layout === 'C' ? 'btn-active-gfx' : 'btn-dim');
+}
+
+function syncPlayerIntroAnimBtns(layout, active) {
+  const container = g('pi-anim-btns'); if (!container) return;
+  const anims = PI_ANIMS[layout] || PI_ANIMS.B;
+  container.innerHTML = anims.map(function(pair) {
+    return '<button class="btn btn-sm ' + (pair[0] === active ? 'btn-active-gfx' : 'btn-dim') + '" onclick="setPlayerIntroAnim(\'' + pair[0] + '\')">' + pair[1] + '</button>';
+  }).join('');
+}
+
+function setPlayerIntroLayout(layout) {
+  patchPlayerIntro({ layout: layout });
+}
+
+function setPlayerIntroAnim(variant) {
+  patchPlayerIntro({ animVariant: variant });
+}
+
+function togglePlayerIntroLogo() {
+  const pi = (window._state && window._state.playerIntro) || {};
+  patchPlayerIntro({ showLogo: pi.showLogo === false ? true : false });
+}
+
+function togglePlayerIntroRank() {
+  const pi = (window._state && window._state.playerIntro) || {};
+  patchPlayerIntro({ showRank: !pi.showRank });
 }
 
 // ── Break / Win ────────────────────────────────────────────────────────────────
@@ -2405,6 +2455,7 @@ const GRAPHIC_MAP = [
   { key: 'scoreboard',  tab: 'scoreboard',  label: 'Scoreboard'  },
   { key: 'lowerThird',  tab: 'lowerthird',  label: 'Lower Third' },
   { key: 'headToHead',  tab: 'h2h',         label: 'Head to Head'},
+  { key: 'playerIntro', tab: 'player-intro', label: 'Player Intro' },
   { key: 'draft',       tab: 'draft-gfx',   label: 'Draft'       },
   { key: 'bracket',     tab: 'bracket',     label: 'Bracket'     },
   { key: 'groupStage',          tab: 'groups-gfx',               label: 'Group Stage'          },

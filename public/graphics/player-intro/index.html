@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Player Intro</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&family=Barlow:wght@300;400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="player-intro.css">
+</head>
+<body>
+
+<div id="pi-root" class="layout-B" style="display:none">
+
+  <!-- ── Layout B: Mirror / Split ─────────────────────────────────────────── -->
+  <div class="pi-layout-b">
+    <div class="pi-header">
+      <div class="pi-header-side pi-header-left" id="pi-header-left">
+        <div class="pi-team-logo" id="pi-t1-logo"></div>
+        <div class="pi-team-name" id="pi-t1-name"></div>
+      </div>
+      <div class="pi-header-centre">
+        <img id="pi-centre-logo" style="display:none" alt="">
+      </div>
+      <div class="pi-header-side pi-header-right" id="pi-header-right">
+        <div class="pi-team-name" id="pi-t2-name"></div>
+        <div class="pi-team-logo" id="pi-t2-logo"></div>
+      </div>
+    </div>
+    <div class="pi-rows" id="pi-rows-b"></div>
+  </div>
+
+  <!-- ── Layout C: Champion Showcase ──────────────────────────────────────── -->
+  <div class="pi-layout-c">
+    <div class="pi-c-team-header pi-c-header-t1" id="pi-c-header-t1">
+      <div class="pi-team-logo" id="pi-c-t1-logo"></div>
+      <div class="pi-team-name" id="pi-c-t1-name"></div>
+    </div>
+    <div class="pi-c-cards" id="pi-c-t1-cards"></div>
+    <div class="pi-c-divider">
+      <img id="pi-c-centre-logo" style="display:none" alt="">
+      <div class="pi-c-vs" id="pi-c-vs">VS</div>
+    </div>
+    <div class="pi-c-cards" id="pi-c-t2-cards"></div>
+    <div class="pi-c-team-header pi-c-header-t2" id="pi-c-header-t2">
+      <div class="pi-team-name" id="pi-c-t2-name"></div>
+      <div class="pi-team-logo" id="pi-c-t2-logo"></div>
+    </div>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/graphics/gfx-settings.js"></script>
+<script src="player-intro.js"></script>
+</body>
+</html>

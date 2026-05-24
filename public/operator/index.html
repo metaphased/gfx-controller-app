@@ -586,6 +586,23 @@ body {
       </div>
     </div>
 
+    <!-- Player Intro -->
+    <div class="ops-panel" id="ops-panel-playerIntro">
+      <div class="ops-ctrl-row">
+        <div class="ops-ctrl-group" id="ops-grp-playerIntro">
+          <span class="ops-ctrl-label">Output</span>
+          <button class="lbar-toggle" id="ops-btn-playerIntro" onclick="toggleGfx('playerIntro')">
+            <span class="lbar-dot" id="ops-dot-playerIntro"></span>Player Intro
+          </button>
+        </div>
+        <div class="ops-ctrl-group">
+          <span class="ops-ctrl-label">Layout</span>
+          <button class="mode-btn" id="ops-pi-layout-B" onclick="setPlayerIntroLayout('B')">Mirror</button>
+          <button class="mode-btn" id="ops-pi-layout-C" onclick="setPlayerIntroLayout('C')">Showcase</button>
+        </div>
+      </div>
+    </div>
+
     <!-- All other graphics -->
     <div class="ops-panel">
       <div class="ops-panel-title">Graphics</div>
@@ -701,7 +718,7 @@ socket.on('connect',    () => { const el = g('conn-status'); el.textContent = '�
 socket.on('disconnect', () => { const el = g('conn-status'); el.textContent = '⬤ Disconnected'; el.className = 'conn-dot disconnected'; });
 
 /* ── Graphic list for bulk sync ── */
-const GFX_SIMPLE = ['lowerThird','headToHead','draft','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
+const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
 
 socket.on('state', state => {
   window._state = state;
@@ -748,6 +765,11 @@ socket.on('state', state => {
   const winner = state.winScreen && state.winScreen.team;
   const wt1 = g('ops-win-t1'); if (wt1) wt1.className = 'win-team-btn' + (winner === 'team1' ? ' is-active' : '');
   const wt2 = g('ops-win-t2'); if (wt2) wt2.className = 'win-team-btn' + (winner === 'team2' ? ' is-active' : '');
+
+  /* Player Intro layout buttons */
+  const piLayout = (state.playerIntro && state.playerIntro.layout) || 'B';
+  setModeActive('ops-pi-layout-B', piLayout === 'B');
+  setModeActive('ops-pi-layout-C', piLayout === 'C');
 
   /* H2H mode buttons */
   const h2hMode = state.headToHead && state.headToHead.mode;
@@ -828,6 +850,11 @@ function patchLTColor(teamColor) {
   if (teamColor === 'team1' && s.settings) color = s.settings.redAccent || '';
   if (teamColor === 'team2' && s.settings) color = s.settings.blueAccent || '';
   api('/api/lowerThird', { teamColor: color });
+}
+
+/* ── Player Intro ── */
+function setPlayerIntroLayout(layout) {
+  api('/api/playerIntro', { layout });
 }
 
 /* ── H2H ── */
