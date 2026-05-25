@@ -271,6 +271,41 @@ function renderPlayerRow(p, color) {
     champRows = '<div style="color:var(--text-faint);font-size:12px">No champion pool data</div>';
   }
 
+  // Draft pick stats block — shown when draftChampStats is populated after role commit
+  let draftStatsHtml = '';
+  const ds = p.draftChampStats;
+  if (ds) {
+    const iconUrl = champIconUrl(ds.champ);
+    const kdaRatio = ds.kda && parseFloat(ds.kda.d) > 0
+      ? ((parseFloat(ds.kda.k) + parseFloat(ds.kda.a)) / parseFloat(ds.kda.d)).toFixed(2)
+      : 'Perfect';
+    const kdaStr = ds.kda ? (ds.kda.k + ' / ' + ds.kda.d + ' / ' + ds.kda.a) : '—';
+    const stats = [
+      { val: ds.winRate != null ? ds.winRate + '%' : '—', key: 'Win Rate', cls: wrClass(ds.winRate) },
+      { val: kdaStr,   key: 'Avg K/D/A', cls: '' },
+      { val: kdaRatio, key: 'KDA Ratio', cls: '' },
+      { val: ds.cs != null ? ds.cs : '—', key: 'CS/g', cls: '' },
+      { val: ds.kp != null ? ds.kp + '%' : '—', key: 'Kill Part.', cls: '' },
+      { val: ds.games != null ? ds.games : '—', key: 'Matches', cls: '' },
+    ];
+    draftStatsHtml =
+      '<div class="dps-block">' +
+        '<div class="dps-hdr">' +
+          (iconUrl ? '<div class="dps-icon" style="background-image:url(' + esc(iconUrl) + ')"></div>' : '') +
+          '<span class="dps-champ-name">' + esc(ds.champ) + '</span>' +
+          '<span class="dps-label">DRAFT PICK</span>' +
+        '</div>' +
+        '<div class="dps-grid">' +
+          stats.map(s =>
+            '<div class="dps-cell">' +
+              '<div class="dps-val ' + s.cls + '">' + esc(String(s.val)) + '</div>' +
+              '<div class="dps-key">' + s.key + '</div>' +
+            '</div>'
+          ).join('') +
+        '</div>' +
+      '</div>';
+  }
+
   const rankFull = rk ? '<div class="detail-rank-full">' + esc(rankText(rk)) + '</div>' : '';
 
   return '<div class="player-row">' +
@@ -284,6 +319,7 @@ function renderPlayerRow(p, color) {
     '<div class="player-detail">' +
       (p.riotId ? '<div class="detail-riot-id">' + esc(p.riotId) + (p.opggRegion ? ' <span class="detail-region">' + esc(p.opggRegion.toUpperCase()) + '</span>' : '') + '</div>' : '') +
       rankFull +
+      draftStatsHtml +
       champRows +
     '</div>' +
   '</div>';
@@ -559,6 +595,8 @@ function buildSeriesHistory(m, t1name, t2name) {
   return html;
 }
 
+const DRAFT_ROLE_NAMES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+
 // ── DRAFT TAB ─────────────────────────────────────────────────────────────────
 function renderDraft() {
   const s     = _state;
@@ -596,10 +634,28 @@ function renderDraft() {
 
   _draftTimerEnd = (draft.timerVisible && draft.timerEnd) ? draft.timerEnd : null;
 
+  // Player lookup — match by role field for robustness
+  const allPlayers = s.players || {};
+  const t1RolePicks = draft.team1RolePicks || [];
+  const t2RolePicks = draft.team2RolePicks || [];
+  const t1Players   = allPlayers.team1 || [];
+  const t2Players   = allPlayers.team2 || [];
+  const blueRolePicks = blueSlot === 'team1' ? t1RolePicks : t2RolePicks;
+  const redRolePicks  = blueSlot === 'team1' ? t2RolePicks : t1RolePicks;
+  const bluePlayers   = blueSlot === 'team1' ? t1Players   : t2Players;
+  const redPlayers    = blueSlot === 'team1' ? t2Players   : t1Players;
+
+  function playerForPick(url, rolePicks, players) {
+    if (!url) return null;
+    const roleIdx = rolePicks.findIndex(u => u === url);
+    if (roleIdx < 0) return null;
+    const roleName = DRAFT_ROLE_NAMES[roleIdx];
+    return players.find(p => p.role === roleName) || players[roleIdx] || null;
+  }
+
   function renderBanSlots(idxArr) {
     return idxArr.map(idx => {
       const url  = picks[idx] || '';
-      const name = champNameFromUrl(url);
       const isActive = idx === activeIdx;
       const cls  = 'draft-ban-slot' + (url ? ' filled' : '') + (isActive ? ' active' : '');
       const img  = url ? 'background-image:url(' + esc(url) + ')' : '';
@@ -607,21 +663,58 @@ function renderDraft() {
     }).join('');
   }
 
-  function renderPickSlots(idxArr) {
+  function renderPickSlots(idxArr, rolePicks, players) {
     return idxArr.map(idx => {
-      const url  = picks[idx] || '';
-      const name = champNameFromUrl(url);
+      const url      = picks[idx] || '';
+      const name     = champNameFromUrl(url);
       const isActive = idx === activeIdx;
-      const cls  = 'draft-pick-slot' + (url ? ' filled' : '') + (isActive ? ' active' : '');
-      const img  = url ? 'background-image:url(' + esc(url) + ')' : '';
+      const player   = playerForPick(url, rolePicks, players);
+      const handle   = player ? (player.handle || '') : '';
+      const dcs      = player ? (player.draftChampStats || null) : null;
+
+      let statsPanel = '';
+      if (dcs) {
+        const kdaRatio = dcs.kda && parseFloat(dcs.kda.d) > 0
+          ? ((parseFloat(dcs.kda.k) + parseFloat(dcs.kda.a)) / parseFloat(dcs.kda.d)).toFixed(2)
+          : 'Perfect';
+        const kdaStr = dcs.kda ? (dcs.kda.k + ' / ' + dcs.kda.d + ' / ' + dcs.kda.a) : '—';
+        const stats = [
+          { val: dcs.winRate != null ? dcs.winRate + '%' : '—', key: 'Win Rate',   cls: wrClass(dcs.winRate) },
+          { val: kdaStr,   key: 'Avg K/D/A',  cls: '' },
+          { val: kdaRatio, key: 'KDA Ratio',  cls: '' },
+          { val: dcs.cs   != null ? dcs.cs   : '—', key: 'CS/g',       cls: '' },
+          { val: dcs.kp   != null ? dcs.kp + '%' : '—', key: 'Kill Part.', cls: '' },
+          { val: dcs.games != null ? dcs.games : '—', key: 'Matches',   cls: '' },
+        ];
+        statsPanel = '<div class="draft-pick-stats-panel">' +
+          '<div class="dps-grid">' +
+            stats.map(s =>
+              '<div class="dps-cell">' +
+                '<div class="dps-val ' + s.cls + '">' + esc(String(s.val)) + '</div>' +
+                '<div class="dps-key">' + s.key + '</div>' +
+              '</div>'
+            ).join('') +
+          '</div>' +
+        '</div>';
+      }
+
+      const cls = 'draft-pick-slot' + (url ? ' filled' : '') + (isActive ? ' active' : '') + (dcs ? ' has-stats' : '');
+      const img = url ? 'background-image:url(' + esc(url) + ')' : '';
       return '<div class="' + cls + '">' +
-        '<div class="draft-pick-img" style="' + img + '"></div>' +
-        '<div class="draft-pick-name">' + esc(name || '—') + '</div>' +
+        '<div class="draft-pick-main">' +
+          '<div class="draft-pick-img" style="' + img + '"></div>' +
+          '<div class="draft-pick-info">' +
+            '<div class="draft-pick-name">' + esc(name || '—') + '</div>' +
+            (handle ? '<div class="draft-pick-handle">' + esc(handle) + '</div>' : '') +
+          '</div>' +
+          (dcs ? '<button class="draft-pick-expand-btn" onclick="this.closest(\'.draft-pick-slot\').classList.toggle(\'expanded\')">▼</button>' : '') +
+        '</div>' +
+        statsPanel +
       '</div>';
     }).join('');
   }
 
-  function sideCard(team, side, banIdx, pickIdx) {
+  function sideCard(team, side, banIdx, pickIdx, rolePicks, players) {
     const logo    = team.logo ? 'background-image:url(' + esc(team.logo) + ')' : '';
     const isOnClock = onClockSide === side;
     return '<div class="draft-side draft-side-' + side + (isOnClock ? ' on-clock' : '') + '">' +
@@ -633,7 +726,7 @@ function renderDraft() {
       '<div class="draft-section-lbl">Bans</div>' +
       '<div class="draft-bans-row">' + renderBanSlots(banIdx) + '</div>' +
       '<div class="draft-section-lbl">Picks</div>' +
-      '<div class="draft-picks-col">' + renderPickSlots(pickIdx) + '</div>' +
+      '<div class="draft-picks-col">' + renderPickSlots(pickIdx, rolePicks, players) + '</div>' +
     '</div>';
   }
 
@@ -679,8 +772,8 @@ function renderDraft() {
   el.innerHTML = '<div class="draft-board">' +
     metaHtml + choiceHtml + clockHtml +
     '<div class="draft-sides">' +
-      sideCard(blueTeam, 'blue', blueBanIdx, bluePickIdx) +
-      sideCard(redTeam,  'red',  redBanIdx,  redPickIdx) +
+      sideCard(blueTeam, 'blue', blueBanIdx, bluePickIdx, blueRolePicks, bluePlayers) +
+      sideCard(redTeam,  'red',  redBanIdx,  redPickIdx,  redRolePicks,  redPlayers) +
     '</div>' +
   '</div>' +
   buildSeriesHistory(m, t1name, t2name);
