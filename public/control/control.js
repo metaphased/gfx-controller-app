@@ -148,6 +148,7 @@ async function api(path, body) {
 
 // ── Graphics token + output URLs ───────────────────────────────────────────────
 const GFX_OUTPUTS = [
+  { label: 'Caster View',           path: 'caster/' },
   { label: 'Player Intro',           path: 'graphics/player-intro/' },
   { label: 'Head to Head',          path: 'graphics/head2head/' },
   { label: 'Pre-show',              path: 'graphics/pre-show/' },

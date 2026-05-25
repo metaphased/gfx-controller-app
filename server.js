@@ -10,6 +10,7 @@ const csv      = require('csv-parser');
 const cors     = require('cors');
 const session  = require('express-session');
 const bcrypt   = require('bcryptjs');
+const rateLimit = require('express-rate-limit');
 
 const app    = express();
 const server = http.createServer(app);
@@ -77,7 +78,15 @@ function requireAdmin(req, res, next) {
 }
 
 // ── Auth routes (public) ───────────────────────────────────────────────────────
-app.post('/api/auth/login', (req, res) => {
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many login attempts — try again in 15 minutes' }
+});
+
+app.post('/api/auth/login', loginLimiter, (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
   const user = loadUsers().find(u => u.username.toLowerCase() === username.toLowerCase());
@@ -103,6 +112,14 @@ app.use('/graphics', express.static(path.join(__dirname, 'public', 'graphics')))
 app.use('/uploads',  express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
 app.use('/fonts',    express.static(path.join(__dirname, 'public', 'fonts')));
+
+// ── Caster view — token-gated (no login required) ──────────────────────────────
+function requireToken(req, res, next) {
+  const token = req.query.token;
+  if (token && state.settings && state.settings.graphicsToken === token) return next();
+  res.status(401).send('<!DOCTYPE html><html><head><title>Unauthorized</title><style>body{font-family:sans-serif;background:#07101a;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style></head><body><div style="text-align:center"><h2>Unauthorized</h2><p style="opacity:.6">Valid token required — check your caster URL</p></div></body></html>');
+}
+app.use('/caster', requireToken, express.static(path.join(__dirname, 'public', 'caster')));
 
 // Root redirect
 app.get('/', (req, res) => {
