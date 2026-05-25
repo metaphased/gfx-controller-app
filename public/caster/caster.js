@@ -271,6 +271,41 @@ function renderPlayerRow(p, color) {
     champRows = '<div style="color:var(--text-faint);font-size:12px">No champion pool data</div>';
   }
 
+  // Draft pick stats block — shown when draftChampStats is populated after role commit
+  let draftStatsHtml = '';
+  const ds = p.draftChampStats;
+  if (ds) {
+    const iconUrl = champIconUrl(ds.champ);
+    const kdaRatio = ds.kda && parseFloat(ds.kda.d) > 0
+      ? ((parseFloat(ds.kda.k) + parseFloat(ds.kda.a)) / parseFloat(ds.kda.d)).toFixed(2)
+      : 'Perfect';
+    const kdaStr = ds.kda ? (ds.kda.k + ' / ' + ds.kda.d + ' / ' + ds.kda.a) : '—';
+    const stats = [
+      { val: ds.winRate != null ? ds.winRate + '%' : '—', key: 'Win Rate', cls: wrClass(ds.winRate) },
+      { val: kdaStr,   key: 'Avg K/D/A', cls: '' },
+      { val: kdaRatio, key: 'KDA Ratio', cls: '' },
+      { val: ds.cs != null ? ds.cs : '—', key: 'CS/g', cls: '' },
+      { val: ds.kp != null ? ds.kp + '%' : '—', key: 'Kill Part.', cls: '' },
+      { val: ds.games != null ? ds.games : '—', key: 'Matches', cls: '' },
+    ];
+    draftStatsHtml =
+      '<div class="dps-block">' +
+        '<div class="dps-hdr">' +
+          (iconUrl ? '<div class="dps-icon" style="background-image:url(' + esc(iconUrl) + ')"></div>' : '') +
+          '<span class="dps-champ-name">' + esc(ds.champ) + '</span>' +
+          '<span class="dps-label">DRAFT PICK</span>' +
+        '</div>' +
+        '<div class="dps-grid">' +
+          stats.map(s =>
+            '<div class="dps-cell">' +
+              '<div class="dps-val ' + s.cls + '">' + esc(String(s.val)) + '</div>' +
+              '<div class="dps-key">' + s.key + '</div>' +
+            '</div>'
+          ).join('') +
+        '</div>' +
+      '</div>';
+  }
+
   const rankFull = rk ? '<div class="detail-rank-full">' + esc(rankText(rk)) + '</div>' : '';
 
   return '<div class="player-row">' +
@@ -284,6 +319,7 @@ function renderPlayerRow(p, color) {
     '<div class="player-detail">' +
       (p.riotId ? '<div class="detail-riot-id">' + esc(p.riotId) + (p.opggRegion ? ' <span class="detail-region">' + esc(p.opggRegion.toUpperCase()) + '</span>' : '') + '</div>' : '') +
       rankFull +
+      draftStatsHtml +
       champRows +
     '</div>' +
   '</div>';

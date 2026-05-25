@@ -424,6 +424,78 @@ html, body {
 .wr-good { color: #22c55e; }
 .wr-bad  { color: var(--red); }
 
+/* Draft pick stats block */
+.dps-block {
+  margin: 10px 0 10px;
+  background: rgba(31,250,255,0.04);
+  border: 1px solid rgba(31,250,255,0.15);
+  border-radius: 5px;
+  padding: 10px 12px;
+}
+
+.dps-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.dps-icon {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background-size: cover;
+  background-position: center top;
+  flex-shrink: 0;
+  border: 1px solid rgba(31,250,255,0.25);
+}
+
+.dps-champ-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  flex: 1;
+}
+
+.dps-label {
+  font-family: var(--data-font);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  background: rgba(31,250,255,0.1);
+  border: 1px solid rgba(31,250,255,0.2);
+  padding: 2px 5px;
+  border-radius: 2px;
+}
+
+.dps-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px 10px;
+}
+
+.dps-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.dps-val {
+  font-family: var(--data-font);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.1;
+}
+
+.dps-key {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    SERIES TAB
    ═══════════════════════════════════════════════════════════════════════════════ */
