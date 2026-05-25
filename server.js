@@ -15,6 +15,7 @@ const rateLimit = require('express-rate-limit');
 const app    = express();
 const server = http.createServer(app);
 const PORT   = process.env.PORT || 3000;
+const EXTERNAL_URL = process.env.EXTERNAL_URL || null;
 
 // ── Data paths ─────────────────────────────────────────────────────────────────
 const DATA_DIR    = path.join(__dirname, 'data');
@@ -421,6 +422,9 @@ function deriveTodayGames() {
 
 // Bootstrap: compute derived fields immediately from whatever was last persisted
 deriveTodayGames();
+
+// ── Config API (public) ────────────────────────────────────────────────────────
+app.get('/api/config', (req, res) => res.json({ externalUrl: EXTERNAL_URL }));
 
 // ── State API ──────────────────────────────────────────────────────────────────
 app.get('/api/state', (req, res) => res.json(state));

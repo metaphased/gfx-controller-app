@@ -8,6 +8,18 @@ const _pickerContainers = {};
 const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
 const OPGG_REGIONS  = ['kr','euw','na','eune','jp','oce','br','las','lan','ru','tr'];
 
+// ── External URL config ────────────────────────────────────────────────────────
+let _externalUrl  = null;
+let _gfxUrlMode   = 'local'; // 'local' | 'external'
+
+fetch('/api/config').then(r => r.json()).then(cfg => {
+  _externalUrl = cfg.externalUrl || null;
+  if (_externalUrl && _gfxUrlMode === 'local') {
+    // re-render if settings tab already loaded
+    syncGfxToken(window._state && window._state.settings);
+  }
+}).catch(() => {});
+
 // ── Profile dirty tracking ─────────────────────────────────────────────────────
 // Produces a consistent JSON string regardless of object key insertion order.
 function stableStr(v) {
@@ -170,8 +182,19 @@ function syncGfxToken(settings) {
   if (tokenEl) tokenEl.value = token;
 
   const listEl  = g('gfx-url-list'); if (!listEl) return;
-  const base    = window.location.origin + '/';
-  listEl.innerHTML = GFX_OUTPUTS.map(o =>
+  const base    = (_gfxUrlMode === 'external' && _externalUrl ? _externalUrl : window.location.origin) + '/';
+
+  // Toggle bar — only shown when an external URL is configured
+  const toggleHtml = _externalUrl ? (
+    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">' +
+    '<span style="font-size:11px;color:var(--text-dim)">URLs:</span>' +
+    '<button class="btn btn-sm' + (_gfxUrlMode === 'local' ? ' btn-primary' : '') + '" onclick="_gfxUrlMode=\'local\';syncGfxToken(window._state&&window._state.settings)">Local</button>' +
+    '<button class="btn btn-sm' + (_gfxUrlMode === 'external' ? ' btn-primary' : '') + '" onclick="_gfxUrlMode=\'external\';syncGfxToken(window._state&&window._state.settings)">External</button>' +
+    (_gfxUrlMode === 'external' ? '<span style="font-size:11px;color:var(--text-dim);font-family:monospace">' + escHtml(_externalUrl) + '</span>' : '') +
+    '</div>'
+  ) : '';
+
+  listEl.innerHTML = toggleHtml + GFX_OUTPUTS.map(o =>
     '<div style="display:flex;align-items:center;gap:8px">' +
     '<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);width:130px;flex-shrink:0">' + escHtml(o.label) + '</span>' +
     '<input type="text" readonly value="' + escHtml(base + o.path + (token ? '?token=' + token : '')) + '" style="flex:1;font-family:monospace;font-size:11px" onclick="this.select()">' +

@@ -5,6 +5,7 @@ node_modules/
 data/
 public/uploads/
 code/
+.claude/
 
 # Logs
 *.log
