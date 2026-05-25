@@ -672,30 +672,44 @@ function renderDraft() {
       const handle   = player ? (player.handle || '') : '';
       const dcs      = player ? (player.draftChampStats || null) : null;
 
-      let statsHtml = '';
+      let statsPanel = '';
       if (dcs) {
         const kdaRatio = dcs.kda && parseFloat(dcs.kda.d) > 0
-          ? ((parseFloat(dcs.kda.k) + parseFloat(dcs.kda.a)) / parseFloat(dcs.kda.d)).toFixed(1) + ' KDA'
-          : 'Perfect KDA';
-        statsHtml =
-          '<div class="pick-stats-row">' +
-            '<span class="pick-stat ' + wrClass(dcs.winRate) + '">' + (dcs.winRate != null ? dcs.winRate + '%' : '—') + '</span>' +
-            '<span class="pick-stat-sep">·</span>' +
-            '<span class="pick-stat">' + kdaRatio + '</span>' +
-            '<span class="pick-stat-sep">·</span>' +
-            '<span class="pick-stat">' + (dcs.cs != null ? dcs.cs + ' CS' : '—') + '</span>' +
-          '</div>';
+          ? ((parseFloat(dcs.kda.k) + parseFloat(dcs.kda.a)) / parseFloat(dcs.kda.d)).toFixed(2)
+          : 'Perfect';
+        const kdaStr = dcs.kda ? (dcs.kda.k + ' / ' + dcs.kda.d + ' / ' + dcs.kda.a) : '—';
+        const stats = [
+          { val: dcs.winRate != null ? dcs.winRate + '%' : '—', key: 'Win Rate',   cls: wrClass(dcs.winRate) },
+          { val: kdaStr,   key: 'Avg K/D/A',  cls: '' },
+          { val: kdaRatio, key: 'KDA Ratio',  cls: '' },
+          { val: dcs.cs   != null ? dcs.cs   : '—', key: 'CS/g',       cls: '' },
+          { val: dcs.kp   != null ? dcs.kp + '%' : '—', key: 'Kill Part.', cls: '' },
+          { val: dcs.games != null ? dcs.games : '—', key: 'Matches',   cls: '' },
+        ];
+        statsPanel = '<div class="draft-pick-stats-panel">' +
+          '<div class="dps-grid">' +
+            stats.map(s =>
+              '<div class="dps-cell">' +
+                '<div class="dps-val ' + s.cls + '">' + esc(String(s.val)) + '</div>' +
+                '<div class="dps-key">' + s.key + '</div>' +
+              '</div>'
+            ).join('') +
+          '</div>' +
+        '</div>';
       }
 
       const cls = 'draft-pick-slot' + (url ? ' filled' : '') + (isActive ? ' active' : '') + (dcs ? ' has-stats' : '');
       const img = url ? 'background-image:url(' + esc(url) + ')' : '';
       return '<div class="' + cls + '">' +
-        '<div class="draft-pick-img" style="' + img + '"></div>' +
-        '<div class="draft-pick-info">' +
-          '<div class="draft-pick-name">' + esc(name || '—') + '</div>' +
-          (handle ? '<div class="draft-pick-handle">' + esc(handle) + '</div>' : '') +
-          statsHtml +
+        '<div class="draft-pick-main">' +
+          '<div class="draft-pick-img" style="' + img + '"></div>' +
+          '<div class="draft-pick-info">' +
+            '<div class="draft-pick-name">' + esc(name || '—') + '</div>' +
+            (handle ? '<div class="draft-pick-handle">' + esc(handle) + '</div>' : '') +
+          '</div>' +
+          (dcs ? '<button class="draft-pick-expand-btn" onclick="this.closest(\'.draft-pick-slot\').classList.toggle(\'expanded\')">▼</button>' : '') +
         '</div>' +
+        statsPanel +
       '</div>';
     }).join('');
   }
