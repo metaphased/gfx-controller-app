@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Caster View — MetaGFX</title>
+  <link rel="stylesheet" href="/fonts/fonts.css">
+  <link rel="stylesheet" href="/caster/caster.css">
+</head>
+<body>
+
+<header id="caster-header">
+  <div class="hdr-left">
+    <img src="/fonts/metagfx-logo.png" alt="MetaGFX" class="hdr-logo">
+    <span class="hdr-badge">CASTER</span>
+    <span class="hdr-sep"></span>
+    <span class="hdr-profile" id="hdr-profile">—</span>
+  </div>
+  <div class="hdr-match" id="hdr-match">
+    <span class="hdr-team hdr-t1" id="hdr-t1">—</span>
+    <div class="hdr-score-block">
+      <span class="hdr-score" id="hdr-score">0 : 0</span>
+      <span class="hdr-format" id="hdr-format"></span>
+    </div>
+    <span class="hdr-team hdr-t2" id="hdr-t2">—</span>
+  </div>
+  <div class="hdr-right">
+    <span class="conn-dot" id="conn-dot"></span>
+    <span class="conn-label" id="conn-label">Connecting…</span>
+  </div>
+</header>
+
+<nav class="tab-nav">
+  <button class="tab-btn active" data-tab="roster">Roster</button>
+  <button class="tab-btn" data-tab="series">Series</button>
+  <button class="tab-btn" data-tab="draft">Draft</button>
+  <button class="tab-btn" data-tab="standings">Standings</button>
+  <button class="tab-btn" data-tab="bracket">Bracket</button>
+  <button class="tab-btn" data-tab="schedule">Schedule</button>
+</nav>
+
+<main class="content">
+  <div class="tab-pane active" id="pane-roster">
+    <div class="roster-grid" id="roster-grid">
+      <div class="empty-state">Waiting for data…</div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane-series">
+    <div id="series-content">
+      <div class="empty-state">No active series</div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane-draft">
+    <div id="draft-content">
+      <div class="empty-state">Waiting for data…</div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane-standings">
+    <div id="standings-content">
+      <div class="empty-state">No group stage data</div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane-bracket">
+    <div id="bracket-content">
+      <div class="empty-state">No bracket data</div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane-schedule">
+    <div id="schedule-content">
+      <div class="empty-state">No schedule data</div>
+    </div>
+  </div>
+</main>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="/caster/caster.js"></script>
+</body>
+</html>
