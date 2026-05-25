@@ -113,13 +113,17 @@ app.use('/uploads',  express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
 app.use('/fonts',    express.static(path.join(__dirname, 'public', 'fonts')));
 
-// ── Caster view — token-gated (no login required) ──────────────────────────────
+// ── Caster view — token-gated HTML, assets served freely ───────────────────────
 function requireToken(req, res, next) {
   const token = req.query.token;
   if (token && state.settings && state.settings.graphicsToken === token) return next();
   res.status(401).send('<!DOCTYPE html><html><head><title>Unauthorized</title><style>body{font-family:sans-serif;background:#07101a;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}</style></head><body><div style="text-align:center"><h2>Unauthorized</h2><p style="opacity:.6">Valid token required — check your caster URL</p></div></body></html>');
 }
-app.use('/caster', requireToken, express.static(path.join(__dirname, 'public', 'caster')));
+// Only the HTML entry point needs the token; CSS/JS assets are not sensitive
+app.get(['/caster', '/caster/'], requireToken, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'caster', 'index.html'));
+});
+app.use('/caster', express.static(path.join(__dirname, 'public', 'caster')));
 
 // Root redirect
 app.get('/', (req, res) => {
@@ -989,12 +993,12 @@ app.post('/api/match/load-schedule-game', (req, res) => {
     const tp = t.players || [];
     DEFAULT_ROLES.forEach((role, i) => {
       const p = tp[i] || {};
-      state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true };
+      state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'' };
     });
     const subsKey = slot + 'subs';
     state.players[subsKey] = [0,1,2].map(i => {
       const s = (t.subs||[])[i] || {};
-      return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false };
+      return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'' };
     });
   };
   loadTeamIntoSlot(sg.team1Id, 'team1');

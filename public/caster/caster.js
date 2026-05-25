@@ -242,92 +242,132 @@ function renderPlayerRow(p, color) {
 function renderSeries() {
   const s = _state;
   const m = s.match || {};
-  const games = m.seriesGames || [];
   const t1name = (m.team1 && m.team1.name) || 'Team 1';
   const t2name = (m.team2 && m.team2.name) || 'Team 2';
   const el = document.getElementById('series-content');
 
-  if (games.length === 0) {
-    el.innerHTML = '<div class="empty-state">No series games configured</div>';
+  // Check we have an actual match loaded
+  if (!m.team1 || !m.team1.name) {
+    el.innerHTML = '<div class="empty-state">No active match</div>';
     return;
   }
 
+  const formatNum   = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
+  const winsNeeded  = Math.ceil(formatNum / 2);
+  const t1wins      = (m.team1 && m.team1.score) || 0;
+  const t2wins      = (m.team2 && m.team2.score) || 0;
+  const seriesOver  = t1wins >= winsNeeded || t2wins >= winsNeeded;
+  const currentGame = m.currentGameNum || 1;
+  const seriesGames = m.seriesGames || [];
   const fearlessPill = m.fearlessDraft ? '<span class="pill pill-fearless">Fearless Draft</span>' : '';
-  const currentGamePill = m.currentGameNum ? '<span class="pill pill-live">Game ' + m.currentGameNum + ' Active</span>' : '';
 
   let html = '<div class="series-header">' +
     '<span class="series-title">' + esc(t1name) + ' vs ' + esc(t2name) + '</span>' +
     '<span class="series-title" style="color:var(--text-faint)">·</span>' +
     '<span class="series-title" style="font-size:15px;color:var(--text-dim)">' + esc(m.format || '') + '</span>' +
-    fearlessPill + currentGamePill +
+    fearlessPill +
   '</div>';
 
-  html += games.map((g, i) => {
-    const gameNum = i + 1;
+  // Build rows: completed games from seriesGames, current in-progress, then TBD slots
+  const rows = [];
+
+  // Completed games (recorded results)
+  seriesGames.forEach((g, i) => {
     const isBye = g.isBye;
-    const winner = g.winner;
-    const snap = g.draftSnapshot;
+    const winnerName = g.winner === 'team1' ? t1name : t2name;
+    const resultHtml = isBye
+      ? '<span class="game-result bye">BYE — ' + esc(winnerName) + '</span>'
+      : '<span class="game-result winner">' + esc(winnerName) + ' wins</span>';
 
-    let resultHtml = '<span class="game-result">TBD</span>';
-    if (isBye) {
-      const byeWinner = winner === 'team1' ? t1name : winner === 'team2' ? t2name : '—';
-      resultHtml = '<span class="game-result bye">BYE — ' + esc(byeWinner) + '</span>';
-    } else if (winner) {
-      const winnerName = winner === 'team1' ? t1name : t2name;
-      resultHtml = '<span class="game-result winner">' + esc(winnerName) + ' wins</span>';
-    }
-
-    let detailHtml = '';
-    if (snap && !isBye) {
-      detailHtml = renderDraftSnapshot(snap, t1name, t2name);
-    } else if (!isBye) {
-      detailHtml = '<div style="color:var(--text-faint);font-size:12px">No draft data recorded</div>';
-    }
-
+    const detailHtml = !isBye ? renderDraftSnapshot(g, t1name, t2name) : '';
     const hasExpand = !isBye;
-    return '<div class="game-row card">' +
+
+    rows.push('<div class="game-row card">' +
       '<div class="game-row-summary"' + (hasExpand ? ' onclick="this.parentElement.classList.toggle(\'open\')"' : '') + '>' +
-        '<div class="game-num">GAME ' + gameNum + '</div>' +
+        '<div class="game-num">GAME ' + (i + 1) + '</div>' +
         '<div class="game-teams">' + esc(t1name) + '<span class="game-vs">VS</span>' + esc(t2name) + '</div>' +
         resultHtml +
         (hasExpand ? '<div class="expand-arrow" style="margin-left:8px">▼</div>' : '') +
       '</div>' +
       (hasExpand ? '<div class="game-detail">' + detailHtml + '</div>' : '') +
-    '</div>';
-  }).join('');
+    '</div>');
+  });
 
-  el.innerHTML = html;
+  // Current in-progress game (not yet recorded)
+  if (!seriesOver) {
+    rows.push('<div class="game-row card">' +
+      '<div class="game-row-summary">' +
+        '<div class="game-num">GAME ' + currentGame + '</div>' +
+        '<div class="game-teams">' + esc(t1name) + '<span class="game-vs">VS</span>' + esc(t2name) + '</div>' +
+        '<span class="pill pill-live">IN PROGRESS</span>' +
+      '</div>' +
+    '</div>');
+  }
+
+  // Remaining TBD slots
+  const gamesShown = seriesGames.length + (seriesOver ? 0 : 1);
+  for (let i = gamesShown + 1; i <= formatNum; i++) {
+    rows.push('<div class="game-row card">' +
+      '<div class="game-row-summary">' +
+        '<div class="game-num">GAME ' + i + '</div>' +
+        '<div class="game-teams">' + esc(t1name) + '<span class="game-vs">VS</span>' + esc(t2name) + '</div>' +
+        '<span class="game-result" style="color:var(--text-faint)">TBD</span>' +
+      '</div>' +
+    '</div>');
+  }
+
+  el.innerHTML = html + rows.join('');
 }
 
-function renderDraftSnapshot(snap, t1name, t2name) {
-  const picks1 = snap.team1Picks || snap.picks && snap.picks.filter(p => p.team === 'team1') || [];
-  const picks2 = snap.team2Picks || snap.picks && snap.picks.filter(p => p.team === 'team2') || [];
-  const bans1  = snap.team1Bans  || snap.bans  && snap.bans.filter(b => b.team === 'team1')  || [];
-  const bans2  = snap.team2Bans  || snap.bans  && snap.bans.filter(b => b.team === 'team2')  || [];
+function renderDraftSnapshot(g, t1name, t2name) {
+  // seriesGames entries use t1RolePicks/t2RolePicks (role-indexed champion name arrays)
+  // and draftPicks (full ordered draft picks with slot info)
+  const t1role = g.t1RolePicks || [];
+  const t2role = g.t2RolePicks || [];
+
+  // Extract bans from draftPicks (action type 'ban')
+  const draftPicks = g.draftPicks || [];
+  const t1bans = draftPicks.filter(p => p.action === 'ban' && p.team === 'team1').map(p => ({ name: p.champion || '', key: p.key || '' }));
+  const t2bans = draftPicks.filter(p => p.action === 'ban' && p.team === 'team2').map(p => ({ name: p.champion || '', key: p.key || '' }));
+
+  // Build pick list from role picks (role-indexed: top/jg/mid/adc/sup)
+  const roles = ['Top', 'Jg', 'Mid', 'ADC', 'Sup'];
+  const picks1 = t1role.map((champ, i) => ({ name: champ || '', role: roles[i] || '' })).filter(p => p.name);
+  const picks2 = t2role.map((champ, i) => ({ name: champ || '', role: roles[i] || '' })).filter(p => p.name);
+
+  // Side info
+  const sideHtml = g.t1Side
+    ? '<div style="font-size:11px;color:var(--text-faint);margin-bottom:10px">' +
+        esc(t1name) + ' <strong style="color:var(--text-dim)">' + esc((g.t1Side||'').toUpperCase()) + '</strong>' +
+        ' · ' +
+        esc(t2name) + ' <strong style="color:var(--text-dim)">' + esc((g.t2Side||'').toUpperCase()) + '</strong>' +
+      '</div>'
+    : '';
 
   function champPills(champs, isBan) {
     if (!champs || champs.length === 0) return '<span style="color:var(--text-faint);font-size:11px">—</span>';
     return champs.map(c => {
-      const name = c.champion || c.name || c;
-      const key  = c.key || (typeof c === 'string' ? c : '');
+      const name = c.name || c.champion || (typeof c === 'string' ? c : '');
+      const key  = c.key  || '';
       const icon = key ? '<div class="champ-pill-icon" style="background-image:url(' + esc(champIconUrl(key)) + ')"></div>' : '';
-      return '<div class="champ-pill' + (isBan ? ' ban-pill' : '') + '">' + icon + esc(name) + '</div>';
+      return '<div class="champ-pill' + (isBan ? ' ban-pill' : '') + '">' + icon + esc(name || '?') + '</div>';
     }).join('');
   }
 
-  return '<div class="draft-snapshot">' +
+  return sideHtml +
+    '<div class="draft-snapshot">' +
     '<div>' +
       '<div class="draft-col-label">' + esc(t1name) + '</div>' +
       '<div class="draft-col-label" style="color:var(--text-faint);font-size:10px;margin-top:8px">Picks</div>' +
       '<div class="draft-picks-list">' + champPills(picks1, false) + '</div>' +
-      (bans1.length ? '<div class="draft-col-label" style="color:var(--text-faint);font-size:10px;margin-top:8px">Bans</div><div class="draft-bans-list">' + champPills(bans1, true) + '</div>' : '') +
+      (t1bans.length ? '<div class="draft-col-label" style="color:var(--text-faint);font-size:10px;margin-top:8px">Bans</div><div class="draft-bans-list">' + champPills(t1bans, true) + '</div>' : '') +
     '</div>' +
     '<div class="draft-divider">VS</div>' +
     '<div>' +
       '<div class="draft-col-label">' + esc(t2name) + '</div>' +
       '<div class="draft-col-label" style="color:var(--text-faint);font-size:10px;margin-top:8px">Picks</div>' +
       '<div class="draft-picks-list">' + champPills(picks2, false) + '</div>' +
-      (bans2.length ? '<div class="draft-col-label" style="color:var(--text-faint);font-size:10px;margin-top:8px">Bans</div><div class="draft-bans-list">' + champPills(bans2, true) + '</div>' : '') +
+      (t2bans.length ? '<div class="draft-col-label" style="color:var(--text-faint);font-size:10px;margin-top:8px">Bans</div><div class="draft-bans-list">' + champPills(t2bans, true) + '</div>' : '') +
     '</div>' +
   '</div>';
 }
