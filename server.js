@@ -918,6 +918,27 @@ app.post('/api/import/gsheets', requireAdmin, async (req, res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// ── Asset sync ─────────────────────────────────────────────────────────────────
+const assetSync = require('./scripts/sync-assets');
+
+app.post('/api/assets/check', requireAdmin, async (req, res) => {
+  try {
+    const results = await assetSync.syncAll({ dryRun: true });
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/assets/sync', requireAdmin, async (req, res) => {
+  try {
+    const results = await assetSync.syncAll({ dryRun: false, forceRoles: !!req.body.forceRoles });
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Tournament config ──────────────────────────────────────────────────────────
 app.post('/api/tournament', requireAdmin, (req, res) => {
   const { name, game, logo, sponsorLogos, ...rest } = req.body;
