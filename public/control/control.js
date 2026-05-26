@@ -3067,15 +3067,32 @@ function renderAssetResults(results) {
   const el = g('asset-status');
   if (!el) return;
   el.innerHTML = results.map(r => {
-    const ok = r.missing.length === 0;
-    const status = ok
-      ? '<span style="color:var(--ok,#4ade80)">✓ up to date (' + r.existing + ' files)</span>'
-      : '<span style="color:var(--warn,#facc15)">' + r.missing.length + ' missing</span>';
-    const dl = r.downloaded > 0 ? ' — <span style="color:var(--primary)">downloaded ' + r.downloaded + '</span>' : '';
+    // r.missing = files that were missing at scan time (downloaded or not)
+    // r.downloaded = how many were actually fetched this run
+    const stillMissing = r.missing.length - r.downloaded - (r.errors ? r.errors.length : 0);
+    let statusHtml;
+    if (r.missing.length === 0) {
+      statusHtml = '<span style="color:var(--ok,#4ade80)">✓ up to date (' + r.existing + ' files)</span>';
+    } else if (r.downloaded > 0 && stillMissing <= 0 && (!r.errors || r.errors.length === 0)) {
+      statusHtml = '<span style="color:var(--primary)">↓ ' + r.downloaded + ' downloaded</span>';
+    } else if (r.downloaded > 0) {
+      statusHtml = '<span style="color:var(--primary)">↓ ' + r.downloaded + ' downloaded</span>';
+      if (stillMissing > 0) statusHtml += ' <span style="color:var(--warn,#facc15)">· ' + stillMissing + ' still missing</span>';
+    } else {
+      statusHtml = '<span style="color:var(--warn,#facc15)">' + r.missing.length + ' missing</span>';
+      if (r.missing.length <= 6) {
+        statusHtml += '<div style="margin-top:3px;padding-left:4px;color:var(--text-dim);font-size:10px;line-height:1.6">' +
+          r.missing.map(f => escHtml(f)).join('<br>') + '</div>';
+      } else {
+        statusHtml += '<div style="margin-top:3px;padding-left:4px;color:var(--text-dim);font-size:10px;line-height:1.6">' +
+          r.missing.slice(0, 5).map(f => escHtml(f)).join('<br>') +
+          '<br><em>…and ' + (r.missing.length - 5) + ' more</em></div>';
+      }
+    }
     const errs = r.errors && r.errors.length
-      ? r.errors.map(e => '<div style="color:var(--danger,#f87171)">  ✗ ' + escHtml(e.name) + ': ' + escHtml(e.error) + '</div>').join('')
+      ? r.errors.map(e => '<div style="color:var(--danger,#f87171);font-size:11px;margin-top:2px">  ✗ ' + escHtml(e.name) + ': ' + escHtml(e.error) + '</div>').join('')
       : '';
-    return '<div style="margin-bottom:4px"><b>' + escHtml(r.label) + '</b>: ' + status + dl + errs + '</div>';
+    return '<div style="margin-bottom:6px"><div style="font-size:12px"><b>' + escHtml(r.label) + '</b>: ' + statusHtml + '</div>' + errs + '</div>';
   }).join('');
 }
 
