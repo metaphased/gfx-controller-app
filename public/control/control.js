@@ -1837,10 +1837,12 @@ function bracketTeamSelect(ri, mi, side, currentName) {
       }).join('') + '</optgroup>';
   }
 
-  // If currentName isn't matched anywhere, keep it as a selected free-text option
+  // If currentName isn't matched anywhere, keep it selected but flag stale bracket refs
   const knownVals = teams.map(t => t.name).concat(refs.map(r => r.val)).concat(['']);
   if (currentName && !knownVals.includes(currentName)) {
-    opts += '<option value="'+esc(currentName)+'" selected>'+esc(currentName)+'</option>';
+    const isStaleRef = currentName.startsWith('Winner of ') || currentName.startsWith('Loser of ');
+    const label = isStaleRef ? '⚠ ' + currentName + ' (stale — re-select)' : currentName;
+    opts += '<option value="'+esc(currentName)+'" selected>'+esc(label)+'</option>';
   }
 
   return '<select class="br-'+side+'name-sel" data-ri="'+ri+'" data-mi="'+mi+'" data-side="'+side+'">'+opts+'</select>';
@@ -3924,6 +3926,7 @@ function renderDayGames(day) {
       '<div class="sched-game-btns">' +
       (hasDraftHistory ? '<button class="btn btn-sm ds-toggle-btn" id="dh-btn-' + histId + '" onclick="toggleDraftHistory(\'' + histId + '\')">▼ Draft</button>' : '') +
       (!isCompleted ? '<button class="btn btn-sm" onclick="openEditGameForm(\'' + day.id + '\',\'' + gm.id + '\')">Edit</button>' : '') +
+      (isCompleted ? '<button class="btn btn-sm btn-danger" onclick="clearScheduleGameResult(\'' + day.id + '\',\'' + gm.id + '\')">Clear Result</button>' : '') +
       (_schedEditMode && idx > 0 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'up\'})">↑</button>' : '') +
       (_schedEditMode && idx < day.games.length-1 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'down\'})">↓</button>' : '') +
       (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="if(confirm(\'Remove this game?\'))api(\'/api/schedule/game/delete\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\'})">×</button>' : '') +
@@ -4215,6 +4218,11 @@ function renderScheduleGamePicker(dayId) {
       '<button class="btn btn-sm' + btnCls + '" onclick="loadScheduleGame(\'' + dayId + '\',\'' + gm.id + '\')">' + btnLabel + '</button>' +
       '</div>';
   }).join('');
+}
+
+function clearScheduleGameResult(dayId, gameId) {
+  if (!confirm('Clear the recorded result for this game?\n\nThis will remove the score and allow it to be replayed. If this game is currently loaded, the active series will also be reset.')) return;
+  api('/api/schedule/game/clear-result', { dayId, gameId });
 }
 
 function loadScheduleGame(dayId, gameId) {
