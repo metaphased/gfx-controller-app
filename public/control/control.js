@@ -3007,6 +3007,39 @@ function loadActionLog() {
   }).catch(() => { wrap.innerHTML = '<p class="hint">Failed to load log.</p>'; });
 }
 
+// ── Champion asset sync ────────────────────────────────────────────────────────
+function renderAssetResults(results) {
+  const el = g('asset-status');
+  if (!el) return;
+  el.innerHTML = results.map(r => {
+    const ok = r.missing.length === 0;
+    const status = ok
+      ? '<span style="color:var(--ok,#4ade80)">✓ up to date (' + r.existing + ' files)</span>'
+      : '<span style="color:var(--warn,#facc15)">' + r.missing.length + ' missing</span>';
+    const dl = r.downloaded > 0 ? ' — <span style="color:var(--primary)">downloaded ' + r.downloaded + '</span>' : '';
+    const errs = r.errors && r.errors.length
+      ? r.errors.map(e => '<div style="color:var(--danger,#f87171)">  ✗ ' + escHtml(e.name) + ': ' + escHtml(e.error) + '</div>').join('')
+      : '';
+    return '<div style="margin-bottom:4px"><b>' + escHtml(r.label) + '</b>: ' + status + dl + errs + '</div>';
+  }).join('');
+}
+
+async function checkAssets() {
+  const el = g('asset-status');
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Checking…</span>';
+  const res = await api('/api/assets/check', {});
+  if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
+  renderAssetResults(res.results);
+}
+
+async function syncAssets(forceRoles) {
+  const el = g('asset-status');
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Syncing… (this may take a minute)</span>';
+  const res = await api('/api/assets/sync', { forceRoles: !!forceRoles });
+  if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
+  renderAssetResults(res.results);
+}
+
 function loadUsersTab() {
   _editingUserId = null;
   fetch('/api/users').then(r => r.json()).then(data => {
