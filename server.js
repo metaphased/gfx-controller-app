@@ -953,7 +953,19 @@ app.post('/api/assets/check', requireAdmin, async (req, res) => {
 
 app.post('/api/assets/sync', requireAdmin, async (req, res) => {
   try {
-    const results = await assetSync.syncAll({ dryRun: false, forceRoles: !!req.body.forceRoles });
+    const targets = assetSync.TARGETS;
+    io.emit('assets:progress', { phase: 'init', targets: targets.map(t => ({ key: t.key, label: t.label })) });
+    const results = [];
+    for (const target of targets) {
+      io.emit('assets:progress', { phase: 'start', key: target.key });
+      const result = await assetSync.syncTarget(target, {
+        dryRun: false,
+        forceRoles: !!req.body.forceRoles,
+        onProgress: (key, n, total, name) => io.emit('assets:progress', { phase: 'file', key, n, total, name }),
+      });
+      io.emit('assets:progress', { phase: 'done', key: target.key, result });
+      results.push(result);
+    }
     res.json({ ok: true, results });
   } catch (e) {
     res.status(500).json({ error: e.message });

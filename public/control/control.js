@@ -3008,6 +3008,61 @@ function loadActionLog() {
 }
 
 // ── Champion asset sync ────────────────────────────────────────────────────────
+let _assetTargetStates = null;
+
+function _renderAssetProgress() {
+  const el = g('asset-status');
+  if (!el || !_assetTargetStates) return;
+  el.innerHTML = Object.values(_assetTargetStates).map(t => {
+    let statusHtml, barHtml = '';
+    if (t.status === 'waiting') {
+      statusHtml = '<span style="color:var(--text-dim)">queued</span>';
+    } else if (t.status === 'active') {
+      if (t.total === 0) {
+        statusHtml = '<span style="color:var(--text-dim)">checking…</span>';
+      } else {
+        const pct = Math.round(t.n / t.total * 100);
+        statusHtml = '<span style="color:var(--primary)">' + t.n + ' / ' + t.total + '</span>';
+        barHtml = '<div style="background:var(--bg3,#111);height:3px;border-radius:2px;margin:3px 0 2px">' +
+          '<div style="background:var(--primary);height:3px;border-radius:2px;width:' + pct + '%"></div></div>' +
+          '<div style="color:var(--text-dim);font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(t.name) + '</div>';
+      }
+    } else {
+      const r = t.result;
+      if (r.downloaded > 0) {
+        statusHtml = '<span style="color:var(--primary)">↓ ' + r.downloaded + ' downloaded</span>';
+      } else {
+        statusHtml = '<span style="color:var(--ok,#4ade80)">✓ up to date (' + r.existing + ')</span>';
+      }
+      if (r.errors && r.errors.length) {
+        statusHtml += ' <span style="color:var(--danger,#f87171)">· ' + r.errors.length + ' error' + (r.errors.length > 1 ? 's' : '') + '</span>';
+      }
+    }
+    return '<div style="margin-bottom:7px">' +
+      '<div style="display:flex;align-items:baseline;gap:8px;font-size:12px">' +
+      '<b>' + escHtml(t.label) + '</b>' + statusHtml + '</div>' + barHtml + '</div>';
+  }).join('');
+}
+
+function _onAssetProgress(data) {
+  if (!_assetTargetStates) return;
+  if (data.phase === 'init') {
+    _assetTargetStates = {};
+    data.targets.forEach(t => {
+      _assetTargetStates[t.key] = { label: t.label, status: 'waiting', n: 0, total: 0, name: '', result: null };
+    });
+  } else if (data.phase === 'start') {
+    if (_assetTargetStates[data.key]) _assetTargetStates[data.key].status = 'active';
+  } else if (data.phase === 'file') {
+    const t = _assetTargetStates[data.key];
+    if (t) { t.n = data.n; t.total = data.total; t.name = data.name; }
+  } else if (data.phase === 'done') {
+    const t = _assetTargetStates[data.key];
+    if (t) { t.status = 'done'; t.result = data.result; }
+  }
+  _renderAssetProgress();
+}
+
 function renderAssetResults(results) {
   const el = g('asset-status');
   if (!el) return;
@@ -3033,10 +3088,18 @@ async function checkAssets() {
 }
 
 async function syncAssets(forceRoles) {
+  if (_assetTargetStates !== null) return; // already running
   const el = g('asset-status');
-  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Syncing… (this may take a minute)</span>';
+  _assetTargetStates = {};
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
+  socket.on('assets:progress', _onAssetProgress);
   const res = await api('/api/assets/sync', { forceRoles: !!forceRoles });
-  if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
+  socket.off('assets:progress', _onAssetProgress);
+  _assetTargetStates = null;
+  if (!res || res.error) {
+    if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml((res && res.error) || 'Request failed') + '</span>';
+    return;
+  }
   renderAssetResults(res.results);
 }
 
