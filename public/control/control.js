@@ -87,11 +87,22 @@ socket.on('connect', () => {
   const el = g('conn-status');
   el.textContent = '⬤ Connected';
   el.className = 'connection-status connected';
+  // Report current page to presence system
+  const active = document.querySelector('.nav-item.active');
+  if (active) socket.emit('presence:page', { page: TAB_LABELS[active.dataset.tab] || active.dataset.tab });
 });
 socket.on('disconnect', () => {
   const el = g('conn-status');
   el.textContent = '⬤ Disconnected';
   el.className = 'connection-status disconnected';
+});
+
+socket.on('presence:list', users => {
+  const strip = g('presence-strip'); if (!strip) return;
+  strip.innerHTML = users.map(u =>
+    '<span class="presence-user"><span class="presence-user-dot">●</span>' +
+    '<span>' + u.username + ' (' + u.role + ')' + (u.page ? ' — ' + u.page : '') + '</span></span>'
+  ).join('');
 });
 socket.on('state', async (state) => {
   window._state = state;
@@ -104,7 +115,30 @@ socket.on('state', async (state) => {
 
 refreshControlTournamentStats();
 
+// ── Current user identity (for claim badge self-detection) ─────────────────────
+let _myUsername = null;
+
 // ── Navigation ─────────────────────────────────────────────────────────────────
+const TAB_LABELS = {
+  home:'Dashboard', tournament:'Tournament Setup', teams:'Teams', schedule:'Schedule',
+  groups:'Groups', playoffs:'Playoffs', game:'Game Setup', draft:'Draft',
+  players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
+  preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
+  h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
+  'draft-gfx':'Draft GFX', bracket:'Bracket', 'groups-gfx':'Group Stage',
+  'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
+  win:'Win Screen', profiles:'Profiles', users:'Settings', log:'Log',
+};
+
+// Tab → claim page key (GFX ctrl-bar pages only)
+const GFX_TAB_CLAIM_KEY = {
+  'draft-gfx':'draft-gfx', 'lowerthird':'lower-thirds', 'player-intro':'player-intro',
+  'win':'win-screen', 'break':'break-screen', 'preshow':'pre-show',
+  'tournament-structure-gfx':'tournament-structure', 'groups-gfx':'standings',
+  'bracket':'bracket', 'h2h':'h2h', 'ticker':'ticker', 'prizepool':'prizepool',
+};
+let _currentClaimTab = null; // tabKey currently claimed
+
 document.querySelectorAll('.nav-item').forEach(navEl => {
   navEl.addEventListener('click', () => {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -116,6 +150,66 @@ document.querySelectorAll('.nav-item').forEach(navEl => {
     if (navEl.dataset.tab === 'schedule') renderSchedule();
     if (navEl.dataset.tab === 'home')     renderDashboard(window._state);
     localStorage.setItem('gfx_ctrl_tab', navEl.dataset.tab);
+    socket.emit('presence:page', { page: TAB_LABELS[navEl.dataset.tab] || navEl.dataset.tab });
+    // Soft page claiming
+    const newClaimKey = GFX_TAB_CLAIM_KEY[navEl.dataset.tab];
+    const oldClaimKey = _currentClaimTab ? GFX_TAB_CLAIM_KEY[_currentClaimTab] : null;
+    if (oldClaimKey && oldClaimKey !== newClaimKey) socket.emit('claim:release', { page: oldClaimKey });
+    if (newClaimKey) socket.emit('claim:page', { page: newClaimKey });
+    _currentClaimTab = navEl.dataset.tab;
+  });
+});
+
+// ── Last-action attribution ────────────────────────────────────────────────────
+function relativeTime(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 5)  return 'just now';
+  if (s < 60) return s + 's ago';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  return Math.floor(m / 60) + 'h ago';
+}
+let _lastActionsMap = {};
+
+socket.on('lastActions:update', map => {
+  _lastActionsMap = map || {};
+  renderAttributions();
+});
+
+function renderAttributions() {
+  Object.entries(GFX_TAB_CLAIM_KEY).forEach(([tabKey, pageKey]) => {
+    const tabEl = g('tab-' + tabKey); if (!tabEl) return;
+    const ctrlBar = tabEl.querySelector('.gfx-ctrl-bar'); if (!ctrlBar) return;
+    let attr = ctrlBar.querySelector('.ctrl-attribution');
+    const entry = _lastActionsMap[pageKey];
+    if (!entry) { if (attr) attr.remove(); return; }
+    if (!attr) { attr = document.createElement('div'); attr.className = 'ctrl-attribution'; ctrlBar.appendChild(attr); }
+    attr.textContent = 'Last: ' + entry.action + ' · ' + entry.user + ' · ' + relativeTime(entry.timestamp);
+  });
+}
+
+// Refresh relative timestamps every 15 seconds
+setInterval(renderAttributions, 15000);
+
+socket.on('claims:update', claimsMap => {
+  // For each GFX tab, update or clear the claim badge in its ctrl-bar
+  Object.entries(GFX_TAB_CLAIM_KEY).forEach(([tabKey, pageKey]) => {
+    const tabEl = g('tab-' + tabKey); if (!tabEl) return;
+    const ctrlBar = tabEl.querySelector('.gfx-ctrl-bar'); if (!ctrlBar) return;
+    let badge = ctrlBar.querySelector('.ctrl-claim-badge');
+    const claim = claimsMap[pageKey];
+    if (!claim) {
+      if (badge) badge.remove();
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'ctrl-claim-badge';
+      ctrlBar.appendChild(badge);
+    }
+    const isMine = _myUsername && claim.user === _myUsername;
+    badge.className = 'ctrl-claim-badge' + (isMine ? ' ctrl-claim-mine' : ' ctrl-claim-other');
+    badge.textContent = isMine ? '● You have control' : '⚠ Operated by ' + claim.user;
   });
 });
 
@@ -159,6 +253,49 @@ async function api(path, body) {
     if (!res.ok) console.error('API error', path, res.status, data);
     return data;
   } catch (e) { console.error('Fetch error', path, e); }
+}
+
+// ── Destructive action confirmation ────────────────────────────────────────────
+// Replaces the button with a confirm/cancel pair; confirm is disabled for 2s.
+function confirmDestructive(triggerEl, label, callback) {
+  if (triggerEl._confirming) return;
+  triggerEl._confirming = true;
+  const parent = triggerEl.parentNode;
+  const origHTML = triggerEl.outerHTML;
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'btn btn-danger btn-sm';
+  confirmBtn.textContent = label + ' (confirm)';
+  confirmBtn.disabled = true;
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn btn-sm';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.marginLeft = '4px';
+
+  parent.replaceChild(confirmBtn, triggerEl);
+  parent.insertBefore(cancelBtn, confirmBtn.nextSibling);
+
+  const timer = setTimeout(() => { confirmBtn.disabled = false; }, 2000);
+
+  confirmBtn.addEventListener('click', () => {
+    clearTimeout(timer);
+    restore();
+    callback();
+  });
+  cancelBtn.addEventListener('click', () => {
+    clearTimeout(timer);
+    restore();
+  });
+
+  function restore() {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = origHTML;
+    const orig = tmp.firstChild;
+    orig._confirming = false;
+    parent.replaceChild(orig, confirmBtn);
+    if (cancelBtn.parentNode) cancelBtn.parentNode.removeChild(cancelBtn);
+  }
 }
 
 // ── Graphics token + output URLs ───────────────────────────────────────────────
@@ -537,7 +674,7 @@ function setDotColor(id, color) { const e = g(id); if (e) e.style.background = c
 function patchMatch(data) { api('/api/match', data); }
 function getLTColor(k) { return (window._state&&window._state.match&&window._state.match[k]&&window._state.match[k].color)||'#1ffaff'; }
 function patchScore(team, delta) { api('/api/score', { team, delta }); }
-function resetState() { if (confirm('Reset ALL state? Cannot be undone.')) api('/api/state/reset', {}); }
+function resetState(btn) { confirmDestructive(btn, 'Reset all state', () => api('/api/state/reset', {})); }
 
 function syncTeamDisplay(n, team) {
   const prefix = 't' + n;
@@ -875,8 +1012,8 @@ function startDraftPhase() {
   api('/api/draft', { phase: 'bans1', currentStep: 1 });
 }
 
-function resetDraft() {
-  if (!confirm('Reset the current draft? All picks will be cleared.')) return;
+function resetDraft(btn) {
+  confirmDestructive(btn, 'Reset draft', () => {
   _draftPaused = false;
   _draftPauseRemaining = null;
   const board = g('draft-board');
@@ -897,6 +1034,7 @@ function resetDraft() {
     blueSideTeam: (d && d.blueSideTeam) || 'team1',
     replayIntro: true,
   });
+  }); // end confirmDestructive
 }
 
 function replayDraftIntro() {
@@ -2846,6 +2984,29 @@ function toggleUserEdit(id) {
   const btn = g('user-edit-btn-' + id); if (btn) btn.textContent = 'Done';
 }
 
+// ── System Log ─────────────────────────────────────────────────────────────────
+function loadActionLog() {
+  const wrap = g('action-log-wrap'); if (!wrap) return;
+  wrap.innerHTML = '<p class="hint">Loading…</p>';
+  fetch('/api/action-log').then(r => r.json()).then(data => {
+    if (!Array.isArray(data) || data.length === 0) {
+      wrap.innerHTML = '<p class="hint">No actions logged yet.</p>';
+      return;
+    }
+    const rows = data.map(e => {
+      const d = new Date(e.timestamp);
+      const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const relSecs = Math.floor((Date.now() - e.timestamp) / 1000);
+      const rel = relSecs < 60 ? relSecs + 's ago' : relSecs < 3600 ? Math.floor(relSecs/60) + 'm ago' : Math.floor(relSecs/3600) + 'h ago';
+      const detail = e.detail ? ' <span style="opacity:.55">' + escHtml(e.detail) + '</span>' : '';
+      return '<tr><td title="' + escHtml(d.toLocaleString()) + '">' + escHtml(timeStr) + ' <span style="opacity:.4;font-size:10px">' + rel + '</span></td>' +
+        '<td>' + escHtml(e.user) + '</td><td style="opacity:.6">' + escHtml(e.role) + '</td>' +
+        '<td><span class="log-action">' + escHtml(e.action) + '</span>' + detail + '</td></tr>';
+    }).join('');
+    wrap.innerHTML = '<table class="action-log-table"><thead><tr><th>Time</th><th>User</th><th>Role</th><th>Action</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }).catch(() => { wrap.innerHTML = '<p class="hint">Failed to load log.</p>'; });
+}
+
 function loadUsersTab() {
   _editingUserId = null;
   fetch('/api/users').then(r => r.json()).then(data => {
@@ -2991,7 +3152,7 @@ function renderProfilesList(profiles) {
           '<button class="btn btn-sm btn-primary" onclick="loadProfile(\'' + p.id + '\')">' + (isActive ? '● Active' : 'Load') + '</button>' +
           (isActive ? '<button class="btn btn-sm' + (isDirty ? ' btn-primary' : '') + '" onclick="updateProfile(\'' + p.id + '\')">Update</button>' : '') +
           '<button class="btn btn-sm" onclick="renameProfileInline(\'' + p.id + '\')">Rename</button>' +
-          '<button class="btn btn-sm btn-danger" onclick="deleteProfile(\'' + p.id + '\')">Delete</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="deleteProfile(\'' + p.id + '\',this)">Delete</button>' +
         '</div>' +
       '</div>' +
       '</div>';
@@ -3121,6 +3282,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (tabEl) tabEl.classList.add('active');
     }
     if (savedTab === 'users')    loadUsersTab();
+    if (savedTab === 'log')      loadActionLog();
     if (savedTab === 'profiles') loadProfilesTab();
     if (savedTab === 'home')     renderDashboard(window._state);
   }
@@ -3161,16 +3323,17 @@ function confirmRename(id, input) {
     });
 }
 
-function deleteProfile(id) {
-  if (!confirm('Delete this profile? This cannot be undone.')) return;
-  fetch('/api/profiles/delete', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id }) })
-    .then(r => r.json()).then(data => {
-      if (data.ok) {
-        // state.meta is cleared by server; syncTopBar will update window._activeProfileId
-        if (window._activeProfileId === id) { _savedProfileSnapshotStr = null; updateProfileDirtyBar(false); }
-        loadProfilesTab();
-      } else alert(data.error || 'Failed to delete.');
-    });
+function deleteProfile(id, btn) {
+  confirmDestructive(btn, 'Delete profile', () => {
+    fetch('/api/profiles/delete', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id }) })
+      .then(r => r.json()).then(data => {
+        if (data.ok) {
+          // state.meta is cleared by server; syncTopBar will update window._activeProfileId
+          if (window._activeProfileId === id) { _savedProfileSnapshotStr = null; updateProfileDirtyBar(false); }
+          loadProfilesTab();
+        } else alert(data.error || 'Failed to delete.');
+      });
+  });
 }
 
 function showProfileMsg(id, text, type) {
@@ -3192,10 +3355,15 @@ document.querySelectorAll('.nav-item[data-tab="users"]').forEach(el => {
   el.addEventListener('click', loadUsersTab);
 });
 
+// Load action log when the log tab is opened
+document.querySelectorAll('.nav-item[data-tab="log"]').forEach(el => {
+  el.addEventListener('click', loadActionLog);
+});
+
 // Populate session info in top bar
 fetch('/api/auth/me').then(r => r.json()).then(data => {
   const el = g('mtb-session');
-  if (el && data.user) el.textContent = data.user.username;
+  if (el && data.user) { el.textContent = data.user.username; _myUsername = data.user.username; }
 }).catch(() => {});
 
 // ── Tournament Setup ───────────────────────────────────────────────────────────
@@ -3987,7 +4155,7 @@ function renderDayGames(day) {
       '<div class="sched-game-btns">' +
       (hasDraftHistory ? '<button class="btn btn-sm ds-toggle-btn" id="dh-btn-' + histId + '" onclick="toggleDraftHistory(\'' + histId + '\')">▼ Draft</button>' : '') +
       (!isCompleted ? '<button class="btn btn-sm" onclick="openEditGameForm(\'' + day.id + '\',\'' + gm.id + '\')">Edit</button>' : '') +
-      (isCompleted ? '<button class="btn btn-sm btn-danger" onclick="clearScheduleGameResult(\'' + day.id + '\',\'' + gm.id + '\')">Clear Result</button>' : '') +
+      (isCompleted ? '<button class="btn btn-sm btn-danger" onclick="clearScheduleGameResult(\'' + day.id + '\',\'' + gm.id + '\',this)">Clear Result</button>' : '') +
       (_schedEditMode && idx > 0 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'up\'})">↑</button>' : '') +
       (_schedEditMode && idx < day.games.length-1 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'down\'})">↓</button>' : '') +
       (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="if(confirm(\'Remove this game?\'))api(\'/api/schedule/game/delete\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\'})">×</button>' : '') +
@@ -4281,9 +4449,8 @@ function renderScheduleGamePicker(dayId) {
   }).join('');
 }
 
-function clearScheduleGameResult(dayId, gameId) {
-  if (!confirm('Clear the recorded result for this game?\n\nThis will remove the score and allow it to be replayed. If this game is currently loaded, the active series will also be reset.')) return;
-  api('/api/schedule/game/clear-result', { dayId, gameId });
+function clearScheduleGameResult(dayId, gameId, btn) {
+  confirmDestructive(btn, 'Clear game result', () => api('/api/schedule/game/clear-result', { dayId, gameId }));
 }
 
 function loadScheduleGame(dayId, gameId) {

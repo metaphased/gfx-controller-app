@@ -89,6 +89,7 @@
       <div class="nav-section-label">SYSTEM</div>
       <a class="nav-item" data-tab="profiles" id="nav-item-profiles">⬡ Profiles</a>
       <a class="nav-item" data-tab="users">⬡ Settings</a>
+      <a class="nav-item" data-tab="log">⬡ Log</a>
 
       <div class="nav-section-label">OUTPUT URLS</div>
       <div class="url-list" id="url-list"></div>
@@ -108,6 +109,9 @@
     <div class="mtb-sep"></div>
     <span class="mtb-match-context" id="lbar-game-context"></span>
   </div>
+
+  <!-- ── Presence strip ──────────────────────────────────────────────────── -->
+  <div id="presence-strip"></div>
 
   <!-- ── Main ─────────────────────────────────────────────────────────────── -->
   <main class="main">
@@ -428,7 +432,7 @@
     <section class="tab" id="tab-game">
       <div class="tab-header">
         <h1>Game Setup</h1>
-        <button class="btn btn-danger btn-sm" onclick="resetState()">Reset All</button>
+        <button class="btn btn-danger btn-sm" onclick="resetState(this)">Reset All</button>
       </div>
 
       <!-- Load from schedule -->
@@ -1063,7 +1067,7 @@
         <div class="draft-status-actions">
           <button class="btn btn-sm btn-secondary" onclick="startDraftTimer()">↺ Timer</button>
           <button class="btn btn-sm btn-secondary" onclick="toggleDraftPause()" id="btn-draft-pause">⏸ Pause</button>
-          <button class="btn btn-sm btn-danger" onclick="resetDraft()">↺ Reset Draft</button>
+          <button class="btn btn-sm btn-danger" onclick="resetDraft(this)">↺ Reset Draft</button>
         </div>
       </div>
 
@@ -1952,6 +1956,20 @@
             <div id="users-list"><p class="hint">Loading…</p></div>
           </div>
         </div>
+      </div>
+
+    </section>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+         LOG
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-log">
+      <div class="tab-header">
+        <h1>System Log</h1>
+        <button class="btn btn-sm btn-primary" onclick="loadActionLog()">Refresh</button>
+      </div>
+      <div id="action-log-wrap" style="max-width:900px">
+        <p class="hint">Click Refresh to load.</p>
       </div>
     </section>
 

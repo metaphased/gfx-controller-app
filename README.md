@@ -54,7 +54,7 @@ npm run dev
 Full admin interface for tournament setup, match management, graphic control, and system settings. Requires login.
 
 ### Operator View (`/operator`)
-Simplified live-production view with three columns: graphic controls (show/hide toggles + ctrl-bar), live score/series tracker, and lower third builder. Requires operator or admin login.
+Simplified live-production view with three columns: graphic controls (show/hide toggles + ctrl-bar), live score/series tracker, and lower third builder. Requires operator or admin login. Shows a live presence strip indicating who else is connected and on which page.
 
 ### Caster View (`/caster?token=XXXX`)
 Read-only information page for casters during a live broadcast. Authenticated via the graphics token (same token as OBS browser sources). Tabs:
@@ -98,7 +98,7 @@ Each URL requires a `?token=XXXX` parameter. The full URLs with your active toke
 
 **Graphics:** Broadcast Theme, BG Output, Lower Third, Head to Head, Pre-show, Ticker, Draft, Bracket, Group Stage, Tournament Structure, Prizepool, Break Screen, Win Screen, Scoreboard, Player Intro
 
-**System:** Settings (users, token, output URLs, logos)
+**System:** Profiles, Settings (users, token, output URLs, logos), Log (action history)
 
 ### User roles
 
@@ -127,6 +127,12 @@ Create additional users in **Settings → Accounts**.
 - Background animation system — 12 canvas-based animations + fog overlay
 - Bo1/Bo3/Bo5 series tracking with game-by-game draft snapshots
 - Bracket (single + double elimination), Group Stage standings, Tournament Structure, Prizepool graphics
+- **Multi-user workflow** — built for shared production crew use:
+  - Presence strip on all operator/caster/admin views — see who is connected and which page they're on
+  - Last-action attribution on every GFX ctrl-bar — shows who last showed/hid a graphic and when
+  - Soft page claiming — navigating to a GFX page claims it; others see an amber "Operated by [name]" indicator in the ctrl-bar (no hard blocking)
+  - Destructive action confirmation — inline 2-second countdown confirm on reset, clear result, and delete operations
+  - System Log — server-side ring buffer of significant actions (show/hide, record game, load profile, etc.), viewable by admin under **System → Log**
 
 ## Data directory
 

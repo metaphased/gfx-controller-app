@@ -421,6 +421,17 @@ body {
   padding: 10px 12px;
 }
 .phase-badge.active { color: var(--text); }
+
+/* ── Presence strip ── */
+#presence-strip {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  padding: 4px 16px; background: var(--bg2);
+  border-bottom: 1px solid rgba(31,250,255,0.05);
+  min-height: 22px; font-size: 11px; color: rgba(232,230,223,0.35);
+}
+#presence-strip:empty { min-height: 0; padding: 0; border: none; }
+.presence-user { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.presence-user-dot { color: #3ddc84; font-size: 8px; }
 </style>
 </head>
 <body>
@@ -451,6 +462,9 @@ body {
     <a class="btn-logout" href="/api/auth/logout">Log Out</a>
   </div>
 </div>
+
+<!-- ── Presence strip ── -->
+<div id="presence-strip"></div>
 
 <!-- ── Main ── -->
 <div class="ops-main">
@@ -714,8 +728,19 @@ function api(url, body) {
 }
 
 /* ── Connection ── */
-socket.on('connect',    () => { const el = g('conn-status'); el.textContent = '⬤ Connected';    el.className = 'conn-dot connected'; });
+socket.on('connect', () => {
+  const el = g('conn-status'); el.textContent = '⬤ Connected'; el.className = 'conn-dot connected';
+  socket.emit('presence:page', { page: 'Operator' });
+});
 socket.on('disconnect', () => { const el = g('conn-status'); el.textContent = '⬤ Disconnected'; el.className = 'conn-dot disconnected'; });
+
+socket.on('presence:list', function(users) {
+  var strip = g('presence-strip'); if (!strip) return;
+  strip.innerHTML = users.map(function(u) {
+    return '<span class="presence-user"><span class="presence-user-dot">●</span>' +
+      '<span>' + u.username + ' (' + u.role + ')' + (u.page ? ' — ' + u.page : '') + '</span></span>';
+  }).join('');
+});
 
 /* ── Graphic list for bulk sync ── */
 const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];

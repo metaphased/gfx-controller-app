@@ -48,6 +48,7 @@ socket.on('connect', () => {
   const lbl = document.getElementById('conn-label');
   dot.className = 'conn-dot live';
   lbl.textContent = 'Connected';
+  socket.emit('presence:page', { page: 'Caster View' });
 });
 
 socket.on('disconnect', () => {
@@ -55,6 +56,15 @@ socket.on('disconnect', () => {
   const lbl = document.getElementById('conn-label');
   dot.className = 'conn-dot dead';
   lbl.textContent = 'Disconnected';
+});
+
+socket.on('presence:list', users => {
+  const strip = document.getElementById('presence-strip');
+  if (!strip) return;
+  strip.innerHTML = users.map(u =>
+    '<span class="presence-user"><span class="presence-user-dot">●</span>' +
+    '<span>' + u.username + ' (' + u.role + ')' + (u.page ? ' — ' + u.page : '') + '</span></span>'
+  ).join('');
 });
 
 async function refreshTournamentStats() {

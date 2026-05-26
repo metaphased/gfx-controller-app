@@ -29,7 +29,7 @@ body {
 #app {
   display: grid;
   grid-template-columns: var(--sidebar-w) 1fr;
-  grid-template-rows: auto 1fr;
+  grid-template-rows: auto auto 1fr;
   height: 100vh;
 }
 
@@ -306,10 +306,42 @@ body {
 .users-msg-ok    { background: rgba(46,204,113,0.08); border: 1px solid rgba(46,204,113,0.25); color: #2ecc71; }
 .users-msg-error { background: rgba(255,68,68,0.08);  border: 1px solid rgba(255,68,68,0.25);  color: var(--danger); }
 
+/* ── Action log table ────────────────────────────── */
+.action-log-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.action-log-table th {
+  text-align: left; padding: 5px 8px;
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim); border-bottom: 1px solid var(--border);
+}
+.action-log-table td { padding: 5px 8px; color: var(--text-dim); border-bottom: 1px solid rgba(255,255,255,0.04); }
+.action-log-table tr:last-child td { border-bottom: none; }
+.action-log-table td:first-child { white-space: nowrap; font-size: 11px; }
+.log-action { font-weight: 600; color: var(--text); }
+
+/* ── Presence strip ──────────────────────────────── */
+#presence-strip {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 20px;
+  background: var(--bg2);
+  border-bottom: 1px solid rgba(31,250,255,0.05);
+  min-height: 22px;
+  font-size: 11px;
+  color: rgba(232,230,223,0.35);
+  font-family: var(--ui-font), sans-serif;
+}
+#presence-strip:empty { min-height: 0; padding: 0; border: none; }
+.presence-user { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.presence-user-dot { color: #3ddc84; font-size: 8px; line-height: 1; }
+
 /* ── Main ─────────────────────────────────────────── */
 .main {
   grid-column: 2;
-  grid-row: 2;
+  grid-row: 3;
   overflow-y: auto;
   scrollbar-gutter: stable; /* reserve scrollbar space so right-edge elements don't shift */
   padding: 28px 32px;
@@ -658,6 +690,22 @@ input[type=checkbox]:checked::after {
   color: rgba(255,255,255,0.65);
   cursor: pointer;
   white-space: nowrap;
+}
+
+/* ── Claim badge ──────────────────────────────────── */
+.ctrl-claim-badge {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+  padding: 3px 10px 3px 14px; border-top: 1px solid rgba(255,255,255,0.05);
+  white-space: nowrap; display: flex; justify-content: flex-end;
+}
+.ctrl-claim-mine  { color: #3ddc84; }
+.ctrl-claim-other { color: #e6a817; }
+
+/* ── Last-action attribution ──────────────────────── */
+.ctrl-attribution {
+  font-size: 10px; color: rgba(232,230,223,0.3);
+  padding: 3px 14px 5px; letter-spacing: 0.02em;
+  border-top: 1px solid rgba(255,255,255,0.04);
 }
 
 /* ── Live score panel ─────────────────────────────── */

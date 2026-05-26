@@ -552,9 +552,30 @@ app.post('/api/match/load-team', requireAdmin, (req, res) => {
   broadcast(); res.json({ ok: true });
 });
 
+// State key → ctrl-bar page key (for attribution + logging)
+const GRAPHIC_PAGE_KEYS = {
+  lowerThird: 'lower-thirds', headToHead: 'h2h', playerIntro: 'player-intro',
+  draft: 'draft-gfx', bracket: 'bracket', breakScreen: 'break-screen',
+  winScreen: 'win-screen', preShow: 'pre-show',
+  tournamentStructure: 'tournament-structure', groupStage: 'standings',
+  prizepool: 'prizepool', ticker: 'ticker'
+};
+
 // Graphic visibility (both roles)
-app.post('/api/graphic/:name/show', (req, res) => { if (state[req.params.name]!==undefined) state[req.params.name].visible=true; broadcast(); res.json({ok:true}); });
-app.post('/api/graphic/:name/hide', (req, res) => { if (state[req.params.name]!==undefined) state[req.params.name].visible=false; broadcast(); res.json({ok:true}); });
+app.post('/api/graphic/:name/show', (req, res) => {
+  if (state[req.params.name] !== undefined) state[req.params.name].visible = true;
+  const pageKey = GRAPHIC_PAGE_KEYS[req.params.name] || req.params.name;
+  const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
+  recordAction(pageKey, user, 'Show'); logAction(user, role, 'show', pageKey);
+  broadcast(); res.json({ ok: true });
+});
+app.post('/api/graphic/:name/hide', (req, res) => {
+  if (state[req.params.name] !== undefined) state[req.params.name].visible = false;
+  const pageKey = GRAPHIC_PAGE_KEYS[req.params.name] || req.params.name;
+  const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
+  recordAction(pageKey, user, 'Hide'); logAction(user, role, 'hide', pageKey);
+  broadcast(); res.json({ ok: true });
+});
 
 app.post('/api/lowerThird',  (req, res) => { Object.assign(state.lowerThird,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/draft', (req, res) => {
@@ -1113,6 +1134,7 @@ app.post('/api/match/load-schedule-game', (req, res) => {
     state.match.team1.score    = 0;
     state.match.team2.score    = 0;
   }
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'load-game', (restore ? 'restore ' : '') + dayId + '/' + gameId);
   deriveTodayGames(); broadcast(); res.json({ ok: true });
 });
 
@@ -1198,6 +1220,8 @@ app.post('/api/match/record-game', (req, res) => {
     }
   }
   tournamentStatsCache = null;
+  const _rgWinner = winner === 'team1' ? (state.match.team1.tag||state.match.team1.name||'Team 1') : (state.match.team2.tag||state.match.team2.name||'Team 2');
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'record-game', _rgWinner + (seriesOver ? ' — series over' : ''));
   deriveTodayGames(); broadcast(); res.json({ ok: true, seriesOver });
 });
 
@@ -1249,6 +1273,7 @@ app.post('/api/match/record-bye', requireAdmin, (req, res) => {
     }
   }
   tournamentStatsCache = null;
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'record-bye', (seriesWalkover ? 'walkover → ' : 'bye → ') + winner);
   deriveTodayGames(); broadcast(); res.json({ ok: true, seriesOver: seriesNowOver });
 });
 
@@ -1273,6 +1298,7 @@ app.post('/api/match/reset-series', (req, res) => {
     if (_sg) _sg.result = null;
   }
   tournamentStatsCache = null;
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'reset-series', '');
   deriveTodayGames(); broadcast(); res.json({ ok: true });
 });
 
@@ -1290,6 +1316,7 @@ app.post('/api/schedule/game/clear-result', requireAdmin, (req, res) => {
     state.match.team2.score    = 0;
   }
   tournamentStatsCache = null;
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'clear-game-result', dayId + '/' + gameId);
   deriveTodayGames(); broadcast(); res.json({ ok: true });
 });
 
@@ -1336,6 +1363,7 @@ app.post('/api/profiles/save', requireAdmin, (req, res) => {
   saveProfiles(profiles);
   state.meta.activeProfileId = profile.id;
   state.meta.activeProfileName = profile.name;
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'save-profile', name.trim());
   broadcast();
   res.json({ ok: true, profile, savedSnapshot: profile.data });
 });
@@ -1414,6 +1442,7 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
   }
   state.meta.activeProfileId   = id;
   state.meta.activeProfileName = profile.name;
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'load-profile', profile.name);
   broadcast();
   res.json({ ok: true, savedSnapshot: profile.data });
 });
@@ -1434,7 +1463,9 @@ app.post('/api/profiles/rename', requireAdmin, (req, res) => {
 app.post('/api/profiles/delete', requireAdmin, (req, res) => {
   const { id } = req.body;
   if (!id) return res.status(400).json({ error: 'id required' });
+  const _delProf = loadProfiles().find(p => p.id === id);
   saveProfiles(loadProfiles().filter(p => p.id !== id));
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'delete-profile', (_delProf && _delProf.name) || id);
   if (state.meta.activeProfileId === id) { state.meta.activeProfileId = null; state.meta.activeProfileName = null; broadcast(); }
   res.json({ ok: true });
 });
@@ -1479,6 +1510,40 @@ app.post('/api/settings/regenerate-token', requireAdmin, (req, res) => {
   broadcast(); res.json({ ok: true, token: state.settings.graphicsToken });
 });
 
+// ── Multi-user workflow — in-memory state ──────────────────────────────────────
+const connectedUsers  = {};  // socketId → { username, role, page, connectedAt }
+const pageClaims      = {};  // pageKey  → { user, role, socketId, claimedAt }
+const pageLastActions = {};  // pageKey  → { user, action, timestamp }
+const actionLog       = [];  // ring buffer, max 200 entries
+
+function resolveUser(socket) {
+  const u = socket.request.session && socket.request.session.user;
+  return u ? (u.username || u.role || 'Unknown') : 'Unknown';
+}
+function resolveRole(socket) {
+  const u = socket.request.session && socket.request.session.user;
+  return u ? (u.role || 'operator') : 'operator';
+}
+function resolveUserFromReq(req) {
+  const u = req.session && req.session.user;
+  return u ? (u.username || u.role || 'Unknown') : 'Unknown';
+}
+function resolveRoleFromReq(req) {
+  const u = req.session && req.session.user;
+  return u ? (u.role || 'operator') : 'operator';
+}
+function recordAction(pageKey, username, action) {
+  pageLastActions[pageKey] = { user: username, action, timestamp: Date.now() };
+  io.emit('lastActions:update', pageLastActions);
+}
+function logAction(username, role, action, detail) {
+  actionLog.unshift({ timestamp: Date.now(), user: username, role, action, detail: detail || '' });
+  if (actionLog.length > 200) actionLog.length = 200;
+}
+
+// ── Action log API (admin only) ────────────────────────────────────────────────
+app.get('/api/action-log', requireAdmin, (req, res) => res.json(actionLog));
+
 io.on('connection', socket => {
   const sess  = socket.request.session;
   const token = socket.handshake.auth.token || socket.handshake.query.token || '';
@@ -1493,15 +1558,53 @@ io.on('connection', socket => {
   console.log('Connected:', label);
   socket.emit('state', Object.assign({}, state, { teams: loadTeams() }));
 
-  // Only authenticated users can patch state
   if (isUser) {
+    // Populate presence
+    connectedUsers[socket.id] = {
+      username: resolveUser(socket), role: resolveRole(socket),
+      page: null, connectedAt: Date.now()
+    };
+    logAction(resolveUser(socket), resolveRole(socket), 'connect', '');
+    io.emit('presence:list', Object.values(connectedUsers));
+    // Sync current multi-user state to new connection
+    socket.emit('lastActions:update', pageLastActions);
+    socket.emit('claims:update', pageClaims);
+
+    socket.on('presence:page', ({ page }) => {
+      if (connectedUsers[socket.id]) {
+        connectedUsers[socket.id].page = page;
+        io.emit('presence:list', Object.values(connectedUsers));
+      }
+    });
+
+    socket.on('claim:page', ({ page }) => {
+      pageClaims[page] = { user: resolveUser(socket), role: resolveRole(socket), socketId: socket.id, claimedAt: Date.now() };
+      io.emit('claims:update', pageClaims);
+    });
+
+    socket.on('claim:release', ({ page }) => {
+      if (pageClaims[page] && pageClaims[page].socketId === socket.id) {
+        delete pageClaims[page];
+        io.emit('claims:update', pageClaims);
+      }
+    });
+
     socket.on('state:patch', patch => {
       if (sess.user.role !== 'admin') return;
       deepMerge(state, patch); broadcast();
     });
   }
 
-  socket.on('disconnect', () => console.log('Disconnected:', label));
+  socket.on('disconnect', () => {
+    console.log('Disconnected:', label);
+    if (isUser) {
+      logAction(resolveUser(socket), resolveRole(socket), 'disconnect', '');
+      delete connectedUsers[socket.id];
+      Object.keys(pageClaims).forEach(p => { if (pageClaims[p].socketId === socket.id) delete pageClaims[p]; });
+      io.emit('presence:list', Object.values(connectedUsers));
+      io.emit('claims:update', pageClaims);
+    }
+  });
 });
 
 server.listen(PORT, () => {
