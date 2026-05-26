@@ -428,7 +428,7 @@ app.get('/api/config', (req, res) => res.json({ externalUrl: EXTERNAL_URL }));
 
 // ── State API ──────────────────────────────────────────────────────────────────
 app.get('/api/state', (req, res) => res.json(state));
-app.post('/api/state/reset', requireAdmin, (req, res) => { state = makeDefault(); broadcast(); res.json({ ok: true }); });
+app.post('/api/state/reset', requireAdmin, (req, res) => { state = makeDefault(); deriveTodayGames(); broadcast(); res.json({ ok: true }); });
 app.post('/api/match',  requireAdmin, (req, res) => { deepMerge(state.match, req.body); broadcast(); res.json({ ok: true }); });
 
 app.post('/api/score', (req, res) => {
@@ -1197,6 +1197,22 @@ app.post('/api/match/reset-series', (req, res) => {
     const _day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
     const _sg  = _day && _day.games.find(g => g.id === state.match.scheduleGameId);
     if (_sg) _sg.result = null;
+  }
+  deriveTodayGames(); broadcast(); res.json({ ok: true });
+});
+
+app.post('/api/schedule/game/clear-result', requireAdmin, (req, res) => {
+  const { dayId, gameId } = req.body;
+  const day = (state.tournament.schedule || []).find(d => d.id === dayId);
+  const sg  = day && day.games.find(g => g.id === gameId);
+  if (!sg) return res.status(404).json({ error: 'Game not found' });
+  sg.result = null;
+  // If this game is currently loaded, reset the series state too
+  if (state.match.scheduleDayId === dayId && state.match.scheduleGameId === gameId) {
+    state.match.currentGameNum = 1;
+    state.match.seriesGames    = [];
+    state.match.team1.score    = 0;
+    state.match.team2.score    = 0;
   }
   deriveTodayGames(); broadcast(); res.json({ ok: true });
 });
