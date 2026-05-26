@@ -810,14 +810,19 @@ html, body {
 .schedule-day-header.collapsed + .schedule-games { display: none; }
 
 .schedule-game {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 12px;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
 }
 .schedule-game:last-child { border-bottom: none; }
+
+.sched-game-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+}
+.schedule-game.expandable .sched-game-summary { cursor: pointer; }
+.schedule-game.expandable .sched-game-summary:hover { background: rgba(255,255,255,0.03); }
 
 .sched-stage {
   font-size: 10px; font-weight: 700;
@@ -849,9 +854,12 @@ html, body {
 .sched-result {
   font-size: 12px; font-weight: 700;
   color: var(--text-dim);
-  width: 60px;
+  max-width: 160px;
   text-align: right;
   flex-shrink: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .sched-result.completed { color: var(--text); }
 
@@ -861,6 +869,95 @@ html, body {
   color: #f59e0b;
   flex-shrink: 0;
 }
+
+.sched-expand-arrow {
+  font-size: 10px;
+  color: var(--text-faint);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+}
+.schedule-game.open .sched-expand-arrow { transform: rotate(180deg); }
+
+.sched-game-detail {
+  display: none;
+  background: var(--bg);
+  border-top: 1px solid var(--border);
+  padding: 12px 14px;
+}
+.schedule-game.open .sched-game-detail { display: block; }
+
+.sched-game-block { margin-bottom: 14px; }
+.sched-game-block:last-child { margin-bottom: 0; }
+
+.sched-game-block-header {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: uppercase;
+  color: var(--text-dim);
+  padding-bottom: 7px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sched-game-sides {
+  display: flex;
+  gap: 10px;
+}
+.sched-side { flex: 1; }
+
+.sched-side-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+  font-family: var(--data-font);
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.sched-side-badge {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 5px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.sched-side-badge.blue { background: rgba(59,130,246,0.2); color: #60a5fa; }
+.sched-side-badge.red  { background: rgba(239,68,68,0.2);  color: #f87171; }
+
+.sched-pick {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 2px 0;
+}
+
+.sched-pick-icon {
+  width: 26px; height: 26px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.sched-pick-empty { background: var(--border); }
+
+.sched-pick-info { display: flex; flex-direction: column; gap: 1px; }
+.sched-bye-label {
+  color: #f59e0b;
+  font-weight: 700;
+}
+.sched-bye-body {
+  font-size: 11px;
+  color: var(--text-faint);
+  padding: 6px 0 2px;
+  font-style: italic;
+}
+
+.sched-pick-champ {
+  font-size: 12px; font-weight: 600;
+  color: var(--text);
+  font-family: var(--data-font);
+}
+.sched-pick-handle { font-size: 10px; color: var(--text-dim); }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    DRAFT TAB
@@ -1360,4 +1457,136 @@ html, body {
   letter-spacing: 0.04em;
   text-transform: capitalize;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TOURNAMENT HISTORY — shared (roster expand + draft pick panel)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Roster tab: tournament history section */
+.trn-history {
+  margin: 10px 0 8px;
+  border: 1px solid rgba(255,200,50,0.18);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.trn-history-label {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: #f0cc44;
+  background: rgba(240,204,68,0.07);
+  border-bottom: 1px solid rgba(240,204,68,0.15);
+  padding: 5px 8px;
+}
+
+/* Tournament champion rows (roster + operator) */
+.trn-champ-row {
+  cursor: pointer;
+}
+.trn-champ-row:hover td { background: rgba(240,204,68,0.05); }
+
+.trn-wr-cell { white-space: nowrap; }
+
+.trn-expand-arrow {
+  font-size: 8px;
+  opacity: 0.35;
+  margin-left: 4px;
+  display: inline-block;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.trn-champ-row:hover .trn-expand-arrow { opacity: 0.7; }
+.trn-champ-row.open .trn-expand-arrow  { transform: rotate(180deg); opacity: 0.7; }
+
+/* Hidden match-ref detail row, revealed on click */
+.trn-champ-detail {
+  display: none;
+}
+.trn-champ-detail.open {
+  display: table-row;
+}
+.trn-champ-detail td {
+  padding: 0 !important;
+  border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+}
+
+.trn-refs {
+  padding: 6px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(0,0,0,0.2);
+}
+
+.trn-ref-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+}
+
+.trn-ref-result {
+  font-family: var(--data-font);
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 5px;
+  border-radius: 2px;
+  min-width: 32px;
+  text-align: center;
+}
+.trn-ref-win  .trn-ref-result { color: #22c55e; background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.25); }
+.trn-ref-loss .trn-ref-result { color: var(--red); background: rgba(240,70,70,0.12); border: 1px solid rgba(240,70,70,0.25); }
+
+.trn-ref-opp {
+  color: var(--text);
+  font-weight: 600;
+  flex: 1;
+}
+
+.trn-ref-meta {
+  color: var(--text-faint);
+  font-size: 10px;
+}
+
+/* Draft pick panel: tournament section */
+.draft-pick-trn {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(240,204,68,0.15);
+}
+
+.draft-pick-trn-hdr {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.trn-badge {
+  font-family: var(--data-font);
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.12em;
+  color: #f0cc44;
+  background: rgba(240,204,68,0.1);
+  border: 1px solid rgba(240,204,68,0.25);
+  padding: 2px 5px;
+  border-radius: 2px;
+}
+
+.trn-summary {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+/* Pick slot badge (visible on pick slot summary without expanding) */
+.trn-pick-badge {
+  font-family: var(--data-font);
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #f0cc44;
+  background: rgba(240,204,68,0.1);
+  border: 1px solid rgba(240,204,68,0.2);
+  border-radius: 2px;
+  padding: 2px 5px;
+  margin-top: 2px;
 }

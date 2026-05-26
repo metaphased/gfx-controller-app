@@ -30,7 +30,15 @@
       "Bash(npx --yes playwright@latest --version)",
       "Bash(npx playwright@1.60.0 --yes screenshot http://localhost:3000/login/ \"C:/Users/Toby/operator-login.png\")",
       "Bash(dir \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\")",
-      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" log --oneline -5)"
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" log --oneline -5)",
+      "Bash(npm install *)",
+      "Bash(dir /b)",
+      "Bash(Get-ChildItem -Path \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" -Recurse -Depth 2)",
+      "Bash(Select-Object FullName, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)",
+      "PowerShell(ls \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\\\\.claude\\\\\")",
+      "Bash(node server.js)",
+      "Bash(echo \"PID=$!\")"
     ]
   }
 }

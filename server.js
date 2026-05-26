@@ -324,6 +324,78 @@ function snapshotForProfile() {
 let state = loadState();
 function broadcast() { saveState(); io.emit('state', Object.assign({}, state, { teams: loadTeams() })); }
 
+let tournamentStatsCache = null;
+
+function buildTournamentStats() {
+  const teams = loadTeams();
+  const stats = {};
+
+  const getTeamName = (id, override) => {
+    if (override) return override;
+    const t = teams.find(x => x.id === id);
+    return t ? (t.name || t.tag || 'TBD') : 'TBD';
+  };
+
+  const parseChampion = url => {
+    if (!url) return null;
+    const file = url.split('/').pop();
+    const name = file.split('_')[0];
+    return name || null;
+  };
+
+  const processGames = (games, t1Name, t2Name) => {
+    (games || []).forEach(game => {
+      if (!game || game.isBye) return;
+      [
+        { picks: game.t1RolePicks, players: (game.players && game.players.team1) || [], won: game.winner === 'team1', opponentName: t2Name, mySide: game.t1Side },
+        { picks: game.t2RolePicks, players: (game.players && game.players.team2) || [], won: game.winner === 'team2', opponentName: t1Name, mySide: game.t2Side },
+      ].forEach(({ picks, players, won, opponentName, mySide }) => {
+        players.forEach((p, i) => {
+          const handle = p.handle;
+          if (!handle) return;
+          const champ = parseChampion((picks || [])[i]);
+          if (!champ) return;
+          if (!stats[handle]) stats[handle] = {};
+          if (!stats[handle][champ]) stats[handle][champ] = { games: 0, wins: 0, losses: 0, imgUrl: (picks || [])[i], matchRefs: [] };
+          const entry = stats[handle][champ];
+          entry.games++;
+          won ? entry.wins++ : entry.losses++;
+          entry.matchRefs.push({ opponentName, gameNum: game.gameNum, side: mySide, won });
+        });
+      });
+    });
+  };
+
+  // All completed schedule matches
+  (state.tournament.schedule || []).forEach(day => {
+    (day.games || []).forEach(sg => {
+      if (!sg.result || !sg.result.completed) return;
+      const t1Name = getTeamName(sg.team1Id, sg.team1Override);
+      const t2Name = getTeamName(sg.team2Id, sg.team2Override);
+      processGames(sg.result.games, t1Name, t2Name);
+    });
+  });
+
+  // Active in-progress series (only if not already committed to a completed result)
+  let activeAlreadyCommitted = false;
+  if (state.match.scheduleDayId && state.match.scheduleGameId) {
+    const _day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
+    const _sg  = _day && _day.games.find(g => g.id === state.match.scheduleGameId);
+    if (_sg && _sg.result && _sg.result.completed) activeAlreadyCommitted = true;
+  }
+  if (!activeAlreadyCommitted) {
+    processGames(state.match.seriesGames, state.match.team1.name || 'Team 1', state.match.team2.name || 'Team 2');
+  }
+
+  Object.values(stats).forEach(champMap => {
+    Object.values(champMap).forEach(entry => {
+      entry.winRate = entry.games > 0 ? Math.round((entry.wins / entry.games) * 100) : 0;
+    });
+  });
+
+  return stats;
+}
+
 // Translates a raw stage key (e.g. 'bracket-round-0', 'groupStage') to a display label.
 const _STAGE_LABEL_MAP = {
   groupStage:'Group Stage', roundOf16:'Round of 16', quarterfinals:'Quarterfinals',
@@ -1125,6 +1197,7 @@ app.post('/api/match/record-game', (req, res) => {
       }
     }
   }
+  tournamentStatsCache = null;
   deriveTodayGames(); broadcast(); res.json({ ok: true, seriesOver });
 });
 
@@ -1175,6 +1248,7 @@ app.post('/api/match/record-bye', requireAdmin, (req, res) => {
       }
     }
   }
+  tournamentStatsCache = null;
   deriveTodayGames(); broadcast(); res.json({ ok: true, seriesOver: seriesNowOver });
 });
 
@@ -1198,6 +1272,7 @@ app.post('/api/match/reset-series', (req, res) => {
     const _sg  = _day && _day.games.find(g => g.id === state.match.scheduleGameId);
     if (_sg) _sg.result = null;
   }
+  tournamentStatsCache = null;
   deriveTodayGames(); broadcast(); res.json({ ok: true });
 });
 
@@ -1214,7 +1289,13 @@ app.post('/api/schedule/game/clear-result', requireAdmin, (req, res) => {
     state.match.team1.score    = 0;
     state.match.team2.score    = 0;
   }
+  tournamentStatsCache = null;
   deriveTodayGames(); broadcast(); res.json({ ok: true });
+});
+
+app.get('/api/tournament-stats', (req, res) => {
+  if (!tournamentStatsCache) tournamentStatsCache = buildTournamentStats();
+  res.json(tournamentStatsCache);
 });
 
 // ── Broadcast settings ────────────────────────────────────────────────────────

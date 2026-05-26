@@ -1368,3 +1368,69 @@ input[type=search]::-webkit-search-decoration { display: none; }
 }
 
 /* ── Font picker ────────────────────────────────────── */
+
+/* ── Tournament History (intel panel) ────────────────── */
+.intel-trn-section {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(240,204,68,0.18);
+}
+
+/* Reuse .trn-champ-row / .trn-champ-detail / .trn-refs / .trn-ref-row
+   from caster.css — these classes are shared and defined once there.
+   Control-specific overrides below: */
+
+.intel-trn-section .intel-champ-thead th {
+  color: rgba(240,204,68,0.55);
+}
+
+.intel-trn-section .trn-champ-row:hover td {
+  background: rgba(240,204,68,0.04);
+}
+
+/* Shared tournament styles needed in control context */
+.trn-champ-row { cursor: pointer; }
+.trn-champ-detail { display: none; }
+.trn-champ-detail.open { display: table-row; }
+.trn-champ-detail td { padding: 0 !important; }
+
+.trn-wr-cell { white-space: nowrap; }
+
+.trn-expand-arrow {
+  font-size: 8px;
+  opacity: 0.35;
+  margin-left: 4px;
+  display: inline-block;
+  transition: transform 0.15s, opacity 0.15s;
+}
+.trn-champ-row:hover .trn-expand-arrow { opacity: 0.7; }
+.trn-champ-row.open  .trn-expand-arrow { transform: rotate(180deg); opacity: 0.7; }
+
+.trn-refs {
+  padding: 6px 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(0,0,0,0.2);
+}
+
+.trn-ref-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+
+.trn-ref-result {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.1em;
+  padding: 2px 5px;
+  border-radius: 2px;
+  min-width: 36px;
+  text-align: center;
+}
+.trn-ref-win  .trn-ref-result { color: #4dcc90; background: rgba(77,204,144,0.12); border: 1px solid rgba(77,204,144,0.25); }
+.trn-ref-loss .trn-ref-result { color: #f07070; background: rgba(240,112,112,0.12); border: 1px solid rgba(240,112,112,0.25); }
+
+.trn-ref-opp  { color: #fff; font-weight: 600; flex: 1; }
+.trn-ref-meta { color: rgba(255,255,255,0.4); font-size: 11px; }
