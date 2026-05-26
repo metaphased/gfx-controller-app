@@ -88,12 +88,14 @@ async function syncTarget(target, opts = {}) {
     }));
 
   fs.mkdirSync(target.local, { recursive: true });
-  const existing = new Set(fs.readdirSync(target.local));
+  // Case-insensitive set — Windows preserves original casing in readdirSync even after
+  // overwriting (e.g. FiddleSticks_0.jpg stays named that after writing Fiddlesticks_0.jpg).
+  const existing = new Set(fs.readdirSync(target.local).map(f => f.toLowerCase()));
 
   const forceThis = target.key === 'roles' && forceRoles;
   const toDownload = forceThis
     ? items
-    : items.filter(item => !existing.has(item.localName));
+    : items.filter(item => !existing.has(item.localName.toLowerCase()));
 
   const result = {
     key:        target.key,
