@@ -93,13 +93,16 @@ socket.on('disconnect', () => {
   el.textContent = '⬤ Disconnected';
   el.className = 'connection-status disconnected';
 });
-socket.on('state', (state) => {
+socket.on('state', async (state) => {
   window._state = state;
+  await refreshControlTournamentStats();
   syncUI(state);
   // Debounced dirty check — runs 2 s after state settles
   clearTimeout(_dirtyCheckTimer);
   _dirtyCheckTimer = setTimeout(checkProfileDirty, 2000);
 });
+
+refreshControlTournamentStats();
 
 // ── Navigation ─────────────────────────────────────────────────────────────────
 document.querySelectorAll('.nav-item').forEach(navEl => {
@@ -2050,6 +2053,23 @@ function updatePlayer(team, index, field, value) { api('/api/players', { team, i
 
 // ── Match Intel Panel ──────────────────────────────────────────────────────────
 var _intelExpanded = {}; // key → true, persists across rebuilds
+var _controlTournamentStats = {};
+
+async function refreshControlTournamentStats() {
+  try {
+    const r = await fetch('/api/tournament-stats');
+    _controlTournamentStats = await r.json();
+  } catch (_) {}
+}
+
+function toggleIntelTrnChamp(refsId) {
+  const el = document.getElementById(refsId);
+  if (el) {
+    el.classList.toggle('open');
+    const row = el.previousElementSibling;
+    if (row) row.classList.toggle('open');
+  }
+}
 
 function _intelWrClass(pct)  { return pct >= 60 ? 'it-wr-high' : pct >= 50 ? 'it-wr-mid' : 'it-wr-low'; }
 function _intelWrColor(pct)  { return pct >= 60 ? '#4dcc90'    : pct >= 50 ? '#f0cc44'    : '#f07070';   }
@@ -2095,6 +2115,42 @@ function _intelChampsHtml(pool) {
   '</table>';
 }
 
+function _intelTrnHtml(handle) {
+  const champMap = (_controlTournamentStats && handle && _controlTournamentStats[handle]) ? _controlTournamentStats[handle] : {};
+  const entries = Object.entries(champMap).sort(function(a, b) { return b[1].games - a[1].games; });
+  if (!entries.length) return '';
+  const rows = entries.map(function(pair) {
+    const champ = pair[0], entry = pair[1];
+    const refsId = 'ctrl-trn-refs-' + escHtml(handle) + '-' + escHtml(champ);
+    const refsHtml = (entry.matchRefs || []).map(function(ref) {
+      return '<div class="trn-ref-row ' + (ref.won ? 'trn-ref-win' : 'trn-ref-loss') + '">' +
+        '<span class="trn-ref-result">' + (ref.won ? 'WIN' : 'LOSS') + '</span>' +
+        '<span class="trn-ref-opp">vs ' + escHtml(ref.opponentName) + '</span>' +
+        '<span class="trn-ref-meta">Game ' + escHtml(String(ref.gameNum)) + ' \xb7 ' + escHtml((ref.side || '').toUpperCase()) + '</span>' +
+      '</div>';
+    }).join('');
+    return '<tr class="trn-champ-row" onclick="event.stopPropagation();toggleIntelTrnChamp(\'' + escHtml(refsId) + '\')">' +
+        '<td class="col-name">' + escHtml(champ) + '</td>' +
+        '<td class="col-games">' + entry.games + '</td>' +
+        '<td class="col-bar"><div class="intel-wr-bar"><div class="intel-wr-fill" style="width:' + entry.winRate + '%;background:' + _intelWrColor(entry.winRate) + '"></div></div></td>' +
+        '<td class="col-wr ' + _intelWrClass(entry.winRate) + ' trn-wr-cell">' + entry.winRate + '% <span class="trn-expand-arrow">▼</span></td>' +
+      '</tr>' +
+      '<tr class="trn-champ-detail" id="' + escHtml(refsId) + '">' +
+        '<td colspan="4"><div class="trn-refs">' + refsHtml + '</div></td>' +
+      '</tr>';
+  }).join('');
+  return '<div class="intel-trn-section">' +
+    '<table class="intel-champ-table">' +
+      '<thead class="intel-champ-thead"><tr>' +
+        '<th class="col-name icht-left">Tournament</th>' +
+        '<th class="col-games icht-center">Games</th>' +
+        '<th class="col-bar icht-center" colspan="2">Win Rate</th>' +
+      '</tr></thead>' +
+      '<tbody class="intel-champ-tbody">' + rows + '</tbody>' +
+    '</table>' +
+  '</div>';
+}
+
 function _intelDraftKv(label, value, cls) {
   return '<div><div class="intel-draft-kv-label">' + label + '</div>' +
     '<div class="intel-draft-kv-value' + (cls ? ' ' + cls : '') + '">' + value + '</div></div>';
@@ -2119,6 +2175,8 @@ function _intelPlayerCard(p, cardKey) {
   const isExpanded = !!_intelExpanded[cardKey];
   const riotId     = p.riotId ? escHtml(p.riotId) + ' &nbsp;·&nbsp; ' + escHtml((p.opggRegion || '').toUpperCase()) : '';
   const hasDraft   = !!p.draftChampStats;
+  const trnHtml    = _intelTrnHtml(p.handle);
+  const hasRight   = hasDraft || !!trnHtml;
 
   const header = '<div class="intel-player-header">' +
     '<span class="intel-role">' + escHtml(p.role || '') + '</span>' +
@@ -2132,7 +2190,10 @@ function _intelPlayerCard(p, cardKey) {
       (riotId ? '<div class="intel-riot-id">' + riotId + '</div>' : '') +
       _intelChampsHtml(p.champPool || null) +
     '</div>' +
-    (hasDraft ? '<div class="intel-body-right">' + _intelDraftHtml(p.draftChampStats) + '</div>' : '') +
+    (hasRight ? '<div class="intel-body-right">' +
+      (hasDraft ? _intelDraftHtml(p.draftChampStats) : '') +
+      trnHtml +
+    '</div>' : '') +
   '</div>';
 
   return '<div class="intel-player-card' + (isExpanded ? ' expanded' : '') + '" data-intel-key="' + escHtml(cardKey) + '" onclick="toggleIntelPlayer(\'' + cardKey + '\')">' +

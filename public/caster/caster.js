@@ -6,7 +6,8 @@ const socket = io({ auth: { token: TOKEN }, query: { token: TOKEN } });
 
 let _state = null;
 let _teams = [];
-let _activeTab = 'roster';
+let _activeTab = localStorage.getItem('casterTab') || 'roster';
+let _tournamentStats = {};
 
 // ── Draft constants (must match draft overlay exactly) ────────────────────────
 const BLUE_BAN_IDX  = [0,2,4,13,15];
@@ -56,18 +57,35 @@ socket.on('disconnect', () => {
   lbl.textContent = 'Disconnected';
 });
 
-socket.on('state', (s) => {
+async function refreshTournamentStats() {
+  try {
+    const r = await fetch('/api/tournament-stats');
+    _tournamentStats = await r.json();
+  } catch (_) {}
+}
+
+socket.on('state', async (s) => {
   _state = s;
   _teams = s.teams || [];
+  await refreshTournamentStats();
   renderAll();
 });
 
+refreshTournamentStats();
+
 // ── Tab switching ──────────────────────────────────────────────────────────────
+function activateTab(tab) {
+  _activeTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + tab));
+}
+
+activateTab(_activeTab);
+
 document.querySelectorAll('.tab-btn').forEach(btn => {
   btn.addEventListener('click', () => {
-    _activeTab = btn.dataset.tab;
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
-    document.querySelectorAll('.tab-pane').forEach(p => p.classList.toggle('active', p.id === 'pane-' + _activeTab));
+    localStorage.setItem('casterTab', btn.dataset.tab);
+    activateTab(btn.dataset.tab);
   });
 });
 
@@ -218,6 +236,16 @@ function renderRoster() {
   grid.querySelectorAll('.player-row').forEach(row => {
     row.addEventListener('click', () => row.classList.toggle('open'));
   });
+  grid.querySelectorAll('.trn-champ-row').forEach(row => {
+    row.addEventListener('click', e => {
+      e.stopPropagation();
+      const refsEl = document.getElementById(row.dataset.refsId);
+      if (refsEl) {
+        refsEl.classList.toggle('open');
+        row.classList.toggle('open');
+      }
+    });
+  });
 }
 
 function renderTeamRosterCard(team, players, slot) {
@@ -308,6 +336,41 @@ function renderPlayerRow(p, color) {
 
   const rankFull = rk ? '<div class="detail-rank-full">' + esc(rankText(rk)) + '</div>' : '';
 
+  // Tournament history section
+  let trnHistoryHtml = '';
+  const champHistory = (_tournamentStats && p.handle && _tournamentStats[p.handle]) ? _tournamentStats[p.handle] : {};
+  const champEntries = Object.entries(champHistory).sort((a, b) => b[1].games - a[1].games);
+  if (champEntries.length > 0) {
+    const rows = champEntries.map(([champ, entry]) => {
+      const icon = entry.imgUrl ? '<div class="champ-icon-sm" style="background-image:url(' + esc(entry.imgUrl) + ')"></div>' : '';
+      const refsId = 'trn-refs-' + esc(p.handle) + '-' + esc(champ);
+      const refsHtml = (entry.matchRefs || []).map(ref =>
+        '<div class="trn-ref-row ' + (ref.won ? 'trn-ref-win' : 'trn-ref-loss') + '">' +
+          '<span class="trn-ref-result">' + (ref.won ? 'WIN' : 'LOSS') + '</span>' +
+          '<span class="trn-ref-opp">vs ' + esc(ref.opponentName) + '</span>' +
+          '<span class="trn-ref-meta">Game ' + esc(String(ref.gameNum)) + ' · ' + esc((ref.side || '').toUpperCase()) + '</span>' +
+        '</div>'
+      ).join('');
+      return '<tr class="trn-champ-row" data-refs-id="' + esc(refsId) + '">' +
+          '<td><div class="champ-icon-cell">' + icon + '<span class="champ-name">' + esc(champ) + '</span></div></td>' +
+          '<td class="right">' + entry.games + '</td>' +
+          '<td class="right">' + entry.wins + '/' + entry.losses + '</td>' +
+          '<td class="right ' + wrClass(entry.winRate) + ' trn-wr-cell">' + entry.winRate + '% <span class="trn-expand-arrow">▼</span></td>' +
+        '</tr>' +
+        '<tr class="trn-champ-detail" id="' + esc(refsId) + '">' +
+          '<td colspan="4"><div class="trn-refs">' + refsHtml + '</div></td>' +
+        '</tr>';
+    }).join('');
+    trnHistoryHtml =
+      '<div class="trn-history">' +
+        '<div class="trn-history-label">Tournament History</div>' +
+        '<table class="champ-table">' +
+          '<thead><tr><th>Champion</th><th class="right">Games</th><th class="right">W / L</th><th class="right">Win%</th></tr></thead>' +
+          '<tbody>' + rows + '</tbody>' +
+        '</table>' +
+      '</div>';
+  }
+
   return '<div class="player-row">' +
     '<div class="player-row-summary">' +
       '<div class="player-role-icon" style="background-image:url(' + esc(roleIconUrl(p.role)) + ')"></div>' +
@@ -320,6 +383,7 @@ function renderPlayerRow(p, color) {
       (p.riotId ? '<div class="detail-riot-id">' + esc(p.riotId) + (p.opggRegion ? ' <span class="detail-region">' + esc(p.opggRegion.toUpperCase()) + '</span>' : '') + '</div>' : '') +
       rankFull +
       draftStatsHtml +
+      trnHistoryHtml +
       champRows +
     '</div>' +
   '</div>';
@@ -671,8 +735,10 @@ function renderDraft() {
       const player   = playerForPick(url, rolePicks, players);
       const handle   = player ? (player.handle || '') : '';
       const dcs      = player ? (player.draftChampStats || null) : null;
+      const trnEntry = (handle && name && _tournamentStats[handle]) ? (_tournamentStats[handle][name] || null) : null;
+      const hasExpand = dcs || trnEntry;
 
-      let statsPanel = '';
+      let opggPart = '';
       if (dcs) {
         const kdaRatio = dcs.kda && parseFloat(dcs.kda.d) > 0
           ? ((parseFloat(dcs.kda.k) + parseFloat(dcs.kda.a)) / parseFloat(dcs.kda.d)).toFixed(2)
@@ -686,19 +752,37 @@ function renderDraft() {
           { val: dcs.kp   != null ? dcs.kp + '%' : '—', key: 'Kill Part.', cls: '' },
           { val: dcs.games != null ? dcs.games : '—', key: 'Matches',   cls: '' },
         ];
-        statsPanel = '<div class="draft-pick-stats-panel">' +
-          '<div class="dps-grid">' +
-            stats.map(s =>
-              '<div class="dps-cell">' +
-                '<div class="dps-val ' + s.cls + '">' + esc(String(s.val)) + '</div>' +
-                '<div class="dps-key">' + s.key + '</div>' +
-              '</div>'
-            ).join('') +
-          '</div>' +
+        opggPart = '<div class="dps-grid">' +
+          stats.map(s =>
+            '<div class="dps-cell">' +
+              '<div class="dps-val ' + s.cls + '">' + esc(String(s.val)) + '</div>' +
+              '<div class="dps-key">' + s.key + '</div>' +
+            '</div>'
+          ).join('') +
         '</div>';
       }
 
-      const cls = 'draft-pick-slot' + (url ? ' filled' : '') + (isActive ? ' active' : '') + (dcs ? ' has-stats' : '');
+      let trnPart = '';
+      if (trnEntry) {
+        const refsHtml = (trnEntry.matchRefs || []).map(ref =>
+          '<div class="trn-ref-row ' + (ref.won ? 'trn-ref-win' : 'trn-ref-loss') + '">' +
+            '<span class="trn-ref-result">' + (ref.won ? 'WIN' : 'LOSS') + '</span>' +
+            '<span class="trn-ref-opp">vs ' + esc(ref.opponentName) + '</span>' +
+            '<span class="trn-ref-meta">Game ' + esc(String(ref.gameNum)) + ' · ' + esc((ref.side || '').toUpperCase()) + '</span>' +
+          '</div>'
+        ).join('');
+        trnPart = '<div class="draft-pick-trn">' +
+          '<div class="draft-pick-trn-hdr">' +
+            '<span class="trn-badge">TOURNAMENT</span>' +
+            '<span class="trn-summary">' + trnEntry.games + (trnEntry.games === 1 ? ' Game' : ' Games') + ' · <span class="' + wrClass(trnEntry.winRate) + '">' + trnEntry.winRate + '% WR</span></span>' +
+          '</div>' +
+          '<div class="trn-refs">' + refsHtml + '</div>' +
+        '</div>';
+      }
+
+      const statsPanel = hasExpand ? '<div class="draft-pick-stats-panel">' + opggPart + trnPart + '</div>' : '';
+
+      const cls = 'draft-pick-slot' + (url ? ' filled' : '') + (isActive ? ' active' : '') + (hasExpand ? ' has-stats' : '');
       const img = url ? 'background-image:url(' + esc(url) + ')' : '';
       return '<div class="' + cls + '">' +
         '<div class="draft-pick-main">' +
@@ -706,8 +790,9 @@ function renderDraft() {
           '<div class="draft-pick-info">' +
             '<div class="draft-pick-name">' + esc(name || '—') + '</div>' +
             (handle ? '<div class="draft-pick-handle">' + esc(handle) + '</div>' : '') +
+            (trnEntry ? '<div class="trn-pick-badge">' + trnEntry.games + (trnEntry.games === 1 ? ' Game' : ' Games') + ' · <span class="' + wrClass(trnEntry.winRate) + '">' + trnEntry.winRate + '%</span></div>' : '') +
           '</div>' +
-          (dcs ? '<button class="draft-pick-expand-btn" onclick="this.closest(\'.draft-pick-slot\').classList.toggle(\'expanded\')">▼</button>' : '') +
+          (hasExpand ? '<button class="draft-pick-expand-btn" onclick="this.closest(\'.draft-pick-slot\').classList.toggle(\'expanded\')">▼</button>' : '') +
         '</div>' +
         statsPanel +
       '</div>';
@@ -888,22 +973,81 @@ function renderSchedule() {
       const t1name = resolveTeamName(g.team1Id, g.team1Override);
       const t2name = resolveTeamName(g.team2Id, g.team2Override);
       const result = g.result && g.result.completed;
+      const hasGames = result && !g.isBye && g.result.games && g.result.games.length > 0;
+
       let resultText = '—';
       if (g.isBye) {
         resultText = 'BYE';
       } else if (result) {
-        const wn = g.result.winner === 'team1' ? t1name : t2name;
-        resultText = wn;
+        resultText = g.result.winner === 'team1' ? t1name : t2name;
       }
 
-      return '<div class="schedule-game">' +
-        '<div class="sched-stage">' + esc(stageLabel(g.stage)) + '</div>' +
-        '<div class="sched-teams">' +
-          esc(t1name) + '<span class="sched-vs">VS</span>' + esc(t2name) +
-        '</div>' +
-        '<div class="sched-format">' + esc(g.format || '') + '</div>' +
-        (g.fearlessDraft ? '<div class="sched-fearless">FEARLESS</div>' : '') +
-        '<div class="sched-result' + (result ? ' completed' : '') + '">' + esc(resultText) + '</div>' +
+      const summaryHtml =
+        '<div class="sched-game-summary"' + (hasGames ? ' onclick="this.parentElement.classList.toggle(\'open\')"' : '') + '>' +
+          '<div class="sched-stage">' + esc(stageLabel(g.stage)) + '</div>' +
+          '<div class="sched-teams">' +
+            esc(t1name) + '<span class="sched-vs">VS</span>' + esc(t2name) +
+          '</div>' +
+          '<div class="sched-format">' + esc(g.format || '') + '</div>' +
+          (g.fearlessDraft ? '<div class="sched-fearless">FEARLESS</div>' : '') +
+          '<div class="sched-result' + (result ? ' completed' : '') + '">' + esc(resultText) + '</div>' +
+          (hasGames ? '<div class="sched-expand-arrow">▼</div>' : '') +
+        '</div>';
+
+      let detailHtml = '';
+      if (hasGames) {
+        const teamWins = { team1: 0, team2: 0 };
+        const blocksHtml = g.result.games.map(game => {
+          teamWins[game.winner]++;
+          const winnerName = game.winner === 'team1' ? t1name : t2name;
+          const redTeam = game.blueSideTeam === 'team1' ? 'team2' : 'team1';
+          const scoreText = teamWins[game.blueSideTeam] + ' &mdash; ' + teamWins[redTeam];
+
+          const blue = game.blueSideTeam === 'team1'
+            ? { picks: game.t1RolePicks || [], players: (game.players && game.players.team1) || [], name: t1name }
+            : { picks: game.t2RolePicks || [], players: (game.players && game.players.team2) || [], name: t2name };
+          const red = game.blueSideTeam === 'team1'
+            ? { picks: game.t2RolePicks || [], players: (game.players && game.players.team2) || [], name: t2name }
+            : { picks: game.t1RolePicks || [], players: (game.players && game.players.team1) || [], name: t1name };
+
+          const renderSide = (side, color) => {
+            const picksHtml = side.picks.map((url, i) => {
+              const champName = url ? url.split('/').pop().split('_')[0] : '';
+              const handle = (side.players[i] && side.players[i].handle) || '';
+              return '<div class="sched-pick">' +
+                (url ? '<img src="' + url + '" class="sched-pick-icon">' : '<div class="sched-pick-icon sched-pick-empty"></div>') +
+                '<div class="sched-pick-info">' +
+                  '<div class="sched-pick-champ">' + esc(champName) + '</div>' +
+                  '<div class="sched-pick-handle">' + esc(handle) + '</div>' +
+                '</div>' +
+              '</div>';
+            }).join('');
+            return '<div class="sched-side">' +
+              '<div class="sched-side-header">' +
+                '<span class="sched-side-badge ' + color + '">' + color.toUpperCase() + '</span>' +
+                '<span class="sched-side-name">' + esc(side.name) + '</span>' +
+              '</div>' +
+              '<div class="sched-picks">' + picksHtml + '</div>' +
+            '</div>';
+          };
+
+          return '<div class="sched-game-block">' +
+            '<div class="sched-game-block-header">' +
+              'Game ' + game.gameNum + ' &middot; ' + esc(winnerName) + ' WIN' +
+              (game.isBye ? ' &middot; <span class="sched-bye-label">BYE</span>' : ' &middot; ' + scoreText) +
+            '</div>' +
+            (game.isBye
+              ? '<div class="sched-bye-body">No game played &mdash; result awarded as BYE</div>'
+              : '<div class="sched-game-sides">' + renderSide(blue, 'blue') + renderSide(red, 'red') + '</div>') +
+          '</div>';
+        }).join('');
+
+        detailHtml = '<div class="sched-game-detail">' + blocksHtml + '</div>';
+      }
+
+      return '<div class="schedule-game' + (hasGames ? ' expandable' : '') + '">' +
+        summaryHtml +
+        detailHtml +
       '</div>';
     }).join('');
 
