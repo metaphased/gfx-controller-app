@@ -44,15 +44,15 @@ EXTERNAL_URL=http://YOUR_STATIC_IP:3000
 
 ### Champion asset sync (standalone)
 
-Downloads champion tiles, centered images, and role icons from the [DDragon GitHub repo](https://github.com/noxelisdev/LoL_DDragon). Only missing files are fetched on each run.
+Downloads champion tiles, centered images, and role icons from the [DDragon GitHub repo](https://github.com/noxelisdev/LoL_DDragon). Only missing files are fetched on each run. Handles champion renames between DDragon versions (case-insensitive comparison on Windows).
 
 ```bash
 node scripts/sync-assets.js            # download all missing files
-node scripts/sync-assets.js --check    # report what's missing, no downloads
+node scripts/sync-assets.js --check    # report what's missing (lists filenames), no downloads
 node scripts/sync-assets.js --force-roles  # re-download role icons (resolution upgrade)
 ```
 
-Admins can also trigger a sync from **Settings → Champion Assets** in the control panel.
+Admins can also trigger a sync from **Settings → Champion Assets** in the control panel. The UI shows real-time per-target progress (file count + current filename) streamed via Socket.io while the sync runs.
 
 ### Development (auto-reload on save)
 
@@ -139,7 +139,7 @@ Create additional users in **Settings → Accounts**.
 - Background animation system — 12 canvas-based animations + fog overlay
 - Bo1/Bo3/Bo5 series tracking with game-by-game draft snapshots
 - Bracket (single + double elimination), Group Stage standings, Tournament Structure, Prizepool graphics
-- Champion asset sync — download/update champion tiles, centered images, and role icons from DDragon via Settings or `node scripts/sync-assets.js`
+- Champion asset sync — download/update champion tiles, centered images, and role icons from DDragon; real-time progress in the admin UI or via `node scripts/sync-assets.js`
 
 ## Data directory
 
