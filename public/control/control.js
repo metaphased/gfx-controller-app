@@ -143,7 +143,7 @@ GFX_PAGES.forEach(([label, p]) => {
   chip.title = 'Click to copy';
   chip.textContent = label;
   chip.addEventListener('click', () => {
-    navigator.clipboard.writeText(url).then(() => {
+    copyText(url).then(() => {
       chip.textContent = '✓ Copied!';
       setTimeout(() => { chip.textContent = label; }, 1500);
     });
@@ -159,6 +159,21 @@ async function api(path, body) {
     if (!res.ok) console.error('API error', path, res.status, data);
     return data;
   } catch (e) { console.error('Fetch error', path, e); }
+}
+
+// Clipboard copy with execCommand fallback for non-localhost HTTP (remote users)
+function copyText(str) {
+  if (navigator.clipboard && window.isSecureContext) {
+    return navigator.clipboard.writeText(str);
+  }
+  const ta = document.createElement('textarea');
+  ta.value = str;
+  ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+  document.body.appendChild(ta);
+  ta.focus(); ta.select();
+  document.execCommand('copy');
+  document.body.removeChild(ta);
+  return Promise.resolve();
 }
 
 // ── Graphics token + output URLs ───────────────────────────────────────────────
@@ -201,14 +216,14 @@ function syncGfxToken(settings) {
     '<div style="display:flex;align-items:center;gap:8px">' +
     '<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);width:130px;flex-shrink:0">' + escHtml(o.label) + '</span>' +
     '<input type="text" readonly value="' + escHtml(base + o.path + (token ? '?token=' + token : '')) + '" style="flex:1;font-family:monospace;font-size:11px" onclick="this.select()">' +
-    '<button class="btn btn-sm" onclick="navigator.clipboard.writeText(this.previousElementSibling.value)">Copy</button>' +
+    '<button class="btn btn-sm" onclick="copyText(this.previousElementSibling.value)">Copy</button>' +
     '</div>'
   ).join('');
 }
 
 function copyGfxToken() {
   const el = g('gfx-token-display');
-  if (el) navigator.clipboard.writeText(el.value);
+  if (el) copyText(el.value);
 }
 function regenerateGfxToken() {
   if (!confirm('Regenerate graphics token? All current OBS/vMix browser source URLs will stop working until updated.')) return;
