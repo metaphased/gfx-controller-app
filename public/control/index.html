@@ -2092,6 +2092,16 @@
   </div><!-- /lbar-row -->
 </div><!-- /live-bar -->
 
+<div id="app-modal-overlay" class="app-modal-overlay" onclick="appModalBackdropClick(event)">
+  <div class="app-modal-card">
+    <div class="app-modal-message" id="app-modal-message"></div>
+    <div class="app-modal-actions">
+      <button class="btn btn-sm" id="app-modal-cancel" onclick="_appModalResolve(false)">Cancel</button>
+      <button class="btn btn-sm" id="app-modal-ok" onclick="_appModalResolve(true)">OK</button>
+    </div>
+  </div>
+</div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script src="champion-picker.js"></script>
 <script src="control.js"></script>

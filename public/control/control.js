@@ -1,5 +1,38 @@
 // control.js — Esports GFX Control Panel
 
+// ── App modal (custom confirm/alert) ──────────────────────────────────────────
+let _appModalCallback = null;
+function showAlert(msg) {
+  const overlay = document.getElementById('app-modal-overlay');
+  document.getElementById('app-modal-message').textContent = msg;
+  document.getElementById('app-modal-cancel').style.display = 'none';
+  const ok = document.getElementById('app-modal-ok');
+  ok.className = 'btn btn-sm btn-primary'; ok.textContent = 'OK';
+  _appModalCallback = null;
+  overlay.classList.add('active');
+  ok.focus();
+}
+function showConfirm(msg, onConfirm, opts) {
+  const overlay = document.getElementById('app-modal-overlay');
+  document.getElementById('app-modal-message').textContent = msg;
+  const cancel = document.getElementById('app-modal-cancel');
+  cancel.style.display = ''; cancel.textContent = 'Cancel';
+  const ok = document.getElementById('app-modal-ok');
+  ok.className = 'btn btn-sm ' + ((opts && opts.danger) ? 'btn-danger' : 'btn-primary');
+  ok.textContent = (opts && opts.okLabel) || 'Confirm';
+  _appModalCallback = onConfirm;
+  overlay.classList.add('active');
+  cancel.focus();
+}
+function _appModalResolve(confirmed) {
+  document.getElementById('app-modal-overlay').classList.remove('active');
+  if (confirmed && _appModalCallback) _appModalCallback();
+  _appModalCallback = null;
+}
+function appModalBackdropClick(e) {
+  if (e.target === document.getElementById('app-modal-overlay')) _appModalResolve(false);
+}
+
 const socket = io();
 window._state = {};
 let bracketRounds = [];
@@ -78,7 +111,7 @@ function saveActiveProfileChanges() {
     if (data && data.ok) {
       if (data.savedSnapshot) setProfileSnapshot(data.savedSnapshot);
       loadProfilesTab();
-    } else alert((data && data.error) || 'Failed to update profile.');
+    } else showAlert((data && data.error) || 'Failed to update profile.');
   });
 }
 
@@ -125,6 +158,8 @@ refreshControlTournamentStats();
 
 // ── Current user identity (for claim badge self-detection) ─────────────────────
 let _myUsername = null;
+let _myRole = null;
+let _myId = null;
 
 // ── Navigation ─────────────────────────────────────────────────────────────────
 const TAB_LABELS = {
@@ -356,8 +391,9 @@ function copyGfxToken() {
   if (el) navigator.clipboard.writeText(el.value);
 }
 function regenerateGfxToken() {
-  if (!confirm('Regenerate graphics token? All current OBS/vMix browser source URLs will stop working until updated.')) return;
-  api('/api/settings/regenerate-token', {});
+  showConfirm('Regenerate graphics token? All current OBS/vMix browser source URLs will stop working until updated.', function() {
+    api('/api/settings/regenerate-token', {});
+  }, { danger: true, okLabel: 'Regenerate' });
 }
 
 // ── Top bar sync ───────────────────────────────────────────────────────────────
@@ -2128,10 +2164,10 @@ function renderPlayerEditors(players) {
         const curSubs    = (window._state && window._state.players && window._state.players[team+'subs']) || [];
         const pName = (curList[playerIndex]  && (curList[playerIndex].handle  || curList[playerIndex].name))  || ('Player '+(playerIndex+1));
         const sName = (curSubs[subIndex]     && (curSubs[subIndex].handle     || curSubs[subIndex].name))     || ('Sub '+(subIndex+1));
-        if (confirm('Swap ' + pName + ' with ' + sName + '?')) {
-          api('/api/players/swap', { team, playerIndex, subIndex });
-        }
         sel.value = '';
+        showConfirm('Swap ' + pName + ' with ' + sName + '?', function() {
+          api('/api/players/swap', { team, playerIndex, subIndex });
+        }, { okLabel: 'Swap' });
       });
 
       container.appendChild(starterSec);
@@ -2642,7 +2678,7 @@ function renderEditPlayers(players, subs) {
 
 async function saveTeamEditor() {
   const name=(g('edit-team-name').value||'').trim();
-  if (!name){alert('Team name is required.');return;}
+  if (!name){showAlert('Team name is required.');return;}
   const players=DEFAULT_ROLES.map(function(_,i){
     const c=g('edit-team-players');
     return {
@@ -2667,12 +2703,13 @@ async function saveTeamEditor() {
   if(res&&res.ok){closeTeamEditor();renderTeamsList();}
 }
 
-async function deleteEditingTeam() {
+function deleteEditingTeam() {
   const id=g('edit-team-id').value; if(!id)return;
   const name=g('edit-team-name').value||'this team';
-  if(!confirm('Delete '+name+'? Cannot be undone.'))return;
-  const res=await api('/api/teams/delete',{id});
-  if(res&&res.ok){closeTeamEditor();renderTeamsList();}
+  showConfirm('Delete ' + name + '? Cannot be undone.', async function() {
+    const res = await api('/api/teams/delete', { id });
+    if (res && res.ok) { closeTeamEditor(); renderTeamsList(); }
+  }, { danger: true, okLabel: 'Delete' });
 }
 
 // ── Team picker modal ──────────────────────────────────────────────────────────
@@ -3134,19 +3171,23 @@ function loadUsersTab() {
     const list = g('users-list');
     if (!list) return;
     if (!data.users || data.users.length === 0) { list.innerHTML = '<p class="hint">No users found.</p>'; return; }
-    list.innerHTML = data.users.map(u =>
-      '<div class="user-row" id="user-row-' + u.id + '">' +
-      '<div style="display:flex;align-items:center;gap:8px">' +
-      '<span class="user-role user-role-' + u.role + '">' + u.role + '</span>' +
-      '<span class="user-name">' + escHtml(u.username) + '</span>' +
-      '<button class="btn btn-sm" id="user-edit-btn-' + u.id + '" onclick="toggleUserEdit(\'' + u.id + '\')">Edit</button>' +
-      '</div>' +
-      '<div id="user-actions-' + u.id + '" style="display:none;gap:6px;justify-content:flex-end">' +
-      '<button class="btn btn-sm" onclick="openChpwPanel(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Password</button>' +
-      '<button class="btn btn-sm btn-danger" onclick="deleteUser(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Delete</button>' +
-      '</div>' +
-      '</div>'
-    ).join('');
+    const isSuperadmin = data.myRole === 'superadmin';
+    const myId = data.myId;
+    list.innerHTML = data.users.map(u => {
+      const canEdit   = isSuperadmin || u.role === 'operator' || u.id === myId;
+      const canDelete = u.id !== myId && (isSuperadmin || u.role === 'operator');
+      return '<div class="user-row" id="user-row-' + u.id + '">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="user-role user-role-' + u.role + '">' + u.role + '</span>' +
+        '<span class="user-name">' + escHtml(u.username) + '</span>' +
+        (canEdit ? '<button class="btn btn-sm" id="user-edit-btn-' + u.id + '" onclick="toggleUserEdit(\'' + u.id + '\')">Edit</button>' : '') +
+        '</div>' +
+        '<div id="user-actions-' + u.id + '" style="display:none;gap:6px;justify-content:flex-end">' +
+        (canEdit ? '<button class="btn btn-sm" onclick="openChpwPanel(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Password</button>' : '') +
+        (canDelete ? '<button class="btn btn-sm btn-danger" onclick="deleteUser(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Delete</button>' : '') +
+        '</div>' +
+        '</div>';
+    }).join('');
   }).catch(() => { const l = g('users-list'); if (l) l.innerHTML = '<p class="hint" style="color:var(--danger)">Failed to load users.</p>'; });
 }
 
@@ -3155,6 +3196,8 @@ function openNewUserForm() {
   g('nu-username').value = ''; g('nu-password').value = '';
   g('nu-password').setAttribute('readonly', '');
   g('nu-role').value = 'operator';
+  const adminOpt = g('nu-role').querySelector('option[value="admin"]');
+  if (adminOpt) adminOpt.style.display = _myRole === 'superadmin' ? '' : 'none';
   showUsersMsg('nu-msg', '', '');
   g('nu-username').focus();
 }
@@ -3195,12 +3238,13 @@ function submitChangePassword() {
 }
 
 function deleteUser(uid, username) {
-  if (!confirm('Delete user "' + username + '"? This cannot be undone.')) return;
-  fetch('/api/users/delete', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: uid }) })
-    .then(r => r.json()).then(data => {
-      if (data.ok) loadUsersTab();
-      else alert(data.error || 'Failed to delete user.');
-    });
+  showConfirm('Delete user "' + username + '"? This cannot be undone.', function() {
+    fetch('/api/users/delete', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: uid }) })
+      .then(r => r.json()).then(data => {
+        if (data.ok) loadUsersTab();
+        else showAlert(data.error || 'Failed to delete user.');
+      });
+  }, { danger: true, okLabel: 'Delete' });
 }
 
 function showUsersMsg(id, text, type) {
@@ -3345,7 +3389,7 @@ function confirmLoadProfile() {
       if (data.ok) {
         if (data.savedSnapshot) setProfileSnapshot(data.savedSnapshot);
         loadProfilesTab(true); // skip dirty check — window._state not yet updated via WS
-      } else alert(data.error || 'Failed to load profile.');
+      } else showAlert(data.error || 'Failed to load profile.');
     });
 }
 
@@ -3410,13 +3454,14 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 function updateProfile(id) {
-  if (!confirm('Update this profile with the current tournament state? This overwrites the saved data.')) return;
-  api('/api/profiles/update', { id }).then(function(data) {
-    if (data && data.ok) {
-      if (data.savedSnapshot) setProfileSnapshot(data.savedSnapshot);
-      loadProfilesTab();
-    } else alert((data && data.error) || 'Failed to update.');
-  });
+  showConfirm('Update this profile with the current tournament state? This overwrites the saved data.', function() {
+    api('/api/profiles/update', { id }).then(function(data) {
+      if (data && data.ok) {
+        if (data.savedSnapshot) setProfileSnapshot(data.savedSnapshot);
+        loadProfilesTab();
+      } else showAlert((data && data.error) || 'Failed to update.');
+    });
+  }, { okLabel: 'Update' });
 }
 
 function renameProfileInline(id) {
@@ -3439,7 +3484,7 @@ function confirmRename(id, input) {
   if (!name) { loadProfilesTab(); return; }
   fetch('/api/profiles/rename', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id, name }) })
     .then(r => r.json()).then(data => {
-      if (!data.ok) alert(data.error || 'Failed to rename.');
+      if (!data.ok) showAlert(data.error || 'Failed to rename.');
       loadProfilesTab();
     });
 }
@@ -3452,7 +3497,7 @@ function deleteProfile(id, btn) {
           // state.meta is cleared by server; syncTopBar will update window._activeProfileId
           if (window._activeProfileId === id) { _savedProfileSnapshotStr = null; updateProfileDirtyBar(false); }
           loadProfilesTab();
-        } else alert(data.error || 'Failed to delete.');
+        } else showAlert(data.error || 'Failed to delete.');
       });
   });
 }
@@ -3484,7 +3529,12 @@ document.querySelectorAll('.nav-item[data-tab="log"]').forEach(el => {
 // Populate session info in top bar
 fetch('/api/auth/me').then(r => r.json()).then(data => {
   const el = g('mtb-session');
-  if (el && data.user) { el.textContent = data.user.username; _myUsername = data.user.username; }
+  if (el && data.user) {
+    el.textContent = data.user.username;
+    _myUsername = data.user.username;
+    _myRole = data.user.role;
+    _myId = data.user.id;
+  }
 }).catch(() => {});
 
 // ── Tournament Setup ───────────────────────────────────────────────────────────
@@ -3688,36 +3738,38 @@ function setPlayoffsEditMode(on) {
   _applyEditMode(on, 'playoffs-edit-btn', ['playoffs-edit-btns'], renderBracketEditor, 'Edit Bracket');
 }
 
-function _guardEditMode(tabKey) {
+function _guardEditMode(tabKey, onPass) {
   const guards = [
     { mode: _gsEditMode,       tab: 'game',     clear: function() { setGsEditMode(false); } },
     { mode: _schedEditMode,    tab: 'schedule', clear: function() { setSchedEditMode(false); } },
     { mode: _groupsEditMode,   tab: 'groups',   clear: function() { setGroupsEditMode(false); } },
     { mode: _playoffsEditMode, tab: 'playoffs',  clear: function() { setPlayoffsEditMode(false); } },
   ];
+  var active = null;
   for (var i = 0; i < guards.length; i++) {
-    var g = guards[i];
-    if (g.mode && tabKey !== g.tab) {
-      if (!confirm('You have ' + g.tab.charAt(0).toUpperCase() + g.tab.slice(1) + ' editing enabled — exit edit mode?')) return false;
-      g.clear();
-    }
+    if (guards[i].mode && tabKey !== guards[i].tab) { active = guards[i]; break; }
   }
-  return true;
+  if (!active) { onPass(); return; }
+  showConfirm('You have ' + active.tab.charAt(0).toUpperCase() + active.tab.slice(1) + ' editing enabled — exit edit mode?', function() {
+    active.clear();
+    _guardEditMode(tabKey, onPass);
+  });
 }
 
 function switchToTab(tabKey) {
-  if (!_guardEditMode(tabKey)) return;
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  const navEl = document.querySelector('.nav-item[data-tab="' + tabKey + '"]');
-  const tabEl = g('tab-' + tabKey);
-  if (navEl) navEl.classList.add('active');
-  if (tabEl) tabEl.classList.add('active');
-  loadTeamsCache();
-  if (tabKey === 'users')    loadUsersTab();
-  if (tabKey === 'profiles') loadProfilesTab();
-  if (tabKey === 'home')     renderDashboard(window._state);
-  localStorage.setItem('gfx_ctrl_tab', tabKey);
+  _guardEditMode(tabKey, function() {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    const navEl = document.querySelector('.nav-item[data-tab="' + tabKey + '"]');
+    const tabEl = g('tab-' + tabKey);
+    if (navEl) navEl.classList.add('active');
+    if (tabEl) tabEl.classList.add('active');
+    loadTeamsCache();
+    if (tabKey === 'users')    loadUsersTab();
+    if (tabKey === 'profiles') loadProfilesTab();
+    if (tabKey === 'home')     renderDashboard(window._state);
+    localStorage.setItem('gfx_ctrl_tab', tabKey);
+  });
 }
 
 function renderGroupsTab(state) {
@@ -3806,10 +3858,15 @@ function moveGroupTeam(groupId, teamId, direction) {
 
 function generateGroups() {
   const numGroups = parseInt(g('ts-num-groups') && g('ts-num-groups').value) || 0;
-  if (!numGroups) { alert('Set Number of Groups first.'); return; }
+  if (!numGroups) { showAlert('Set Number of Groups first.'); return; }
   const existing = ((window._state.tournament||{}).groups||[]);
-  if (existing.length > 0 && !confirm('This will replace the ' + existing.length + ' existing group' + (existing.length > 1 ? 's' : '') + '. Continue?')) return;
-  api('/api/tournament/generate-groups', { numGroups });
+  if (existing.length > 0) {
+    showConfirm('This will replace the ' + existing.length + ' existing group' + (existing.length > 1 ? 's' : '') + '. Continue?', function() {
+      api('/api/tournament/generate-groups', { numGroups });
+    }, { okLabel: 'Replace' });
+  } else {
+    api('/api/tournament/generate-groups', { numGroups });
+  }
 }
 
 // ── Group Standings + Playoff Seedings ────────────────────────────────────────
@@ -4072,10 +4129,11 @@ function generateBracketRounds(paddedSeeds, bracketSize, t) {
 }
 
 function applyGeneratedBracket() {
-  if (!_generatedBracketRounds) { alert('Generate seedings first.'); return; }
+  if (!_generatedBracketRounds) { showAlert('Generate seedings first.'); return; }
   const tournName = (window._state.match || {}).tournament || 'PLAYOFF BRACKET';
-  if (!confirm('This will overwrite the current bracket rounds. Continue?')) return;
-  api('/api/tournament/apply-bracket', { rounds: _generatedBracketRounds, title: tournName + ' — PLAYOFFS' });
+  showConfirm('This will overwrite the current bracket rounds. Continue?', function() {
+    api('/api/tournament/apply-bracket', { rounds: _generatedBracketRounds, title: tournName + ' — PLAYOFFS' });
+  }, { okLabel: 'Apply' });
 }
 
 // ── Bracket pre-generation from Tournament Setup ──────────────────────────────
@@ -4087,7 +4145,7 @@ function previewBracketGeneration() {
   if (!t) return;
   const teamsInBracket = playoffTeamCount(t);
   if (!teamsInBracket) {
-    alert(t.hasGroupStage
+    showAlert(t.hasGroupStage
       ? 'Set Number of Groups and Teams Advancing per Group first.'
       : 'Set Total Teams in Tournament first.');
     return;
@@ -4222,12 +4280,23 @@ function renderSchedule() {
       '</div>' +
       '<div style="display:flex;gap:6px">' +
       (_schedEditMode ? '<button class="btn btn-sm btn-primary" onclick="openAddGameForm(\'' + day.id + '\')">+ Game</button>' : '') +
-      (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="if(confirm(\'Delete this broadcast day?\'))api(\'/api/schedule/day/delete\',{id:\'' + day.id + '\'})">Delete Day</button>' : '') +
+      (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="schedDeleteDay(\'' + day.id + '\')">Delete Day</button>' : '') +
       '</div></div>' +
       '<div class="sched-games-list" id="sgames-' + day.id + '">' + renderDayGames(day) + '</div>' +
       '<div class="sched-add-game-form" id="sadd-' + day.id + '" style="display:none"></div>' +
       '</div>';
   }).join('');
+}
+
+function schedDeleteDay(id) {
+  showConfirm('Delete this broadcast day?', function() {
+    api('/api/schedule/day/delete', { id });
+  }, { danger: true, okLabel: 'Delete' });
+}
+function schedDeleteGame(dayId, gameId) {
+  showConfirm('Remove this game?', function() {
+    api('/api/schedule/game/delete', { dayId, gameId });
+  }, { danger: true, okLabel: 'Remove' });
 }
 
 function renderDayGames(day) {
@@ -4279,7 +4348,7 @@ function renderDayGames(day) {
       (isCompleted ? '<button class="btn btn-sm btn-danger" onclick="clearScheduleGameResult(\'' + day.id + '\',\'' + gm.id + '\',this)">Clear Result</button>' : '') +
       (_schedEditMode && idx > 0 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'up\'})">↑</button>' : '') +
       (_schedEditMode && idx < day.games.length-1 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'down\'})">↓</button>' : '') +
-      (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="if(confirm(\'Remove this game?\'))api(\'/api/schedule/game/delete\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\'})">×</button>' : '') +
+      (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="schedDeleteGame(\'' + day.id + '\',\'' + gm.id + '\')">×</button>' : '') +
       '</div></div>' +
       '<div id="sedit-' + gm.id + '" class="sched-edit-game-form" style="display:none"></div>';
 
@@ -4581,15 +4650,17 @@ function loadScheduleGame(dayId, gameId) {
   const isCompleted = !!(gm && gm.result && gm.result.completed);
 
   if (isCompleted) {
-    if (!confirm('This game is already completed.\n\nRestore its saved state (teams, scores, draft) so you can review or edit it?')) return;
-    api('/api/match/load-schedule-game', { dayId, gameId, restore: true }).then(function() {
-      fetch('/api/teams').then(function(r) { return r.json(); }).then(function(d) { window._cachedTeams = d.teams||[]; });
-    });
+    showConfirm('This game is already completed.\n\nRestore its saved state (teams, scores, draft) so you can review or edit it?', function() {
+      api('/api/match/load-schedule-game', { dayId, gameId, restore: true }).then(function() {
+        fetch('/api/teams').then(function(r) { return r.json(); }).then(function(d) { window._cachedTeams = d.teams||[]; });
+      });
+    }, { okLabel: 'Restore' });
   } else {
-    if (!confirm('Load this game? This will replace the current team data and reset the series.')) return;
-    api('/api/match/load-schedule-game', { dayId, gameId }).then(function() {
-      fetch('/api/teams').then(function(r) { return r.json(); }).then(function(d) { window._cachedTeams = d.teams||[]; });
-    });
+    showConfirm('Load this game? This will replace the current team data and reset the series.', function() {
+      api('/api/match/load-schedule-game', { dayId, gameId }).then(function() {
+        fetch('/api/teams').then(function(r) { return r.json(); }).then(function(d) { window._cachedTeams = d.teams||[]; });
+      });
+    }, { okLabel: 'Load Game' });
   }
 }
 
@@ -5147,7 +5218,7 @@ function buildDraftSnapshot(sg, t1Tag, t2Tag) {
 
 function confirmGameResult() {
   const winnerEl = document.querySelector('input[name="sg-winner"]:checked');
-  if (!winnerEl) { alert('Please select a winner.'); return; }
+  if (!winnerEl) { showAlert('Please select a winner.'); return; }
   const winner = winnerEl.value;
 
   // Sides come from the draft tab's blue-side assignment — no separate radio needed
@@ -5196,19 +5267,19 @@ function recordBye(winner, seriesWalkover) {
   const msg = seriesWalkover
     ? 'Award series walkover (BYE) to ' + teamName + '? This will fill remaining games and end the series.'
     : 'Record Game ' + ((m && m.currentGameNum) || 1) + ' as a BYE win for ' + teamName + '?';
-  if (!confirm(msg)) return;
-  api('/api/match/record-bye', { winner, seriesWalkover: !!seriesWalkover }).then(function(res) {
-    if (!res) return;
-    if (!res.seriesOver) {
-      // Reset draft board for next game (same as confirmGameResult)
-      const board = g('draft-board');
-      if (board) { board.innerHTML = ''; board.removeAttribute('data-built'); }
-      Object.keys(_draftPickerContainers).forEach(function(k) { delete _draftPickerContainers[k]; });
-      _raState.t1 = Array(5).fill(null); _raState.t2 = Array(5).fill(null); _raSig = '';
-      const raEl = g('draft-role-assign'); if (raEl) raEl.innerHTML = '';
-      api('/api/draft', { picks: Array(20).fill(''), currentStep: 0, phase: 'notstarted', committedT1Picks: [], committedT2Picks: [], team1RolePicks: [], team2RolePicks: [] });
-    }
-  });
+  showConfirm(msg, function() {
+    api('/api/match/record-bye', { winner, seriesWalkover: !!seriesWalkover }).then(function(res) {
+      if (!res) return;
+      if (!res.seriesOver) {
+        const board = g('draft-board');
+        if (board) { board.innerHTML = ''; board.removeAttribute('data-built'); }
+        Object.keys(_draftPickerContainers).forEach(function(k) { delete _draftPickerContainers[k]; });
+        _raState.t1 = Array(5).fill(null); _raState.t2 = Array(5).fill(null); _raSig = '';
+        const raEl = g('draft-role-assign'); if (raEl) raEl.innerHTML = '';
+        api('/api/draft', { picks: Array(20).fill(''), currentStep: 0, phase: 'notstarted', committedT1Picks: [], committedT2Picks: [], team1RolePicks: [], team2RolePicks: [] });
+      }
+    });
+  }, { okLabel: seriesWalkover ? 'Award Walkover' : 'Record BYE' });
 }
 
 // Countdown ticker for the live bar display
@@ -5334,6 +5405,10 @@ function ppToggleEdit(id) {
   if (btn) btn.textContent = opening ? 'Save' : 'Edit';
 }
 function ppUpdate(id, fields) { api('/api/prizepool/entry/update', Object.assign({ id }, fields)); }
-function ppDelete(id) { if (confirm('Remove this prize entry?')) api('/api/prizepool/entry/delete', { id }); }
+function ppDelete(id) {
+  showConfirm('Remove this prize entry?', function() {
+    api('/api/prizepool/entry/delete', { id });
+  }, { danger: true, okLabel: 'Remove' });
+}
 function ppReorder(id, direction) { api('/api/prizepool/entry/reorder', { id, direction }); }
 function ppAddEntry(type) { api('/api/prizepool/entry/add', { type: type || 'placement' }); }

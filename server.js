@@ -60,7 +60,7 @@ function saveUsers(u) { fs.writeFileSync(USERS_FILE, JSON.stringify(u, null, 2))
 (function ensureAdmin() {
   const users = loadUsers();
   if (users.length === 0) {
-    users.push({ id: 'u1', username: 'admin', passwordHash: bcrypt.hashSync('admin', 10), role: 'admin' });
+    users.push({ id: 'u1', username: 'admin', passwordHash: bcrypt.hashSync('admin', 10), role: 'superadmin' });
     saveUsers(users);
     console.log('\n  Default admin created — username: admin  password: admin\n  Change this password immediately in the Users tab.\n');
   }
@@ -73,7 +73,7 @@ function requireAuth(req, res, next) {
   res.redirect('/login/');
 }
 function requireAdmin(req, res, next) {
-  if (req.session && req.session.user && req.session.user.role === 'admin') return next();
+  if (req.session && req.session.user && ['admin','superadmin'].includes(req.session.user.role)) return next();
   if (req.path.startsWith('/api/')) return res.status(403).json({ error: 'Admin only' });
   res.redirect('/operator/');
 }
@@ -94,7 +94,7 @@ app.post('/api/auth/login', loginLimiter, (req, res) => {
   if (!user || !bcrypt.compareSync(password, user.passwordHash))
     return res.status(401).json({ error: 'Invalid username or password' });
   req.session.user = { id: user.id, username: user.username, role: user.role };
-  const redirect = user.role === 'admin' ? '/control/' : '/operator/';
+  const redirect = ['admin','superadmin'].includes(user.role) ? '/control/' : '/operator/';
   res.json({ ok: true, role: user.role, redirect });
 });
 
@@ -129,7 +129,7 @@ app.use('/caster', express.static(path.join(__dirname, 'public', 'caster')));
 // Root redirect
 app.get('/', (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login/');
-  res.redirect(req.session.user.role === 'admin' ? '/control/' : '/operator/');
+  res.redirect(['admin','superadmin'].includes(req.session.user.role) ? '/control/' : '/operator/');
 });
 
 // ── Static — protected ─────────────────────────────────────────────────────────
@@ -1505,12 +1505,15 @@ app.post('/api/profiles/delete', requireAdmin, (req, res) => {
 
 // ── User management (admin only) ───────────────────────────────────────────────
 app.get('/api/users', requireAdmin, (req, res) => {
-  res.json({ users: loadUsers().map(u => ({ id: u.id, username: u.username, role: u.role })) });
+  const me = req.session.user;
+  res.json({ users: loadUsers().map(u => ({ id: u.id, username: u.username, role: u.role })), myRole: me.role, myId: me.id });
 });
 app.post('/api/users/create', requireAdmin, (req, res) => {
+  const me = req.session.user;
   const { username, password, role } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
   if (!['admin','operator'].includes(role)) return res.status(400).json({ error: 'Role must be admin or operator' });
+  if (role === 'admin' && me.role !== 'superadmin') return res.status(403).json({ error: 'Only superadmin can create admin accounts' });
   const users = loadUsers();
   if (users.find(u => u.username.toLowerCase() === username.toLowerCase()))
     return res.status(409).json({ error: 'Username already exists' });
@@ -1521,19 +1524,29 @@ app.post('/api/users/change-password', (req, res) => {
   const me = req.session.user;
   const { userId, newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
-  // Admins can change anyone's password; operators can only change their own
-  if (me.role !== 'admin' && me.id !== userId) return res.status(403).json({ error: 'Forbidden' });
   const users = loadUsers();
   const idx = users.findIndex(u => u.id === userId);
   if (idx === -1) return res.status(404).json({ error: 'User not found' });
+  const target = users[idx];
+  if (me.role === 'superadmin') {
+    // full access
+  } else if (me.role === 'admin') {
+    if (me.id !== userId && target.role !== 'operator') return res.status(403).json({ error: 'Admins cannot change another admin\'s password' });
+  } else {
+    if (me.id !== userId) return res.status(403).json({ error: 'Forbidden' });
+  }
   users[idx].passwordHash = bcrypt.hashSync(newPassword, 10);
   saveUsers(users); res.json({ ok: true });
 });
 app.post('/api/users/delete', requireAdmin, (req, res) => {
+  const me = req.session.user;
   const { userId } = req.body;
-  if (req.session.user.id === userId) return res.status(400).json({ error: 'Cannot delete your own account' });
-  const users = loadUsers().filter(u => u.id !== userId);
-  saveUsers(users); res.json({ ok: true });
+  if (me.id === userId) return res.status(400).json({ error: 'Cannot delete your own account' });
+  const users = loadUsers();
+  const target = users.find(u => u.id === userId);
+  if (!target) return res.status(404).json({ error: 'User not found' });
+  if (me.role !== 'superadmin' && target.role !== 'operator') return res.status(403).json({ error: 'Admins can only delete operator accounts' });
+  saveUsers(users.filter(u => u.id !== userId)); res.json({ ok: true });
 });
 
 // ── Socket ─────────────────────────────────────────────────────────────────────
@@ -1624,7 +1637,7 @@ io.on('connection', socket => {
     });
 
     socket.on('state:patch', patch => {
-      if (sess.user.role !== 'admin') return;
+      if (!['admin','superadmin'].includes(sess.user.role)) return;
       deepMerge(state, patch); broadcast();
     });
   }
