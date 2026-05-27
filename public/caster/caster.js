@@ -746,11 +746,13 @@ function renderDraft() {
   }
 
   function renderPickSlots(idxArr, rolePicks, players) {
-    return idxArr.map(idx => {
-      const url      = picks[idx] || '';
+    const useRoleOrder = rolePicks.some(Boolean);
+    const slots = useRoleOrder
+      ? rolePicks.map((url, ri) => ({ url: url || '', isActive: false, player: players[ri] || null }))
+      : idxArr.map(idx => ({ url: picks[idx] || '', isActive: idx === activeIdx, player: playerForPick(picks[idx] || '', rolePicks, players) }));
+
+    return slots.map(({ url, isActive, player }) => {
       const name     = champNameFromUrl(url);
-      const isActive = idx === activeIdx;
-      const player   = playerForPick(url, rolePicks, players);
       const handle   = player ? (player.handle || '') : '';
       const dcs      = player ? (player.draftChampStats || null) : null;
       const trnEntry = (handle && name && _tournamentStats[handle]) ? (_tournamentStats[handle][name] || null) : null;
