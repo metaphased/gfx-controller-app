@@ -1273,6 +1273,40 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 .ra-assigned-pill:hover { background: rgba(31,250,255,0.2); }
 .ra-assigned-pill.ra-dragging { opacity: 0.4; }
 
+/* Mode toggle */
+.ra-mode-toggle {
+  display: flex; gap: 8px; align-items: center; margin-bottom: 10px;
+}
+.ra-mode-label {
+  font-family: var(--ui-font), sans-serif;
+  font-size: 11px; color: var(--text-dim); letter-spacing: 0.04em;
+}
+
+/* Role label used in both dropdown and drag-drop rows */
+.ra-role-label {
+  font-family: var(--ui-font), sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: uppercase; color: var(--text-dim);
+  width: 52px; flex-shrink: 0;
+}
+
+/* Dropdown select in role rows */
+.ra-role-select {
+  flex: 1; min-width: 0;
+  background: var(--bg3); border: 1px solid var(--border);
+  color: var(--text); font-family: var(--ui-font), sans-serif;
+  font-size: 11px; padding: 3px 6px; border-radius: 2px;
+  cursor: pointer;
+}
+.ra-role-select:focus { outline: none; border-color: rgba(31,250,255,0.35); }
+
+/* Champion thumbnail inside a drag-drop source pill */
+.ra-pill-thumb {
+  width: 20px; height: 20px; flex-shrink: 0;
+  background-size: cover; background-position: top center;
+  border-radius: 2px; display: inline-block; vertical-align: middle;
+  margin-right: 4px;
+}
+
 /* ── Game Setup team display ─────────────────────────────────────────────────── */
 .gs-team-display {
   display: flex; align-items: center; gap: 12px;

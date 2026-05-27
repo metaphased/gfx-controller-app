@@ -1120,10 +1120,11 @@ function commitDraftToSeries() {
 
 const DRAFT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
 
-// Role assignment drag-drop state
-const _raState = { t1: Array(5).fill(null), t2: Array(5).fill(null) };
+// Role assignment state — role-indexed: _raState.t1[roleIdx] = pickIdx (-1 = unassigned)
+const _raState = { t1: Array(5).fill(-1), t2: Array(5).fill(-1) };
 let _raSig = '';
-let _dragInfo = null; // { role, team, fromIdx } — fromIdx=-1 means from source row
+let _raMode = 'dropdown'; // 'dropdown' | 'dragdrop'
+let _dragInfo = null; // { pick, team, fromRi } — fromRi=-1 means from champion source row
 
 function renderRoleAssignment(draft, state) {
   const container = g('draft-role-assign'); if (!container) return;
@@ -1152,12 +1153,13 @@ function renderRoleAssignment(draft, state) {
     const draftPicks = ti === 0 ? t1DraftPicks : t2DraftPicks;
     const rolePicks  = draft[ti === 0 ? 'team1RolePicks' : 'team2RolePicks'] || [];
     if (rolePicks.some(Boolean)) {
-      _raState[prefix] = draftPicks.map(function(champUrl) {
-        const ri = rolePicks.indexOf(champUrl);
-        return ri >= 0 ? DRAFT_ROLES[ri] : null;
+      _raState[prefix] = rolePicks.map(function(champUrl) {
+        if (!champUrl) return -1;
+        const pi = draftPicks.indexOf(champUrl);
+        return pi >= 0 ? pi : -1;
       });
     } else {
-      _raState[prefix] = Array(5).fill(null);
+      _raState[prefix] = Array(5).fill(-1);
     }
   });
 
@@ -1171,27 +1173,63 @@ function renderRoleAssignment(draft, state) {
 
 function buildRaDOM(container, draft, t1DraftPicks, t2DraftPicks, t1Label, t2Label, t1SideLbl, t2SideLbl) {
   function teamHtml(draftPicks, prefix, label, sideLbl) {
-    const assigned  = _raState[prefix];
-    const usedRoles = new Set(assigned.filter(Boolean));
+    const assigned  = _raState[prefix]; // role-indexed: assigned[ri] = pickIdx (-1 = unassigned)
+    const usedPicks = new Set(assigned.filter(function(pi) { return pi != null && pi >= 0; }));
 
-    const pills = DRAFT_ROLES.map(function(role) {
-      const used = usedRoles.has(role);
+    if (_raMode === 'dropdown') {
+      const rows = DRAFT_ROLES.map(function(role, ri) {
+        const pickedIdx = assigned[ri];
+        const champUrl  = (pickedIdx != null && pickedIdx >= 0) ? (draftPicks[pickedIdx] || '') : '';
+        const thumb = champUrl
+          ? '<div class="ra-thumb" style="background-image:url(' + champUrl + ')"></div>'
+          : '<div class="ra-thumb empty"></div>';
+        const opts = '<option value="">—</option>' +
+          draftPicks.map(function(url, pi) {
+            const name = champNameFromUrl(url) || ('Pick ' + (pi + 1));
+            const sel  = pi === pickedIdx ? ' selected' : '';
+            return '<option value="' + pi + '"' + sel + '>' + escHtml(name) + '</option>';
+          }).join('');
+        return '<div class="ra-row ra-row-role">' +
+          '<span class="ra-role-label">' + escHtml(role) + '</span>' +
+          thumb +
+          '<select class="ra-role-select" data-ra-team="' + prefix + '" data-ra-role-idx="' + ri + '">' +
+          opts + '</select>' +
+        '</div>';
+      }).join('');
+
+      return '<div class="ra-col">' +
+        '<div class="ra-col-label">' + escHtml(label) +
+          '<span class="ra-side-tag ra-side-' + sideLbl.toLowerCase() + '">' + sideLbl + '</span>' +
+        '</div>' +
+        rows +
+      '</div>';
+    }
+
+    // Drag-drop mode: champion pills as source, role slots as targets
+    const pills = draftPicks.map(function(champUrl, pi) {
+      const name = champNameFromUrl(champUrl) || ('Pick ' + (pi + 1));
+      const used = usedPicks.has(pi);
+      const thumb = champUrl
+        ? '<div class="ra-pill-thumb" style="background-image:url(' + champUrl + ')"></div>'
+        : '';
       return '<div class="ra-pill' + (used ? ' ra-pill-used' : '') + '" draggable="' + (!used) + '" ' +
-        'data-ra-role="' + role + '" data-ra-team="' + prefix + '" data-ra-from="-1">' + role + '</div>';
+        'data-ra-pick="' + pi + '" data-ra-team="' + prefix + '" data-ra-from="-1">' +
+        thumb + escHtml(name) + '</div>';
     }).join('');
 
-    const rows = draftPicks.map(function(champUrl, di) {
-      const name  = champNameFromUrl(champUrl);
-      const thumb = champUrl
+    const rows = DRAFT_ROLES.map(function(role, ri) {
+      const pickedIdx = assigned[ri];
+      const champUrl  = (pickedIdx != null && pickedIdx >= 0) ? (draftPicks[pickedIdx] || '') : '';
+      const name      = champNameFromUrl(champUrl) || '';
+      const thumb     = champUrl
         ? '<div class="ra-thumb" style="background-image:url(' + champUrl + ')"></div>'
         : '<div class="ra-thumb empty"></div>';
-      const role  = assigned[di];
-      const inner = role
-        ? '<span class="ra-assigned-pill" draggable="true" data-ra-role="' + role + '" data-ra-team="' + prefix + '" data-ra-from="' + di + '">' + role + '</span>'
-        : '<span class="ra-hint">drop role</span>';
-      return '<div class="ra-row" data-ra-team="' + prefix + '" data-ra-idx="' + di + '">' +
+      const inner = (pickedIdx != null && pickedIdx >= 0)
+        ? '<span class="ra-assigned-pill" draggable="true" data-ra-pick="' + pickedIdx + '" data-ra-team="' + prefix + '" data-ra-from="' + ri + '">' + escHtml(name) + '</span>'
+        : '<span class="ra-hint">drop pick</span>';
+      return '<div class="ra-row" data-ra-team="' + prefix + '" data-ra-idx="' + ri + '">' +
+        '<span class="ra-role-label">' + escHtml(role) + '</span>' +
         thumb +
-        '<span class="ra-champ-name">' + escHtml(name || '—') + '</span>' +
         '<div class="ra-drop">' + inner + '</div>' +
       '</div>';
     }).join('');
@@ -1205,13 +1243,19 @@ function buildRaDOM(container, draft, t1DraftPicks, t2DraftPicks, t1Label, t2Lab
     '</div>';
   }
 
+  const modeToggle = '<div class="ra-mode-toggle">' +
+    '<span class="ra-mode-label">Mode:</span>' +
+    '<button class="btn btn-sm' + (_raMode === 'dropdown' ? ' btn-primary' : '') + '" onclick="setRaMode(\'dropdown\')">Dropdown</button>' +
+    '<button class="btn btn-sm' + (_raMode === 'dragdrop' ? ' btn-primary' : '') + '" onclick="setRaMode(\'dragdrop\')">Drag-drop</button>' +
+  '</div>';
+
   container.innerHTML =
     '<div class="card" style="margin-top:16px">' +
       '<div class="card-title" style="display:flex;align-items:center;justify-content:space-between">' +
         '<span>Role Assignment</span>' +
         '<button class="btn btn-primary btn-sm" onclick="applyDraftRoles()">Apply Roles →</button>' +
       '</div>' +
-      '<p class="hint" style="margin-bottom:10px">Drag a role onto a champion. Assigned roles dim in the source row and can be re-dragged to swap.</p>' +
+      modeToggle +
       '<div class="ra-grid">' +
         teamHtml(t1DraftPicks, 't1', t1Label, t1SideLbl) +
         teamHtml(t2DraftPicks, 't2', t2Label, t2SideLbl) +
@@ -1219,19 +1263,45 @@ function buildRaDOM(container, draft, t1DraftPicks, t2DraftPicks, t1Label, t2Lab
       '<div id="role-assign-msg" style="display:none;margin-top:10px;font-size:12px;color:var(--primary);font-family:var(--ui-font),sans-serif;letter-spacing:0.04em"></div>' +
     '</div>';
 
-  // Drag sources (source pills + assigned pills)
-  container.querySelectorAll('[data-ra-role]').forEach(function(el) {
-    if (el.draggable === false || el.getAttribute('draggable') === 'false') return;
+  if (_raMode === 'dropdown') {
+    container.querySelectorAll('.ra-role-select').forEach(function(sel) {
+      sel.addEventListener('change', function() {
+        const team  = sel.dataset.raTeam;
+        const ri    = parseInt(sel.dataset.raRoleIdx);
+        const newPi = sel.value === '' ? -1 : parseInt(sel.value);
+        const asgn  = _raState[team];
+        if (newPi >= 0) {
+          asgn.forEach(function(pi, i) { if (i !== ri && pi === newPi) asgn[i] = -1; });
+        }
+        asgn[ri] = newPi;
+        const d = window._state && window._state.draft;
+        const s = window._state;
+        if (d && s) {
+          const { t1dp, t2dp } = raDraftPicks(d);
+          const bst = d.blueSideTeam || 'team1';
+          buildRaDOM(container, d, t1dp, t2dp,
+            s.match.team1.tag || s.match.team1.name || 'Team 1',
+            s.match.team2.tag || s.match.team2.name || 'Team 2',
+            bst === 'team1' ? 'Blue' : 'Red', bst === 'team1' ? 'Red' : 'Blue');
+        }
+      });
+    });
+    return;
+  }
+
+  // Drag-drop event handlers
+  container.querySelectorAll('[data-ra-pick]').forEach(function(el) {
+    if (el.getAttribute('draggable') === 'false') return;
     el.addEventListener('dragstart', function(e) {
-      _dragInfo = { role: el.dataset.raRole, team: el.dataset.raTeam, fromIdx: parseInt(el.dataset.raFrom) };
+      _dragInfo = { pick: parseInt(el.dataset.raPick), team: el.dataset.raTeam, fromRi: parseInt(el.dataset.raFrom) };
       e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', el.dataset.raRole);
+      e.dataTransfer.setData('text/plain', el.dataset.raPick);
       setTimeout(function() { el.classList.add('ra-dragging'); }, 0);
     });
     el.addEventListener('dragend', function() { el.classList.remove('ra-dragging'); });
   });
 
-  // Drop zones — whole row is the target; .ra-drop is the visual slot
+  // Drop zones: role rows are targets; .ra-drop is the visual slot
   container.querySelectorAll('.ra-row[data-ra-idx]').forEach(function(row) {
     const slot = row.querySelector('.ra-drop');
     row.addEventListener('dragover', function(e) {
@@ -1240,7 +1310,7 @@ function buildRaDOM(container, draft, t1DraftPicks, t2DraftPicks, t1Label, t2Lab
       if (slot) slot.classList.add('ra-over');
     });
     row.addEventListener('dragleave', function(e) {
-      if (row.contains(e.relatedTarget)) return; // still inside the row
+      if (row.contains(e.relatedTarget)) return;
       if (slot) slot.classList.remove('ra-over');
     });
     row.addEventListener('drop', function(e) {
@@ -1248,36 +1318,47 @@ function buildRaDOM(container, draft, t1DraftPicks, t2DraftPicks, t1Label, t2Lab
       if (slot) slot.classList.remove('ra-over');
       if (!_dragInfo || _dragInfo.team !== row.dataset.raTeam) { _dragInfo = null; return; }
 
-      const team    = row.dataset.raTeam;
-      const toIdx   = parseInt(row.dataset.raIdx);
-      const role    = _dragInfo.role;
-      const fromIdx = _dragInfo.fromIdx;
+      const team   = row.dataset.raTeam;
+      const toRi   = parseInt(row.dataset.raIdx);
+      const pickI  = _dragInfo.pick;
+      const fromRi = _dragInfo.fromRi;
       _dragInfo = null;
 
-      const asgn = _raState[team];
-      const displaced = asgn[toIdx]; // role already at target (may be null)
+      const asgn      = _raState[team];
+      const displaced = asgn[toRi]; // pick index currently at target role (-1 if empty)
 
-      if (fromIdx >= 0) {
-        // Dragging from another pick slot — swap
-        asgn[fromIdx] = displaced;
+      if (fromRi >= 0) {
+        asgn[fromRi] = displaced; // swap: target's old pick goes to source role
       }
-      // If fromIdx === -1 (source pill), displaced is simply freed (unassigned)
+      asgn[toRi] = pickI;
 
-      asgn[toIdx] = role;
-
-      // Rebuild UI with updated assignments
       const d = window._state && window._state.draft;
       const s = window._state;
       if (d && s) {
         const { t1dp, t2dp } = raDraftPicks(d);
         const bst = d.blueSideTeam || 'team1';
-        const t1l = s.match.team1.tag || s.match.team1.name || 'Team 1';
-        const t2l = s.match.team2.tag || s.match.team2.name || 'Team 2';
-        buildRaDOM(container, d, t1dp, t2dp, t1l, t2l,
+        buildRaDOM(container, d, t1dp, t2dp,
+          s.match.team1.tag || s.match.team1.name || 'Team 1',
+          s.match.team2.tag || s.match.team2.name || 'Team 2',
           bst === 'team1' ? 'Blue' : 'Red', bst === 'team1' ? 'Red' : 'Blue');
       }
     });
   });
+}
+
+function setRaMode(mode) {
+  _raMode = mode;
+  const d = window._state && window._state.draft;
+  const s = window._state;
+  if (!d || !s) return;
+  const container = g('draft-role-assign');
+  if (!container) return;
+  const { t1dp, t2dp } = raDraftPicks(d);
+  const bst = d.blueSideTeam || 'team1';
+  buildRaDOM(container, d, t1dp, t2dp,
+    s.match.team1.tag || s.match.team1.name || 'Team 1',
+    s.match.team2.tag || s.match.team2.name || 'Team 2',
+    bst === 'team1' ? 'Blue' : 'Red', bst === 'team1' ? 'Red' : 'Blue');
 }
 
 // Returns team1/team2 draft picks arrays, accounting for banFirstTeam
@@ -1301,13 +1382,11 @@ function applyDraftRoles() {
 
   const t1RolePicks = Array(5).fill('');
   const t2RolePicks = Array(5).fill('');
-  _raState.t1.forEach(function(role, di) {
-    const ri = role ? DRAFT_ROLES.indexOf(role) : -1;
-    if (ri >= 0) t1RolePicks[ri] = t1dp[di] || '';
+  _raState.t1.forEach(function(pickIdx, ri) {
+    if (pickIdx != null && pickIdx >= 0) t1RolePicks[ri] = t1dp[pickIdx] || '';
   });
-  _raState.t2.forEach(function(role, di) {
-    const ri = role ? DRAFT_ROLES.indexOf(role) : -1;
-    if (ri >= 0) t2RolePicks[ri] = t2dp[di] || '';
+  _raState.t2.forEach(function(pickIdx, ri) {
+    if (pickIdx != null && pickIdx >= 0) t2RolePicks[ri] = t2dp[pickIdx] || '';
   });
 
   api('/api/draft', {

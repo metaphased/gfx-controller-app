@@ -106,7 +106,7 @@ Each URL requires a `?token=XXXX` parameter. The full URLs with your active toke
 
 **Tournament:** Profiles, Tournament Setup, Teams Database, Schedule, Groups, Playoffs
 
-**Game:** Game Setup, Draft, Players / Rosters, Match Intel
+**Game:** Game Setup, Players / Rosters, Draft, Match Intel
 
 **Graphics:** Broadcast Theme, BG Output, Lower Third, Head to Head, Pre-show, Ticker, Draft, Bracket, Group Stage, Tournament Structure, Prizepool, Break Screen, Win Screen, Scoreboard, Player Intro
 
@@ -129,7 +129,7 @@ The seeded `admin` account is `superadmin` by default. Create additional users i
 - Profile system — save/restore full tournament configurations per event
 - Dashboard — active match, tournament info, live schedule with scores and BOx status, live graphics status
 - GFX ctrl-bar — persistent live control zone on every graphics page (show/hide, position, opacity, and graphic-specific options)
-- Draft overlay with role-commit → auto-fetch champion stats from op.gg MCP (optional, separate setup)
+- Draft overlay with role-commit → auto-fetch champion stats from op.gg MCP (optional, separate setup); role assignment panel uses role-first rows (Top→Support) with a dropdown selector per role and a drag-drop toggle; caster view displays picks in role order once roles are committed
 - Match Intel panel — live rank, champion pool, and draft stats for both teams
 - Pick/ban timer with pause/resume — timer freezes on the overlay when paused
 - Player Intro graphic — 3 layout variants (Panel, Stack/Mirror, Champion Showcase) with rank icons and team logos
