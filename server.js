@@ -1606,6 +1606,7 @@ io.on('connection', socket => {
     socket.on('presence:page', ({ page }) => {
       if (connectedUsers[socket.id]) {
         connectedUsers[socket.id].page = page;
+        connectedUsers[socket.id].pageUpdatedAt = Date.now();
         io.emit('presence:list', Object.values(connectedUsers));
       }
     });

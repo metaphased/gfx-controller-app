@@ -61,7 +61,14 @@ socket.on('disconnect', () => {
 socket.on('presence:list', users => {
   const strip = document.getElementById('presence-strip');
   if (!strip) return;
-  strip.innerHTML = users.map(u =>
+  const byUser = {};
+  users.forEach(u => {
+    const prev = byUser[u.username];
+    if (!prev || (u.pageUpdatedAt || u.connectedAt) > (prev.pageUpdatedAt || prev.connectedAt)) {
+      byUser[u.username] = u;
+    }
+  });
+  strip.innerHTML = Object.values(byUser).map(u =>
     '<span class="presence-user"><span class="presence-user-dot">●</span>' +
     '<span>' + u.username + ' (' + u.role + ')' + (u.page ? ' — ' + u.page : '') + '</span></span>'
   ).join('');
