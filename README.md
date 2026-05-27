@@ -20,7 +20,7 @@ Control panel: `http://localhost:3000/control`
 Operator view: `http://localhost:3000/operator`  
 Caster view:   `http://localhost:3000/caster?token=XXXX`
 
-On first run the server auto-creates a default admin account:
+On first run the server auto-creates a default superadmin account:
 - **Username:** `admin`
 - **Password:** `admin`
 
@@ -116,11 +116,12 @@ Each URL requires a `?token=XXXX` parameter. The full URLs with your active toke
 
 | Role | Access |
 |---|---|
-| `admin` | Full control panel |
+| `superadmin` | Full control panel + full user management (create/delete/change password for any account) |
+| `admin` | Full control panel; can manage operators and own password only — cannot modify other admin accounts |
 | `operator` | Simplified operator view (live graphic toggles, score, lower third) |
 | Graphics token | Read-only access to all graphics outputs and caster view — no account required |
 
-Create additional users in **Settings → Accounts**.
+The seeded `admin` account is `superadmin` by default. Create additional users in **Settings → Accounts**.
 
 ## Key features
 
@@ -145,6 +146,8 @@ Create additional users in **Settings → Accounts**.
   - Soft page claiming — navigating to a GFX page claims it; others see an amber "Operated by [name]" indicator in the ctrl-bar (no hard blocking)
   - Destructive action confirmation — inline 2-second countdown confirm on reset, clear result, and delete operations
   - System Log — server-side ring buffer of significant actions (show/hide, record game, load profile, etc.), viewable by admin under **System → Log**
+  - Superadmin / admin role hierarchy — prevents admins from modifying each other's accounts
+- **Custom modal system** — all confirm/alert dialogs use an in-app styled overlay matching the UI theme, replacing browser-native popups
 - Champion asset sync — download/update champion tiles, centered images, and role icons from DDragon via Settings or `node scripts/sync-assets.js`
 
 ## Data directory
