@@ -152,7 +152,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 
 // ── State / defaults ───────────────────────────────────────────────────────────
-const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
 
 function makeDefaultPlayers() {
   return DEFAULT_ROLES.map((role, i) => ({ name: '', handle: 'Player ' + (i+1), role, country: '', active: true }));
@@ -274,7 +274,7 @@ const makeDefault = () => ({
       Top:     ['winRate', 'games', 'kda', 'cs'],
       Jungle:  ['winRate', 'games', 'kda', 'kp'],
       Mid:     ['winRate', 'games', 'kda', 'cs'],
-      ADC:     ['winRate', 'games', 'kda', 'cs'],
+      Bot:     ['winRate', 'games', 'kda', 'cs'],
       Support: ['winRate', 'games', 'kda', 'kp', 'vision'],
     },
   },

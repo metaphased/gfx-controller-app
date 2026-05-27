@@ -7,15 +7,18 @@ var _exitTimer  = null;
 var _enterTimer = null;
 
 // Role order matches state.draft.team1RolePicks / team2RolePicks indices
-// (DRAFT_ROLES in control.js = ['Top','Jungle','Mid','ADC','Support'])
+// (DRAFT_ROLES in control.js = ['Top','Jungle','Mid','Bot','Support'])
 const ROLES        = ['top', 'jungle', 'mid', 'bot', 'support'];
-const ROLE_LABELS  = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const ROLE_LABELS  = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
 const ROLE_ICONS   = {
   top:     '/graphics/draft/roles/top.png',
   jungle:  '/graphics/draft/roles/jungle.png',
+  jg:      '/graphics/draft/roles/jungle.png',
   mid:     '/graphics/draft/roles/mid.png',
   bot:     '/graphics/draft/roles/bot.png',
+  adc:     '/graphics/draft/roles/bot.png',
   support: '/graphics/draft/roles/support.png',
+  sup:     '/graphics/draft/roles/support.png',
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

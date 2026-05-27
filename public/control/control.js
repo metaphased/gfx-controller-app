@@ -5,7 +5,7 @@ window._state = {};
 let bracketRounds = [];
 let bracketType   = 'single';
 const _pickerContainers = {};
-const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
 const OPGG_REGIONS  = ['kr','euw','na','eune','jp','oce','br','las','lan','ru','tr'];
 
 // ── External URL config ────────────────────────────────────────────────────────
@@ -1059,7 +1059,7 @@ function commitDraftToSeries() {
   });
 }
 
-const DRAFT_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const DRAFT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
 
 // Role assignment drag-drop state
 const _raState = { t1: Array(5).fill(null), t2: Array(5).fill(null) };
@@ -1287,7 +1287,7 @@ const H2H_STAT_TOKENS = [
   { key: 'damage',  label: 'DMG/g'    },
   { key: 'vision',  label: 'Vision'   },
 ];
-const H2H_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const H2H_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
 
 function patchH2hChampStats(data) { api('/api/settings', { h2hChampStats: Object.assign({}, ((window._state||{}).settings||{}).h2hChampStats, data) }); }
 
