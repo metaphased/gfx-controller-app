@@ -10,9 +10,12 @@ var ROLES      = ['top', 'jungle', 'mid', 'bot', 'support'];
 var ROLE_ICONS = {
   top:     '/graphics/draft/roles/top.png',
   jungle:  '/graphics/draft/roles/jungle.png',
+  jg:      '/graphics/draft/roles/jungle.png',
   mid:     '/graphics/draft/roles/mid.png',
   bot:     '/graphics/draft/roles/bot.png',
+  adc:     '/graphics/draft/roles/bot.png',
   support: '/graphics/draft/roles/support.png',
+  sup:     '/graphics/draft/roles/support.png',
 };
 
 var CHAMP_KEY_FIXES = {

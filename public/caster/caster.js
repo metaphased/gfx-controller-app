@@ -48,6 +48,7 @@ socket.on('connect', () => {
   const lbl = document.getElementById('conn-label');
   dot.className = 'conn-dot live';
   lbl.textContent = 'Connected';
+  socket.emit('presence:page', { page: 'Caster View' });
 });
 
 socket.on('disconnect', () => {
@@ -55,6 +56,22 @@ socket.on('disconnect', () => {
   const lbl = document.getElementById('conn-label');
   dot.className = 'conn-dot dead';
   lbl.textContent = 'Disconnected';
+});
+
+socket.on('presence:list', users => {
+  const strip = document.getElementById('presence-strip');
+  if (!strip) return;
+  const byUser = {};
+  users.forEach(u => {
+    const prev = byUser[u.username];
+    if (!prev || (u.pageUpdatedAt || u.connectedAt) > (prev.pageUpdatedAt || prev.connectedAt)) {
+      byUser[u.username] = u;
+    }
+  });
+  strip.innerHTML = Object.values(byUser).map(u =>
+    '<span class="presence-user"><span class="presence-user-dot">●</span>' +
+    '<span>' + u.username + ' (' + u.role + ')' + (u.page ? ' — ' + u.page : '') + '</span></span>'
+  ).join('');
 });
 
 async function refreshTournamentStats() {
@@ -110,8 +127,9 @@ function resolveTeamName(id, override) {
 }
 
 function roleIconUrl(role) {
+  const ROLE_FILE = { adc: 'bot', 'ad carry': 'bot', bottom: 'bot', jg: 'jungle', jungle: 'jungle', mid: 'mid', middle: 'mid', top: 'top', support: 'support', sup: 'support', fill: 'fill' };
   const key = (role || '').toLowerCase();
-  return '/graphics/head2head/roles/' + key + '.png';
+  return '/graphics/head2head/roles/' + (ROLE_FILE[key] || key) + '.png';
 }
 
 function champIconUrl(key) {
@@ -590,7 +608,7 @@ function buildSeriesHistory(m, t1name, t2name) {
     const t2Picks = (sg.t2RolePicks || []).some(Boolean) ? (sg.t2RolePicks || []) : [];
     const t1Players = (sg.players && sg.players.team1) || [];
     const t2Players = (sg.players && sg.players.team2) || [];
-    const roles = ['Top', 'Jg', 'Mid', 'ADC', 'Sup'];
+    const roles = ['Top', 'Jg', 'Mid', 'Bot', 'Sup'];
 
     function banRow(bans) {
       return '<div class="dhist-bans-row">' + bans.map(url => {
@@ -659,7 +677,7 @@ function buildSeriesHistory(m, t1name, t2name) {
   return html;
 }
 
-const DRAFT_ROLE_NAMES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const DRAFT_ROLE_NAMES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
 
 // ── DRAFT TAB ─────────────────────────────────────────────────────────────────
 function renderDraft() {

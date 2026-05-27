@@ -1,11 +1,44 @@
 // control.js — Esports GFX Control Panel
 
+// ── App modal (custom confirm/alert) ──────────────────────────────────────────
+let _appModalCallback = null;
+function showAlert(msg) {
+  const overlay = document.getElementById('app-modal-overlay');
+  document.getElementById('app-modal-message').textContent = msg;
+  document.getElementById('app-modal-cancel').style.display = 'none';
+  const ok = document.getElementById('app-modal-ok');
+  ok.className = 'btn btn-sm btn-primary'; ok.textContent = 'OK';
+  _appModalCallback = null;
+  overlay.classList.add('active');
+  ok.focus();
+}
+function showConfirm(msg, onConfirm, opts) {
+  const overlay = document.getElementById('app-modal-overlay');
+  document.getElementById('app-modal-message').textContent = msg;
+  const cancel = document.getElementById('app-modal-cancel');
+  cancel.style.display = ''; cancel.textContent = 'Cancel';
+  const ok = document.getElementById('app-modal-ok');
+  ok.className = 'btn btn-sm ' + ((opts && opts.danger) ? 'btn-danger' : 'btn-primary');
+  ok.textContent = (opts && opts.okLabel) || 'Confirm';
+  _appModalCallback = onConfirm;
+  overlay.classList.add('active');
+  cancel.focus();
+}
+function _appModalResolve(confirmed) {
+  document.getElementById('app-modal-overlay').classList.remove('active');
+  if (confirmed && _appModalCallback) _appModalCallback();
+  _appModalCallback = null;
+}
+function appModalBackdropClick(e) {
+  if (e.target === document.getElementById('app-modal-overlay')) _appModalResolve(false);
+}
+
 const socket = io();
 window._state = {};
 let bracketRounds = [];
 let bracketType   = 'single';
 const _pickerContainers = {};
-const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
 const OPGG_REGIONS  = ['kr','euw','na','eune','jp','oce','br','las','lan','ru','tr'];
 
 // ── External URL config ────────────────────────────────────────────────────────
@@ -78,7 +111,7 @@ function saveActiveProfileChanges() {
     if (data && data.ok) {
       if (data.savedSnapshot) setProfileSnapshot(data.savedSnapshot);
       loadProfilesTab();
-    } else alert((data && data.error) || 'Failed to update profile.');
+    } else showAlert((data && data.error) || 'Failed to update profile.');
   });
 }
 
@@ -87,11 +120,30 @@ socket.on('connect', () => {
   const el = g('conn-status');
   el.textContent = '⬤ Connected';
   el.className = 'connection-status connected';
+  // Report current page to presence system
+  const active = document.querySelector('.nav-item.active');
+  if (active) socket.emit('presence:page', { page: TAB_LABELS[active.dataset.tab] || active.dataset.tab });
 });
 socket.on('disconnect', () => {
   const el = g('conn-status');
   el.textContent = '⬤ Disconnected';
   el.className = 'connection-status disconnected';
+});
+
+socket.on('presence:list', users => {
+  const strip = g('presence-strip'); if (!strip) return;
+  // Deduplicate by username — keep the entry with the most recently set page
+  const byUser = {};
+  users.forEach(u => {
+    const prev = byUser[u.username];
+    if (!prev || (u.pageUpdatedAt || u.connectedAt) > (prev.pageUpdatedAt || prev.connectedAt)) {
+      byUser[u.username] = u;
+    }
+  });
+  strip.innerHTML = Object.values(byUser).map(u =>
+    '<span class="presence-user"><span class="presence-user-dot">●</span>' +
+    '<span>' + u.username + ' (' + u.role + ')' + (u.page ? ' — ' + u.page : '') + '</span></span>'
+  ).join('');
 });
 socket.on('state', async (state) => {
   window._state = state;
@@ -104,7 +156,32 @@ socket.on('state', async (state) => {
 
 refreshControlTournamentStats();
 
+// ── Current user identity (for claim badge self-detection) ─────────────────────
+let _myUsername = null;
+let _myRole = null;
+let _myId = null;
+
 // ── Navigation ─────────────────────────────────────────────────────────────────
+const TAB_LABELS = {
+  home:'Dashboard', tournament:'Tournament Setup', teams:'Teams', schedule:'Schedule',
+  groups:'Groups', playoffs:'Playoffs', game:'Game Setup', draft:'Draft',
+  players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
+  preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
+  h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
+  'draft-gfx':'Draft GFX', bracket:'Bracket', 'groups-gfx':'Group Stage',
+  'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
+  win:'Win Screen', profiles:'Profiles', users:'Settings', log:'Log',
+};
+
+// Tab → claim page key (GFX ctrl-bar pages only)
+const GFX_TAB_CLAIM_KEY = {
+  'draft-gfx':'draft-gfx', 'lowerthird':'lower-thirds', 'player-intro':'player-intro',
+  'win':'win-screen', 'break':'break-screen', 'preshow':'pre-show',
+  'tournament-structure-gfx':'tournament-structure', 'groups-gfx':'standings',
+  'bracket':'bracket', 'h2h':'h2h', 'ticker':'ticker', 'prizepool':'prizepool',
+};
+let _currentClaimTab = null; // tabKey currently claimed
+
 document.querySelectorAll('.nav-item').forEach(navEl => {
   navEl.addEventListener('click', () => {
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -116,6 +193,66 @@ document.querySelectorAll('.nav-item').forEach(navEl => {
     if (navEl.dataset.tab === 'schedule') renderSchedule();
     if (navEl.dataset.tab === 'home')     renderDashboard(window._state);
     localStorage.setItem('gfx_ctrl_tab', navEl.dataset.tab);
+    socket.emit('presence:page', { page: TAB_LABELS[navEl.dataset.tab] || navEl.dataset.tab });
+    // Soft page claiming
+    const newClaimKey = GFX_TAB_CLAIM_KEY[navEl.dataset.tab];
+    const oldClaimKey = _currentClaimTab ? GFX_TAB_CLAIM_KEY[_currentClaimTab] : null;
+    if (oldClaimKey && oldClaimKey !== newClaimKey) socket.emit('claim:release', { page: oldClaimKey });
+    if (newClaimKey) socket.emit('claim:page', { page: newClaimKey });
+    _currentClaimTab = navEl.dataset.tab;
+  });
+});
+
+// ── Last-action attribution ────────────────────────────────────────────────────
+function relativeTime(ts) {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 5)  return 'just now';
+  if (s < 60) return s + 's ago';
+  const m = Math.floor(s / 60);
+  if (m < 60) return m + 'm ago';
+  return Math.floor(m / 60) + 'h ago';
+}
+let _lastActionsMap = {};
+
+socket.on('lastActions:update', map => {
+  _lastActionsMap = map || {};
+  renderAttributions();
+});
+
+function renderAttributions() {
+  Object.entries(GFX_TAB_CLAIM_KEY).forEach(([tabKey, pageKey]) => {
+    const tabEl = g('tab-' + tabKey); if (!tabEl) return;
+    const ctrlBar = tabEl.querySelector('.gfx-ctrl-bar'); if (!ctrlBar) return;
+    let attr = ctrlBar.querySelector('.ctrl-attribution');
+    const entry = _lastActionsMap[pageKey];
+    if (!entry) { if (attr) attr.remove(); return; }
+    if (!attr) { attr = document.createElement('div'); attr.className = 'ctrl-attribution'; ctrlBar.appendChild(attr); }
+    attr.textContent = 'Last: ' + entry.action + ' · ' + entry.user + ' · ' + relativeTime(entry.timestamp);
+  });
+}
+
+// Refresh relative timestamps every 15 seconds
+setInterval(renderAttributions, 15000);
+
+socket.on('claims:update', claimsMap => {
+  // For each GFX tab, update or clear the claim badge in its ctrl-bar
+  Object.entries(GFX_TAB_CLAIM_KEY).forEach(([tabKey, pageKey]) => {
+    const tabEl = g('tab-' + tabKey); if (!tabEl) return;
+    const ctrlBar = tabEl.querySelector('.gfx-ctrl-bar'); if (!ctrlBar) return;
+    let badge = ctrlBar.querySelector('.ctrl-claim-badge');
+    const claim = claimsMap[pageKey];
+    if (!claim) {
+      if (badge) badge.remove();
+      return;
+    }
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'ctrl-claim-badge';
+      ctrlBar.appendChild(badge);
+    }
+    const isMine = _myUsername && claim.user === _myUsername;
+    badge.className = 'ctrl-claim-badge' + (isMine ? ' ctrl-claim-mine' : ' ctrl-claim-other');
+    badge.textContent = isMine ? '● You have control' : '⚠ Operated by ' + claim.user;
   });
 });
 
@@ -176,6 +313,49 @@ function copyText(str) {
   return Promise.resolve();
 }
 
+// ── Destructive action confirmation ────────────────────────────────────────────
+// Replaces the button with a confirm/cancel pair; confirm is disabled for 2s.
+function confirmDestructive(triggerEl, label, callback) {
+  if (triggerEl._confirming) return;
+  triggerEl._confirming = true;
+  const parent = triggerEl.parentNode;
+  const origHTML = triggerEl.outerHTML;
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'btn btn-danger btn-sm';
+  confirmBtn.textContent = label + ' (confirm)';
+  confirmBtn.disabled = true;
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'btn btn-sm';
+  cancelBtn.textContent = 'Cancel';
+  cancelBtn.style.marginLeft = '4px';
+
+  parent.replaceChild(confirmBtn, triggerEl);
+  parent.insertBefore(cancelBtn, confirmBtn.nextSibling);
+
+  const timer = setTimeout(() => { confirmBtn.disabled = false; }, 2000);
+
+  confirmBtn.addEventListener('click', () => {
+    clearTimeout(timer);
+    restore();
+    callback();
+  });
+  cancelBtn.addEventListener('click', () => {
+    clearTimeout(timer);
+    restore();
+  });
+
+  function restore() {
+    const tmp = document.createElement('div');
+    tmp.innerHTML = origHTML;
+    const orig = tmp.firstChild;
+    orig._confirming = false;
+    parent.replaceChild(orig, confirmBtn);
+    if (cancelBtn.parentNode) cancelBtn.parentNode.removeChild(cancelBtn);
+  }
+}
+
 // ── Graphics token + output URLs ───────────────────────────────────────────────
 const GFX_OUTPUTS = [
   { label: 'Caster View',           path: 'caster/' },
@@ -226,8 +406,9 @@ function copyGfxToken() {
   if (el) copyText(el.value);
 }
 function regenerateGfxToken() {
-  if (!confirm('Regenerate graphics token? All current OBS/vMix browser source URLs will stop working until updated.')) return;
-  api('/api/settings/regenerate-token', {});
+  showConfirm('Regenerate graphics token? All current OBS/vMix browser source URLs will stop working until updated.', function() {
+    api('/api/settings/regenerate-token', {});
+  }, { danger: true, okLabel: 'Regenerate' });
 }
 
 // ── Top bar sync ───────────────────────────────────────────────────────────────
@@ -552,7 +733,7 @@ function setDotColor(id, color) { const e = g(id); if (e) e.style.background = c
 function patchMatch(data) { api('/api/match', data); }
 function getLTColor(k) { return (window._state&&window._state.match&&window._state.match[k]&&window._state.match[k].color)||'#1ffaff'; }
 function patchScore(team, delta) { api('/api/score', { team, delta }); }
-function resetState() { if (confirm('Reset ALL state? Cannot be undone.')) api('/api/state/reset', {}); }
+function resetState(btn) { confirmDestructive(btn, 'Reset all state', () => api('/api/state/reset', {})); }
 
 function syncTeamDisplay(n, team) {
   const prefix = 't' + n;
@@ -890,8 +1071,8 @@ function startDraftPhase() {
   api('/api/draft', { phase: 'bans1', currentStep: 1 });
 }
 
-function resetDraft() {
-  if (!confirm('Reset the current draft? All picks will be cleared.')) return;
+function resetDraft(btn) {
+  confirmDestructive(btn, 'Reset draft', () => {
   _draftPaused = false;
   _draftPauseRemaining = null;
   const board = g('draft-board');
@@ -912,6 +1093,7 @@ function resetDraft() {
     blueSideTeam: (d && d.blueSideTeam) || 'team1',
     replayIntro: true,
   });
+  }); // end confirmDestructive
 }
 
 function replayDraftIntro() {
@@ -936,7 +1118,7 @@ function commitDraftToSeries() {
   });
 }
 
-const DRAFT_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const DRAFT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
 
 // Role assignment drag-drop state
 const _raState = { t1: Array(5).fill(null), t2: Array(5).fill(null) };
@@ -1164,7 +1346,7 @@ const H2H_STAT_TOKENS = [
   { key: 'damage',  label: 'DMG/g'    },
   { key: 'vision',  label: 'Vision'   },
 ];
-const H2H_ROLES = ['Top', 'Jungle', 'Mid', 'ADC', 'Support'];
+const H2H_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
 
 function patchH2hChampStats(data) { api('/api/settings', { h2hChampStats: Object.assign({}, ((window._state||{}).settings||{}).h2hChampStats, data) }); }
 
@@ -1997,10 +2179,10 @@ function renderPlayerEditors(players) {
         const curSubs    = (window._state && window._state.players && window._state.players[team+'subs']) || [];
         const pName = (curList[playerIndex]  && (curList[playerIndex].handle  || curList[playerIndex].name))  || ('Player '+(playerIndex+1));
         const sName = (curSubs[subIndex]     && (curSubs[subIndex].handle     || curSubs[subIndex].name))     || ('Sub '+(subIndex+1));
-        if (confirm('Swap ' + pName + ' with ' + sName + '?')) {
-          api('/api/players/swap', { team, playerIndex, subIndex });
-        }
         sel.value = '';
+        showConfirm('Swap ' + pName + ' with ' + sName + '?', function() {
+          api('/api/players/swap', { team, playerIndex, subIndex });
+        }, { okLabel: 'Swap' });
       });
 
       container.appendChild(starterSec);
@@ -2511,7 +2693,7 @@ function renderEditPlayers(players, subs) {
 
 async function saveTeamEditor() {
   const name=(g('edit-team-name').value||'').trim();
-  if (!name){alert('Team name is required.');return;}
+  if (!name){showAlert('Team name is required.');return;}
   const players=DEFAULT_ROLES.map(function(_,i){
     const c=g('edit-team-players');
     return {
@@ -2536,12 +2718,13 @@ async function saveTeamEditor() {
   if(res&&res.ok){closeTeamEditor();renderTeamsList();}
 }
 
-async function deleteEditingTeam() {
+function deleteEditingTeam() {
   const id=g('edit-team-id').value; if(!id)return;
   const name=g('edit-team-name').value||'this team';
-  if(!confirm('Delete '+name+'? Cannot be undone.'))return;
-  const res=await api('/api/teams/delete',{id});
-  if(res&&res.ok){closeTeamEditor();renderTeamsList();}
+  showConfirm('Delete ' + name + '? Cannot be undone.', async function() {
+    const res = await api('/api/teams/delete', { id });
+    if (res && res.ok) { closeTeamEditor(); renderTeamsList(); }
+  }, { danger: true, okLabel: 'Delete' });
 }
 
 // ── Team picker modal ──────────────────────────────────────────────────────────
@@ -2861,6 +3044,29 @@ function toggleUserEdit(id) {
   const btn = g('user-edit-btn-' + id); if (btn) btn.textContent = 'Done';
 }
 
+// ── System Log ─────────────────────────────────────────────────────────────────
+function loadActionLog() {
+  const wrap = g('action-log-wrap'); if (!wrap) return;
+  wrap.innerHTML = '<p class="hint">Loading…</p>';
+  fetch('/api/action-log').then(r => r.json()).then(data => {
+    if (!Array.isArray(data) || data.length === 0) {
+      wrap.innerHTML = '<p class="hint">No actions logged yet.</p>';
+      return;
+    }
+    const rows = data.map(e => {
+      const d = new Date(e.timestamp);
+      const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const relSecs = Math.floor((Date.now() - e.timestamp) / 1000);
+      const rel = relSecs < 60 ? relSecs + 's ago' : relSecs < 3600 ? Math.floor(relSecs/60) + 'm ago' : Math.floor(relSecs/3600) + 'h ago';
+      const detail = e.detail ? ' <span style="opacity:.55">' + escHtml(e.detail) + '</span>' : '';
+      return '<tr><td title="' + escHtml(d.toLocaleString()) + '">' + escHtml(timeStr) + ' <span style="opacity:.4;font-size:10px">' + rel + '</span></td>' +
+        '<td>' + escHtml(e.user) + '</td><td style="opacity:.6">' + escHtml(e.role) + '</td>' +
+        '<td><span class="log-action">' + escHtml(e.action) + '</span>' + detail + '</td></tr>';
+    }).join('');
+    wrap.innerHTML = '<table class="action-log-table"><thead><tr><th>Time</th><th>User</th><th>Role</th><th>Action</th></tr></thead><tbody>' + rows + '</tbody></table>';
+  }).catch(() => { wrap.innerHTML = '<p class="hint">Failed to load log.</p>'; });
+}
+
 // ── Champion asset sync ────────────────────────────────────────────────────────
 let _assetTargetStates = null;
 
@@ -2980,19 +3186,23 @@ function loadUsersTab() {
     const list = g('users-list');
     if (!list) return;
     if (!data.users || data.users.length === 0) { list.innerHTML = '<p class="hint">No users found.</p>'; return; }
-    list.innerHTML = data.users.map(u =>
-      '<div class="user-row" id="user-row-' + u.id + '">' +
-      '<div style="display:flex;align-items:center;gap:8px">' +
-      '<span class="user-role user-role-' + u.role + '">' + u.role + '</span>' +
-      '<span class="user-name">' + escHtml(u.username) + '</span>' +
-      '<button class="btn btn-sm" id="user-edit-btn-' + u.id + '" onclick="toggleUserEdit(\'' + u.id + '\')">Edit</button>' +
-      '</div>' +
-      '<div id="user-actions-' + u.id + '" style="display:none;gap:6px;justify-content:flex-end">' +
-      '<button class="btn btn-sm" onclick="openChpwPanel(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Password</button>' +
-      '<button class="btn btn-sm btn-danger" onclick="deleteUser(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Delete</button>' +
-      '</div>' +
-      '</div>'
-    ).join('');
+    const isSuperadmin = data.myRole === 'superadmin';
+    const myId = data.myId;
+    list.innerHTML = data.users.map(u => {
+      const canEdit   = isSuperadmin || u.role === 'operator' || u.id === myId;
+      const canDelete = u.id !== myId && (isSuperadmin || u.role === 'operator');
+      return '<div class="user-row" id="user-row-' + u.id + '">' +
+        '<div style="display:flex;align-items:center;gap:8px">' +
+        '<span class="user-role user-role-' + u.role + '">' + u.role + '</span>' +
+        '<span class="user-name">' + escHtml(u.username) + '</span>' +
+        (canEdit ? '<button class="btn btn-sm" id="user-edit-btn-' + u.id + '" onclick="toggleUserEdit(\'' + u.id + '\')">Edit</button>' : '') +
+        '</div>' +
+        '<div id="user-actions-' + u.id + '" style="display:none;gap:6px;justify-content:flex-end">' +
+        (canEdit ? '<button class="btn btn-sm" onclick="openChpwPanel(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Password</button>' : '') +
+        (canDelete ? '<button class="btn btn-sm btn-danger" onclick="deleteUser(\'' + u.id + '\',\'' + escHtml(u.username) + '\')">Delete</button>' : '') +
+        '</div>' +
+        '</div>';
+    }).join('');
   }).catch(() => { const l = g('users-list'); if (l) l.innerHTML = '<p class="hint" style="color:var(--danger)">Failed to load users.</p>'; });
 }
 
@@ -3001,6 +3211,8 @@ function openNewUserForm() {
   g('nu-username').value = ''; g('nu-password').value = '';
   g('nu-password').setAttribute('readonly', '');
   g('nu-role').value = 'operator';
+  const adminOpt = g('nu-role').querySelector('option[value="admin"]');
+  if (adminOpt) adminOpt.style.display = _myRole === 'superadmin' ? '' : 'none';
   showUsersMsg('nu-msg', '', '');
   g('nu-username').focus();
 }
@@ -3041,12 +3253,13 @@ function submitChangePassword() {
 }
 
 function deleteUser(uid, username) {
-  if (!confirm('Delete user "' + username + '"? This cannot be undone.')) return;
-  fetch('/api/users/delete', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: uid }) })
-    .then(r => r.json()).then(data => {
-      if (data.ok) loadUsersTab();
-      else alert(data.error || 'Failed to delete user.');
-    });
+  showConfirm('Delete user "' + username + '"? This cannot be undone.', function() {
+    fetch('/api/users/delete', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ userId: uid }) })
+      .then(r => r.json()).then(data => {
+        if (data.ok) loadUsersTab();
+        else showAlert(data.error || 'Failed to delete user.');
+      });
+  }, { danger: true, okLabel: 'Delete' });
 }
 
 function showUsersMsg(id, text, type) {
@@ -3119,7 +3332,7 @@ function renderProfilesList(profiles) {
           '<button class="btn btn-sm btn-primary" onclick="loadProfile(\'' + p.id + '\')">' + (isActive ? '● Active' : 'Load') + '</button>' +
           (isActive ? '<button class="btn btn-sm' + (isDirty ? ' btn-primary' : '') + '" onclick="updateProfile(\'' + p.id + '\')">Update</button>' : '') +
           '<button class="btn btn-sm" onclick="renameProfileInline(\'' + p.id + '\')">Rename</button>' +
-          '<button class="btn btn-sm btn-danger" onclick="deleteProfile(\'' + p.id + '\')">Delete</button>' +
+          '<button class="btn btn-sm btn-danger" onclick="deleteProfile(\'' + p.id + '\',this)">Delete</button>' +
         '</div>' +
       '</div>' +
       '</div>';
@@ -3191,7 +3404,7 @@ function confirmLoadProfile() {
       if (data.ok) {
         if (data.savedSnapshot) setProfileSnapshot(data.savedSnapshot);
         loadProfilesTab(true); // skip dirty check — window._state not yet updated via WS
-      } else alert(data.error || 'Failed to load profile.');
+      } else showAlert(data.error || 'Failed to load profile.');
     });
 }
 
@@ -3249,19 +3462,21 @@ document.addEventListener('DOMContentLoaded', function() {
       if (tabEl) tabEl.classList.add('active');
     }
     if (savedTab === 'users')    loadUsersTab();
+    if (savedTab === 'log')      loadActionLog();
     if (savedTab === 'profiles') loadProfilesTab();
     if (savedTab === 'home')     renderDashboard(window._state);
   }
 });
 
 function updateProfile(id) {
-  if (!confirm('Update this profile with the current tournament state? This overwrites the saved data.')) return;
-  api('/api/profiles/update', { id }).then(function(data) {
-    if (data && data.ok) {
-      if (data.savedSnapshot) setProfileSnapshot(data.savedSnapshot);
-      loadProfilesTab();
-    } else alert((data && data.error) || 'Failed to update.');
-  });
+  showConfirm('Update this profile with the current tournament state? This overwrites the saved data.', function() {
+    api('/api/profiles/update', { id }).then(function(data) {
+      if (data && data.ok) {
+        if (data.savedSnapshot) setProfileSnapshot(data.savedSnapshot);
+        loadProfilesTab();
+      } else showAlert((data && data.error) || 'Failed to update.');
+    });
+  }, { okLabel: 'Update' });
 }
 
 function renameProfileInline(id) {
@@ -3284,21 +3499,22 @@ function confirmRename(id, input) {
   if (!name) { loadProfilesTab(); return; }
   fetch('/api/profiles/rename', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id, name }) })
     .then(r => r.json()).then(data => {
-      if (!data.ok) alert(data.error || 'Failed to rename.');
+      if (!data.ok) showAlert(data.error || 'Failed to rename.');
       loadProfilesTab();
     });
 }
 
-function deleteProfile(id) {
-  if (!confirm('Delete this profile? This cannot be undone.')) return;
-  fetch('/api/profiles/delete', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id }) })
-    .then(r => r.json()).then(data => {
-      if (data.ok) {
-        // state.meta is cleared by server; syncTopBar will update window._activeProfileId
-        if (window._activeProfileId === id) { _savedProfileSnapshotStr = null; updateProfileDirtyBar(false); }
-        loadProfilesTab();
-      } else alert(data.error || 'Failed to delete.');
-    });
+function deleteProfile(id, btn) {
+  confirmDestructive(btn, 'Delete profile', () => {
+    fetch('/api/profiles/delete', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ id }) })
+      .then(r => r.json()).then(data => {
+        if (data.ok) {
+          // state.meta is cleared by server; syncTopBar will update window._activeProfileId
+          if (window._activeProfileId === id) { _savedProfileSnapshotStr = null; updateProfileDirtyBar(false); }
+          loadProfilesTab();
+        } else showAlert(data.error || 'Failed to delete.');
+      });
+  });
 }
 
 function showProfileMsg(id, text, type) {
@@ -3320,10 +3536,20 @@ document.querySelectorAll('.nav-item[data-tab="users"]').forEach(el => {
   el.addEventListener('click', loadUsersTab);
 });
 
+// Load action log when the log tab is opened
+document.querySelectorAll('.nav-item[data-tab="log"]').forEach(el => {
+  el.addEventListener('click', loadActionLog);
+});
+
 // Populate session info in top bar
 fetch('/api/auth/me').then(r => r.json()).then(data => {
   const el = g('mtb-session');
-  if (el && data.user) el.textContent = data.user.username;
+  if (el && data.user) {
+    el.textContent = data.user.username;
+    _myUsername = data.user.username;
+    _myRole = data.user.role;
+    _myId = data.user.id;
+  }
 }).catch(() => {});
 
 // ── Tournament Setup ───────────────────────────────────────────────────────────
@@ -3527,36 +3753,38 @@ function setPlayoffsEditMode(on) {
   _applyEditMode(on, 'playoffs-edit-btn', ['playoffs-edit-btns'], renderBracketEditor, 'Edit Bracket');
 }
 
-function _guardEditMode(tabKey) {
+function _guardEditMode(tabKey, onPass) {
   const guards = [
     { mode: _gsEditMode,       tab: 'game',     clear: function() { setGsEditMode(false); } },
     { mode: _schedEditMode,    tab: 'schedule', clear: function() { setSchedEditMode(false); } },
     { mode: _groupsEditMode,   tab: 'groups',   clear: function() { setGroupsEditMode(false); } },
     { mode: _playoffsEditMode, tab: 'playoffs',  clear: function() { setPlayoffsEditMode(false); } },
   ];
+  var active = null;
   for (var i = 0; i < guards.length; i++) {
-    var g = guards[i];
-    if (g.mode && tabKey !== g.tab) {
-      if (!confirm('You have ' + g.tab.charAt(0).toUpperCase() + g.tab.slice(1) + ' editing enabled — exit edit mode?')) return false;
-      g.clear();
-    }
+    if (guards[i].mode && tabKey !== guards[i].tab) { active = guards[i]; break; }
   }
-  return true;
+  if (!active) { onPass(); return; }
+  showConfirm('You have ' + active.tab.charAt(0).toUpperCase() + active.tab.slice(1) + ' editing enabled — exit edit mode?', function() {
+    active.clear();
+    _guardEditMode(tabKey, onPass);
+  });
 }
 
 function switchToTab(tabKey) {
-  if (!_guardEditMode(tabKey)) return;
-  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  const navEl = document.querySelector('.nav-item[data-tab="' + tabKey + '"]');
-  const tabEl = g('tab-' + tabKey);
-  if (navEl) navEl.classList.add('active');
-  if (tabEl) tabEl.classList.add('active');
-  loadTeamsCache();
-  if (tabKey === 'users')    loadUsersTab();
-  if (tabKey === 'profiles') loadProfilesTab();
-  if (tabKey === 'home')     renderDashboard(window._state);
-  localStorage.setItem('gfx_ctrl_tab', tabKey);
+  _guardEditMode(tabKey, function() {
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    const navEl = document.querySelector('.nav-item[data-tab="' + tabKey + '"]');
+    const tabEl = g('tab-' + tabKey);
+    if (navEl) navEl.classList.add('active');
+    if (tabEl) tabEl.classList.add('active');
+    loadTeamsCache();
+    if (tabKey === 'users')    loadUsersTab();
+    if (tabKey === 'profiles') loadProfilesTab();
+    if (tabKey === 'home')     renderDashboard(window._state);
+    localStorage.setItem('gfx_ctrl_tab', tabKey);
+  });
 }
 
 function renderGroupsTab(state) {
@@ -3645,10 +3873,15 @@ function moveGroupTeam(groupId, teamId, direction) {
 
 function generateGroups() {
   const numGroups = parseInt(g('ts-num-groups') && g('ts-num-groups').value) || 0;
-  if (!numGroups) { alert('Set Number of Groups first.'); return; }
+  if (!numGroups) { showAlert('Set Number of Groups first.'); return; }
   const existing = ((window._state.tournament||{}).groups||[]);
-  if (existing.length > 0 && !confirm('This will replace the ' + existing.length + ' existing group' + (existing.length > 1 ? 's' : '') + '. Continue?')) return;
-  api('/api/tournament/generate-groups', { numGroups });
+  if (existing.length > 0) {
+    showConfirm('This will replace the ' + existing.length + ' existing group' + (existing.length > 1 ? 's' : '') + '. Continue?', function() {
+      api('/api/tournament/generate-groups', { numGroups });
+    }, { okLabel: 'Replace' });
+  } else {
+    api('/api/tournament/generate-groups', { numGroups });
+  }
 }
 
 // ── Group Standings + Playoff Seedings ────────────────────────────────────────
@@ -3911,10 +4144,11 @@ function generateBracketRounds(paddedSeeds, bracketSize, t) {
 }
 
 function applyGeneratedBracket() {
-  if (!_generatedBracketRounds) { alert('Generate seedings first.'); return; }
+  if (!_generatedBracketRounds) { showAlert('Generate seedings first.'); return; }
   const tournName = (window._state.match || {}).tournament || 'PLAYOFF BRACKET';
-  if (!confirm('This will overwrite the current bracket rounds. Continue?')) return;
-  api('/api/tournament/apply-bracket', { rounds: _generatedBracketRounds, title: tournName + ' — PLAYOFFS' });
+  showConfirm('This will overwrite the current bracket rounds. Continue?', function() {
+    api('/api/tournament/apply-bracket', { rounds: _generatedBracketRounds, title: tournName + ' — PLAYOFFS' });
+  }, { okLabel: 'Apply' });
 }
 
 // ── Bracket pre-generation from Tournament Setup ──────────────────────────────
@@ -3926,7 +4160,7 @@ function previewBracketGeneration() {
   if (!t) return;
   const teamsInBracket = playoffTeamCount(t);
   if (!teamsInBracket) {
-    alert(t.hasGroupStage
+    showAlert(t.hasGroupStage
       ? 'Set Number of Groups and Teams Advancing per Group first.'
       : 'Set Total Teams in Tournament first.');
     return;
@@ -4061,12 +4295,23 @@ function renderSchedule() {
       '</div>' +
       '<div style="display:flex;gap:6px">' +
       (_schedEditMode ? '<button class="btn btn-sm btn-primary" onclick="openAddGameForm(\'' + day.id + '\')">+ Game</button>' : '') +
-      (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="if(confirm(\'Delete this broadcast day?\'))api(\'/api/schedule/day/delete\',{id:\'' + day.id + '\'})">Delete Day</button>' : '') +
+      (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="schedDeleteDay(\'' + day.id + '\')">Delete Day</button>' : '') +
       '</div></div>' +
       '<div class="sched-games-list" id="sgames-' + day.id + '">' + renderDayGames(day) + '</div>' +
       '<div class="sched-add-game-form" id="sadd-' + day.id + '" style="display:none"></div>' +
       '</div>';
   }).join('');
+}
+
+function schedDeleteDay(id) {
+  showConfirm('Delete this broadcast day?', function() {
+    api('/api/schedule/day/delete', { id });
+  }, { danger: true, okLabel: 'Delete' });
+}
+function schedDeleteGame(dayId, gameId) {
+  showConfirm('Remove this game?', function() {
+    api('/api/schedule/game/delete', { dayId, gameId });
+  }, { danger: true, okLabel: 'Remove' });
 }
 
 function renderDayGames(day) {
@@ -4115,10 +4360,10 @@ function renderDayGames(day) {
       '<div class="sched-game-btns">' +
       (hasDraftHistory ? '<button class="btn btn-sm ds-toggle-btn" id="dh-btn-' + histId + '" onclick="toggleDraftHistory(\'' + histId + '\')">▼ Draft</button>' : '') +
       (!isCompleted ? '<button class="btn btn-sm" onclick="openEditGameForm(\'' + day.id + '\',\'' + gm.id + '\')">Edit</button>' : '') +
-      (isCompleted ? '<button class="btn btn-sm btn-danger" onclick="clearScheduleGameResult(\'' + day.id + '\',\'' + gm.id + '\')">Clear Result</button>' : '') +
+      (isCompleted ? '<button class="btn btn-sm btn-danger" onclick="clearScheduleGameResult(\'' + day.id + '\',\'' + gm.id + '\',this)">Clear Result</button>' : '') +
       (_schedEditMode && idx > 0 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'up\'})">↑</button>' : '') +
       (_schedEditMode && idx < day.games.length-1 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'down\'})">↓</button>' : '') +
-      (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="if(confirm(\'Remove this game?\'))api(\'/api/schedule/game/delete\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\'})">×</button>' : '') +
+      (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="schedDeleteGame(\'' + day.id + '\',\'' + gm.id + '\')">×</button>' : '') +
       '</div></div>' +
       '<div id="sedit-' + gm.id + '" class="sched-edit-game-form" style="display:none"></div>';
 
@@ -4409,9 +4654,8 @@ function renderScheduleGamePicker(dayId) {
   }).join('');
 }
 
-function clearScheduleGameResult(dayId, gameId) {
-  if (!confirm('Clear the recorded result for this game?\n\nThis will remove the score and allow it to be replayed. If this game is currently loaded, the active series will also be reset.')) return;
-  api('/api/schedule/game/clear-result', { dayId, gameId });
+function clearScheduleGameResult(dayId, gameId, btn) {
+  confirmDestructive(btn, 'Clear game result', () => api('/api/schedule/game/clear-result', { dayId, gameId }));
 }
 
 function loadScheduleGame(dayId, gameId) {
@@ -4421,15 +4665,17 @@ function loadScheduleGame(dayId, gameId) {
   const isCompleted = !!(gm && gm.result && gm.result.completed);
 
   if (isCompleted) {
-    if (!confirm('This game is already completed.\n\nRestore its saved state (teams, scores, draft) so you can review or edit it?')) return;
-    api('/api/match/load-schedule-game', { dayId, gameId, restore: true }).then(function() {
-      fetch('/api/teams').then(function(r) { return r.json(); }).then(function(d) { window._cachedTeams = d.teams||[]; });
-    });
+    showConfirm('This game is already completed.\n\nRestore its saved state (teams, scores, draft) so you can review or edit it?', function() {
+      api('/api/match/load-schedule-game', { dayId, gameId, restore: true }).then(function() {
+        fetch('/api/teams').then(function(r) { return r.json(); }).then(function(d) { window._cachedTeams = d.teams||[]; });
+      });
+    }, { okLabel: 'Restore' });
   } else {
-    if (!confirm('Load this game? This will replace the current team data and reset the series.')) return;
-    api('/api/match/load-schedule-game', { dayId, gameId }).then(function() {
-      fetch('/api/teams').then(function(r) { return r.json(); }).then(function(d) { window._cachedTeams = d.teams||[]; });
-    });
+    showConfirm('Load this game? This will replace the current team data and reset the series.', function() {
+      api('/api/match/load-schedule-game', { dayId, gameId }).then(function() {
+        fetch('/api/teams').then(function(r) { return r.json(); }).then(function(d) { window._cachedTeams = d.teams||[]; });
+      });
+    }, { okLabel: 'Load Game' });
   }
 }
 
@@ -4987,7 +5233,7 @@ function buildDraftSnapshot(sg, t1Tag, t2Tag) {
 
 function confirmGameResult() {
   const winnerEl = document.querySelector('input[name="sg-winner"]:checked');
-  if (!winnerEl) { alert('Please select a winner.'); return; }
+  if (!winnerEl) { showAlert('Please select a winner.'); return; }
   const winner = winnerEl.value;
 
   // Sides come from the draft tab's blue-side assignment — no separate radio needed
@@ -5036,19 +5282,19 @@ function recordBye(winner, seriesWalkover) {
   const msg = seriesWalkover
     ? 'Award series walkover (BYE) to ' + teamName + '? This will fill remaining games and end the series.'
     : 'Record Game ' + ((m && m.currentGameNum) || 1) + ' as a BYE win for ' + teamName + '?';
-  if (!confirm(msg)) return;
-  api('/api/match/record-bye', { winner, seriesWalkover: !!seriesWalkover }).then(function(res) {
-    if (!res) return;
-    if (!res.seriesOver) {
-      // Reset draft board for next game (same as confirmGameResult)
-      const board = g('draft-board');
-      if (board) { board.innerHTML = ''; board.removeAttribute('data-built'); }
-      Object.keys(_draftPickerContainers).forEach(function(k) { delete _draftPickerContainers[k]; });
-      _raState.t1 = Array(5).fill(null); _raState.t2 = Array(5).fill(null); _raSig = '';
-      const raEl = g('draft-role-assign'); if (raEl) raEl.innerHTML = '';
-      api('/api/draft', { picks: Array(20).fill(''), currentStep: 0, phase: 'notstarted', committedT1Picks: [], committedT2Picks: [], team1RolePicks: [], team2RolePicks: [] });
-    }
-  });
+  showConfirm(msg, function() {
+    api('/api/match/record-bye', { winner, seriesWalkover: !!seriesWalkover }).then(function(res) {
+      if (!res) return;
+      if (!res.seriesOver) {
+        const board = g('draft-board');
+        if (board) { board.innerHTML = ''; board.removeAttribute('data-built'); }
+        Object.keys(_draftPickerContainers).forEach(function(k) { delete _draftPickerContainers[k]; });
+        _raState.t1 = Array(5).fill(null); _raState.t2 = Array(5).fill(null); _raSig = '';
+        const raEl = g('draft-role-assign'); if (raEl) raEl.innerHTML = '';
+        api('/api/draft', { picks: Array(20).fill(''), currentStep: 0, phase: 'notstarted', committedT1Picks: [], committedT2Picks: [], team1RolePicks: [], team2RolePicks: [] });
+      }
+    });
+  }, { okLabel: seriesWalkover ? 'Award Walkover' : 'Record BYE' });
 }
 
 // Countdown ticker for the live bar display
@@ -5174,6 +5420,10 @@ function ppToggleEdit(id) {
   if (btn) btn.textContent = opening ? 'Save' : 'Edit';
 }
 function ppUpdate(id, fields) { api('/api/prizepool/entry/update', Object.assign({ id }, fields)); }
-function ppDelete(id) { if (confirm('Remove this prize entry?')) api('/api/prizepool/entry/delete', { id }); }
+function ppDelete(id) {
+  showConfirm('Remove this prize entry?', function() {
+    api('/api/prizepool/entry/delete', { id });
+  }, { danger: true, okLabel: 'Remove' });
+}
 function ppReorder(id, direction) { api('/api/prizepool/entry/reorder', { id, direction }); }
 function ppAddEntry(type) { api('/api/prizepool/entry/add', { type: type || 'placement' }); }

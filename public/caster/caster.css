@@ -138,6 +138,17 @@ html, body {
   letter-spacing: 0.06em;
 }
 
+/* ── Presence strip ─────────────────────────────────────────────────────────── */
+#presence-strip {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  padding: 4px 20px; background: #0a1520;
+  border-bottom: 1px solid rgba(31,250,255,0.05);
+  min-height: 22px; font-size: 11px; color: rgba(232,230,223,0.35);
+}
+#presence-strip:empty { min-height: 0; padding: 0; border: none; }
+.presence-user { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.presence-user-dot { color: #3ddc84; font-size: 8px; }
+
 /* ── Tab nav ─────────────────────────────────────────────────────────────────── */
 .tab-nav {
   display: flex;
