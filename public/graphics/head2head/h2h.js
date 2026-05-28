@@ -9,7 +9,7 @@ var _preloadedSplashes = new Set();
 
 function _preloadSplash(champName) {
   if (!champName) return;
-  var url = '\graphics\head2head\champions\' + champName + '_0.jpg';
+  var url = '/graphics/head2head/champions/' + champName + '_0.jpg';
   if (_preloadedSplashes.has(url)) return;
   _preloadedSplashes.add(url);
   var img = new Image(); img.src = url;

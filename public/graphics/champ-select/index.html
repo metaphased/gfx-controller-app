@@ -153,6 +153,7 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
+const _gfxToken = new URLSearchParams(window.location.search).get('token') || '';
 const PHASE_LABELS = {
   notstarted: '—',
   bans1:  'PHASE 1 — BANS',
@@ -207,7 +208,7 @@ function renderPicks(id, picks, players, isRight) {
   }).join('');
 }
 
-const socket = io();
+const socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
 socket.on('state', function(s) {
   const draft = s.draft || {};
   const cs = document.getElementById('cs');
