@@ -1,8 +1,13 @@
 const _gfxToken = new URLSearchParams(window.location.search).get('token') || '';
 const socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
 
+let _bgoHash = '';
+
 socket.on('state', function(state) {
-  const bgo = state.bgOutput || {};
+  const bgo  = state.bgOutput || {};
+  const hash = JSON.stringify(bgo);
+  if (hash === _bgoHash) return;
+  _bgoHash = hash;
 
   // Build a pseudo-settings object so GfxSettings helpers work unchanged
   const pseudo = {

@@ -61,29 +61,10 @@ function runTimer(timerEnd) {
 
 // ── Ticker label (text / logo / none) ─────────────────────────────────────────
 function renderTickerLabel(ticker) {
-  const wrap    = $('break-ticker-label');
-  const textEl  = $('break-ticker-label-text');
-  const imgEl   = $('break-ticker-label-img');
-  if (!wrap) return;
-
-  const mode = (ticker && ticker.labelMode) || 'text';
-
-  if (mode === 'none') {
-    wrap.style.display = 'none';
-    return;
-  }
-  wrap.style.display = '';
-
-  if (mode === 'logo' && ticker.labelLogoUrl) {
-    if (imgEl) { imgEl.src = ticker.labelLogoUrl; imgEl.style.display = ''; }
-    if (textEl) textEl.style.display = 'none';
-  } else {
-    if (imgEl) imgEl.style.display = 'none';
-    if (textEl) {
-      textEl.style.display = '';
-      textEl.textContent = (ticker && ticker.labelText) || 'NEWS';
-    }
-  }
+  TickerEngine.renderLabel(
+    { wrap: 'break-ticker-label', text: 'break-ticker-label-text', img: 'break-ticker-label-img' },
+    ticker
+  );
 }
 
 // ── Ticker scroll ─────────────────────────────────────────────────────────────
@@ -152,53 +133,16 @@ function renderTicker(ticker) {
 
   if (!show) return;
 
-  // ── Content ───────────────────────────────────────────────────────────────
-  var SEP = '   ·   '; // non-breaking spaces around middot — immune to CSS whitespace trimming at span edges
-  function _eH(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  var setHtml = items.filter(function(i) { return i && (i.text || i.completed); }).map(function(i) {
-    if (i.completed) {
-      var w1 = i.winner === 'team1', w2 = i.winner === 'team2';
-      return '<span class="' + (w1 ? 'ticker-result-win' : 'ticker-result-loss') + '">' + _eH(i.t1) + '</span>' +
-             '<span class="ticker-result-score">  ' + _eH(String(i.score1)) + '–' + _eH(String(i.score2)) + '  </span>' +
-             '<span class="' + (w2 ? 'ticker-result-win' : 'ticker-result-loss') + '">' + _eH(i.t2) + '</span>';
-    }
-    if (i.live) {
-      return '<span class="break-ticker-live-label">LIVE</span>' +
-             '<span class="break-ticker-live-dot"></span>' + _eH(i.text);
-    }
-    return _eH(i.text);
-  }).join(SEP) + SEP;
-
-  if (inner._tickerText === setHtml) return;
-  inner._tickerText = setHtml;
-
-  inner.style.animation = 'none';
-  inner.innerHTML = '';
-  void inner.offsetWidth;
-
-  // Measure one copy's rendered width via a temporary probe span
-  const probe = document.createElement('span');
-  probe.className = 'break-ticker-item';
-  probe.innerHTML = setHtml;
-  inner.appendChild(probe);
-  void inner.offsetWidth;
-  const singleWidth = Math.max(1, probe.offsetWidth);
-  inner.removeChild(probe);
-
-  // Repeat enough copies to always fill the visible track (no blank gap at any point)
-  const trackWidth = (inner.parentElement ? inner.parentElement.offsetWidth : 0) || window.innerWidth;
-  const perHalf = Math.max(2, Math.ceil(trackWidth / singleWidth) + 1);
-
-  for (var i = 0; i < perHalf * 2; i++) {
-    var span = document.createElement('span');
-    span.className = 'break-ticker-item';
-    span.innerHTML = setHtml;
-    inner.appendChild(span);
-  }
-  void inner.offsetWidth;
-
-  const duration = Math.max(8, (perHalf * singleWidth) / 90).toFixed(1);
-  inner.style.animation = 'break-ticker-scroll ' + duration + 's linear infinite';
+  // ── Content ─────────────────────────────────────────────────────────────────
+  TickerEngine.renderScroll(inner, items, {
+    winClass:       'ticker-result-win',
+    lossClass:      'ticker-result-loss',
+    scoreClass:     'ticker-result-score',
+    liveLabelClass: 'break-ticker-live-label',
+    liveDotClass:   'break-ticker-live-dot',
+    itemClass:      'break-ticker-item',
+    animName:       'break-ticker-scroll'
+  });
 }
 
 // ── Next Up — auto-derived from today's schedule, manual bs.nextMatch overrides ──

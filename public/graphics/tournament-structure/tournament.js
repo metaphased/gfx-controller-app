@@ -2,9 +2,10 @@
 var _gfxToken = new URLSearchParams(window.location.search).get('token') || '';
 var socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
 
-var _visible  = false;
-var _outTimer = null;
-var _inTimer  = null;
+var _visible        = false;
+var _outTimer       = null;
+var _inTimer        = null;
+var _structureHash  = '';
 
 function $(id) { return document.getElementById(id); }
 function _eH(s) { return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -259,6 +260,30 @@ function animateOut() {
   }, 500);
 }
 
+// ── Data fingerprint ──────────────────────────────────────────────────────────
+function tournamentStructureHash(state) {
+  var t  = state.tournament          || {};
+  var ts = state.tournamentStructure || {};
+  return JSON.stringify({
+    hasGrp:  t.hasGroupStage,
+    numGrps: t.numGroups,
+    qualN:   t.qualifiersPerGroup,
+    format:  t.playoffFormat,
+    tp3:     t.thirdPlaceMatch,
+    stages:  t.stages,
+    teams:   t.totalTeams || (state.teams && state.teams.length),
+    ppt:     t.playersPerTeam,
+    subs:    t.maxSubsPerTeam,
+    dates:   t.showDates, start: t.startDate, end: t.endDate,
+    region:  t.showRegion && t.region,
+    patch:   t.showPatch  && t.patchVersion,
+    loc:     t.showLocation && t.location,
+    tie:     t.showTiebreaker && t.tiebreaker,
+    logo:    t.logo || (state.match && state.match.tournamentLogo),
+    ts:      ts
+  });
+}
+
 // ── Socket ────────────────────────────────────────────────────────────────────
 socket.on('connect', function() { _visible = false; });
 
@@ -268,14 +293,18 @@ socket.on('state', function(state) {
 
   var ts      = state.tournamentStructure || {};
   var visible = !!ts.visible;
-
-  renderStructure(state);
+  var hash    = tournamentStructureHash(state);
 
   if (visible && !_visible) {
     _visible = true;
+    _structureHash = hash;
+    renderStructure(state);
     animateIn();
   } else if (!visible && _visible) {
     _visible = false;
     animateOut();
+  } else if (hash !== _structureHash) {
+    _structureHash = hash;
+    renderStructure(state);
   }
 });
