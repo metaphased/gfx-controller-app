@@ -780,6 +780,8 @@ app.get('/api/companion/profile', (req, res) => {
 
   const proto = req.protocol, host = req.get('host');
   const baseUrl = `${proto}://${host}`;
+  const graphicsToken = state.settings && state.settings.graphicsToken;
+  const tokenSuffix = graphicsToken ? `?token=${encodeURIComponent(graphicsToken)}` : '';
   const connId = genId();
 
   const GRAPHIC_LABELS = {
@@ -829,10 +831,13 @@ app.get('/api/companion/profile', (req, res) => {
             down: [{ id: genId(), type: 'action', connectionId: connId,
                      definitionId: 'post',
                      options: {
-                       url:  { value: `${baseUrl}${a.path}`, isExpression: false },
-                       body: { value: a.body || '',           isExpression: false },
+                       url:                    { value: `${baseUrl}${a.path}${tokenSuffix}`, isExpression: false },
+                       body:                   { value: a.body || '',                         isExpression: false },
+                       contenttype:            { value: 'application/json',                  isExpression: false },
+                       statusCodeVariable:     '',
+                       jsonResultDataVariable: '',
                      },
-                     upgradeIndex: 0 }],
+                     upgradeIndex: 1 }],
             up: [],
           },
           options: { runWhileHeld: [] },
