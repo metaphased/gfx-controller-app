@@ -152,6 +152,7 @@ socket.on('state', async (state) => {
   }
   window._state = state;
   syncUI(state);
+  if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   // Debounced dirty check — runs 2 s after state settles
   clearTimeout(_dirtyCheckTimer);
   _dirtyCheckTimer = setTimeout(checkProfileDirty, 2000);
@@ -5628,4 +5629,34 @@ function ppDelete(id) {
   }, { danger: true, okLabel: 'Remove' });
 }
 function ppReorder(id, direction) { api('/api/prizepool/entry/reorder', { id, direction }); }
+
+// ── Keybind listener ───────────────────────────────────────────────────────────
+window._userKeybinds = {};  // populated by Phase 3b profile modal / API load
+
+(function () {
+  function comboFromEvent(e) {
+    const parts = [];
+    if (e.ctrlKey)  parts.push('ctrl');
+    if (e.altKey)   parts.push('alt');
+    if (e.shiftKey) parts.push('shift');
+    if (e.metaKey)  parts.push('meta');
+    const key = e.key.toLowerCase();
+    if (!['control','alt','shift','meta'].includes(key)) parts.push(key);
+    return parts.join('+');
+  }
+
+  document.addEventListener('keydown', function (e) {
+    const tag = (document.activeElement || {}).tagName || '';
+    if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+    if (!window.ActionRegistry) return;
+    const combo = comboFromEvent(e);
+    const keybinds = window._userKeybinds || {};
+    const actionId = Object.keys(keybinds).find(id => keybinds[id] === combo);
+    if (!actionId) return;
+    const action = ActionRegistry.getById(actionId);
+    if (!action) return;
+    e.preventDefault();
+    action.handler();
+  });
+})();
 function ppAddEntry(type) { api('/api/prizepool/entry/add', { type: type || 'placement' }); }
