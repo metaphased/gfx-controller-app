@@ -796,7 +796,9 @@ function syncUI(s) {
   if (s.bracket) {
     bracketRounds = s.bracket.rounds || [];
     bracketType   = (s.tournament && s.tournament.playoffFormat === 'doubleElim') ? 'double' : 'single';
-    if (_sfp('bracket', { r: s.bracket.rounds, t: bracketType, e: _playoffsEditMode })) renderBracketEditor();
+    const _bCont = g('bracket-rounds');
+    const _bFocused = _playoffsEditMode && _bCont && _bCont.contains(document.activeElement);
+    if (!_bFocused && _sfp('bracket', { r: s.bracket.rounds, t: bracketType, e: _playoffsEditMode })) renderBracketEditor();
     const bls = s.bracket.logoScale != null ? s.bracket.logoScale : 7;
     setInp('bracket-logo-scale', bls);
     setText('bracket-logo-scale-val', bls + 'vh');
