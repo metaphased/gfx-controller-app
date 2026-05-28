@@ -83,7 +83,7 @@ html, body {
   align-items: center;
   gap: 0.6vw;
   padding: 0.85vh 1.2vw;
-  min-height: 5vh; /* normalises row height regardless of logo aspect ratio */
+  height: 5.6vh; /* fixed row height — prevents logo aspect ratio from varying row sizes */
   position: relative;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   background-color: transparent;
@@ -166,10 +166,11 @@ html, body {
   align-items: center;
   justify-content: center;
   height: 2vh;
+  overflow: hidden;
   background: rgba(31, 250, 255, 0.04);
   border-top: 1px solid rgba(31, 250, 255, 0.18);
   border-bottom: 1px solid rgba(31, 250, 255, 0.18);
-  transition: opacity 0.45s ease;
+  transition: opacity 0.45s ease, height 0.45s ease;
 }
 
 .gs-cutoff-label {
@@ -196,7 +197,7 @@ html, body {
 #groups-root.mode-live .gs-team.qualifying::before { opacity: 0; }
 #groups-root.mode-live .gs-team.qualifying .gs-team-name { color: rgba(255, 255, 255, 0.8); }
 #groups-root.mode-live .gs-team.qualifying .gs-record    { color: rgba(255, 255, 255, 0.4); }
-#groups-root.mode-live .gs-cutoff             { opacity: 0; pointer-events: none; }
+#groups-root.mode-live .gs-cutoff             { opacity: 0; pointer-events: none; height: 0; }
 
 /* ── Logo entry animation ───────────────────────────────────────────────────── */
 .groups-entering #groups-logo-wrap {
