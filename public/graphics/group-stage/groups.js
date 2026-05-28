@@ -4,7 +4,8 @@ var socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
 
 var _visible     = false;
 var _currentMode = null;
-var _dataHash    = '';   // fingerprint to avoid unnecessary re-renders
+var _structHash  = '';   // fingerprint: groups/teams/qualN/logo
+var _scoresHash  = '';   // fingerprint: completed game results only
 var _teams       = [];
 var _outTimer    = null;
 var _inTimer     = null;
@@ -50,21 +51,27 @@ function calculateGroupStandings(state) {
   return standings;
 }
 
-// ── Data fingerprint (detects changes that need a re-render) ───────────────────
-function dataHash(state) {
+// ── Data fingerprints ─────────────────────────────────────────────────────────
+function structHash(state) {
   var t = state.tournament || {};
   var gs = state.groupStage || {};
   return JSON.stringify({
-    groups:   t.groups || [],
-    qualN:    t.qualifiersPerGroup,
-    schedule: (t.schedule || []).map(function(d) {
-      return (d.games || [])
-        .filter(function(g) { return g.stage === 'groupStage'; })
-        .map(function(g) { return { t1: g.team1Id, t2: g.team2Id, r: g.result && g.result.completed ? g.result.winner : null }; });
-    }),
-    teams:    _teams.map(function(t) { return { id: t.id, name: t.name, logo: t.logo }; }),
-    logo:     gs.logoUrl, scale: gs.logoScale, pos: gs.logoPosition
+    groups: (t.groups || []).map(function(g) { return { id: g.id, name: g.name, teamIds: g.teamIds }; }),
+    qualN:  t.qualifiersPerGroup,
+    teams:  _teams.map(function(t) { return { id: t.id, name: t.name, logo: t.logo }; }),
+    logo:   gs.logoUrl, scale: gs.logoScale, pos: gs.logoPosition, show: gs.showLogo
   });
+}
+
+function scoresHash(state) {
+  var t = state.tournament || {};
+  return JSON.stringify(
+    (t.schedule || []).map(function(d) {
+      return (d.games || [])
+        .filter(function(g) { return g.stage === 'groupStage' && g.result && g.result.completed; })
+        .map(function(g) { return { t1: g.team1Id, t2: g.team2Id, w: g.result.winner }; });
+    })
+  );
 }
 
 // ── Apply logo + mode class (no DOM rebuild) ───────────────────────────────────
@@ -131,7 +138,7 @@ function renderGroups(state) {
       var record = anyScores
         ? '<span class="gs-record">' + entry.sw + ' – ' + entry.sl + '</span>'
         : '<span class="gs-record" style="opacity:0.2">0 – 0</span>';
-      html += '<div class="gs-team ' + (isQ ? 'qualifying' : 'eliminated') + '">' +
+      html += '<div class="gs-team ' + (isQ ? 'qualifying' : 'eliminated') + '" data-team-id="' + _eH(entry.teamId) + '">' +
         logo + '<span class="gs-team-name">' + _eH(entry.name) + '</span>' + record + '</div>';
       return html;
     }).join('');
@@ -141,10 +148,57 @@ function renderGroups(state) {
         '<span class="gs-team-name" style="font-style:italic;color:rgba(255,255,255,0.2)">No teams assigned</span></div>';
     }
 
-    return '<div class="gs-group"><div class="gs-group-header">' + _eH(grp.name) + '</div>' + teamsHtml + '</div>';
+    return '<div class="gs-group" data-group-id="' + _eH(grp.id) + '"><div class="gs-group-header">' + _eH(grp.name) + '</div>' + teamsHtml + '</div>';
   }).join('');
 
   applyLogoAndMode(state);
+}
+
+// ── Targeted score + rank update (no card rebuild) ────────────────────────────
+function updateScores(state) {
+  var t = state.tournament || {};
+  var groups = t.groups || [];
+  var qualN = t.qualifiersPerGroup || 2;
+  var standings = calculateGroupStandings(state);
+
+  var anyScores = false;
+  Object.keys(standings).forEach(function(id) {
+    standings[id].forEach(function(r) { if (r.sw > 0 || r.sl > 0) anyScores = true; });
+  });
+
+  groups.forEach(function(grp) {
+    var card = document.querySelector('.gs-group[data-group-id="' + CSS.escape(grp.id) + '"]');
+    if (!card) return;
+    var rows = standings[grp.id] || [];
+    var cutoffInserted = false;
+
+    card.querySelectorAll('.gs-cutoff').forEach(function(el) { el.remove(); });
+
+    rows.forEach(function(entry, idx) {
+      var isQ = idx < qualN;
+      var row = card.querySelector('.gs-team[data-team-id="' + CSS.escape(entry.teamId) + '"]');
+      if (!row) return;
+
+      row.classList.toggle('qualifying', isQ);
+      row.classList.toggle('eliminated', !isQ);
+
+      var rec = row.querySelector('.gs-record');
+      if (rec) {
+        rec.textContent = anyScores ? (entry.sw + ' – ' + entry.sl) : '0 – 0';
+        rec.style.opacity = anyScores ? '' : '0.2';
+      }
+
+      if (!isQ && !cutoffInserted && qualN < rows.length) {
+        cutoffInserted = true;
+        var cutoff = document.createElement('div');
+        cutoff.className = 'gs-cutoff';
+        cutoff.innerHTML = '<span class="gs-cutoff-label">Advances to Playoffs</span>';
+        card.appendChild(cutoff);
+      }
+
+      card.appendChild(row);
+    });
+  });
 }
 
 // ── Animation ──────────────────────────────────────────────────────────────────
@@ -199,13 +253,15 @@ socket.on('state', function(state) {
   var gs      = state.groupStage || {};
   var visible = !!gs.visible;
   var mode    = gs.mode || 'live';
-  var hash    = dataHash(state);
+  var sHash   = structHash(state);
+  var cHash   = scoresHash(state);
 
   if (visible && !_visible) {
     // Showing: always do a full render then animate in
     _visible = true;
     _currentMode = mode;
-    _dataHash = hash;
+    _structHash = sHash;
+    _scoresHash = cHash;
     renderGroups(state);
     animateIn();
   } else if (!visible && _visible) {
@@ -213,16 +269,22 @@ socket.on('state', function(state) {
     _currentMode = null;
     animateOut();
   } else if (visible) {
-    var dataChanged = hash !== _dataHash;
-    var modeChanged = mode !== _currentMode;
+    var structChanged = sHash !== _structHash;
+    var scoreChanged  = cHash !== _scoresHash;
+    var modeChanged   = mode !== _currentMode;
 
-    if (dataChanged) {
-      // Structural change — rebuild cards. Mode class is applied inside renderGroups.
-      _dataHash = hash;
+    if (structChanged) {
+      // Groups/teams/qualN changed — full card rebuild
+      _structHash = sHash;
+      _scoresHash = cHash;
       _currentMode = mode;
       renderGroups(state);
+    } else if (scoreChanged) {
+      // Scores only — update W/L text and row order in place
+      _scoresHash = cHash;
+      updateScores(state);
     } else if (modeChanged) {
-      // Mode-only change — just toggle the root class. CSS transitions animate the rows.
+      // Mode-only change — just toggle the root class
       _currentMode = mode;
       applyLogoAndMode(state);
     } else {
@@ -231,7 +293,8 @@ socket.on('state', function(state) {
     }
   } else {
     // Hidden — pre-render so it's ready when shown
-    _dataHash = hash;
+    _structHash = sHash;
+    _scoresHash = cHash;
     _currentMode = mode;
     renderGroups(state);
   }

@@ -5,6 +5,7 @@ const socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
 let _initialised  = false;
 let _timerInterval = null;
 let _tickerVisible = null;
+let _gamesHash     = null;
 
 function $(id) { return document.getElementById(id); }
 function _eH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -56,22 +57,10 @@ function renderSponsors(logos) {
 
 // ── Ticker label ──────────────────────────────────────────────────────────────
 function renderTickerLabel(ticker) {
-  var wrap    = $('ps-ticker-label');
-  var textEl  = $('ps-ticker-label-text');
-  var imgEl   = $('ps-ticker-label-img');
-  if (!wrap) return;
-
-  var mode = (ticker && ticker.labelMode) || 'text';
-  if (mode === 'none') { wrap.style.display = 'none'; return; }
-  wrap.style.display = '';
-
-  if (mode === 'logo' && ticker.labelLogoUrl) {
-    if (imgEl) { imgEl.src = ticker.labelLogoUrl; imgEl.style.display = ''; }
-    if (textEl) textEl.style.display = 'none';
-  } else {
-    if (imgEl) imgEl.style.display = 'none';
-    if (textEl) { textEl.style.display = ''; textEl.textContent = (ticker && ticker.labelText) || 'NEWS'; }
-  }
+  TickerEngine.renderLabel(
+    { wrap: 'ps-ticker-label', text: 'ps-ticker-label-text', img: 'ps-ticker-label-img' },
+    ticker
+  );
 }
 
 // ── Ticker scroll — identical logic to break screen ───────────────────────────
@@ -131,56 +120,24 @@ function renderTicker(ticker) {
   if (!show) return;
 
   // ── Build content ─────────────────────────────────────────────────────────
-  var SEP = '   ·   '; // non-breaking spaces — immune to CSS whitespace trimming at span edges
-  var setHtml = items.filter(function(i) { return i && (i.text || i.completed); }).map(function(i) {
-    if (i.completed) {
-      var w1 = i.winner === 'team1', w2 = i.winner === 'team2';
-      return '<span class="' + (w1 ? 'ps-ticker-result-win' : 'ps-ticker-result-loss') + '">' + _eH(i.t1) + '</span>' +
-             '<span class="ps-ticker-result-score">  ' + _eH(String(i.score1)) + '–' + _eH(String(i.score2)) + '  </span>' +
-             '<span class="' + (w2 ? 'ps-ticker-result-win' : 'ps-ticker-result-loss') + '">' + _eH(i.t2) + '</span>';
-    }
-    if (i.live) {
-      return '<span class="ps-ticker-live-label">LIVE</span><span class="ps-ticker-live-dot"></span>' + _eH(i.text);
-    }
-    return _eH(i.text);
-  }).join(SEP) + SEP;
-
-  if (inner._tickerText === setHtml) return;
-  inner._tickerText = setHtml;
-
-  inner.style.animation = 'none';
-  inner.innerHTML = '';
-  void inner.offsetWidth;
-
-  // Probe rendered width of one copy
-  var probe = document.createElement('span');
-  probe.className = 'ps-ticker-item';
-  probe.innerHTML = setHtml;
-  inner.appendChild(probe);
-  void inner.offsetWidth;
-  var singleWidth = Math.max(1, probe.offsetWidth);
-  inner.removeChild(probe);
-
-  // Enough copies to always fill the visible track with no blank gap
-  var trackWidth = (inner.parentElement ? inner.parentElement.offsetWidth : 0) || window.innerWidth;
-  var perHalf    = Math.max(2, Math.ceil(trackWidth / singleWidth) + 1);
-
-  for (var i = 0; i < perHalf * 2; i++) {
-    var span = document.createElement('span');
-    span.className = 'ps-ticker-item';
-    span.innerHTML = setHtml;
-    inner.appendChild(span);
-  }
-  void inner.offsetWidth;
-
-  var duration = Math.max(8, (perHalf * singleWidth) / 90).toFixed(1);
-  inner.style.animation = 'ps-ticker-scroll ' + duration + 's linear infinite';
+  TickerEngine.renderScroll(inner, items, {
+    winClass:       'ps-ticker-result-win',
+    lossClass:      'ps-ticker-result-loss',
+    scoreClass:     'ps-ticker-result-score',
+    liveLabelClass: 'ps-ticker-live-label',
+    liveDotClass:   'ps-ticker-live-dot',
+    itemClass:      'ps-ticker-item',
+    animName:       'ps-ticker-scroll'
+  });
 }
 
 // ── Match cards ───────────────────────────────────────────────────────────────
 function renderGames(games) {
   var container = $('ps-games');
   if (!container) return;
+  var hash = JSON.stringify(games || []);
+  if (hash === _gamesHash) return;
+  _gamesHash = hash;
   if (!games || !games.length) { container.innerHTML = ''; return; }
 
   container.innerHTML = games.map(function(g) {

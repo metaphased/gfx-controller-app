@@ -8,6 +8,7 @@ let _outTimer    = null;
 let _inTimer     = null;
 let _connTimers  = [];   // connector reveal timeouts
 let _teams       = [];   // local teams cache — loaded from API + kept fresh via state events
+let _bracketHash = '';   // fingerprint to avoid unnecessary re-renders
 
 fetch('/api/teams')
   .then(function(r) { return r.json(); })
@@ -565,6 +566,22 @@ function animateOut() {
   }, 650);
 }
 
+// ── Data fingerprint ──────────────────────────────────────────────────────────
+function bracketHash(state) {
+  var bkt   = state.bracket    || {};
+  var tourn = state.tournament || {};
+  return JSON.stringify({
+    rounds: bkt.rounds || [],
+    type:   bkt.type,
+    format: tourn.playoffFormat,
+    teams:  (state.teams || []).map(function(t) { return { id: t.id, name: t.name, tag: t.tag, logo: t.logo, color: t.color }; }),
+    logo:   bkt.logoUrl || tourn.logo,
+    scale:  bkt.logoScale,
+    pos:    bkt.logoPosition,
+    show:   bkt.showLogo
+  });
+}
+
 // ── Socket ─────────────────────────────────────────────────────────────────────
 socket.on('connect', function() { _visible = false; });
 
@@ -574,17 +591,28 @@ socket.on('state', function(state) {
 
   var bkt     = state.bracket || {};
   var visible = !!bkt.visible;
-
-  renderBracket(state);
+  var hash    = bracketHash(state);
 
   if (visible && !_visible) {
     _visible = true;
+    _bracketHash = hash;
+    renderBracket(state);
     animateIn();
   } else if (!visible && _visible) {
     _visible = false;
     animateOut();
-  } else if (visible && _visible) {
-    requestAnimationFrame(function() { requestAnimationFrame(redrawConnectors); });
+  } else if (visible) {
+    if (hash !== _bracketHash) {
+      _bracketHash = hash;
+      renderBracket(state);
+      requestAnimationFrame(function() { requestAnimationFrame(redrawConnectors); });
+    }
+  } else {
+    // Hidden — pre-render on change so it's ready when shown
+    if (hash !== _bracketHash) {
+      _bracketHash = hash;
+      renderBracket(state);
+    }
   }
 });
 

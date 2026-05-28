@@ -2,9 +2,10 @@
 var _gfxToken = new URLSearchParams(window.location.search).get('token') || '';
 var socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
 
-var _visible  = false;
-var _outTimer = null;
-var _inTimer  = null;
+var _visible      = false;
+var _outTimer     = null;
+var _inTimer      = null;
+var _prizepoolHash = '';
 
 function $(id) { return document.getElementById(id); }
 function _eH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -143,6 +144,19 @@ function animateOut() {
   }, 500);
 }
 
+// ── Data fingerprint ──────────────────────────────────────────────────────────
+function prizepoolHash(state) {
+  var pp = state.prizepool  || {};
+  var t  = state.tournament || {};
+  return JSON.stringify({
+    entries:  pp.entries,
+    showLogo: pp.showLogo,
+    scale:    pp.logoScale,
+    pos:      pp.logoPosition,
+    logo:     t.logo || (state.match && state.match.tournamentLogo) || ''
+  });
+}
+
 // ── Socket ────────────────────────────────────────────────────────────────────
 socket.on('connect', function() { _visible = false; });
 
@@ -152,14 +166,18 @@ socket.on('state', function(state) {
 
   var pp      = state.prizepool || {};
   var visible = !!pp.visible;
-
-  renderPrizepool(state);
+  var hash    = prizepoolHash(state);
 
   if (visible && !_visible) {
     _visible = true;
+    _prizepoolHash = hash;
+    renderPrizepool(state);
     animateIn();
   } else if (!visible && _visible) {
     _visible = false;
     animateOut();
+  } else if (hash !== _prizepoolHash) {
+    _prizepoolHash = hash;
+    renderPrizepool(state);
   }
 });
