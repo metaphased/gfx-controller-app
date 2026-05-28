@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GFX Bus</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    overflow: hidden;
+  }
+  #bus-root {
+    position: absolute;
+    width: 1920px;
+    height: 1080px;
+    top: 0; left: 0;
+    transform-origin: top left;
+  }
+  .bus-frame {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    border: none; background: transparent;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .bus-frame.active {
+    visibility: visible;
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+<div id="bus-root"></div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/bus/bus.js"></script>
+</body>
+</html>

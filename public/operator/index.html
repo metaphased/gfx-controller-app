@@ -432,6 +432,31 @@ body {
 #presence-strip:empty { min-height: 0; padding: 0; border: none; }
 .presence-user { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .presence-user-dot { color: #3ddc84; font-size: 8px; }
+
+/* ── Bus routing panel ── */
+.bus-route-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  flex-wrap: wrap;
+}
+.bus-route-row:last-child { border-bottom: none; }
+.bus-route-name {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim); width: 58px; flex-shrink: 0;
+}
+.bus-route-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); flex-shrink: 0;
+}
+.bus-route-dot.live { background: #e03030; box-shadow: 0 0 4px #e03030; }
+.bus-btn {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  border: 1px solid var(--border); background: var(--bg3); color: var(--text-dim);
+  padding: 3px 8px; cursor: pointer; border-radius: 0;
+}
+.bus-btn:hover { border-color: var(--primary); color: var(--text); }
+.bus-btn.is-active { border-color: #e03030; color: #ff9060; background: rgba(220,40,40,0.1); }
 </style>
 </head>
 <body>
@@ -708,6 +733,12 @@ body {
 
     </div><!-- /graphics panel -->
 
+    <!-- Bus Routing -->
+    <div class="ops-panel" id="bus-routing-panel" style="display:none">
+      <div class="ops-panel-title">Bus Routing</div>
+      <div id="bus-routing-list"></div>
+    </div>
+
   </div><!-- /col-right -->
 
 </div><!-- /ops-main -->
@@ -844,6 +875,14 @@ socket.on('state', state => {
 
   /* Player quick grid */
   renderPlayerGrid(state);
+
+  /* Bus routing panel */
+  renderBusPanel(state);
+});
+
+socket.on('busState', function(bs) {
+  const s = window._state;
+  if (s) { s.busState = bs; renderBusPanel(s); }
 });
 
 /* ── Helpers ── */
@@ -998,6 +1037,51 @@ setInterval(function() {
 }, 500);
 
 function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ── Bus routing panel ── */
+const GFX_LABELS = {
+  scoreboard:'Scoreboard', lowerThird:'Lower Third', headToHead:'Head to Head',
+  playerIntro:'Player Intro', preShow:'Pre-show', draft:'Draft', bracket:'Bracket',
+  groupStage:'Group Stage', tournamentStructure:'Structure', breakScreen:'Break Screen',
+  winScreen:'Win Screen', prizepool:'Prizepool', bgOutput:'BG Output', champSelect:'Champ Select',
+};
+
+function renderBusPanel(state) {
+  const panel = g('bus-routing-panel');
+  const list  = g('bus-routing-list');
+  if (!panel || !list) return;
+
+  const buses    = (state.settings && state.settings.buses) || [];
+  const busState = state.busState || {};
+  const withAssignments = buses.filter(b => (b.assignments || []).length > 0);
+
+  panel.style.display = withAssignments.length ? '' : 'none';
+  if (!withAssignments.length) return;
+
+  list.innerHTML = withAssignments.map(function(bus) {
+    const bs     = busState[bus.id] || {};
+    const isLive = !!(bs.visible && bs.activeGraphic);
+
+    const btns = (bus.assignments || []).map(function(key) {
+      const isActive = bs.activeGraphic === key && bs.visible;
+      return '<button class="bus-btn' + (isActive ? ' is-active' : '') + '" ' +
+        'onclick="busRoute(\'' + bus.id + '\',\'' + key + '\',' + isActive + ')">' +
+        esc(GFX_LABELS[key] || key) + '</button>';
+    }).join('');
+
+    return '<div class="bus-route-row">' +
+      '<span class="bus-route-dot' + (isLive ? ' live' : '') + '"></span>' +
+      '<span class="bus-route-name">' + esc(bus.name || bus.id) + '</span>' +
+      btns +
+      '</div>';
+  }).join('');
+}
+
+function busRoute(busId, graphic, isCurrentlyActive) {
+  // Toggle: clicking the active graphic hides the bus; clicking another routes to it
+  const visible = !isCurrentlyActive;
+  socket.emit('bus:switch', { busId, graphic, visible });
+}
 </script>
 </body>
 </html>

@@ -170,7 +170,7 @@ const TAB_LABELS = {
   h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
   'draft-gfx':'Draft GFX', bracket:'Bracket', 'groups-gfx':'Group Stage',
   'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
-  win:'Win Screen', profiles:'Profiles', users:'Settings', log:'Log',
+  win:'Win Screen', profiles:'Profiles', routing:'Routing', users:'Settings', log:'Log',
 };
 
 // Tab → claim page key (GFX ctrl-bar pages only)
@@ -392,13 +392,89 @@ function syncGfxToken(settings) {
     '</div>'
   ) : '';
 
-  listEl.innerHTML = toggleHtml + GFX_OUTPUTS.map(o =>
+  const urlRow = (label, path) =>
     '<div style="display:flex;align-items:center;gap:8px">' +
-    '<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);width:130px;flex-shrink:0">' + escHtml(o.label) + '</span>' +
-    '<input type="text" readonly value="' + escHtml(base + o.path + (token ? '?token=' + token : '')) + '" style="flex:1;font-family:monospace;font-size:11px" onclick="this.select()">' +
+    '<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);width:130px;flex-shrink:0">' + escHtml(label) + '</span>' +
+    '<input type="text" readonly value="' + escHtml(base + path + (token ? '?token=' + token : '')) + '" style="flex:1;font-family:monospace;font-size:11px" onclick="this.select()">' +
     '<button class="btn btn-sm" onclick="copyText(this.previousElementSibling.value)">Copy</button>' +
-    '</div>'
-  ).join('');
+    '</div>';
+
+  const buses = (window._state && window._state.settings && window._state.settings.buses) || [];
+  const busRows = buses.length
+    ? '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">Bus Outputs</div>' +
+      buses.map(b => urlRow(b.name || b.id, 'bus/' + b.id)).join('') +
+      '</div>'
+    : '';
+
+  listEl.innerHTML = toggleHtml + GFX_OUTPUTS.map(o => urlRow(o.label, o.path)).join('') + busRows;
+}
+
+// ── Bus config ─────────────────────────────────────────────────────────────────
+function syncBusConfig(s) {
+  const list = g('bus-config-list'); if (!list) return;
+  const buses   = (s.settings && s.settings.buses) || [];
+  const token   = (s.settings && s.settings.graphicsToken) || '';
+  const base    = (_gfxUrlMode === 'external' && _externalUrl ? _externalUrl : window.location.origin) + '/';
+  const emptyEl = g('bus-config-empty');
+  if (emptyEl) emptyEl.style.display = buses.length ? 'none' : '';
+
+  list.innerHTML = buses.map(function(bus, i) {
+    const assignChecks = GRAPHIC_MAP.map(function(gfx) {
+      const checked = (bus.assignments || []).includes(gfx.key);
+      return '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap">' +
+        '<input type="checkbox" data-bus-idx="' + i + '" data-gfx-key="' + gfx.key + '" ' + (checked ? 'checked' : '') + ' onchange="saveBusConfig()"> ' +
+        escHtml(gfx.label) + '</label>';
+    }).join('');
+
+    const urlVal = base + 'bus/' + bus.id + (token ? '?token=' + token : '');
+
+    return '<div class="card" style="margin-bottom:0">' +
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">' +
+      '<input type="text" class="bus-cfg-name" data-bus-idx="' + i + '" value="' + escHtml(bus.name || '') + '" placeholder="Bus name" ' +
+      'style="font-weight:700;font-size:13px;width:140px" onchange="saveBusConfig()">' +
+      '<span style="font-size:10px;font-family:monospace;color:var(--text-dim)">' + escHtml(bus.id) + '</span>' +
+      '<button class="btn btn-sm btn-danger" onclick="deleteBus(' + i + ')" style="margin-left:auto">✕ Remove</button>' +
+      '</div>' +
+      '<div class="card-title" style="margin-bottom:8px">Assigned Graphics</div>' +
+      '<div style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:14px">' + assignChecks + '</div>' +
+      '<div class="card-title" style="margin-bottom:6px">Browser Source URL</div>' +
+      '<div style="display:flex;align-items:center;gap:8px">' +
+      '<input type="text" readonly value="' + escHtml(urlVal) + '" style="flex:1;font-family:monospace;font-size:11px" onclick="this.select()">' +
+      '<button class="btn btn-sm" onclick="copyText(this.previousElementSibling.value)">Copy</button>' +
+      '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function saveBusConfig() {
+  const s = window._state;
+  if (!s || !s.settings) return;
+  const buses = (s.settings.buses || []).map(function(bus, i) {
+    const nameEl = document.querySelector('.bus-cfg-name[data-bus-idx="' + i + '"]');
+    const name = nameEl ? nameEl.value.trim() : bus.name;
+    const checkboxes = document.querySelectorAll('input[type=checkbox][data-bus-idx="' + i + '"]');
+    const assignments = [];
+    checkboxes.forEach(function(cb) { if (cb.checked) assignments.push(cb.dataset.gfxKey); });
+    return { id: bus.id, name: name || bus.id, assignments };
+  });
+  patchSettings({ buses });
+}
+
+function addBus() {
+  const s = window._state;
+  if (!s || !s.settings) return;
+  const existing = s.settings.buses || [];
+  const newId = 'bus' + String.fromCharCode(65 + existing.length); // busA, busB, …
+  const buses = existing.concat([{ id: newId, name: 'Bus ' + String.fromCharCode(65 + existing.length), assignments: [] }]);
+  patchSettings({ buses });
+}
+
+function deleteBus(idx) {
+  const s = window._state;
+  if (!s || !s.settings) return;
+  const buses = (s.settings.buses || []).filter(function(_, i) { return i !== idx; });
+  patchSettings({ buses });
 }
 
 function copyGfxToken() {
@@ -710,6 +786,7 @@ function syncUI(s) {
   renderDashboard(s);
   if (s.settings) syncThemeTab(s.settings);
   if (s.settings) syncGfxToken(s.settings);
+  syncBusConfig(s);
   if (s.settings) renderBreakCenterLogoPicker(s.settings);
   if (s.settings) renderH2HLogoPicker(s.settings);
   if (s.settings) renderBracketLogoPicker(s);
@@ -2939,6 +3016,11 @@ function selectDraftLogo(url) {
 }
 
 function syncGraphicIndicators(s) {
+  const buses      = (s.settings && s.settings.buses) || [];
+  const busMap     = {};  // graphicKey → bus
+  buses.forEach(b => (b.assignments || []).forEach(k => { busMap[k] = b; }));
+  const busStateMap = s.busState || {};
+
   GRAPHIC_MAP.forEach(function(gfx) {
     const active = s[gfx.key] && s[gfx.key].visible;
     // Sidebar dot
@@ -2953,6 +3035,21 @@ function syncGraphicIndicators(s) {
     // Ctrl-bar group
     const ctrlGrp = g('ctrlgrp-' + gfx.key);
     if (ctrlGrp) ctrlGrp.classList.toggle('is-live', !!active);
+
+    // Bus tag — injected dynamically inside the ctrlgrp
+    if (ctrlGrp) {
+      const bus = busMap[gfx.key];
+      let tag = ctrlGrp.querySelector('.bus-tag');
+      if (bus) {
+        if (!tag) { tag = document.createElement('span'); tag.className = 'bus-tag'; ctrlGrp.appendChild(tag); }
+        const bs = busStateMap[bus.id];
+        const isActive = bs && bs.activeGraphic === gfx.key && bs.visible;
+        tag.textContent = bus.name || bus.id;
+        tag.classList.toggle('live', !!isActive);
+      } else if (tag) {
+        tag.remove();
+      }
+    }
   });
 }
 

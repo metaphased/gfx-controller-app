@@ -89,7 +89,7 @@ Each URL requires a `?token=XXXX` parameter. The full URLs with your active toke
 | Graphic | Path | Notes |
 |---|---|---|
 | Player Intro | `/graphics/player-intro/` | 3 layouts: Panel, Stack, Champion Showcase |
-| Head to Head | `/graphics/head2head/` | |
+| Head to Head | `/graphics/head2head/` | Spotlight + lineup modes, champion stats strip |
 | Draft Overlay | `/graphics/draft/` | Pick/ban board with timer |
 | Win Screen | `/graphics/win-screen/` | |
 | Break Screen | `/graphics/break-screen/` | PIP mode supported |
@@ -102,6 +102,16 @@ Each URL requires a `?token=XXXX` parameter. The full URLs with your active toke
 | Prizepool | `/graphics/prizepool/` | |
 | BG Output | `/graphics/bg-output/` | Background animations only |
 
+### GFX Bus outputs
+
+Bus outputs are shared browser sources that automatically display whichever assigned graphic is currently visible — eliminating the need for one OBS source per graphic.
+
+| Path | Notes |
+|---|---|
+| `/bus/:id` | e.g. `/bus/busA` — add `?token=XXXX` as with graphics |
+
+Configure buses and assign graphics to them under **Routing** in the control panel. The operator view includes a routing matrix to switch the active graphic on each bus live.
+
 ## Control panel sections
 
 **Tournament:** Profiles, Tournament Setup, Teams Database, Schedule, Groups, Playoffs
@@ -110,7 +120,7 @@ Each URL requires a `?token=XXXX` parameter. The full URLs with your active toke
 
 **Graphics:** Broadcast Theme, BG Output, Lower Third, Head to Head, Pre-show, Ticker, Draft, Bracket, Group Stage, Tournament Structure, Prizepool, Break Screen, Win Screen, Scoreboard, Player Intro
 
-**System:** Profiles, Settings (users, token, output URLs, logos), Log (action history)
+**System:** Profiles, Routing (GFX bus config), Settings (users, token, output URLs, logos), Log (action history)
 
 ### User roles
 
@@ -149,6 +159,8 @@ The seeded `admin` account is `superadmin` by default. Create additional users i
   - Superadmin / admin role hierarchy — prevents admins from modifying each other's accounts
 - **Custom modal system** — all confirm/alert dialogs use an in-app styled overlay matching the UI theme, replacing browser-native popups
 - Champion asset sync — download/update champion tiles, centered images, and role icons from DDragon; real-time progress in the admin UI or via `node scripts/sync-assets.js`
+- **GFX Bus system** — shared OBS/vMix browser sources that route automatically to whichever assigned graphic is currently visible; create named buses, assign any graphics to each, and switch live from the operator routing matrix; ctrl-bar bus tags turn orange when a graphic is live on a bus; graphics preload in hidden iframes so switching is instant with no blank frames; out-animations play in full before the iframe hides
+- **Head to Head improvements** — champion stats strip collapses to zero height when inactive (prevents player name overflow in lineup mode); header bars are fully opaque for clean scene masking
 
 ## Data directory
 
