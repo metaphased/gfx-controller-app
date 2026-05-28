@@ -220,7 +220,6 @@ const makeDefault = () => ({
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),
     team1subs: makeDefaultSubs(), team2subs: makeDefaultSubs()
   },
-  scoreboard:  { visible: false },
   lowerThird:  { visible: false, text: '', subtext: '', supertext: '', side: 'left', teamColor: '' },
   headToHead:  { visible: false, mode: 'spotlight', spotlightRole: 0, animStyle: 'standard' },
   playerIntro: { visible: false, layout: 'panel', animVariant: 'rise', showLogo: true, showRank: false, showChamps: false, piBg: 'transparent', piLogoUrl: '' },

@@ -1,6 +1,5 @@
 // Canonical map of graphic ID → standalone output path
 const GRAPHIC_PATHS = {
-  scoreboard:          '/graphics/scoreboard/',
   lowerThird:          '/graphics/lower-third/',
   headToHead:          '/graphics/head2head/',
   playerIntro:         '/graphics/player-intro/',

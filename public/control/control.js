@@ -289,7 +289,6 @@ const GFX_PAGES = [
   ['BG Output',  'graphics/bg-output/'],
   ['Break Screen',          'graphics/break-screen/'],
   ['Win Screen',    'graphics/win-screen/'],
-  ['Scoreboard',    'graphics/scoreboard/'],
   ['Lower Third',   'graphics/lower-third/'],
 ];
 const urlList = g('url-list');
@@ -390,7 +389,6 @@ const GFX_OUTPUTS = [
   { label: 'BG Output',             path: 'graphics/bg-output/' },
   { label: 'Break Screen',          path: 'graphics/break-screen/' },
   { label: 'Win Screen',            path: 'graphics/win-screen/' },
-  { label: 'Scoreboard',            path: 'graphics/scoreboard/' },
   { label: 'Lower Third',           path: 'graphics/lower-third/' },
 ];
 
@@ -2967,7 +2965,6 @@ refreshBracketTeams();
 // ── Graphic status indicators ──────────────────────────────────────────────────
 // Maps state key -> sidebar nav data-tab and operator card id
 const GRAPHIC_MAP = [
-  { key: 'scoreboard',  tab: 'scoreboard',  label: 'Scoreboard'  },
   { key: 'lowerThird',  tab: 'lowerthird',  label: 'Lower Third' },
   { key: 'headToHead',  tab: 'h2h',         label: 'Head to Head'},
   { key: 'playerIntro', tab: 'player-intro', label: 'Player Intro' },
@@ -3194,7 +3191,6 @@ function syncLiveBar(s) {
     pipBtn.textContent = pipActive ? '● PIP' : 'PIP';
   }
 
-  // All graphic toggles (scoreboard removed from GRAPHIC_MAP is fine — elements won't exist)
   GRAPHIC_MAP.forEach(function(gfx) {
     const active  = s[gfx.key] && s[gfx.key].visible;
     const group   = g('lbar-group-'  + gfx.key);

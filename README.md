@@ -95,7 +95,6 @@ Each URL requires a `?token=XXXX` parameter. The full URLs with your active toke
 | Break Screen | `/graphics/break-screen/` | PIP mode supported |
 | Pre-show | `/graphics/pre-show/` | |
 | Lower Third | `/graphics/lower-third/` | |
-| Scoreboard | `/graphics/scoreboard/` | |
 | Bracket | `/graphics/bracket/` | Single + double elimination |
 | Group Stage | `/graphics/group-stage/` | |
 | Tournament Structure | `/graphics/tournament-structure/` | |

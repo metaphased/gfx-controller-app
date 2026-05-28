@@ -38,7 +38,13 @@
       "Bash(Format-Table -AutoSize)",
       "PowerShell(ls \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\\\\.claude\\\\\")",
       "Bash(node server.js)",
-      "Bash(echo \"PID=$!\")"
+      "Bash(echo \"PID=$!\")",
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" status data/users.json)",
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" check-ignore -v data/users.json)",
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" add README.md)",
+      "Bash(git -C \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\" checkout master)",
+      "Bash(git -C 'g:\\\\Broadcast Workfiles\\\\GFX Controller App' merge feature/multi-user-workflow --no-ff -m ' *)",
+      "Bash(New-Item -ItemType Directory -Force \"g:\\\\Broadcast Workfiles\\\\GFX Controller App\\\\public\\\\bus\")"
     ]
   }
 }
