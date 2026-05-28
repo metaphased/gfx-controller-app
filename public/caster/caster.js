@@ -82,10 +82,22 @@ async function refreshTournamentStats() {
 }
 
 socket.on('state', async (s) => {
+  // schedule is delivered separately — preserve the cached copy
+  if (s.tournament && _state && _state.tournament && _state.tournament.schedule) {
+    s.tournament.schedule = _state.tournament.schedule;
+  }
   _state = s;
   _teams = s.teams || [];
-  await refreshTournamentStats();
   renderAll();
+});
+
+socket.on('stats:invalidated', () => refreshTournamentStats());
+
+socket.on('schedule', (schedule) => {
+  if (!_state) return;
+  if (!_state.tournament) _state.tournament = {};
+  _state.tournament.schedule = schedule;
+  renderSchedule();
 });
 
 refreshTournamentStats();

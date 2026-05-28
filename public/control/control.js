@@ -146,13 +146,33 @@ socket.on('presence:list', users => {
   ).join('');
 });
 socket.on('state', async (state) => {
+  // schedule is delivered separately — preserve the cached copy
+  if (state.tournament && window._state && window._state.tournament && window._state.tournament.schedule) {
+    state.tournament.schedule = window._state.tournament.schedule;
+  }
   window._state = state;
-  await refreshControlTournamentStats();
   syncUI(state);
   // Debounced dirty check — runs 2 s after state settles
   clearTimeout(_dirtyCheckTimer);
   _dirtyCheckTimer = setTimeout(checkProfileDirty, 2000);
 });
+
+socket.on('stats:invalidated', () => refreshControlTournamentStats());
+
+socket.on('schedule', (schedule) => {
+  if (!window._state) return;
+  if (!window._state.tournament) window._state.tournament = {};
+  window._state.tournament.schedule = schedule;
+  renderSchedule();
+});
+
+function _applySchedule(data) {
+  if (data && Array.isArray(data.schedule) && window._state && window._state.tournament) {
+    window._state.tournament.schedule = data.schedule;
+    renderSchedule();
+  }
+  return data;
+}
 
 refreshControlTournamentStats();
 
@@ -652,6 +672,8 @@ function renderDashboard(s) {
 
 // ── Sync UI ────────────────────────────────────────────────────────────────────
 let _pendingSnapshotRestore = false;
+let _syncFp = {};
+function _sfp(key, val) { const v = JSON.stringify(val); if (_syncFp[key] === v) return false; _syncFp[key] = v; return true; }
 
 function syncUI(s) {
   if (!s || !s.match || !s.lowerThird || !s.draft || !s.breakScreen || !s.winScreen || !s.bracket || !s.players) {
@@ -738,7 +760,7 @@ function syncUI(s) {
   if (_piBarSlider) _piBarSlider.value = _piBarOpacity;
   const _piBarValEl = g('pi-bar-opacity-val');
   if (_piBarValEl) _piBarValEl.textContent = Math.round(_piBarOpacity * 100) + '%';
-  renderPiLogoPicker(_pi, s.settings || {});
+  if (_sfp('piLogo', { sel: _pi.piLogoUrl, logos: s.settings && s.settings.logoSet && s.settings.logoSet.logos })) renderPiLogoPicker(_pi, s.settings || {});
 
   // ── Pre-show sync ──────────────────────────────────────────────────────────
   syncPreShowUI(s.preShow || {}, s.settings || {}, s.todayGames || [], s.ticker || {});
@@ -762,10 +784,10 @@ function syncUI(s) {
   syncWinTab(s.winScreen || {}, s.match || {});
   syncBgoTab(s.bgOutput || {});
 
-  renderSponsors(m.sponsorLogos || []);
-  renderPlayerEditors(p);
+  if (_sfp('sponsors', m.sponsorLogos)) renderSponsors(m.sponsorLogos || []);
+  if (_sfp('players', { t1: (p.team1||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId];}), t1s: p.team1subs, t2: (p.team2||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId];}), t2s: p.team2subs })) renderPlayerEditors(p);
   renderIntelPanel(s);
-  renderLTQuickGrid(p, m);
+  if (_sfp('ltGrid', { t1: m.team1.name+m.team1.tag, t2: m.team2.name+m.team2.tag, p1: (p.team1||[]).map(function(x){return x.handle||x.name;}), p2: (p.team2||[]).map(function(x){return x.handle||x.name;}) })) renderLTQuickGrid(p, m);
   renderDraftTab(s.draft, s);
   syncGraphicIndicators(s);
   syncOperatorPage(s);
@@ -774,7 +796,9 @@ function syncUI(s) {
   if (s.bracket) {
     bracketRounds = s.bracket.rounds || [];
     bracketType   = (s.tournament && s.tournament.playoffFormat === 'doubleElim') ? 'double' : 'single';
-    renderBracketEditor();
+    const _bCont = g('bracket-rounds');
+    const _bFocused = _playoffsEditMode && _bCont && _bCont.contains(document.activeElement);
+    if (!_bFocused && _sfp('bracket', { r: s.bracket.rounds, t: bracketType, e: _playoffsEditMode })) renderBracketEditor();
     const bls = s.bracket.logoScale != null ? s.bracket.logoScale : 7;
     setInp('bracket-logo-scale', bls);
     setText('bracket-logo-scale-val', bls + 'vh');
@@ -784,7 +808,7 @@ function syncUI(s) {
     const bOn = g('bracket-logo-show-on'), bOff = g('bracket-logo-show-off');
     if (bOn)  bOn.classList.toggle('btn-active', bsl);
     if (bOff) bOff.classList.toggle('btn-active', !bsl);
-    renderBracketLogoPicker(s);
+    if (_sfp('bracketLogo', { sel: s.bracket.logoUrl, logos: s.settings && s.settings.logoSet && s.settings.logoSet.logos })) renderBracketLogoPicker(s);
   }
 
   syncTopBar(s);
@@ -792,13 +816,12 @@ function syncUI(s) {
   if (s.settings) syncThemeTab(s.settings);
   if (s.settings) syncGfxToken(s.settings);
   syncBusConfig(s);
-  if (s.settings) renderBreakCenterLogoPicker(s.settings);
-  if (s.settings) renderH2HLogoPicker(s.settings);
-  if (s.settings) renderBracketLogoPicker(s);
+  if (s.settings && _sfp('breakLogo', { sel: s.settings.breakCenterLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderBreakCenterLogoPicker(s.settings);
+  if (s.settings && _sfp('h2hLogo', { sel: s.settings.h2hLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderH2HLogoPicker(s.settings);
   if (s.groupStage)          syncGroupStageGfxUI(s);
   if (s.tournamentStructure) syncTournamentStructureGfxUI(s);
   if (s.prizepool) syncPrizepoolTab(s);
-  renderThemeSponsorPreview(m.sponsorLogos);
+  if (_sfp('themeSponsor', m.sponsorLogos)) renderThemeSponsorPreview(m.sponsorLogos);
   syncDraftGfxTab(s.draft || {}, s.settings || {});
 }
 
@@ -4473,8 +4496,8 @@ function renderSchedule() {
     return '<div class="sched-day-card" id="sday-' + day.id + '">' +
       '<div class="sched-day-header">' +
       '<div class="sched-day-title">' +
-      '<input class="sched-day-name-input" value="' + escHtml(day.label) + '" onchange="api(\'/api/schedule/day/update\',{id:\'' + day.id + '\',label:this.value})">' +
-      '<input class="sched-day-date-input" type="date" value="' + escHtml(day.date||'') + '" onchange="api(\'/api/schedule/day/update\',{id:\'' + day.id + '\',date:this.value})" title="Broadcast date (optional)">' +
+      '<input class="sched-day-name-input" value="' + escHtml(day.label) + '" onchange="api(\'/api/schedule/day/update\',{id:\'' + day.id + '\',label:this.value}).then(_applySchedule)">' +
+      '<input class="sched-day-date-input" type="date" value="' + escHtml(day.date||'') + '" onchange="api(\'/api/schedule/day/update\',{id:\'' + day.id + '\',date:this.value}).then(_applySchedule)" title="Broadcast date (optional)">' +
       '</div>' +
       '<div style="display:flex;gap:6px">' +
       (_schedEditMode ? '<button class="btn btn-sm btn-primary" onclick="openAddGameForm(\'' + day.id + '\')">+ Game</button>' : '') +
@@ -4488,12 +4511,12 @@ function renderSchedule() {
 
 function schedDeleteDay(id) {
   showConfirm('Delete this broadcast day?', function() {
-    api('/api/schedule/day/delete', { id });
+    api('/api/schedule/day/delete', { id }).then(_applySchedule);
   }, { danger: true, okLabel: 'Delete' });
 }
 function schedDeleteGame(dayId, gameId) {
   showConfirm('Remove this game?', function() {
-    api('/api/schedule/game/delete', { dayId, gameId });
+    api('/api/schedule/game/delete', { dayId, gameId }).then(_applySchedule);
   }, { danger: true, okLabel: 'Remove' });
 }
 
@@ -4544,8 +4567,8 @@ function renderDayGames(day) {
       (hasDraftHistory ? '<button class="btn btn-sm ds-toggle-btn" id="dh-btn-' + histId + '" onclick="toggleDraftHistory(\'' + histId + '\')">▼ Draft</button>' : '') +
       (!isCompleted ? '<button class="btn btn-sm" onclick="openEditGameForm(\'' + day.id + '\',\'' + gm.id + '\')">Edit</button>' : '') +
       (isCompleted ? '<button class="btn btn-sm btn-danger" onclick="clearScheduleGameResult(\'' + day.id + '\',\'' + gm.id + '\',this)">Clear Result</button>' : '') +
-      (_schedEditMode && idx > 0 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'up\'})">↑</button>' : '') +
-      (_schedEditMode && idx < day.games.length-1 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'down\'})">↓</button>' : '') +
+      (_schedEditMode && idx > 0 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'up\'}).then(_applySchedule)">↑</button>' : '') +
+      (_schedEditMode && idx < day.games.length-1 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'down\'}).then(_applySchedule)">↓</button>' : '') +
       (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="schedDeleteGame(\'' + day.id + '\',\'' + gm.id + '\')">×</button>' : '') +
       '</div></div>' +
       '<div id="sedit-' + gm.id + '" class="sched-edit-game-form" style="display:none"></div>';
@@ -4691,7 +4714,7 @@ function submitAddGame(dayId) {
     stage: stageEl && stageEl.value, format: fmtEl && fmtEl.value,
     fearlessDraft: fearlessEl && fearlessEl.checked,
     bracketMatchRef: matchEl && matchEl.value || '',
-  }).then(() => closeAddGameForm(dayId));
+  }).then(data => { _applySchedule(data); closeAddGameForm(dayId); });
 }
 
 // ── Schedule game inline editing ───────────────────────────────────────────────
@@ -4756,11 +4779,11 @@ function submitEditGame(dayId, gameId) {
     fearlessDraft: !!(fearEl && fearEl.checked),
     team1Override: (t1OvEl && t1OvEl.value.trim()) || '',
     team2Override: (t2OvEl && t2OvEl.value.trim()) || '',
-  }).then(function() { closeEditGameForm(gameId); });
+  }).then(function(data) { _applySchedule(data); closeEditGameForm(gameId); });
 }
 
 function addScheduleDay() {
-  api('/api/schedule/day/add', { label: 'Day ' + (((window._state.tournament||{}).schedule||[]).length + 1) });
+  api('/api/schedule/day/add', { label: 'Day ' + (((window._state.tournament||{}).schedule||[]).length + 1) }).then(_applySchedule);
 }
 
 // ── Game Setup ─────────────────────────────────────────────────────────────────
@@ -4838,7 +4861,7 @@ function renderScheduleGamePicker(dayId) {
 }
 
 function clearScheduleGameResult(dayId, gameId, btn) {
-  confirmDestructive(btn, 'Clear game result', () => api('/api/schedule/game/clear-result', { dayId, gameId }));
+  confirmDestructive(btn, 'Clear game result', () => api('/api/schedule/game/clear-result', { dayId, gameId }).then(_applySchedule));
 }
 
 function loadScheduleGame(dayId, gameId) {
