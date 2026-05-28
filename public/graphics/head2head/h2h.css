@@ -99,6 +99,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   transition: height 0.7s cubic-bezier(0.25, 1, 0.5, 1);
   position: relative;
   will-change: height;
+  contain: layout style paint;
 }
 
 /* Spotlight mode — compact / expanded */
@@ -202,18 +203,20 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .h2h-role-icon {
-  width: 4.5vh; height: 4.5vh;
+  width: 7vh; height: 7vh;
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
   filter: brightness(0) invert(1);
   opacity: 0.45;
-  transition: width 0.7s cubic-bezier(0.25, 1, 0.5, 1),
-              height 0.7s cubic-bezier(0.25, 1, 0.5, 1),
-              opacity 0.4s ease;
+  transform: scale(calc(4.5 / 7));
+  transform-origin: center;
+  transition: transform 0.7s cubic-bezier(0.25, 1, 0.5, 1),
+              opacity 0.4s ease,
+              filter 0.4s ease;
 }
 .h2h-row.active .h2h-role-icon {
-  width: 7vh; height: 7vh;
+  transform: scale(1);
   opacity: 1;
   filter: brightness(0) saturate(100%) invert(89%) sepia(100%) saturate(300%) hue-rotate(150deg);
 }
@@ -288,7 +291,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* ── Compact row: small text hint inside centre (role only, no icon) ────── */
 /* When extremely compact, hide the role icon and just show label */
-#h2h-root.mode-spotlight .h2h-row:not(.active) .h2h-role-icon  { width: 3.5vh; height: 3.5vh; }
+#h2h-root.mode-spotlight .h2h-row:not(.active) .h2h-role-icon  { transform: scale(0.5); }
 #h2h-root.mode-spotlight .h2h-row:not(.active) .h2h-role-label { font-size: 1.1vh; }
 
 /* Lineup mode — no dimming, all rows equal, player info always visible */
@@ -298,7 +301,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 #h2h-root.mode-lineup .h2h-player-handle { font-size: 3.8vh; }
 #h2h-root.mode-lineup .h2h-champ-name    { font-size: 1.4vh; }
-#h2h-root.mode-lineup .h2h-role-icon     { width: 5vh; height: 5vh; opacity: 0.7; filter: brightness(0) invert(1); }
+#h2h-root.mode-lineup .h2h-role-icon     { transform: scale(calc(5 / 7)); opacity: 0.7; filter: brightness(0) invert(1); }
 #h2h-root.mode-lineup .h2h-role-label    { font-size: 1.2vh; color: rgba(255,255,255,0.45); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
