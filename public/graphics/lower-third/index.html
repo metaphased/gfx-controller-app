@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Lower Third</title>
-<script src="/socket.io/socket.io.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
@@ -13,8 +13,6 @@
     overflow: hidden;
     position: relative;
   }
-
-  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap');
 
   :root {
     --bg: #0a1b20;
@@ -111,22 +109,26 @@
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
-const socket = io();
-const el = document.getElementById('lt');
+const _gfxToken = new URLSearchParams(window.location.search).get('token') || '';
+const socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
+
+const el  = document.getElementById('lt');
 const bar = document.getElementById('lt-bar');
 
+let _ltFp = null;
 socket.on('state', (state) => {
   const lt = state.lowerThird;
-  const match = state.match;
+  const key = JSON.stringify([lt.visible, lt.text, lt.subtext, lt.supertext, lt.side, lt.teamColor, state.match.tournament]);
+  if (_ltFp === key) return;
+  _ltFp = key;
 
-  document.getElementById('lt-super').textContent = lt.supertext || match.tournament || '';
-  document.getElementById('lt-name').textContent = lt.text || '';
-  document.getElementById('lt-sub').textContent = lt.subtext || '';
+  document.getElementById('lt-super').textContent = lt.supertext || state.match.tournament || '';
+  document.getElementById('lt-name').textContent  = lt.text    || '';
+  document.getElementById('lt-sub').textContent   = lt.subtext || '';
 
   el.classList.toggle('side-right', lt.side === 'right');
-  el.classList.toggle('visible', !!lt.visible);
+  el.classList.toggle('visible',    !!lt.visible);
 
-  // Team color accent
   if (lt.teamColor) bar.style.background = lt.teamColor;
 });
 </script>
