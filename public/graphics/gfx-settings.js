@@ -29,7 +29,7 @@ window.GfxSettings = (function () {
       st.bgFogLayer    ? '1' : '0',
       st.bgFogIntensity != null ? String(st.bgFogIntensity) : '50',
     ].join('|');
-    if (bgKey === _lastBgKey) return;
+    if (bgKey === _lastBgKey && (st.bgType !== 'animation' || !!_canvas) && (!st.bgFogLayer || !!_fogCanvas)) return;
 
     stopBgAnimation();
     _lastBgKey = bgKey;
@@ -113,13 +113,23 @@ window.GfxSettings = (function () {
   let _fogCanvas = null, _fogCtx = null, _fogAnimId = null, _fogResizeFn = null;
   let _lastBgKey = null; // tracks what is currently running so identical calls are ignored
   let _persistedFogData = null; // fog puff state — survives animation restarts
+  let _animFrameFn = null, _fogAnimFrameFn = null;
+
+  // Pause rAF loops when the tab is hidden; resume when it becomes visible.
+  function _rafMain(fn) { _animFrameFn = fn; _animId = document.hidden ? null : requestAnimationFrame(fn); }
+  function _rafFog(fn)  { _fogAnimFrameFn = fn; _fogAnimId = document.hidden ? null : requestAnimationFrame(fn); }
+  document.addEventListener('visibilitychange', function () {
+    if (!document.hidden) {
+      if (_animFrameFn)    _animId    = requestAnimationFrame(_animFrameFn);
+      if (_fogAnimFrameFn) _fogAnimId = requestAnimationFrame(_fogAnimFrameFn);
+    }
+  });
 
   function stopBgAnimation() {
     if (_animId)     { cancelAnimationFrame(_animId); _animId = null; }
     if (_canvas && _canvas.parentNode) _canvas.parentNode.removeChild(_canvas);
     if (_bgResizeFn) { window.removeEventListener('resize', _bgResizeFn); _bgResizeFn = null; }
-    _canvas = null; _ctx = null;
-    _lastBgKey = null; // force full restart on next applyBackground call
+    _canvas = null; _ctx = null; _animFrameFn = null;
     stopFogLayer();
   }
 
@@ -127,7 +137,7 @@ window.GfxSettings = (function () {
     if (_fogAnimId)     { cancelAnimationFrame(_fogAnimId); _fogAnimId = null; }
     if (_fogCanvas && _fogCanvas.parentNode) _fogCanvas.parentNode.removeChild(_fogCanvas);
     if (_fogResizeFn)   { window.removeEventListener('resize', _fogResizeFn); _fogResizeFn = null; }
-    _fogCanvas = null; _fogCtx = null;
+    _fogCanvas = null; _fogCtx = null; _fogAnimFrameFn = null;
   }
 
   function _startBgAnimation(container, type, sp, bgImgUrl) {
@@ -177,7 +187,7 @@ window.GfxSettings = (function () {
     function frame() {
       if (!_fogCanvas) return;
       _drawFogFrame(_fogCtx, _fogCanvas, fogData, intensity);
-      _fogAnimId = requestAnimationFrame(frame);
+      _rafFog(frame);
     }
     frame();
   }
@@ -203,7 +213,7 @@ window.GfxSettings = (function () {
         _ctx.fillStyle = 'rgba(255,255,255,' + p.a + ')';
         _ctx.fill();
       });
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }
@@ -215,7 +225,7 @@ window.GfxSettings = (function () {
       _ctx.fillStyle = 'rgba(255,255,255,0.025)';
       for (let y = offset % 4; y < _canvas.height; y += 4) _ctx.fillRect(0, y, _canvas.width, 1);
       offset += 0.4 * sp;
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }
@@ -230,7 +240,7 @@ window.GfxSettings = (function () {
       for (let x = 0; x < _canvas.width;  x += spacing) { _ctx.beginPath(); _ctx.moveTo(x, 0); _ctx.lineTo(x, _canvas.height); _ctx.stroke(); }
       for (let y = 0; y < _canvas.height; y += spacing) { _ctx.beginPath(); _ctx.moveTo(0, y); _ctx.lineTo(_canvas.width, y);  _ctx.stroke(); }
       phase += 0.009 * sp;
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }
@@ -257,7 +267,7 @@ window.GfxSettings = (function () {
         for (let c = -1; c < cols; c++) { hexPath(c * sz * w3 + (r % 2 ? sz * w3 / 2 : 0), r * sz * 1.5); _ctx.stroke(); }
       }
       phase += 0.007 * sp;
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }
@@ -283,7 +293,7 @@ window.GfxSettings = (function () {
         _ctx.beginPath(); _ctx.moveTo(-diag, y); _ctx.lineTo(diag, y); _ctx.stroke();
       }
       _ctx.restore();
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }
@@ -308,7 +318,7 @@ window.GfxSettings = (function () {
           _ctx.fill();
         }
       }
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }
@@ -332,7 +342,7 @@ window.GfxSettings = (function () {
         _ctx.beginPath(); _ctx.moveTo(x, -diag); _ctx.lineTo(x, diag); _ctx.stroke();
       }
       _ctx.restore();
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }
@@ -360,9 +370,9 @@ window.GfxSettings = (function () {
         _ctx.lineWidth = 1;
         _ctx.stroke();
       });
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
-    _animId = requestAnimationFrame(frame);
+    _rafMain(frame);
   }
 
   function _circuit(sp) {
@@ -428,7 +438,7 @@ window.GfxSettings = (function () {
         _ctx.beginPath(); _ctx.arc(last.x, last.y, 2.5, 0, Math.PI * 2);
         _ctx.fillStyle = `rgba(${r},${g},${b},${Math.min(1, a * 1.8)})`; _ctx.fill();
       }
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }
@@ -461,7 +471,7 @@ window.GfxSettings = (function () {
         _ctx.strokeStyle = gr; _ctx.lineWidth = d.thick;
         _ctx.beginPath(); _ctx.moveTo(d.x, d.y - d.len); _ctx.lineTo(d.x, d.y); _ctx.stroke();
       });
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }
@@ -561,7 +571,7 @@ window.GfxSettings = (function () {
     function frame() {
       if (!_canvas) return;
       _drawFogFrame(_ctx, _canvas, fogData, 0.9);
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }
@@ -608,7 +618,7 @@ window.GfxSettings = (function () {
         shimGrad.addColorStop(1, 'rgba(255,255,255,0)');
         _ctx.fillStyle = shimGrad; _ctx.fillRect(0, shimY - 35, w, 70);
       }
-      _animId = requestAnimationFrame(frame);
+      _rafMain(frame);
     }
     frame();
   }

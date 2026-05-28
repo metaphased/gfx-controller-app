@@ -75,6 +75,8 @@ socket.on('state', (state) => {
   if (!visible) {
     root.style.visibility = 'hidden';
     _lastVisible = false;
+    if (_timerInterval) { clearInterval(_timerInterval); _timerInterval = null; }
+    if (_logoExpandTimeout) { clearTimeout(_logoExpandTimeout); _logoExpandTimeout = null; }
     return;
   }
 
