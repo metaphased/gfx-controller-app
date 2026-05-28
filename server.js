@@ -951,7 +951,7 @@ app.post('/api/teams/save', requireAdmin, (req, res) => {
 app.post('/api/teams/delete', requireAdmin, (req, res) => {
   const { id } = req.body;
   if (!id) return res.status(400).json({ error: 'id required' });
-  saveTeams(_teams.filter(t => t.id !== id)); res.json({ ok: true });
+  saveTeams(_teams.filter(t => t.id !== id)); broadcast(); res.json({ ok: true });
 });
 
 // Champions
