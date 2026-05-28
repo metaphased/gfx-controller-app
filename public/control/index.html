@@ -805,6 +805,13 @@
             <button id="pi-bg-dark"        class="btn btn-sm btn-dim"        onclick="setPiBackground('dark')">Dark</button>
             <button id="pi-bg-global"      class="btn btn-sm btn-dim"        onclick="setPiBackground('global')">Global Theme</button>
           </div>
+          <div class="gfx-ctrl-group" id="pi-bar-opacity-group" style="display:none">
+            <span class="gfx-ctrl-section-label">Bar Opacity</span>
+            <input id="pi-bar-opacity-slider" type="range" min="0.3" max="1" step="0.05" value="0.93"
+              style="width:110px;vertical-align:middle"
+              oninput="patchPlayerIntro({barOpacity:parseFloat(this.value)});g('pi-bar-opacity-val').textContent=Math.round(parseFloat(this.value)*100)+'%'">
+            <span id="pi-bar-opacity-val" style="font-size:11px;color:var(--text-dim);min-width:32px;display:inline-block;text-align:right">93%</span>
+          </div>
         </div>
       </div>
       <div class="ps-two-col">

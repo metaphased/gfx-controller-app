@@ -84,6 +84,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   background: #07101a; /* backstop — fills any sub-pixel gaps between rows */
   position: relative;
   z-index: 1; /* sits above the canvas injected at z-index:0 by applyBackground */
+  contain: layout;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -97,6 +98,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   border-top: 1px solid rgba(255,255,255,0.06);
   transition: height 0.7s cubic-bezier(0.25, 1, 0.5, 1);
   position: relative;
+  will-change: height;
 }
 
 /* Spotlight mode — compact / expanded */
@@ -113,6 +115,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   background-color: #0a0f18; /* fallback when art hasn't loaded / no champ assigned */
   background-size: cover;
   background-repeat: no-repeat;
+  will-change: transform;
 }
 
 /* Spotlight: anchor to top so expanding the card reveals the body downward */

@@ -260,12 +260,11 @@ socket.on('state', function(state) {
     }
   }
 
+  renderAll(state);
+
   if (visible !== _lastVisible) {
     if (visible) animateIn();
     else if (_lastVisible !== null) animateOut();
     _lastVisible = visible;
   }
-
-  if (!visible) return;
-  renderAll(state);
 });

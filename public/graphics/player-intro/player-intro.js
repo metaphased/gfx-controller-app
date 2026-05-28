@@ -37,6 +37,22 @@ function $(id) { return document.getElementById(id); }
 function setTxt(id, val) { var e = $(id); if (e) e.textContent = val; }
 function setBg(id, url)  { var e = $(id); if (e) e.style.backgroundImage = url ? 'url(' + url + ')' : ''; }
 
+// Scales styleTarget's font-size down (binary search) until el's content fits within el.
+// Pass styleTarget separately when the text node and its measuring container differ (bar layout).
+function fitText(el, maxPx, minPx, styleTarget) {
+  if (!el) return;
+  var target = styleTarget || el;
+  target.style.fontSize = maxPx + 'px';
+  if (el.scrollWidth <= el.offsetWidth) return;
+  var lo = minPx, hi = maxPx;
+  while (hi - lo > 1) {
+    var mid = (lo + hi) >> 1;
+    target.style.fontSize = mid + 'px';
+    if (el.scrollWidth <= el.offsetWidth) lo = mid; else hi = mid;
+  }
+  target.style.fontSize = lo + 'px';
+}
+
 function normChampKey(name) {
   if (!name) return '';
   var fix = CHAMP_KEY_FIXES[name.toLowerCase()];
@@ -131,6 +147,10 @@ function animateIn() {
     root.classList.remove('pi-entering');
     _enterTimer = null;
   }, 1200);
+  // Re-fit team names once Barlow Condensed is confirmed loaded.
+  // Resolves as a microtask (font already cached) or when the font file arrives —
+  // either way fires after the synchronous renderAll/fitText that follows this call.
+  document.fonts.load('900 1em "Barlow Condensed"').then(refitNames);
 }
 
 function animateOut() {
@@ -183,6 +203,10 @@ function renderPanel(state) {
   setBg('pi-panel-t2-logo', t2.logo);
   setTxt('pi-panel-t1-name', t1.name || t1.tag || '');
   setTxt('pi-panel-t2-name', t2.name || t2.tag || '');
+
+  var maxPanelNamePx = Math.round(window.innerHeight * 0.042);
+  fitText($('pi-panel-t1-name'), maxPanelNamePx, Math.round(maxPanelNamePx * 0.42));
+  fitText($('pi-panel-t2-name'), maxPanelNamePx, Math.round(maxPanelNamePx * 0.42));
 
   var t1Hdr = $('pi-panel-t1-hdr'), t2Hdr = $('pi-panel-t2-hdr');
   if (t1Hdr) t1Hdr.style.setProperty('--team-color', t1.color || 'var(--gfx-blue)');
@@ -304,7 +328,10 @@ function renderBar(state) {
   var showLogo   = pi.showLogo !== false;
 
   var bandEl = document.querySelector('.pi-bar-band');
-  if (bandEl) bandEl.classList.toggle('has-rank', showRank);
+  if (bandEl) {
+    bandEl.classList.toggle('has-rank', showRank);
+    bandEl.style.setProperty('--pi-bar-alpha', pi.barOpacity !== undefined ? pi.barOpacity : 0.93);
+  }
 
   setBg('pi-bar-t1-logo', t1.logo);
   setBg('pi-bar-t2-logo', t2.logo);
@@ -318,6 +345,11 @@ function renderBar(state) {
   var t2NameEl = $('pi-bar-t2-team-name');
   if (t1NameEl) t1NameEl.innerHTML = '<span>' + (t1.name || t1.tag || '') + '</span>';
   if (t2NameEl) t2NameEl.innerHTML = '<span>' + (t2.name || t2.tag || '') + '</span>';
+
+  var maxBarNamePx = Math.round(window.innerHeight * 0.05);
+  var minBarNamePx = Math.round(maxBarNamePx * 0.42);
+  if (t1NameEl) fitText(t1NameEl, maxBarNamePx, minBarNamePx, t1NameEl.querySelector('span'));
+  if (t2NameEl) fitText(t2NameEl, maxBarNamePx, minBarNamePx, t2NameEl.querySelector('span'));
 
   setLogoOrVs($('pi-bar-centre-img'), $('pi-bar-vs'), showLogo ? getCentreLogo(state) : '');
 
@@ -374,6 +406,25 @@ function getEffectiveBgState(state) {
     overrideSettings.bgColor = '';
   }
   return Object.assign({}, state, { settings: overrideSettings });
+}
+
+// Re-measures team name sizes after fonts have loaded — fixes first-show inaccuracy
+// where fitText runs against the fallback font before Barlow Condensed downloads.
+function refitNames() {
+  var root = $('pi-root');
+  if (!root || root.style.display === 'none') return;
+  var layout = root.dataset.layout || 'panel';
+  if (layout === 'panel') {
+    var maxPx = Math.round(window.innerHeight * 0.042);
+    fitText($('pi-panel-t1-name'), maxPx, Math.round(maxPx * 0.42));
+    fitText($('pi-panel-t2-name'), maxPx, Math.round(maxPx * 0.42));
+  } else if (layout === 'bar') {
+    var maxBarPx = Math.round(window.innerHeight * 0.05);
+    var minBarPx = Math.round(maxBarPx * 0.42);
+    var t1El = $('pi-bar-t1-team-name'), t2El = $('pi-bar-t2-team-name');
+    if (t1El) fitText(t1El, maxBarPx, minBarPx, t1El.querySelector('span'));
+    if (t2El) fitText(t2El, maxBarPx, minBarPx, t2El.querySelector('span'));
+  }
 }
 
 // ── Socket ────────────────────────────────────────────────────────────────────

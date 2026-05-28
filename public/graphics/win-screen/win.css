@@ -16,6 +16,20 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
 }
 
+/* Solid backdrop for full-screen styles — makes OBS source fully opaque (no alpha bleed-through).
+   Blade and Wipe are intentional partial overlays so they stay transparent. */
+.ws-fullscreen-bg {
+  position: absolute; inset: 0;
+  background: #040810;
+  display: none;
+}
+.style-burst .ws-fullscreen-bg,
+.style-slam .ws-fullscreen-bg,
+.style-split .ws-fullscreen-bg,
+.style-spotlight .ws-fullscreen-bg { display: block; }
+
+@keyframes ws-fullscreen-bg-out { from { opacity: 1; } to { opacity: 0; } }
+
 /* ═══════════════════════════════════════════════════════════════
    SHARED CONTENT CARD
    ═══════════════════════════════════════════════════════════════ */
@@ -244,6 +258,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .style-burst.is-entering .ws-card         { animation: ws-burst-card-in    0.55s cubic-bezier(0.34,1.56,0.64,1) 0.38s both; }
 .style-burst.is-exiting  .ws-card         { animation: ws-burst-card-out   0.2s ease-in both; }
 .style-burst.is-exiting  .ws-burst-bg     { animation: ws-burst-collapse   0.5s cubic-bezier(0.7,0,1,0.4) 0.14s both; }
+.style-burst.is-exiting  .ws-fullscreen-bg { animation: ws-fullscreen-bg-out 0.65s ease both; }
 
 .style-burst .ws-blade-bg, .style-burst .ws-blade-line,
 .style-burst .ws-slam-overlay,
@@ -306,6 +321,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .style-slam.is-entering .ws-card         { animation: ws-slam-card-in     0.75s cubic-bezier(0.34, 1.4, 0.64, 1) 0.2s both; }
 .style-slam.is-exiting  .ws-card         { animation: ws-slam-card-out    0.45s cubic-bezier(0.7, 0, 1, 0.4) both; }
 .style-slam.is-exiting  .ws-slam-overlay { animation: ws-slam-overlay-out 0.4s ease 0.3s both; }
+.style-slam.is-exiting  .ws-fullscreen-bg { animation: ws-fullscreen-bg-out 0.75s ease both; }
 
 .style-slam .ws-blade-bg, .style-slam .ws-blade-line,
 .style-slam .ws-burst-bg, .style-slam .ws-burst-flash, .style-slam .ws-burst-ring,
@@ -389,6 +405,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .style-split.is-exiting  .ws-split-panel-l { animation: ws-split-panel-out   0.5s  cubic-bezier(0.7,0,1,0.4) 0.1s both; transform-origin: left center; }
 .style-split.is-exiting  .ws-split-divider { animation: ws-split-divider-out 0.28s ease both; }
 .style-split.is-exiting  .ws-split-overlay { animation: ws-split-overlay-out 0.4s  ease 0.35s both; }
+.style-split.is-exiting  .ws-fullscreen-bg { animation: ws-fullscreen-bg-out 0.9s  ease both; }
 
 /* Divider line breathes slowly once the entry animation has settled */
 .style-split.is-visible .ws-split-divider {
@@ -480,6 +497,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .style-spotlight.is-entering .ws-card               { animation: ws-spotlight-card-in     0.65s cubic-bezier(0.34,1.56,0.64,1) 0.52s both; }
 .style-spotlight.is-exiting  .ws-card               { animation: ws-spotlight-card-out    0.22s ease both; }
 .style-spotlight.is-exiting  .ws-spotlight-overlay  { animation: ws-spotlight-overlay-out 0.5s ease 0.18s both; }
+.style-spotlight.is-exiting  .ws-fullscreen-bg      { animation: ws-fullscreen-bg-out     0.75s ease both; }
 
 .style-spotlight .ws-blade-bg, .style-spotlight .ws-blade-line,
 .style-spotlight .ws-burst-bg, .style-spotlight .ws-burst-flash, .style-spotlight .ws-burst-ring,

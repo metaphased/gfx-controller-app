@@ -47,13 +47,14 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* ── Header ─────────────────────────────────────────────────────────────── */
 .pi-panel-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 11vw 1fr;  /* matches .pi-panel-centre-zone width exactly */
   height: 9vh;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
 .pi-panel-team-hdr {
-  flex: 1;
+  min-width: 0;  /* lets the grid column shrink below content min-size */
   display: flex;
   align-items: center;
   gap: 1.5vw;
@@ -77,6 +78,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   letter-spacing: 0.08em; text-transform: uppercase;
   color: #fff;
   line-height: 1;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .pi-panel-centre-zone {
@@ -337,13 +342,14 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   height: 20vh;     /* fixed height so bar is consistent with/without data */
   display: flex;
   overflow: hidden;
-  background: rgba(6, 12, 20, 0.93);
+  background: rgba(6, 12, 20, var(--pi-bar-alpha, 0.93));
   border-top: 1px solid rgba(255,255,255,0.1);
 }
 .pi-bar-band.has-rank { height: 23vh; }
 
 .pi-bar-side {
   flex: 1;
+  min-width: 0;
   display: flex;
   align-items: stretch;
   border-top: 3px solid var(--team-color, var(--gfx-c1));
@@ -442,8 +448,6 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: rgba(255,255,255,0.82);
   line-height: 1;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .pi-bar-centre {

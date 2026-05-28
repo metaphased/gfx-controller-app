@@ -733,6 +733,11 @@ function syncUI(s) {
   const _piChampsBtn = g('pi-toggle-champs');
   if (_piChampsBtn) _piChampsBtn.textContent = 'Champs: ' + (_pi.showChamps ? 'On' : 'Off');
   syncPiBgBtns(_pi.piBg || 'transparent');
+  const _piBarOpacity = _pi.barOpacity !== undefined ? _pi.barOpacity : 0.93;
+  const _piBarSlider = g('pi-bar-opacity-slider');
+  if (_piBarSlider) _piBarSlider.value = _piBarOpacity;
+  const _piBarValEl = g('pi-bar-opacity-val');
+  if (_piBarValEl) _piBarValEl.textContent = Math.round(_piBarOpacity * 100) + '%';
   renderPiLogoPicker(_pi, s.settings || {});
 
   // ── Pre-show sync ──────────────────────────────────────────────────────────
@@ -1591,6 +1596,8 @@ function syncPlayerIntroLayoutBtns(layout) {
     const btn = g('pi-layout-' + id);
     if (btn) btn.className = 'btn btn-sm ' + (layout === id ? 'btn-active-gfx' : 'btn-dim');
   });
+  const opacityGrp = g('pi-bar-opacity-group');
+  if (opacityGrp) opacityGrp.style.display = layout === 'bar' ? '' : 'none';
 }
 
 function syncPlayerIntroAnimBtns(layout, active) {
