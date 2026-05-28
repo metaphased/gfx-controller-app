@@ -44,14 +44,16 @@ let _lastTimerEnd      = null;
 let _lastDuration      = 30;
 let _logoExpandTimeout = null;
 let _logoIsExpanded    = false;
-let _lastLayout    = '';
+let _lastLayout        = '';
 let _introPlayed       = false;
 let _lastVisible       = false;
 let _lastIntroTrigger  = 0;
 let _draftWasActive    = false;
+let _renderHash        = '';
+let _fearlessHash      = '';
 
 // ── Socket ────────────────────────────────────────────────────────────────────
-socket.on('connect', () => { _introPlayed = false; _draftWasActive = false; });
+socket.on('connect', () => { _introPlayed = false; _draftWasActive = false; _renderHash = ''; _fearlessHash = ''; });
 
 socket.on('state', (state) => {
   const settings = state.settings || {};
@@ -77,7 +79,7 @@ socket.on('state', (state) => {
   }
 
   // Visibility just turned on — reset intro and stale timer so both replay cleanly
-  if (!_lastVisible) { _introPlayed = false; _lastTimerEnd = null; _draftWasActive = false; }
+  if (!_lastVisible) { _introPlayed = false; _lastTimerEnd = null; _draftWasActive = false; _renderHash = ''; _fearlessHash = ''; }
   _lastVisible = true;
 
   // introTrigger counter incremented by Reset Draft or Replay Intro button
@@ -87,11 +89,49 @@ socket.on('state', (state) => {
     _introPlayed    = false;
     _lastTimerEnd   = null;
     _draftWasActive = false;
+    _renderHash     = '';
+    _fearlessHash   = '';
   }
   root.style.visibility = '';
 
   renderAll(state);
 });
+
+// ── Data fingerprints ─────────────────────────────────────────────────────────
+// Covers all non-timer fields that affect the DOM. Timer ticks from the server
+// update draft.timerEnd but nothing else — fingerprinting skips those renders.
+function buildRenderHash(state) {
+  const d = state.draft    || {};
+  const m = state.match    || {};
+  const p = state.players  || {};
+  const s = state.settings || {};
+  return JSON.stringify({
+    picks:        d.picks,
+    phase:        d.phase,
+    step:         d.currentStep,
+    blueSide:     d.blueSideTeam,
+    banFirst:     d.banFirstTeam,
+    sideChooser:  d.sideChooser,
+    timerVisible: d.timerVisible,
+    centerLogo:   s.draftCenterLogoUrl || d.centerLogoUrl,
+    logoSet:      s.logoSet && s.logoSet.logos && s.logoSet.logos.map(function(l) { return l.url; }),
+    phaseContrast:s.draftPhaseContrast,
+    team1:        { name: m.team1 && m.team1.name, tag: m.team1 && m.team1.tag, logo: m.team1 && m.team1.logo, score: m.team1 && m.team1.score },
+    team2:        { name: m.team2 && m.team2.name, tag: m.team2 && m.team2.tag, logo: m.team2 && m.team2.logo, score: m.team2 && m.team2.score },
+    format:       m.format,
+    gameNum:      m.currentGameNum,
+    fearless:     m.fearlessDraft,
+    t1RolePicks:  d.team1RolePicks,
+    t2RolePicks:  d.team2RolePicks,
+    players:      p,
+    seriesGames:  m.seriesGames,
+    tournLogo:    m.tournamentLogo,
+  });
+}
+
+function buildFearlessHash(seriesGames, isFearless, blueSlot) {
+  return JSON.stringify({ seriesGames: seriesGames, isFearless: isFearless, blueSlot: blueSlot });
+}
 
 // ── Main render ───────────────────────────────────────────────────────────────
 function renderAll(state) {
@@ -100,6 +140,14 @@ function renderAll(state) {
   const players  = state.players  || {};
   const settings = state.settings || {};
   const picks    = draft.picks    || Array(20).fill('');
+
+  // Skip full re-render when only timer fields changed (e.g. server tick updates timerEnd)
+  const newHash = buildRenderHash(state);
+  const introNeeded = !_introPlayed;
+  const lifecycleNeeded = (draft.phase !== 'notstarted' && draft.phase !== 'complete') !== _draftWasActive
+    || (draft.phase === 'complete' && _draftWasActive);
+  if (newHash === _renderHash && !introNeeded && !lifecycleNeeded) return;
+  _renderHash = newHash;
 
   const blueSlot     = draft.blueSideTeam || 'team1';
   const redSlot      = blueSlot === 'team1' ? 'team2' : 'team1';
@@ -305,6 +353,10 @@ function renderFearless(seriesGames, isFearless, match, currentBlueSlot) {
   const show = isFearless && seriesGames.length > 0;
   section.style.display = show ? 'block' : 'none';
   if (!show) return;
+
+  const fHash = buildFearlessHash(seriesGames, isFearless, currentBlueSlot);
+  if (fHash === _fearlessHash) return;
+  _fearlessHash = fHash;
 
   content.innerHTML = '';
   const grid = document.createElement('div');
