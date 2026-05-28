@@ -206,6 +206,9 @@ function renderAll(state) {
         var stats  = player.draftChampStats || null;
         var tokens = champCfg[ROLE_LABELS[i]] || [];
         var champName = champNameFromUrl(picks[i] || '');
+        var key = JSON.stringify([champName, stats, tokens]);
+        if (el.dataset.statsKey === key) continue;
+        el.dataset.statsKey = key;
         el.innerHTML = buildStatsStripHtml(stats, tokens, champName);
       }
     });
@@ -213,8 +216,8 @@ function renderAll(state) {
     // Clear strips when disabled
     for (var si = 0; si < 5; si++) {
       var e1 = $('h2h-stats-t1-' + si), e2 = $('h2h-stats-t2-' + si);
-      if (e1) e1.innerHTML = '';
-      if (e2) e2.innerHTML = '';
+      if (e1 && e1.innerHTML !== '') e1.innerHTML = '';
+      if (e2 && e2.innerHTML !== '') e2.innerHTML = '';
     }
   }
 }
