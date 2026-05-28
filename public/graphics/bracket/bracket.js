@@ -10,10 +10,6 @@ let _connTimers  = [];   // connector reveal timeouts
 let _teams       = [];   // local teams cache — loaded from API + kept fresh via state events
 let _bracketHash = '';   // fingerprint to avoid unnecessary re-renders
 
-fetch('/api/teams')
-  .then(function(r) { return r.json(); })
-  .then(function(d) { if (d.teams && d.teams.length) _teams = d.teams; })
-  .catch(function() {});
 
 function $(id) { return document.getElementById(id); }
 function _eH(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }

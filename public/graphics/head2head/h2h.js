@@ -3,8 +3,24 @@ const _gfxToken = new URLSearchParams(window.location.search).get('token') || ''
 const socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
 
 let _lastVisible = null;
-var _exitTimer  = null;
-var _enterTimer = null;
+var _exitTimer   = null;
+var _enterTimer  = null;
+var _preloadedSplashes = new Set();
+
+function _preloadSplash(champName) {
+  if (!champName) return;
+  var url = '\graphics\head2head\champions\' + champName + '_0.jpg';
+  if (_preloadedSplashes.has(url)) return;
+  _preloadedSplashes.add(url);
+  var img = new Image(); img.src = url;
+}
+
+function _preloadPickSplashes(picks) {
+  (picks || []).forEach(function(url) {
+    var name = champNameFromUrl(url);
+    if (name) _preloadSplash(name);
+  });
+}
 
 // Role order matches state.draft.team1RolePicks / team2RolePicks indices
 // (DRAFT_ROLES in control.js = ['Top','Jungle','Mid','Bot','Support'])
@@ -250,6 +266,9 @@ socket.on('state', function(state) {
   var root    = $('h2h-root');
   var h2h     = state.headToHead || {};
   var visible = !!h2h.visible;
+  var draft   = state.draft || {};
+  _preloadPickSplashes(draft.team1RolePicks);
+  _preloadPickSplashes(draft.team2RolePicks);
 
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyBackground(root, state);

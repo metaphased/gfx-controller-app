@@ -38,15 +38,16 @@ socket.on('state', state => {
     _style = style;
   }
 
-  populateContent(ws, match);
-
   if (visible && !_visible) {
+    populateContent(ws, match);
     if (_outTimer) { clearTimeout(_outTimer); _outTimer = null; }
     _visible = true;
     animateIn();
   } else if (!visible && _visible) {
     _visible = false;
     animateOut();
+  } else if (visible) {
+    populateContent(ws, match);
   }
 });
 

@@ -64,6 +64,20 @@ function champSplashUrl(name) {
   return key ? '/graphics/head2head/champions/' + key + '_0.jpg' : '';
 }
 
+var _preloadedSplashes = new Set();
+function _preloadSplashes(players) {
+  Object.values(players || {}).forEach(function(team) {
+    (team || []).forEach(function(p) {
+      var name = p && p.champPool && p.champPool[0] && p.champPool[0].name;
+      if (!name) return;
+      var url = champSplashUrl(name);
+      if (!url || _preloadedSplashes.has(url)) return;
+      _preloadedSplashes.add(url);
+      var img = new Image(); img.src = url;
+    });
+  });
+}
+
 function normalizeRole(r) {
   r = (r || '').toLowerCase().trim();
   return r === 'adc' ? 'bot' : r;
@@ -434,6 +448,7 @@ socket.on('state', function(state) {
   var root    = $('pi-root');
   var pi      = state.playerIntro || {};
   var visible = !!pi.visible;
+  _preloadSplashes(state.players);
 
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyBackground(root, getEffectiveBgState(state));

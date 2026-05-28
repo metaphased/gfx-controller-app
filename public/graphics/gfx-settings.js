@@ -299,7 +299,8 @@ window.GfxSettings = (function () {
   }
 
   function _dotwave(sp) {
-    const SPACING = 38, DOT_R = 1.4;
+    const SPACING = 38, DOT_R = 1.4, BUCKETS = 16;
+    const slots = Array.from({ length: BUCKETS }, () => []);
     let phase = 0;
     function frame() {
       const w = _canvas.width, h = _canvas.height;
@@ -307,16 +308,24 @@ window.GfxSettings = (function () {
       phase += 0.008 * sp;
       const cols = Math.ceil(w / SPACING) + 1;
       const rows = Math.ceil(h / SPACING) + 1;
+      for (let b = 0; b < BUCKETS; b++) slots[b].length = 0;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const x = c * SPACING, y = r * SPACING;
-          const nx = x / w, ny = y / h;
-          const wave = Math.sin(nx * Math.PI * 4 + phase) * Math.cos(ny * Math.PI * 3 + phase * 0.75) * 0.5 + 0.5;
-          _ctx.beginPath();
-          _ctx.arc(x, y, DOT_R, 0, Math.PI * 2);
-          _ctx.fillStyle = 'rgba(255,255,255,' + (0.04 + wave * 0.16) + ')';
-          _ctx.fill();
+          const wave = Math.sin(x / w * Math.PI * 4 + phase) * Math.cos(y / h * Math.PI * 3 + phase * 0.75) * 0.5 + 0.5;
+          slots[Math.min(BUCKETS - 1, wave * BUCKETS | 0)].push(x, y);
         }
+      }
+      for (let b = 0; b < BUCKETS; b++) {
+        const pts = slots[b];
+        if (!pts.length) continue;
+        _ctx.fillStyle = 'rgba(255,255,255,' + (0.04 + b / BUCKETS * 0.16).toFixed(3) + ')';
+        _ctx.beginPath();
+        for (let i = 0; i < pts.length; i += 2) {
+          _ctx.moveTo(pts[i] + DOT_R, pts[i + 1]);
+          _ctx.arc(pts[i], pts[i + 1], DOT_R, 0, Math.PI * 2);
+        }
+        _ctx.fill();
       }
       _rafMain(frame);
     }

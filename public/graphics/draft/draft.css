@@ -273,6 +273,7 @@ body.phase-bold .fearless-label {
   position: absolute; inset: 0;
   background-size: cover;
   background-position: center top;
+  will-change: transform, opacity;
 }
 .player-bg::after {
   content: '';
