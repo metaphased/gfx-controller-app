@@ -672,6 +672,8 @@ function renderDashboard(s) {
 
 // ── Sync UI ────────────────────────────────────────────────────────────────────
 let _pendingSnapshotRestore = false;
+let _syncFp = {};
+function _sfp(key, val) { const v = JSON.stringify(val); if (_syncFp[key] === v) return false; _syncFp[key] = v; return true; }
 
 function syncUI(s) {
   if (!s || !s.match || !s.lowerThird || !s.draft || !s.breakScreen || !s.winScreen || !s.bracket || !s.players) {
@@ -758,7 +760,7 @@ function syncUI(s) {
   if (_piBarSlider) _piBarSlider.value = _piBarOpacity;
   const _piBarValEl = g('pi-bar-opacity-val');
   if (_piBarValEl) _piBarValEl.textContent = Math.round(_piBarOpacity * 100) + '%';
-  renderPiLogoPicker(_pi, s.settings || {});
+  if (_sfp('piLogo', { sel: _pi.piLogoUrl, logos: s.settings && s.settings.logoSet && s.settings.logoSet.logos })) renderPiLogoPicker(_pi, s.settings || {});
 
   // ── Pre-show sync ──────────────────────────────────────────────────────────
   syncPreShowUI(s.preShow || {}, s.settings || {}, s.todayGames || [], s.ticker || {});
@@ -782,10 +784,10 @@ function syncUI(s) {
   syncWinTab(s.winScreen || {}, s.match || {});
   syncBgoTab(s.bgOutput || {});
 
-  renderSponsors(m.sponsorLogos || []);
-  renderPlayerEditors(p);
+  if (_sfp('sponsors', m.sponsorLogos)) renderSponsors(m.sponsorLogos || []);
+  if (_sfp('players', { t1: (p.team1||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId];}), t1s: p.team1subs, t2: (p.team2||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId];}), t2s: p.team2subs })) renderPlayerEditors(p);
   renderIntelPanel(s);
-  renderLTQuickGrid(p, m);
+  if (_sfp('ltGrid', { t1: m.team1.name+m.team1.tag, t2: m.team2.name+m.team2.tag, p1: (p.team1||[]).map(function(x){return x.handle||x.name;}), p2: (p.team2||[]).map(function(x){return x.handle||x.name;}) })) renderLTQuickGrid(p, m);
   renderDraftTab(s.draft, s);
   syncGraphicIndicators(s);
   syncOperatorPage(s);
@@ -794,7 +796,7 @@ function syncUI(s) {
   if (s.bracket) {
     bracketRounds = s.bracket.rounds || [];
     bracketType   = (s.tournament && s.tournament.playoffFormat === 'doubleElim') ? 'double' : 'single';
-    renderBracketEditor();
+    if (_sfp('bracket', { r: s.bracket.rounds, t: bracketType, e: _playoffsEditMode })) renderBracketEditor();
     const bls = s.bracket.logoScale != null ? s.bracket.logoScale : 7;
     setInp('bracket-logo-scale', bls);
     setText('bracket-logo-scale-val', bls + 'vh');
@@ -804,7 +806,7 @@ function syncUI(s) {
     const bOn = g('bracket-logo-show-on'), bOff = g('bracket-logo-show-off');
     if (bOn)  bOn.classList.toggle('btn-active', bsl);
     if (bOff) bOff.classList.toggle('btn-active', !bsl);
-    renderBracketLogoPicker(s);
+    if (_sfp('bracketLogo', { sel: s.bracket.logoUrl, logos: s.settings && s.settings.logoSet && s.settings.logoSet.logos })) renderBracketLogoPicker(s);
   }
 
   syncTopBar(s);
@@ -812,13 +814,12 @@ function syncUI(s) {
   if (s.settings) syncThemeTab(s.settings);
   if (s.settings) syncGfxToken(s.settings);
   syncBusConfig(s);
-  if (s.settings) renderBreakCenterLogoPicker(s.settings);
-  if (s.settings) renderH2HLogoPicker(s.settings);
-  if (s.settings) renderBracketLogoPicker(s);
+  if (s.settings && _sfp('breakLogo', { sel: s.settings.breakCenterLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderBreakCenterLogoPicker(s.settings);
+  if (s.settings && _sfp('h2hLogo', { sel: s.settings.h2hLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderH2HLogoPicker(s.settings);
   if (s.groupStage)          syncGroupStageGfxUI(s);
   if (s.tournamentStructure) syncTournamentStructureGfxUI(s);
   if (s.prizepool) syncPrizepoolTab(s);
-  renderThemeSponsorPreview(m.sponsorLogos);
+  if (_sfp('themeSponsor', m.sponsorLogos)) renderThemeSponsorPreview(m.sponsorLogos);
   syncDraftGfxTab(s.draft || {}, s.settings || {});
 }
 
