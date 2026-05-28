@@ -39,7 +39,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-items: center;
   gap: 2vw;
   padding: 0 3vw;
-  background: rgba(0,0,0,0.72);
+  background: #07101a;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .h2h-header-right { flex-direction: row-reverse; }
@@ -64,7 +64,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: var(--h2h-centre-w);
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: rgba(0,0,0,0.85);
+  background: #07101a;
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .h2h-header-centre img {
@@ -232,11 +232,25 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: flex;
   flex-wrap: wrap;
   gap: 0.6vw;
-  margin-top: 1.2vh;
+  margin-top: 0;
+  max-height: 0;
+  overflow: hidden;
   opacity: 0;
-  transition: opacity 0.35s ease 0.35s;
+  /* inactive→active: height opens before content fades in */
+  transition: opacity 0.3s ease 0s, max-height 0.4s ease 0s, margin-top 0.4s ease 0s;
 }
-.h2h-row.active .h2h-stats-strip { opacity: 1; }
+.h2h-row.active .h2h-stats-strip {
+  opacity: 1;
+  max-height: 30vh;
+  margin-top: 1.2vh;
+  /* active→inactive: height expands first, then content fades in */
+  transition: opacity 0.35s ease 0.35s, max-height 0.45s ease 0.1s, margin-top 0.45s ease 0.1s;
+}
+
+/* Lineup mode: stats never show — remove from layout entirely */
+#h2h-root.mode-lineup .h2h-stats-strip {
+  display: none;
+}
 
 .h2h-stat-pill {
   display: flex;

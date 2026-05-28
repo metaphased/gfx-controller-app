@@ -88,6 +88,7 @@
 
       <div class="nav-section-label">SYSTEM</div>
       <a class="nav-item" data-tab="profiles" id="nav-item-profiles">⬡ Profiles</a>
+      <a class="nav-item" data-tab="routing">⬡ Routing</a>
       <a class="nav-item" data-tab="users">⬡ Settings</a>
       <a class="nav-item" data-tab="log">⬡ Log</a>
 
@@ -1892,6 +1893,22 @@
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════
+         ROUTING
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-routing">
+      <div class="tab-header">
+        <h1>Routing</h1>
+        <button class="btn btn-sm" onclick="addBus()">+ Add Bus</button>
+      </div>
+
+      <div style="max-width:900px">
+        <p class="hint" style="margin-bottom:16px">Assign graphics to buses to reduce OBS/vMix browser sources. Each bus becomes a single Browser Source; Show/Hide automatically routes the graphic through its assigned bus.</p>
+        <div id="bus-config-list" style="display:flex;flex-direction:column;gap:12px"></div>
+        <p class="hint" id="bus-config-empty" style="display:none;margin-top:8px">No buses configured. Click <strong>+ Add Bus</strong> to create one.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
          USERS
     ══════════════════════════════════════════════════════════════════════════ -->
     <section class="tab" id="tab-users">
@@ -1915,7 +1932,8 @@
             </div>
             <div id="gfx-url-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
           </div>
-        </div>
+
+        </div><!-- /ps-col left -->
 
         <!-- Right col: Champion Assets + Accounts -->
         <div class="ps-col">

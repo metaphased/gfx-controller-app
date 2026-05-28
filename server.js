@@ -126,6 +126,12 @@ app.get(['/caster', '/caster/'], requireToken, (req, res) => {
 });
 app.use('/caster', express.static(path.join(__dirname, 'public', 'caster')));
 
+// Bus output pages — static assets served first, then catch-all for bus IDs
+app.use('/bus', express.static(path.join(__dirname, 'public', 'bus')));
+app.get('/bus/:id', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'bus', 'index.html'));
+});
+
 // Root redirect
 app.get('/', (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login/');
@@ -269,6 +275,10 @@ const makeDefault = () => ({
       bgSpeed:         'medium',   // 'slow' | 'medium' | 'fast'
     },
     logoSet: { logos: [] },        // [{ name: string, url: string }]
+    buses: [
+      { id: 'busA', name: 'Bus A', assignments: [] },
+      { id: 'busB', name: 'Bus B', assignments: [] },
+    ],
     h2hChampStats: {
       enabled: false,
       Top:     ['winRate', 'games', 'kda', 'cs'],
@@ -322,7 +332,16 @@ function snapshotForProfile() {
 }
 
 let state = loadState();
-function broadcast() { saveState(); io.emit('state', Object.assign({}, state, { teams: loadTeams() })); }
+
+// ── Bus state (in-memory, not persisted) ───────────────────────────────────────
+let busState = {};
+function initBusState() {
+  const buses = (state.settings && state.settings.buses) || [];
+  buses.forEach(b => { if (!busState[b.id]) busState[b.id] = { activeGraphic: null, visible: false }; });
+}
+initBusState();
+
+function broadcast() { saveState(); io.emit('state', Object.assign({}, state, { teams: loadTeams(), busState })); }
 
 let tournamentStatsCache = null;
 
@@ -561,17 +580,40 @@ const GRAPHIC_PAGE_KEYS = {
   prizepool: 'prizepool', ticker: 'ticker'
 };
 
+function findBusForGraphic(graphicName) {
+  const buses = (state.settings && state.settings.buses) || [];
+  return buses.find(b => (b.assignments || []).includes(graphicName)) || null;
+}
+
 // Graphic visibility (both roles)
 app.post('/api/graphic/:name/show', (req, res) => {
-  if (state[req.params.name] !== undefined) state[req.params.name].visible = true;
-  const pageKey = GRAPHIC_PAGE_KEYS[req.params.name] || req.params.name;
+  const name = req.params.name;
+  if (state[name] !== undefined) state[name].visible = true;
+  // Auto-route: if graphic is assigned to a bus, activate it there
+  const bus = findBusForGraphic(name);
+  if (bus) {
+    if (!busState[bus.id]) busState[bus.id] = {};
+    busState[bus.id].activeGraphic = name;
+    busState[bus.id].visible = true;
+    io.emit('bus:active', { busId: bus.id, graphic: name, visible: true });
+    io.emit('busState', busState);
+  }
+  const pageKey = GRAPHIC_PAGE_KEYS[name] || name;
   const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
   recordAction(pageKey, user, 'Show'); logAction(user, role, 'show', pageKey);
   broadcast(); res.json({ ok: true });
 });
 app.post('/api/graphic/:name/hide', (req, res) => {
-  if (state[req.params.name] !== undefined) state[req.params.name].visible = false;
-  const pageKey = GRAPHIC_PAGE_KEYS[req.params.name] || req.params.name;
+  const name = req.params.name;
+  if (state[name] !== undefined) state[name].visible = false;
+  // Auto-deactivate: if this is the currently active graphic on its bus, hide the bus
+  const bus = findBusForGraphic(name);
+  if (bus && busState[bus.id] && busState[bus.id].activeGraphic === name) {
+    busState[bus.id].visible = false;
+    io.emit('bus:active', { busId: bus.id, graphic: name, visible: false });
+    io.emit('busState', busState);
+  }
+  const pageKey = GRAPHIC_PAGE_KEYS[name] || name;
   const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
   recordAction(pageKey, user, 'Hide'); logAction(user, role, 'hide', pageKey);
   broadcast(); res.json({ ok: true });
@@ -1362,6 +1404,7 @@ app.get('/api/tournament-stats', (req, res) => {
 app.post('/api/settings', requireAdmin, (req, res) => {
   if (!state.settings) state.settings = {};
   deepMerge(state.settings, req.body);
+  if (req.body.buses) initBusState();
   broadcast(); res.json({ ok: true });
 });
 
@@ -1602,7 +1645,7 @@ io.on('connection', socket => {
 
   const label = isUser ? sess.user.username + ' (' + sess.user.role + ')' : 'graphics[token]';
   console.log('Connected:', label);
-  socket.emit('state', Object.assign({}, state, { teams: loadTeams() }));
+  socket.emit('state', Object.assign({}, state, { teams: loadTeams(), busState }));
 
   if (isUser) {
     // Populate presence
@@ -1638,7 +1681,24 @@ io.on('connection', socket => {
 
     socket.on('state:patch', patch => {
       if (!['admin','superadmin'].includes(sess.user.role)) return;
-      deepMerge(state, patch); broadcast();
+      deepMerge(state, patch);
+      if (patch.settings && patch.settings.buses) initBusState();
+      broadcast();
+    });
+
+    socket.on('bus:switch', ({ busId, graphic, visible }) => {
+      const show = visible !== false && !!graphic;
+      // Hide the currently active graphic on this bus (if switching away from it)
+      const prev = busState[busId] && busState[busId].activeGraphic;
+      if (prev && prev !== graphic && state[prev]) state[prev].visible = false;
+      // Show or hide the target graphic
+      if (graphic && state[graphic]) state[graphic].visible = show;
+      // Update busState tracking
+      if (!busState[busId]) busState[busId] = {};
+      busState[busId].activeGraphic = show ? graphic : (prev || null);
+      busState[busId].visible = show;
+      io.emit('busState', busState);
+      logAction(resolveUser(socket), resolveRole(socket), 'bus:switch', busId + ' → ' + (graphic || 'none'));
     });
   }
 
