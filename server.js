@@ -363,6 +363,7 @@ function broadcast() {
 }
 
 let tournamentStatsCache = null;
+function invalidateStatsCache() { tournamentStatsCache = null; io.emit('stats:invalidated'); }
 
 function buildTournamentStats() {
   const teams = _teams;
@@ -1313,7 +1314,7 @@ app.post('/api/match/record-game', (req, res) => {
       }
     }
   }
-  tournamentStatsCache = null;
+  invalidateStatsCache();
   const _rgWinner = winner === 'team1' ? (state.match.team1.tag||state.match.team1.name||'Team 1') : (state.match.team2.tag||state.match.team2.name||'Team 2');
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'record-game', _rgWinner + (seriesOver ? ' — series over' : ''));
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, seriesOver });
@@ -1366,7 +1367,7 @@ app.post('/api/match/record-bye', requireAdmin, (req, res) => {
       }
     }
   }
-  tournamentStatsCache = null;
+  invalidateStatsCache();
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'record-bye', (seriesWalkover ? 'walkover → ' : 'bye → ') + winner);
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, seriesOver: seriesNowOver });
 });
@@ -1391,7 +1392,7 @@ app.post('/api/match/reset-series', (req, res) => {
     const _sg  = _day && _day.games.find(g => g.id === state.match.scheduleGameId);
     if (_sg) _sg.result = null;
   }
-  tournamentStatsCache = null;
+  invalidateStatsCache();
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'reset-series', '');
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true });
 });
@@ -1409,7 +1410,7 @@ app.post('/api/schedule/game/clear-result', requireAdmin, (req, res) => {
     state.match.team1.score    = 0;
     state.match.team2.score    = 0;
   }
-  tournamentStatsCache = null;
+  invalidateStatsCache();
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'clear-game-result', dayId + '/' + gameId);
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, schedule: state.tournament.schedule });
 });

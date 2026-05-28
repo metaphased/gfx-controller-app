@@ -151,12 +151,13 @@ socket.on('state', async (state) => {
     state.tournament.schedule = window._state.tournament.schedule;
   }
   window._state = state;
-  await refreshControlTournamentStats();
   syncUI(state);
   // Debounced dirty check — runs 2 s after state settles
   clearTimeout(_dirtyCheckTimer);
   _dirtyCheckTimer = setTimeout(checkProfileDirty, 2000);
 });
+
+socket.on('stats:invalidated', () => refreshControlTournamentStats());
 
 socket.on('schedule', (schedule) => {
   if (!window._state) return;

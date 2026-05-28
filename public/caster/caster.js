@@ -88,9 +88,10 @@ socket.on('state', async (s) => {
   }
   _state = s;
   _teams = s.teams || [];
-  await refreshTournamentStats();
   renderAll();
 });
+
+socket.on('stats:invalidated', () => refreshTournamentStats());
 
 socket.on('schedule', (schedule) => {
   if (!_state) return;
