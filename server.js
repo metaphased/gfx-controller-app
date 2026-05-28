@@ -355,7 +355,12 @@ function scheduleSave() {
 process.on('SIGINT',  function() { if (_saveTimer) { clearTimeout(_saveTimer); saveState(); } process.exit(0); });
 process.on('SIGTERM', function() { if (_saveTimer) { clearTimeout(_saveTimer); saveState(); } process.exit(0); });
 
-function broadcast() { scheduleSave(); io.emit('state', Object.assign({}, state, { teams: _teams, busState })); }
+function broadcastSchedule() { io.emit('schedule', state.tournament.schedule || []); }
+function broadcast() {
+  scheduleSave();
+  const { schedule: _s, ...tournamentForBcast } = (state.tournament || {});
+  io.emit('state', Object.assign({}, state, { tournament: tournamentForBcast, teams: _teams, busState }));
+}
 
 let tournamentStatsCache = null;
 
@@ -533,7 +538,7 @@ app.get('/api/config', (req, res) => res.json({ externalUrl: EXTERNAL_URL }));
 
 // ── State API ──────────────────────────────────────────────────────────────────
 app.get('/api/state', (req, res) => res.json(state));
-app.post('/api/state/reset', requireAdmin, (req, res) => { state = makeDefault(); deriveTodayGames(); broadcast(); res.json({ ok: true }); });
+app.post('/api/state/reset', requireAdmin, (req, res) => { state = makeDefault(); deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true }); });
 app.post('/api/match',  requireAdmin, (req, res) => { deepMerge(state.match, req.body); broadcast(); res.json({ ok: true }); });
 
 app.post('/api/score', (req, res) => {
@@ -1053,18 +1058,18 @@ app.post('/api/schedule/day/add', requireAdmin, (req, res) => {
   if (!state.tournament.schedule) state.tournament.schedule = [];
   const day = { id: 'day_' + Date.now(), label: req.body.label || 'New Day', date: req.body.date || '', games: [] };
   state.tournament.schedule.push(day);
-  broadcast(); res.json({ ok: true, day });
+  broadcastSchedule(); broadcast(); res.json({ ok: true, day, schedule: state.tournament.schedule });
 });
 app.post('/api/schedule/day/update', requireAdmin, (req, res) => {
   const { id, ...updates } = req.body;
   const day = (state.tournament.schedule || []).find(d => d.id === id);
   if (!day) return res.status(404).json({ error: 'Day not found' });
   Object.assign(day, updates);
-  broadcast(); res.json({ ok: true });
+  broadcastSchedule(); broadcast(); res.json({ ok: true, schedule: state.tournament.schedule });
 });
 app.post('/api/schedule/day/delete', requireAdmin, (req, res) => {
   state.tournament.schedule = (state.tournament.schedule || []).filter(d => d.id !== req.body.id);
-  broadcast(); res.json({ ok: true });
+  broadcastSchedule(); broadcast(); res.json({ ok: true, schedule: state.tournament.schedule });
 });
 app.post('/api/schedule/game/add', requireAdmin, (req, res) => {
   const { dayId, ...gd } = req.body;
@@ -1079,7 +1084,7 @@ app.post('/api/schedule/game/add', requireAdmin, (req, res) => {
     }
   }
   day.games.push(game);
-  broadcast(); res.json({ ok: true, game });
+  broadcastSchedule(); broadcast(); res.json({ ok: true, game, schedule: state.tournament.schedule });
 });
 app.post('/api/schedule/game/update', requireAdmin, (req, res) => {
   const { dayId, gameId, team1Id, team2Id, team1Override, team2Override, stage, format, fearlessDraft, bracketMatchRef } = req.body;
@@ -1107,14 +1112,14 @@ app.post('/api/schedule/game/update', requireAdmin, (req, res) => {
       delete game.bracketMatchIdx;
     }
   }
-  deriveTodayGames(); broadcast(); res.json({ ok: true });
+  deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, schedule: state.tournament.schedule });
 });
 app.post('/api/schedule/game/delete', requireAdmin, (req, res) => {
   const { dayId, gameId } = req.body;
   const day = (state.tournament.schedule || []).find(d => d.id === dayId);
   if (!day) return res.status(404).json({ error: 'Day not found' });
   day.games = day.games.filter(g => g.id !== gameId);
-  broadcast(); res.json({ ok: true });
+  broadcastSchedule(); broadcast(); res.json({ ok: true, schedule: state.tournament.schedule });
 });
 app.post('/api/schedule/game/reorder', requireAdmin, (req, res) => {
   const { dayId, gameId, direction } = req.body;
@@ -1124,7 +1129,7 @@ app.post('/api/schedule/game/reorder', requireAdmin, (req, res) => {
   if (idx === -1) return res.json({ ok: true });
   const ni = direction === 'up' ? idx - 1 : idx + 1;
   if (ni >= 0 && ni < day.games.length) { [day.games[idx], day.games[ni]] = [day.games[ni], day.games[idx]]; }
-  broadcast(); res.json({ ok: true });
+  broadcastSchedule(); broadcast(); res.json({ ok: true, schedule: state.tournament.schedule });
 });
 
 // ── Schedule groups ────────────────────────────────────────────────────────────
@@ -1243,7 +1248,7 @@ app.post('/api/match/edit-save', requireAdmin, (req, res) => {
       }
     }
   }
-  deriveTodayGames(); broadcast(); res.json({ ok: true });
+  deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true });
 });
 
 app.post('/api/match/record-game', (req, res) => {
@@ -1311,7 +1316,7 @@ app.post('/api/match/record-game', (req, res) => {
   tournamentStatsCache = null;
   const _rgWinner = winner === 'team1' ? (state.match.team1.tag||state.match.team1.name||'Team 1') : (state.match.team2.tag||state.match.team2.name||'Team 2');
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'record-game', _rgWinner + (seriesOver ? ' — series over' : ''));
-  deriveTodayGames(); broadcast(); res.json({ ok: true, seriesOver });
+  deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, seriesOver });
 });
 
 // Record a BYE win — awards +1 game win without draft/picks data.
@@ -1363,7 +1368,7 @@ app.post('/api/match/record-bye', requireAdmin, (req, res) => {
   }
   tournamentStatsCache = null;
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'record-bye', (seriesWalkover ? 'walkover → ' : 'bye → ') + winner);
-  deriveTodayGames(); broadcast(); res.json({ ok: true, seriesOver: seriesNowOver });
+  deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, seriesOver: seriesNowOver });
 });
 
 app.post('/api/match/reset-series', (req, res) => {
@@ -1388,7 +1393,7 @@ app.post('/api/match/reset-series', (req, res) => {
   }
   tournamentStatsCache = null;
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'reset-series', '');
-  deriveTodayGames(); broadcast(); res.json({ ok: true });
+  deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true });
 });
 
 app.post('/api/schedule/game/clear-result', requireAdmin, (req, res) => {
@@ -1406,7 +1411,7 @@ app.post('/api/schedule/game/clear-result', requireAdmin, (req, res) => {
   }
   tournamentStatsCache = null;
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'clear-game-result', dayId + '/' + gameId);
-  deriveTodayGames(); broadcast(); res.json({ ok: true });
+  deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, schedule: state.tournament.schedule });
 });
 
 app.get('/api/tournament-stats', (req, res) => {
@@ -1533,7 +1538,7 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
   state.meta.activeProfileId   = id;
   state.meta.activeProfileName = profile.name;
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'load-profile', profile.name);
-  broadcast();
+  broadcastSchedule(); broadcast();
   res.json({ ok: true, savedSnapshot: profile.data });
 });
 
@@ -1658,7 +1663,9 @@ io.on('connection', socket => {
 
   const label = isUser ? sess.user.username + ' (' + sess.user.role + ')' : 'graphics[token]';
   console.log('Connected:', label);
-  socket.emit('state', Object.assign({}, state, { teams: _teams, busState }));
+  const { schedule: _s, ...tournamentForConnect } = (state.tournament || {});
+  socket.emit('state', Object.assign({}, state, { tournament: tournamentForConnect, teams: _teams, busState }));
+  socket.emit('schedule', state.tournament.schedule || []);
 
   if (isUser) {
     // Populate presence

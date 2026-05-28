@@ -146,6 +146,10 @@ socket.on('presence:list', users => {
   ).join('');
 });
 socket.on('state', async (state) => {
+  // schedule is delivered separately — preserve the cached copy
+  if (state.tournament && window._state && window._state.tournament && window._state.tournament.schedule) {
+    state.tournament.schedule = window._state.tournament.schedule;
+  }
   window._state = state;
   await refreshControlTournamentStats();
   syncUI(state);
@@ -153,6 +157,21 @@ socket.on('state', async (state) => {
   clearTimeout(_dirtyCheckTimer);
   _dirtyCheckTimer = setTimeout(checkProfileDirty, 2000);
 });
+
+socket.on('schedule', (schedule) => {
+  if (!window._state) return;
+  if (!window._state.tournament) window._state.tournament = {};
+  window._state.tournament.schedule = schedule;
+  renderSchedule();
+});
+
+function _applySchedule(data) {
+  if (data && Array.isArray(data.schedule) && window._state && window._state.tournament) {
+    window._state.tournament.schedule = data.schedule;
+    renderSchedule();
+  }
+  return data;
+}
 
 refreshControlTournamentStats();
 
@@ -4473,8 +4492,8 @@ function renderSchedule() {
     return '<div class="sched-day-card" id="sday-' + day.id + '">' +
       '<div class="sched-day-header">' +
       '<div class="sched-day-title">' +
-      '<input class="sched-day-name-input" value="' + escHtml(day.label) + '" onchange="api(\'/api/schedule/day/update\',{id:\'' + day.id + '\',label:this.value})">' +
-      '<input class="sched-day-date-input" type="date" value="' + escHtml(day.date||'') + '" onchange="api(\'/api/schedule/day/update\',{id:\'' + day.id + '\',date:this.value})" title="Broadcast date (optional)">' +
+      '<input class="sched-day-name-input" value="' + escHtml(day.label) + '" onchange="api(\'/api/schedule/day/update\',{id:\'' + day.id + '\',label:this.value}).then(_applySchedule)">' +
+      '<input class="sched-day-date-input" type="date" value="' + escHtml(day.date||'') + '" onchange="api(\'/api/schedule/day/update\',{id:\'' + day.id + '\',date:this.value}).then(_applySchedule)" title="Broadcast date (optional)">' +
       '</div>' +
       '<div style="display:flex;gap:6px">' +
       (_schedEditMode ? '<button class="btn btn-sm btn-primary" onclick="openAddGameForm(\'' + day.id + '\')">+ Game</button>' : '') +
@@ -4488,12 +4507,12 @@ function renderSchedule() {
 
 function schedDeleteDay(id) {
   showConfirm('Delete this broadcast day?', function() {
-    api('/api/schedule/day/delete', { id });
+    api('/api/schedule/day/delete', { id }).then(_applySchedule);
   }, { danger: true, okLabel: 'Delete' });
 }
 function schedDeleteGame(dayId, gameId) {
   showConfirm('Remove this game?', function() {
-    api('/api/schedule/game/delete', { dayId, gameId });
+    api('/api/schedule/game/delete', { dayId, gameId }).then(_applySchedule);
   }, { danger: true, okLabel: 'Remove' });
 }
 
@@ -4544,8 +4563,8 @@ function renderDayGames(day) {
       (hasDraftHistory ? '<button class="btn btn-sm ds-toggle-btn" id="dh-btn-' + histId + '" onclick="toggleDraftHistory(\'' + histId + '\')">▼ Draft</button>' : '') +
       (!isCompleted ? '<button class="btn btn-sm" onclick="openEditGameForm(\'' + day.id + '\',\'' + gm.id + '\')">Edit</button>' : '') +
       (isCompleted ? '<button class="btn btn-sm btn-danger" onclick="clearScheduleGameResult(\'' + day.id + '\',\'' + gm.id + '\',this)">Clear Result</button>' : '') +
-      (_schedEditMode && idx > 0 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'up\'})">↑</button>' : '') +
-      (_schedEditMode && idx < day.games.length-1 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'down\'})">↓</button>' : '') +
+      (_schedEditMode && idx > 0 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'up\'}).then(_applySchedule)">↑</button>' : '') +
+      (_schedEditMode && idx < day.games.length-1 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'down\'}).then(_applySchedule)">↓</button>' : '') +
       (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="schedDeleteGame(\'' + day.id + '\',\'' + gm.id + '\')">×</button>' : '') +
       '</div></div>' +
       '<div id="sedit-' + gm.id + '" class="sched-edit-game-form" style="display:none"></div>';
@@ -4691,7 +4710,7 @@ function submitAddGame(dayId) {
     stage: stageEl && stageEl.value, format: fmtEl && fmtEl.value,
     fearlessDraft: fearlessEl && fearlessEl.checked,
     bracketMatchRef: matchEl && matchEl.value || '',
-  }).then(() => closeAddGameForm(dayId));
+  }).then(data => { _applySchedule(data); closeAddGameForm(dayId); });
 }
 
 // ── Schedule game inline editing ───────────────────────────────────────────────
@@ -4756,11 +4775,11 @@ function submitEditGame(dayId, gameId) {
     fearlessDraft: !!(fearEl && fearEl.checked),
     team1Override: (t1OvEl && t1OvEl.value.trim()) || '',
     team2Override: (t2OvEl && t2OvEl.value.trim()) || '',
-  }).then(function() { closeEditGameForm(gameId); });
+  }).then(function(data) { _applySchedule(data); closeEditGameForm(gameId); });
 }
 
 function addScheduleDay() {
-  api('/api/schedule/day/add', { label: 'Day ' + (((window._state.tournament||{}).schedule||[]).length + 1) });
+  api('/api/schedule/day/add', { label: 'Day ' + (((window._state.tournament||{}).schedule||[]).length + 1) }).then(_applySchedule);
 }
 
 // ── Game Setup ─────────────────────────────────────────────────────────────────
@@ -4838,7 +4857,7 @@ function renderScheduleGamePicker(dayId) {
 }
 
 function clearScheduleGameResult(dayId, gameId, btn) {
-  confirmDestructive(btn, 'Clear game result', () => api('/api/schedule/game/clear-result', { dayId, gameId }));
+  confirmDestructive(btn, 'Clear game result', () => api('/api/schedule/game/clear-result', { dayId, gameId }).then(_applySchedule));
 }
 
 function loadScheduleGame(dayId, gameId) {
