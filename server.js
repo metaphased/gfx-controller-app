@@ -770,11 +770,17 @@ app.post('/api/bus/:id/next', requireAuth, (req, res) => {
   broadcast(); res.json({ ok: true });
 });
 
-// ── Companion profile generator ───────────────────────────────────────────────
+// ── Companion profile generator (Companion 4.x format) ────────────────────────
 app.get('/api/companion/profile', (req, res) => {
   const hasSession = req.session && req.session.user;
   const hasToken = req.query.token && state.settings && state.settings.graphicsToken === req.query.token;
   if (!hasSession && !hasToken) return res.status(401).json({ error: 'Unauthorized' });
+
+  function genId() { return require('crypto').randomBytes(10).toString('base64url'); }
+
+  const proto = req.protocol, host = req.get('host');
+  const baseUrl = `${proto}://${host}`;
+  const connId = genId();
 
   const GRAPHIC_LABELS = {
     lowerThird:'Lower Third', headToHead:'Head to Head', playerIntro:'Player Intro',
@@ -783,84 +789,95 @@ app.get('/api/companion/profile', (req, res) => {
   };
   const GRAPHICS = Object.keys(GRAPHIC_LABELS);
 
-  // Flatten all actions with page assignment
-  const actions = [
-    ...GRAPHICS.flatMap(id => [
-      { label: `Show ${GRAPHIC_LABELS[id]}`, path: `/api/graphic/${id}/show`, page: 1 },
-      { label: `Hide ${GRAPHIC_LABELS[id]}`, path: `/api/graphic/${id}/hide`, page: 1 },
-      { label: `Toggle ${GRAPHIC_LABELS[id]}`, path: `/api/graphic/${id}/toggle`, page: 2 },
+  const PAGE_ACTIONS = {
+    1: GRAPHICS.flatMap(id => [
+      { label: `Show\n${GRAPHIC_LABELS[id]}`,   path: `/api/graphic/${id}/show` },
+      { label: `Hide\n${GRAPHIC_LABELS[id]}`,   path: `/api/graphic/${id}/hide` },
     ]),
-    { label: 'Team 1 Score +1',    path: '/api/match/score/team1/increment', page: 3 },
-    { label: 'Team 1 Score −1',    path: '/api/match/score/team1/decrement', page: 3 },
-    { label: 'Team 2 Score +1',    path: '/api/match/score/team2/increment', page: 3 },
-    { label: 'Team 2 Score −1',    path: '/api/match/score/team2/decrement', page: 3 },
-    { label: 'Next Game',          path: '/api/match/next-game',             page: 3 },
-    { label: 'Previous Game',      path: '/api/match/prev-game',             page: 3 },
-    { label: 'Toggle Draft Timer', path: '/api/draft/timer/toggle',          page: 3 },
-    { label: 'Reset Draft',        path: '/api/draft', body: '{"phase":"notstarted","currentStep":0}', page: 3 },
-    { label: 'Replay Draft Intro', path: '/api/draft', body: '{"replayIntro":true}',                  page: 3 },
-    ...(state.settings.buses || []).map(b => ({
-      label: `${b.name || b.id}: Next`, path: `/api/bus/${b.id}/next`, page: 4,
-    })),
-  ];
+    2: GRAPHICS.map(id => ({ label: `Toggle\n${GRAPHIC_LABELS[id]}`, path: `/api/graphic/${id}/toggle` })),
+    3: [
+      { label: 'T1 Score\n+1',    path: '/api/match/score/team1/increment' },
+      { label: 'T1 Score\n-1',    path: '/api/match/score/team1/decrement' },
+      { label: 'T2 Score\n+1',    path: '/api/match/score/team2/increment' },
+      { label: 'T2 Score\n-1',    path: '/api/match/score/team2/decrement' },
+      { label: 'Next\nGame',      path: '/api/match/next-game' },
+      { label: 'Prev\nGame',      path: '/api/match/prev-game' },
+      { label: 'Draft\nTimer',    path: '/api/draft/timer/toggle' },
+      { label: 'Reset\nDraft',    path: '/api/draft', body: '{"phase":"notstarted","currentStep":0}' },
+      { label: 'Replay\nIntro',   path: '/api/draft', body: '{"replayIntro":true}' },
+    ],
+    4: (state.settings.buses || []).map(b => ({ label: `${b.name || b.id}\nNext`, path: `/api/bus/${b.id}/next` })),
+  };
+  const PAGE_NAMES = { 1: 'GFX Show/Hide', 2: 'GFX Toggle', 3: 'Match & Draft', 4: 'Bus' };
 
-  const proto = req.protocol, host = req.get('host');
-  const baseUrl = `${proto}://${host}`;
-  const connId  = 'metagfx_http';
-
-  // Build controls object: each action becomes a button
-  const controls = {};
-  const pageButtonCount = {};
-  actions.forEach(a => {
-    const page = a.page;
-    const idx  = (pageButtonCount[page] = (pageButtonCount[page] || 0));
-    pageButtonCount[page]++;
-    const row = Math.floor(idx / 8);
-    const col = idx % 8;
-    const key = `button:${page}-${row}-${col}`;
-    controls[key] = {
-      type: 'button',
-      options: { relativeDelay: false, rotaryActions: false, stepAutoProgress: true },
-      style: { text: a.label.replace(' ', '\n'), size: 'auto', png: null, alignment: 'center:center', pngalignment: 'center:center', color: 16777215, bgcolor: 0, show_topbar: 'default' },
-      feedbacks: [],
-      steps: {
-        '0': {
+  const pages = {};
+  for (const [pageNum, pageName] of Object.entries(PAGE_NAMES)) {
+    const acts = PAGE_ACTIONS[pageNum] || [];
+    const controls = {};
+    acts.forEach((a, idx) => {
+      const row = Math.floor(idx / 8), col = idx % 8;
+      if (!controls[row]) controls[row] = {};
+      controls[row][col] = {
+        type: 'button',
+        style: { text: a.label, textExpression: false, size: 'auto', png64: null,
+                 alignment: 'center:center', pngalignment: 'center:center',
+                 color: 16777215, bgcolor: 0, show_topbar: 'default' },
+        options: { stepProgression: 'auto', stepExpression: '', rotaryActions: false },
+        feedbacks: [],
+        steps: { '0': {
           action_sets: {
-            '0': [{
-              id: require('crypto').randomUUID(),
-              instance: connId,
-              action: 'post',
-              options: { url: a.path, contenttype: 'application/json', body: a.body || '' },
-              delay: 0,
-            }],
+            down: [{ id: genId(), type: 'action', connectionId: connId,
+                     definitionId: 'post',
+                     options: {
+                       url:  { value: `${baseUrl}${a.path}`, isExpression: false },
+                       body: { value: a.body || '',           isExpression: false },
+                     },
+                     upgradeIndex: 0 }],
+            up: [],
           },
           options: { runWhileHeld: [] },
-        },
-      },
+        }},
+        localVariables: [],
+      };
+    });
+    pages[pageNum] = {
+      id: genId(), name: pageName, controls,
+      gridSize: { minColumn: 0, maxColumn: 7, minRow: 0, maxRow: Math.max(3, acts.length > 0 ? Math.floor((acts.length - 1) / 8) : 0) },
     };
-  });
+  }
 
   const profile = {
-    version: 4,
+    version: 12,
     type: 'full',
+    companionBuild: '4.0.0+metagfx-generated',
+    pages,
+    triggers: {},
+    triggerCollections: [],
+    custom_variables: {},
+    customVariablesCollections: [],
+    expressionVariables: {},
+    expressionVariablesCollections: [],
     instances: {
       [connId]: {
-        instance_type: 'generic_http',
-        label: 'MetaGFX',
-        config: { baseUrl, timeout: '30000', rejectUnauthorized: true },
-        enabled: true,
+        moduleInstanceType: 'connection',
+        moduleVersionId: null,
+        updatePolicy: 'stable',
         sortOrder: 0,
+        label: 'MetaGFX',
+        isFirstInit: true,
+        config: { prefix: baseUrl },
+        secrets: {},
+        lastUpgradeIndex: 0,
+        enabled: true,
+        moduleId: 'generic-http',
       },
     },
-    controls,
-    pages: {
-      1: { name: 'GFX Show/Hide' },
-      2: { name: 'GFX Toggle' },
-      3: { name: 'Match & Draft' },
-      4: { name: 'Bus' },
-    },
-    custom_variables: {},
+    connectionCollections: [],
     surfaces: {},
+    surfaceGroups: {},
+    surfacesRemote: {},
+    surfaceInstances: {},
+    surfaceInstanceCollections: [],
   };
 
   res.setHeader('Content-Type', 'application/json');
