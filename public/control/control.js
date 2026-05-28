@@ -3744,7 +3744,7 @@ document.querySelectorAll('.nav-item[data-tab="log"]').forEach(el => {
   el.addEventListener('click', loadActionLog);
 });
 
-// Populate session info in top bar
+// Populate session info and load keybinds
 fetch('/api/auth/me').then(r => r.json()).then(data => {
   const el = g('mtb-session');
   if (el && data.user) {
@@ -3752,6 +3752,11 @@ fetch('/api/auth/me').then(r => r.json()).then(data => {
     _myUsername = data.user.username;
     _myRole = data.user.role;
     _myId = data.user.id;
+    window._userKeybinds = data.user.keybinds || {};
+    const nameEl = document.getElementById('suc-name');
+    const roleEl = document.getElementById('suc-role');
+    if (nameEl) nameEl.textContent = data.user.username;
+    if (roleEl) roleEl.textContent = data.user.role;
   }
 }).catch(() => {});
 
@@ -5630,33 +5635,175 @@ function ppDelete(id) {
 }
 function ppReorder(id, direction) { api('/api/prizepool/entry/reorder', { id, direction }); }
 
-// ── Keybind listener ───────────────────────────────────────────────────────────
-window._userKeybinds = {};  // populated by Phase 3b profile modal / API load
+// ── Keybind dispatch + profile modal ──────────────────────────────────────────
+window._userKeybinds = {};
+let _kbListening = null;  // { btn, actionId, prevCombo } | null
+let _kbStaged    = {};
+let _kbDirty     = false;
 
-(function () {
-  function comboFromEvent(e) {
-    const parts = [];
-    if (e.ctrlKey)  parts.push('ctrl');
-    if (e.altKey)   parts.push('alt');
-    if (e.shiftKey) parts.push('shift');
-    if (e.metaKey)  parts.push('meta');
-    const key = e.key.toLowerCase();
-    if (!['control','alt','shift','meta'].includes(key)) parts.push(key);
-    return parts.join('+');
-  }
+function _comboFromEvent(e) {
+  const parts = [];
+  if (e.ctrlKey)  parts.push('ctrl');
+  if (e.altKey)   parts.push('alt');
+  if (e.shiftKey) parts.push('shift');
+  if (e.metaKey)  parts.push('meta');
+  const key = e.key.toLowerCase();
+  if (!['control','alt','shift','meta'].includes(key)) parts.push(key);
+  return parts.join('+');
+}
 
-  document.addEventListener('keydown', function (e) {
-    const tag = (document.activeElement || {}).tagName || '';
-    if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
-    if (!window.ActionRegistry) return;
-    const combo = comboFromEvent(e);
-    const keybinds = window._userKeybinds || {};
-    const actionId = Object.keys(keybinds).find(id => keybinds[id] === combo);
-    if (!actionId) return;
-    const action = ActionRegistry.getById(actionId);
-    if (!action) return;
+document.addEventListener('keydown', function (e) {
+  // Key recording mode takes priority
+  if (_kbListening) {
+    if (e.key === 'Escape') { e.preventDefault(); kbCancelListening(); return; }
+    if (['Control','Alt','Shift','Meta'].includes(e.key)) return;
     e.preventDefault();
-    action.handler();
-  });
-})();
+    kbApplyRecorded(e);
+    return;
+  }
+  const tag = (document.activeElement || {}).tagName || '';
+  if (['INPUT','TEXTAREA','SELECT'].includes(tag)) return;
+  if (!window.ActionRegistry) return;
+  const combo = _comboFromEvent(e);
+  const keybinds = window._userKeybinds || {};
+  const actionId = Object.keys(keybinds).find(id => keybinds[id] === combo);
+  if (!actionId) return;
+  const action = ActionRegistry.getById(actionId);
+  if (!action) return;
+  e.preventDefault();
+  action.handler();
+});
+
+// ── Profile modal ──────────────────────────────────────────────────────────────
+function openProfileModal() {
+  _kbStaged = Object.assign({}, window._userKeybinds);
+  _kbDirty  = false;
+  document.getElementById('pm-username').textContent  = _myUsername || '—';
+  document.getElementById('pm-role-badge').textContent = _myRole    || '—';
+  document.getElementById('pm-save-btn').style.display = 'none';
+  renderKeybindTable();
+  document.getElementById('profile-modal-overlay').classList.add('active');
+}
+
+function closeProfileModal() {
+  if (_kbListening) kbCancelListening();
+  if (_kbDirty) saveKeybinds(true);
+  document.getElementById('profile-modal-overlay').classList.remove('active');
+}
+
+function profileModalBackdropClick(e) {
+  if (e.target === document.getElementById('profile-modal-overlay')) closeProfileModal();
+}
+
+function renderKeybindTable() {
+  const body = document.getElementById('profile-modal-body');
+  if (!body || !window.ActionRegistry) return;
+  const actions = ActionRegistry.getAll();
+  const cats = {};
+  actions.forEach(a => { if (!cats[a.category]) cats[a.category] = []; cats[a.category].push(a); });
+  body.innerHTML = Object.keys(cats).map(cat =>
+    `<div class="kb-section">
+      <div class="kb-section-label">${cat}</div>
+      ${cats[cat].map(a => {
+        const combo = _kbStaged[a.id] || '';
+        return `<div class="kb-row" data-action-id="${a.id}">
+          <span class="kb-action-label">${a.label}</span>
+          <button class="kb-combo-btn${combo ? '' : ' unbound'}" data-action-id="${a.id}" onclick="kbStartRecord(this)">${combo || '— unbound —'}</button>
+          <button class="kb-clear-btn" onclick="kbClear('${a.id}')" title="Clear">✕</button>
+        </div>`;
+      }).join('')}
+    </div>`
+  ).join('');
+}
+
+function kbStartRecord(btn) {
+  if (_kbListening) kbCancelListening();
+  const actionId = btn.dataset.actionId;
+  _kbListening = { btn, actionId, prevCombo: _kbStaged[actionId] || '' };
+  btn.textContent = 'Press a key…';
+  btn.classList.add('listening');
+  btn.classList.remove('unbound', 'conflict');
+  const row = btn.closest('.kb-row');
+  const next = row && row.nextElementSibling;
+  if (next && next.classList.contains('kb-conflict-hint')) next.remove();
+}
+
+function kbCancelListening() {
+  if (!_kbListening) return;
+  const { btn, prevCombo } = _kbListening;
+  btn.classList.remove('listening', 'conflict');
+  btn.classList.toggle('unbound', !prevCombo);
+  btn.textContent = prevCombo || '— unbound —';
+  _kbListening = null;
+}
+
+function kbApplyRecorded(e) {
+  const combo = _comboFromEvent(e);
+  const { btn, actionId } = _kbListening;
+  _kbListening = null;
+
+  const conflictId = combo
+    ? Object.keys(_kbStaged).find(id => id !== actionId && _kbStaged[id] === combo)
+    : null;
+
+  if (combo) _kbStaged[actionId] = combo; else delete _kbStaged[actionId];
+  _kbDirty = true;
+
+  btn.classList.remove('listening');
+  btn.classList.toggle('unbound', !combo);
+  btn.classList.toggle('conflict', !!conflictId);
+  btn.textContent = combo || '— unbound —';
+  document.getElementById('pm-save-btn').style.display = '';
+
+  if (conflictId) {
+    const row = btn.closest('.kb-row');
+    if (row) {
+      let hint = row.nextElementSibling;
+      if (!hint || !hint.classList.contains('kb-conflict-hint')) {
+        hint = document.createElement('div');
+        hint.className = 'kb-conflict-hint';
+        row.after(hint);
+      }
+      const cLabel = (ActionRegistry.getById(conflictId) || {}).label || conflictId;
+      hint.textContent = `⚠ Overrides binding on "${cLabel}"`;
+    }
+    delete _kbStaged[conflictId];
+    const other = document.querySelector(`.kb-combo-btn[data-action-id="${conflictId}"]`);
+    if (other) { other.classList.add('unbound'); other.classList.remove('conflict'); other.textContent = '— unbound —'; }
+  }
+}
+
+function kbClear(actionId) {
+  if (_kbListening && _kbListening.actionId === actionId) kbCancelListening();
+  delete _kbStaged[actionId];
+  _kbDirty = true;
+  const btn = document.querySelector(`.kb-combo-btn[data-action-id="${actionId}"]`);
+  if (btn) { btn.classList.add('unbound'); btn.classList.remove('conflict'); btn.textContent = '— unbound —'; }
+  const row = btn && btn.closest('.kb-row');
+  const next = row && row.nextElementSibling;
+  if (next && next.classList.contains('kb-conflict-hint')) next.remove();
+  document.getElementById('pm-save-btn').style.display = '';
+}
+
+function saveKeybinds(silent) {
+  fetch('/api/users/me/keybinds', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ keybinds: _kbStaged }),
+  }).then(r => r.json()).then(() => {
+    window._userKeybinds = Object.assign({}, _kbStaged);
+    _kbDirty = false;
+    const btn = document.getElementById('pm-save-btn');
+    if (btn) btn.style.display = 'none';
+    if (!silent) showAlert('Keybinds saved.');
+  }).catch(() => { if (!silent) showAlert('Failed to save keybinds.'); });
+}
+
+function downloadCompanionProfile() {
+  const a = document.createElement('a');
+  const token = (window._state && window._state.settings && window._state.settings.graphicsToken) || '';
+  a.href = '/api/companion/profile' + (token ? '?token=' + token : '');
+  a.download = 'metagfx-companion.companionconfig';
+  a.click();
+}
 function ppAddEntry(type) { api('/api/prizepool/entry/add', { type: type || 'placement' }); }

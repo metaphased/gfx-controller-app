@@ -98,9 +98,36 @@
 
     <div class="sidebar-footer">
       <div class="connection-status" id="conn-status">⬤ Connecting…</div>
-      <a class="sidebar-logout" href="/api/auth/logout">Log Out</a>
+      <button class="sidebar-user-chip" id="sidebar-user-chip" onclick="openProfileModal()">
+        <span class="suc-icon">◈</span>
+        <span class="suc-name" id="suc-name">…</span>
+        <span class="suc-sep">•</span>
+        <span class="suc-role" id="suc-role"></span>
+        <span class="suc-caret">▾</span>
+      </button>
     </div>
   </nav>
+
+  <!-- ── Profile / keybinds modal ─────────────────────────────────────────── -->
+  <div id="profile-modal-overlay" class="profile-modal-overlay" onclick="profileModalBackdropClick(event)">
+    <div class="profile-modal">
+      <div class="profile-modal-header">
+        <div class="profile-modal-title">
+          <span class="pm-username" id="pm-username"></span>
+          <span class="pm-role-badge" id="pm-role-badge"></span>
+        </div>
+        <button class="profile-modal-close" onclick="closeProfileModal()">✕</button>
+      </div>
+      <div class="profile-modal-body" id="profile-modal-body"></div>
+      <div class="profile-modal-footer">
+        <a class="btn btn-danger btn-sm" href="/api/auth/logout">Log Out</a>
+        <div class="pm-footer-right">
+          <button class="btn btn-sm" id="pm-companion-btn" onclick="downloadCompanionProfile()" title="Download Bitfocus Companion profile">⬡ Companion</button>
+          <button class="btn btn-primary btn-sm" id="pm-save-btn" onclick="saveKeybinds()" style="display:none">Save Keybinds</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ── Top bar ───────────────────────────────────────────────────────────── -->
   <div id="meta-topbar">
