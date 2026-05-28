@@ -186,6 +186,122 @@ body {
 }
 .sidebar-logout:hover { color: var(--danger); }
 
+/* ── Sidebar user chip ───────────────────────────────── */
+.sidebar-user-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  background: none;
+  border: 1px solid rgba(31,250,255,0.12);
+  border-radius: 4px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: var(--ui-font), sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  width: 100%;
+  transition: border-color 0.15s, color 0.15s;
+  overflow: hidden;
+}
+.sidebar-user-chip:hover { border-color: var(--primary); color: var(--text); }
+.suc-icon { color: var(--primary); flex-shrink: 0; }
+.suc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase; }
+.suc-sep { color: rgba(31,250,255,0.3); flex-shrink: 0; }
+.suc-role { flex-shrink: 0; text-transform: uppercase; font-size: 10px; color: rgba(31,250,255,0.5); }
+.suc-caret { flex-shrink: 0; opacity: 0.5; }
+
+/* ── Profile / keybinds modal ─────────────────────────── */
+.profile-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(7,15,18,0.88);
+  z-index: 300;
+  align-items: center;
+  justify-content: center;
+}
+.profile-modal-overlay.active { display: flex; }
+.profile-modal {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  width: 700px;
+  max-width: calc(100vw - 48px);
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.7);
+}
+.profile-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 22px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.profile-modal-title { display: flex; align-items: center; gap: 10px; }
+.pm-username { font-size: 15px; font-weight: 700; letter-spacing: 0.05em; color: var(--text); text-transform: uppercase; }
+.pm-role-badge {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--primary); background: rgba(31,250,255,0.08);
+  border: 1px solid rgba(31,250,255,0.2); border-radius: 3px; padding: 2px 8px;
+}
+.profile-modal-close {
+  background: none; border: none; color: var(--text-dim); cursor: pointer;
+  font-size: 18px; line-height: 1; padding: 2px 6px; transition: color 0.15s;
+}
+.profile-modal-close:hover { color: var(--text); }
+.profile-modal-body { overflow-y: auto; padding: 16px 22px; flex: 1; min-height: 0; }
+.profile-modal-footer {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 22px; border-top: 1px solid var(--border); flex-shrink: 0;
+}
+.pm-footer-right { display: flex; align-items: center; gap: 8px; }
+
+/* ── Keybind table ───────────────────────────────────── */
+.kb-section { margin-bottom: 22px; }
+.kb-section:last-child { margin-bottom: 0; }
+.kb-section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 6px; padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.kb-row {
+  display: grid;
+  grid-template-columns: 1fr 140px 28px;
+  gap: 8px;
+  align-items: center;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(167,163,142,0.05);
+}
+.kb-row:last-child { border-bottom: none; }
+.kb-action-label { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-combo-btn {
+  font-family: var(--ui-font), monospace;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  padding: 4px 8px; text-align: center;
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); cursor: pointer; transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; width: 100%;
+}
+.kb-combo-btn:hover { border-color: var(--accent); }
+.kb-combo-btn.unbound { color: var(--text-dim); font-weight: 400; font-style: italic; }
+.kb-combo-btn.listening { border-color: var(--primary); color: var(--primary); animation: kb-pulse 0.9s ease-in-out infinite; }
+.kb-combo-btn.conflict { border-color: var(--danger); color: var(--danger); }
+@keyframes kb-pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.kb-clear-btn {
+  background: none; border: none; color: var(--text-dim); cursor: pointer;
+  font-size: 13px; padding: 2px 4px; border-radius: 3px; transition: color 0.15s; line-height: 1;
+}
+.kb-clear-btn:hover { color: var(--danger); }
+.kb-conflict-hint {
+  grid-column: 1 / -1; font-size: 11px; color: var(--danger); padding: 1px 0 4px;
+}
+
 /* ── Profiles tab ─────────────────────────────────── */
 .profile-card {
   background: var(--bg2);

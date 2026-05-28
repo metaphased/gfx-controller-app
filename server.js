@@ -72,6 +72,9 @@ function saveUsers(u) { _users = u; fs.writeFileSync(USERS_FILE, JSON.stringify(
 // ── Auth middleware ────────────────────────────────────────────────────────────
 function requireAuth(req, res, next) {
   if (req.session && req.session.user) return next();
+  // Also accept graphics token (for Companion / external integrations)
+  const token = req.query.token || req.headers['x-graphics-token'];
+  if (token && state.settings && state.settings.graphicsToken === token) return next();
   if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Unauthorised' });
   res.redirect('/login/');
 }
@@ -106,8 +109,38 @@ app.get('/api/auth/logout', (req, res) => {
 });
 
 app.get('/api/auth/me', (req, res) => {
-  if (req.session && req.session.user) res.json({ user: req.session.user });
-  else res.status(401).json({ error: 'Not logged in' });
+  if (req.session && req.session.user) {
+    const full = _users.find(u => u.id === req.session.user.id);
+    res.json({ user: { ...req.session.user, keybinds: (full && full.keybinds) || {} } });
+  } else {
+    res.status(401).json({ error: 'Not logged in' });
+  }
+});
+
+// ── User keybinds ─────────────────────────────────────────────────────────────
+app.post('/api/users/me/keybinds', requireAuth, (req, res) => {
+  const { keybinds } = req.body || {};
+  if (typeof keybinds !== 'object' || Array.isArray(keybinds)) return res.status(400).json({ error: 'keybinds must be an object' });
+  if (!req.session || !req.session.user) return res.status(403).json({ error: 'Session required' });
+  const user = _users.find(u => u.id === req.session.user.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  user.keybinds = keybinds;
+  saveUsers(_users);
+  res.json({ ok: true });
+});
+
+// ── SSE endpoint — accepts session or graphics token ──────────────────────────
+app.get('/api/events', (req, res) => {
+  const hasSession = req.session && req.session.user;
+  const hasToken = req.query.token && state.settings && state.settings.graphicsToken === req.query.token;
+  if (!hasSession && !hasToken) return res.status(401).json({ error: 'Unauthorized' });
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  res.write(`data: ${buildSSEPayload()}\n\n`);
+  _sseClients.add(res);
+  req.on('close', () => _sseClients.delete(res));
 });
 
 // ── Static — public (no auth) ──────────────────────────────────────────────────
@@ -359,6 +392,31 @@ function broadcast() {
   scheduleSave();
   const { schedule: _s, ...tournamentForBcast } = (state.tournament || {});
   io.emit('state', Object.assign({}, state, { tournament: tournamentForBcast, teams: _teams, busState }));
+  pushSSEState();
+}
+
+// ── SSE (Server-Sent Events) for Companion / external integrations ─────────────
+const _sseClients = new Set();
+const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','prizepool','ticker'];
+function buildSSEPayload() {
+  const visibilities = {};
+  SSE_GRAPHIC_KEYS.forEach(k => { if (state[k]) visibilities[k] = !!state[k].visible; });
+  return JSON.stringify({
+    type: 'state',
+    visibilities,
+    busState,
+    scores: { team1: state.match?.team1?.score ?? 0, team2: state.match?.team2?.score ?? 0 },
+    draftPhase: state.draft?.phase || 'notstarted',
+    timerRunning: !!(state.draft?.timerEnd && state.draft.timerEnd > Date.now()),
+    activeProfile: state.meta?.activeProfileName || null,
+  });
+}
+function pushSSEState() {
+  if (!_sseClients.size) return;
+  const msg = `data: ${buildSSEPayload()}\n\n`;
+  for (const client of _sseClients) {
+    try { client.write(msg); } catch(e) { _sseClients.delete(client); }
+  }
 }
 
 let tournamentStatsCache = null;
@@ -636,6 +694,195 @@ app.post('/api/graphic/:name/hide', (req, res) => {
   const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
   recordAction(pageKey, user, 'Hide'); logAction(user, role, 'hide', pageKey);
   broadcast(); res.json({ ok: true });
+});
+
+// ── Graphic toggle ─────────────────────────────────────────────────────────────
+app.post('/api/graphic/:name/toggle', (req, res) => {
+  const name = req.params.name;
+  if (state[name] !== undefined) {
+    const nowVisible = !state[name].visible;
+    state[name].visible = nowVisible;
+    const bus = findBusForGraphic(name);
+    if (bus) {
+      if (!busState[bus.id]) busState[bus.id] = {};
+      if (nowVisible) {
+        busState[bus.id].activeGraphic = name;
+        busState[bus.id].visible = true;
+      } else if (busState[bus.id].activeGraphic === name) {
+        busState[bus.id].visible = false;
+      }
+      io.emit('bus:active', { busId: bus.id, graphic: name, visible: nowVisible });
+      io.emit('busState', busState);
+    }
+    const pageKey = GRAPHIC_PAGE_KEYS[name] || name;
+    const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
+    const action = nowVisible ? 'Show' : 'Hide';
+    recordAction(pageKey, user, action); logAction(user, role, action.toLowerCase(), pageKey);
+  }
+  broadcast(); res.json({ ok: true });
+});
+
+// ── Score shortcuts ────────────────────────────────────────────────────────────
+app.post('/api/match/score/team1/increment', requireAuth, (req, res) => { state.match.team1.score = Math.max(0, (state.match.team1.score||0) + 1); broadcast(); res.json({ ok: true }); });
+app.post('/api/match/score/team1/decrement', requireAuth, (req, res) => { state.match.team1.score = Math.max(0, (state.match.team1.score||0) - 1); broadcast(); res.json({ ok: true }); });
+app.post('/api/match/score/team2/increment', requireAuth, (req, res) => { state.match.team2.score = Math.max(0, (state.match.team2.score||0) + 1); broadcast(); res.json({ ok: true }); });
+app.post('/api/match/score/team2/decrement', requireAuth, (req, res) => { state.match.team2.score = Math.max(0, (state.match.team2.score||0) - 1); broadcast(); res.json({ ok: true }); });
+
+// ── Game navigation ────────────────────────────────────────────────────────────
+app.post('/api/match/next-game', requireAdmin, (req, res) => {
+  state.match.currentGameNum = (state.match.currentGameNum || 1) + 1;
+  state.draft.picks = Array(20).fill('');
+  state.draft.committedT1Picks = []; state.draft.committedT2Picks = [];
+  state.draft.team1RolePicks = [];   state.draft.team2RolePicks = [];
+  state.draft.phase = 'notstarted';  state.draft.currentStep = 0;
+  broadcast(); res.json({ ok: true });
+});
+app.post('/api/match/prev-game', requireAdmin, (req, res) => {
+  state.match.currentGameNum = Math.max(1, (state.match.currentGameNum || 1) - 1);
+  broadcast(); res.json({ ok: true });
+});
+
+// ── Draft timer toggle ─────────────────────────────────────────────────────────
+app.post('/api/draft/timer/toggle', requireAuth, (req, res) => {
+  if (state.draft.timerEnd && state.draft.timerEnd > Date.now()) {
+    state.draft.timerEnd = null;
+  } else {
+    state.draft.timerEnd = Date.now() + (state.draft.timerDuration || 60) * 1000;
+  }
+  broadcast(); res.json({ ok: true });
+});
+
+// ── Bus cycle ─────────────────────────────────────────────────────────────────
+app.post('/api/bus/:id/next', requireAuth, (req, res) => {
+  const busId = req.params.id;
+  const bus = (state.settings.buses || []).find(b => b.id === busId);
+  if (!bus || !(bus.assignments || []).length) return res.status(400).json({ error: 'Bus not found or no assignments' });
+  const assignments = bus.assignments;
+  const current = busState[busId] ? busState[busId].activeGraphic : null;
+  const idx = current ? assignments.indexOf(current) : -1;
+  const nextGraphic = assignments[(idx + 1) % assignments.length];
+  if (!busState[busId]) busState[busId] = {};
+  busState[busId].activeGraphic = nextGraphic;
+  busState[busId].visible = true;
+  if (state[nextGraphic] !== undefined) state[nextGraphic].visible = true;
+  io.emit('bus:active', { busId, graphic: nextGraphic, visible: true });
+  io.emit('busState', busState);
+  broadcast(); res.json({ ok: true });
+});
+
+// ── Companion profile generator (Companion 4.x format) ────────────────────────
+app.get('/api/companion/profile', (req, res) => {
+  const hasSession = req.session && req.session.user;
+  const hasToken = req.query.token && state.settings && state.settings.graphicsToken === req.query.token;
+  if (!hasSession && !hasToken) return res.status(401).json({ error: 'Unauthorized' });
+
+  function genId() { return require('crypto').randomBytes(10).toString('base64url'); }
+
+  const proto = req.protocol, host = req.get('host');
+  const baseUrl = `${proto}://${host}`;
+  const connId = genId();
+
+  const GRAPHIC_LABELS = {
+    lowerThird:'Lower Third', headToHead:'Head to Head', playerIntro:'Player Intro',
+    draft:'Draft', bracket:'Bracket', groupStage:'Group Stage',
+    breakScreen:'Break Screen', winScreen:'Win Screen', prizepool:'Prizepool', ticker:'Ticker',
+  };
+  const GRAPHICS = Object.keys(GRAPHIC_LABELS);
+
+  const PAGE_ACTIONS = {
+    1: GRAPHICS.flatMap(id => [
+      { label: `Show\n${GRAPHIC_LABELS[id]}`,   path: `/api/graphic/${id}/show` },
+      { label: `Hide\n${GRAPHIC_LABELS[id]}`,   path: `/api/graphic/${id}/hide` },
+    ]),
+    2: GRAPHICS.map(id => ({ label: `Toggle\n${GRAPHIC_LABELS[id]}`, path: `/api/graphic/${id}/toggle` })),
+    3: [
+      { label: 'T1 Score\n+1',    path: '/api/match/score/team1/increment' },
+      { label: 'T1 Score\n-1',    path: '/api/match/score/team1/decrement' },
+      { label: 'T2 Score\n+1',    path: '/api/match/score/team2/increment' },
+      { label: 'T2 Score\n-1',    path: '/api/match/score/team2/decrement' },
+      { label: 'Next\nGame',      path: '/api/match/next-game' },
+      { label: 'Prev\nGame',      path: '/api/match/prev-game' },
+      { label: 'Draft\nTimer',    path: '/api/draft/timer/toggle' },
+      { label: 'Reset\nDraft',    path: '/api/draft', body: '{"phase":"notstarted","currentStep":0}' },
+      { label: 'Replay\nIntro',   path: '/api/draft', body: '{"replayIntro":true}' },
+    ],
+    4: (state.settings.buses || []).map(b => ({ label: `${b.name || b.id}\nNext`, path: `/api/bus/${b.id}/next` })),
+  };
+  const PAGE_NAMES = { 1: 'GFX Show/Hide', 2: 'GFX Toggle', 3: 'Match & Draft', 4: 'Bus' };
+
+  const pages = {};
+  for (const [pageNum, pageName] of Object.entries(PAGE_NAMES)) {
+    const acts = PAGE_ACTIONS[pageNum] || [];
+    const controls = {};
+    acts.forEach((a, idx) => {
+      const row = Math.floor(idx / 8), col = idx % 8;
+      if (!controls[row]) controls[row] = {};
+      controls[row][col] = {
+        type: 'button',
+        style: { text: a.label, textExpression: false, size: 'auto', png64: null,
+                 alignment: 'center:center', pngalignment: 'center:center',
+                 color: 16777215, bgcolor: 0, show_topbar: 'default' },
+        options: { stepProgression: 'auto', stepExpression: '', rotaryActions: false },
+        feedbacks: [],
+        steps: { '0': {
+          action_sets: {
+            down: [{ id: genId(), type: 'action', connectionId: connId,
+                     definitionId: 'post',
+                     options: {
+                       url:  { value: `${baseUrl}${a.path}`, isExpression: false },
+                       body: { value: a.body || '',           isExpression: false },
+                     },
+                     upgradeIndex: 0 }],
+            up: [],
+          },
+          options: { runWhileHeld: [] },
+        }},
+        localVariables: [],
+      };
+    });
+    pages[pageNum] = {
+      id: genId(), name: pageName, controls,
+      gridSize: { minColumn: 0, maxColumn: 7, minRow: 0, maxRow: Math.max(3, acts.length > 0 ? Math.floor((acts.length - 1) / 8) : 0) },
+    };
+  }
+
+  const profile = {
+    version: 12,
+    type: 'full',
+    companionBuild: '4.0.0+metagfx-generated',
+    pages,
+    triggers: {},
+    triggerCollections: [],
+    custom_variables: {},
+    customVariablesCollections: [],
+    expressionVariables: {},
+    expressionVariablesCollections: [],
+    instances: {
+      [connId]: {
+        moduleInstanceType: 'connection',
+        moduleVersionId: null,
+        updatePolicy: 'stable',
+        sortOrder: 0,
+        label: 'MetaGFX',
+        isFirstInit: true,
+        config: { prefix: baseUrl },
+        secrets: {},
+        lastUpgradeIndex: 0,
+        enabled: true,
+        moduleId: 'generic-http',
+      },
+    },
+    connectionCollections: [],
+    surfaces: {},
+    surfaceGroups: {},
+    surfacesRemote: {},
+    surfaceInstances: {},
+    surfaceInstanceCollections: [],
+  };
+
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Content-Disposition', 'attachment; filename="metagfx-companion.companionconfig"');
+  res.json(profile);
 });
 
 app.post('/api/lowerThird',  (req, res) => { Object.assign(state.lowerThird,  req.body); broadcast(); res.json({ok:true}); });
