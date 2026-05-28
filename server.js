@@ -49,20 +49,23 @@ const io = new Server(server, { cors: { origin: '*' } });
 io.engine.use(sessionMiddleware);
 
 // ── Users ──────────────────────────────────────────────────────────────────────
+let _users = [];
 function loadUsers() {
   try { if (fs.existsSync(USERS_FILE)) return JSON.parse(fs.readFileSync(USERS_FILE, 'utf8')); }
   catch(e) { console.error('Users load:', e.message); }
   return [];
 }
-function saveUsers(u) { fs.writeFileSync(USERS_FILE, JSON.stringify(u, null, 2)); }
+function saveUsers(u) { _users = u; fs.writeFileSync(USERS_FILE, JSON.stringify(u, null, 2)); }
 
-// Seed a default admin if no users exist
+// Seed a default admin if no users exist; prime _users cache either way
 (function ensureAdmin() {
   const users = loadUsers();
   if (users.length === 0) {
     users.push({ id: 'u1', username: 'admin', passwordHash: bcrypt.hashSync('admin', 10), role: 'superadmin' });
-    saveUsers(users);
+    saveUsers(users); // saveUsers sets _users
     console.log('\n  Default admin created — username: admin  password: admin\n  Change this password immediately in the Users tab.\n');
+  } else {
+    _users = users;
   }
 })();
 
@@ -90,7 +93,7 @@ const loginLimiter = rateLimit({
 app.post('/api/auth/login', loginLimiter, (req, res) => {
   const { username, password } = req.body || {};
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-  const user = loadUsers().find(u => u.username.toLowerCase() === username.toLowerCase());
+  const user = _users.find(u => u.username.toLowerCase() === username.toLowerCase());
   if (!user || !bcrypt.compareSync(password, user.passwordHash))
     return res.status(401).json({ error: 'Invalid username or password' });
   req.session.user = { id: user.id, username: user.username, role: user.role };
@@ -307,8 +310,9 @@ function loadState() {
   return makeDefault();
 }
 function saveState() { try { fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2)); } catch(e) { console.error(e); } }
+let _teams = [];
 function loadTeams() { try { if (fs.existsSync(TEAMS_FILE)) return JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf8')); } catch(e) {} return []; }
-function saveTeams(t) { try { fs.writeFileSync(TEAMS_FILE, JSON.stringify(t, null, 2)); } catch(e) { console.error(e); } }
+function saveTeams(t) { _teams = t; try { fs.writeFileSync(TEAMS_FILE, JSON.stringify(t, null, 2)); } catch(e) { console.error(e); } }
 
 function loadProfiles() { try { if (fs.existsSync(PROFILES_FILE)) return JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8')); } catch(e) {} return []; }
 function saveProfiles(p) { try { fs.writeFileSync(PROFILES_FILE, JSON.stringify(p, null, 2)); } catch(e) { console.error(e); } }
@@ -332,6 +336,7 @@ function snapshotForProfile() {
 }
 
 let state = loadState();
+_teams = loadTeams(); // prime in-memory cache after state is ready
 
 // ── Bus state (in-memory, not persisted) ───────────────────────────────────────
 let busState = {};
@@ -341,12 +346,21 @@ function initBusState() {
 }
 initBusState();
 
-function broadcast() { saveState(); io.emit('state', Object.assign({}, state, { teams: loadTeams(), busState })); }
+let _saveTimer = null;
+function scheduleSave() {
+  if (_saveTimer) clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(function() { _saveTimer = null; saveState(); }, 300);
+}
+// Flush any pending debounced save on clean exit
+process.on('SIGINT',  function() { if (_saveTimer) { clearTimeout(_saveTimer); saveState(); } process.exit(0); });
+process.on('SIGTERM', function() { if (_saveTimer) { clearTimeout(_saveTimer); saveState(); } process.exit(0); });
+
+function broadcast() { scheduleSave(); io.emit('state', Object.assign({}, state, { teams: _teams, busState })); }
 
 let tournamentStatsCache = null;
 
 function buildTournamentStats() {
-  const teams = loadTeams();
+  const teams = _teams;
   const stats = {};
 
   const getTeamName = (id, override) => {
@@ -440,7 +454,7 @@ function deriveTodayGames() {
   if (!dayId) { state.todayGames = []; return; }
   const day = (state.tournament.schedule || []).find(d => d.id === dayId);
   if (!day)  { state.todayGames = []; return; }
-  const teams = loadTeams();
+  const teams = _teams;
   // Resolve a single team — override text > bracket live > saved ID > TBD
   const resolveTeam = (id, override) => {
     if (override) return { name: override, tag: override, logo: '' };
@@ -553,7 +567,7 @@ app.post('/api/players/swap', requireAdmin, (req, res) => {
 app.post('/api/match/load-team', requireAdmin, (req, res) => {
   const { slot, teamId } = req.body;
   if (!slot || !teamId) return res.status(400).json({ error: 'slot and teamId required' });
-  const team = loadTeams().find(t => t.id === teamId);
+  const team = _teams.find(t => t.id === teamId);
   if (!team) return res.status(404).json({ error: 'Team not found' });
   const score = state.match[slot] ? state.match[slot].score : 0;
   state.match[slot] = { name: team.name||'', tag: team.tag||'', logo: team.logo||'', color: team.color||'#1ffaff', score, teamId: team.id };
@@ -881,9 +895,9 @@ app.post('/api/champstats/draft', requireAdmin, async (req, res) => {
 });
 
 // Teams CRUD (admin only)
-app.get('/api/teams', (req, res) => res.json({ teams: loadTeams() }));
+app.get('/api/teams', (req, res) => res.json({ teams: _teams }));
 app.post('/api/teams/save', requireAdmin, (req, res) => {
-  const teams = loadTeams();
+  const teams = _teams.slice();
   const inc = req.body;
   if (!inc || !inc.name) return res.status(400).json({ error: 'Team name required' });
   if (inc.id) {
@@ -937,7 +951,7 @@ app.post('/api/teams/save', requireAdmin, (req, res) => {
 app.post('/api/teams/delete', requireAdmin, (req, res) => {
   const { id } = req.body;
   if (!id) return res.status(400).json({ error: 'id required' });
-  saveTeams(loadTeams().filter(t => t.id !== id)); res.json({ ok: true });
+  saveTeams(_teams.filter(t => t.id !== id)); res.json({ ok: true });
 });
 
 // Champions
@@ -1150,7 +1164,7 @@ app.post('/api/match/load-schedule-game', (req, res) => {
   if (!day) return res.status(404).json({ error: 'Day not found' });
   const sg = day.games.find(g => g.id === gameId);
   if (!sg) return res.status(404).json({ error: 'Game not found' });
-  const teams = loadTeams();
+  const teams = _teams;
   const loadTeamIntoSlot = (teamId, slot) => {
     const t = teamId ? teams.find(x => x.id === teamId) : null;
     if (!t) {
@@ -1549,7 +1563,7 @@ app.post('/api/profiles/delete', requireAdmin, (req, res) => {
 // ── User management (admin only) ───────────────────────────────────────────────
 app.get('/api/users', requireAdmin, (req, res) => {
   const me = req.session.user;
-  res.json({ users: loadUsers().map(u => ({ id: u.id, username: u.username, role: u.role })), myRole: me.role, myId: me.id });
+  res.json({ users: _users.map(u => ({ id: u.id, username: u.username, role: u.role })), myRole: me.role, myId: me.id });
 });
 app.post('/api/users/create', requireAdmin, (req, res) => {
   const me = req.session.user;
@@ -1557,7 +1571,7 @@ app.post('/api/users/create', requireAdmin, (req, res) => {
   if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
   if (!['admin','operator'].includes(role)) return res.status(400).json({ error: 'Role must be admin or operator' });
   if (role === 'admin' && me.role !== 'superadmin') return res.status(403).json({ error: 'Only superadmin can create admin accounts' });
-  const users = loadUsers();
+  const users = _users.slice();
   if (users.find(u => u.username.toLowerCase() === username.toLowerCase()))
     return res.status(409).json({ error: 'Username already exists' });
   users.push({ id: 'u' + Date.now(), username, passwordHash: bcrypt.hashSync(password, 10), role });
@@ -1567,7 +1581,7 @@ app.post('/api/users/change-password', (req, res) => {
   const me = req.session.user;
   const { userId, newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
-  const users = loadUsers();
+  const users = _users.slice();
   const idx = users.findIndex(u => u.id === userId);
   if (idx === -1) return res.status(404).json({ error: 'User not found' });
   const target = users[idx];
@@ -1585,11 +1599,10 @@ app.post('/api/users/delete', requireAdmin, (req, res) => {
   const me = req.session.user;
   const { userId } = req.body;
   if (me.id === userId) return res.status(400).json({ error: 'Cannot delete your own account' });
-  const users = loadUsers();
-  const target = users.find(u => u.id === userId);
+  const target = _users.find(u => u.id === userId);
   if (!target) return res.status(404).json({ error: 'User not found' });
   if (me.role !== 'superadmin' && target.role !== 'operator') return res.status(403).json({ error: 'Admins can only delete operator accounts' });
-  saveUsers(users.filter(u => u.id !== userId)); res.json({ ok: true });
+  saveUsers(_users.filter(u => u.id !== userId)); res.json({ ok: true });
 });
 
 // ── Socket ─────────────────────────────────────────────────────────────────────
@@ -1645,7 +1658,7 @@ io.on('connection', socket => {
 
   const label = isUser ? sess.user.username + ' (' + sess.user.role + ')' : 'graphics[token]';
   console.log('Connected:', label);
-  socket.emit('state', Object.assign({}, state, { teams: loadTeams(), busState }));
+  socket.emit('state', Object.assign({}, state, { teams: _teams, busState }));
 
   if (isUser) {
     // Populate presence
