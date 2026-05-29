@@ -3,7 +3,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 :root {
   --ps-c1:        var(--gfx-c1, #1ffaff);
-  --ps-panel:     rgba(7,15,18,0.88);
+  --ps-panel:     rgba(var(--gfx-c4-rgb, 7, 15, 18),0.88);
   --ps-ticker-h:  5.5vh;
   --ps-logo-scale: 8vh;
   --ps-timer-w:   38vw;  /* side layout left panel width */
@@ -32,7 +32,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   gap: 2.5vw;
   padding: 2vh 4vw;
   background: var(--ps-panel);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid rgba(255, 255, 255,0.07);
   position: relative;
   z-index: 1;
 }
@@ -76,14 +76,14 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   justify-content: center;
   padding: 4vh 0;
   background: var(--ps-panel);
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid rgba(255, 255, 255,0.07);
 }
 
 .ps-timer-label {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.8vh; font-weight: 600;
   letter-spacing: 0.4em; text-transform: uppercase;
-  color: rgba(255,255,255,0.38);
+  color: rgba(255, 255, 255,0.38);
   margin-bottom: 1vh;
 }
 
@@ -94,11 +94,11 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: var(--gfx-c3, #fff);
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 60px rgba(31,250,255,0.18);
+  text-shadow: 0 0 60px rgba(var(--gfx-c1-rgb, 31, 250, 255),0.18);
 }
 .ps-timer.ps-timer-done {
   color: var(--ps-c1);
-  text-shadow: 0 0 60px rgba(31,250,255,0.5);
+  text-shadow: 0 0 60px rgba(var(--gfx-c1-rgb, 31, 250, 255),0.5);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -121,8 +121,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   max-width: 22vw;
   display: flex;
   flex-direction: column;
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255,0.04);
+  border: 1px solid rgba(255, 255, 255,0.08);
   overflow: hidden;
   position: relative;
 }
@@ -134,7 +134,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   top: 0; left: 0; right: 0;
   height: 2px;
   background: var(--ps-c1);
-  box-shadow: 0 0 14px rgba(31,250,255,0.65);
+  box-shadow: 0 0 14px rgba(var(--gfx-c1-rgb, 31, 250, 255),0.65);
 }
 
 /* Card body — T1 | VS | T2 row */
@@ -185,12 +185,12 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.6vh; font-weight: 700;
   letter-spacing: 0.22em; text-transform: uppercase;
-  color: rgba(255,255,255,0.2);
+  color: rgba(255, 255, 255,0.2);
 }
 
 /* Card footer */
 .ps-card-footer {
-  border-top: 1px solid rgba(255,255,255,0.07);
+  border-top: 1px solid rgba(255, 255, 255,0.07);
   padding: 1vh 1.8vw;
   display: flex;
   align-items: center;
@@ -202,7 +202,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.3vh; font-weight: 700;
   letter-spacing: 0.28em; text-transform: uppercase;
-  color: rgba(255,255,255,0.3);
+  color: rgba(255, 255, 255,0.3);
 }
 .ps-card.is-current .ps-card-format { color: var(--ps-c1); opacity: 0.9; }
 
@@ -210,7 +210,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.1vh; font-weight: 600;
   letter-spacing: 0.18em; text-transform: uppercase;
-  color: rgba(255,255,255,0.2);
+  color: rgba(255, 255, 255,0.2);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -251,7 +251,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
      mid-frame, preventing visual cascade to nearby canvas elements */
   will-change: clip-path;
   /* Gradient fades right edge so it doesn't read as a heavy dark block */
-  background: linear-gradient(to right, var(--ps-panel) 75%, rgba(7,15,18,0.55));
+  background: linear-gradient(to right, var(--ps-panel) 75%, rgba(var(--gfx-c4-rgb, 7, 15, 18),0.55));
 }
 
 /* ── Animated vertical divider line ────────────────────────────────────────
@@ -263,7 +263,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   top: 0; right: 0;
   width: 1px;
   height: 100%;
-  background: rgba(255,255,255,0.07);
+  background: rgba(255, 255, 255,0.07);
   pointer-events: none;
 }
 
@@ -314,12 +314,12 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   max-width: none;  /* override the 22vw cap from center layout */
   background: transparent;
   border: none;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid rgba(255, 255, 255,0.07);
 }
 #ps-root.layout-side .ps-card:last-child { border-bottom: none; }
 
 #ps-root.layout-side .ps-card.is-current {
-  background: rgba(31,250,255,0.04);
+  background: rgba(var(--gfx-c1-rgb, 31, 250, 255),0.04);
 }
 
 #ps-root.layout-side .ps-card-inner {
@@ -367,7 +367,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.2vh; font-weight: 700;
   letter-spacing: 0.25em; text-transform: uppercase;
-  color: rgba(255,255,255,0.25);
+  color: rgba(255, 255, 255,0.25);
   display: block;
 }
 #ps-root.layout-side .ps-card.is-current .ps-card-format-side {
@@ -385,8 +385,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: flex;
   align-items: center;
   overflow: hidden;
-  background: rgba(0,0,0,0.45);
-  border-top: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0, 0, 0,0.45);
+  border-top: 1px solid rgba(255, 255, 255,0.08);
   z-index: 6;
 }
 
@@ -396,7 +396,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.3vh; font-weight: 800; letter-spacing: 0.22em;
   text-transform: uppercase; color: var(--ps-c1);
-  border-right: 1px solid rgba(255,255,255,0.12);
+  border-right: 1px solid rgba(255, 255, 255,0.12);
   height: 100%; display: flex; align-items: center;
 }
 
@@ -420,13 +420,13 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.9vh; font-weight: 600; letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.82);
+  color: rgba(255, 255, 255,0.82);
   white-space: nowrap;
 }
 
 .ps-ticker-result-win  { color: var(--ps-c1); font-weight: 800; }
-.ps-ticker-result-loss { color: rgba(255,255,255,0.82); }
-.ps-ticker-result-score { color: rgba(255,255,255,0.65); }
+.ps-ticker-result-loss { color: rgba(255, 255, 255,0.82); }
+.ps-ticker-result-score { color: rgba(255, 255, 255,0.65); }
 .ps-ticker-live-label  { color: var(--gfx-red, #ff3b3b); font-weight: 800; letter-spacing: 0.12em; }
 .ps-ticker-live-dot {
   display: inline-block;

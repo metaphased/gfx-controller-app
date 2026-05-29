@@ -32,8 +32,8 @@ html, body {
 
 /* ── Grand Final highlight card ───────────────────────────────────────────── */
 .pp-highlight-card {
-  background: rgba(5,11,16,0.92);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92);
+  border: 1px solid rgba(255, 255, 255,0.1);
   border-top: 4px solid var(--gfx-c1, #1ffaff);
   border-radius: 2px;
   padding: 2.8vh 3.5vw;
@@ -44,7 +44,7 @@ html, body {
 .pp-hl-label {
   font-size: 1.8vh; font-weight: 700;
   letter-spacing: 0.15em; text-transform: uppercase;
-  color: rgba(255,255,255,0.4); line-height: 1;
+  color: rgba(255, 255, 255,0.4); line-height: 1;
 }
 .pp-hl-value {
   font-size: 13vh; font-weight: 900;
@@ -62,7 +62,7 @@ html, body {
 .pp-hl-sponsor-name {
   font-size: 1.3vh; font-weight: 700;
   letter-spacing: 0.18em; text-transform: uppercase;
-  color: rgba(255,255,255,0.3);
+  color: rgba(255, 255, 255,0.3);
 }
 
 /* ── Content area: both sections centred as a unit ─────────────────────── */
@@ -79,28 +79,28 @@ html, body {
 /* ── Placement list card ─────────────────────────────────────────────────── */
 .pp-placements-wrap {
   width: 100%;
-  background: rgba(5,11,16,0.92);
-  border: 1px solid rgba(255,255,255,0.09);
-  border-top: 3px solid rgba(255,255,255,0.15);
+  background: rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92);
+  border: 1px solid rgba(255, 255, 255,0.09);
+  border-top: 3px solid rgba(255, 255, 255,0.15);
   border-radius: 2px; overflow: hidden;
 }
 .pp-placement-row {
   display: flex; align-items: center;
   justify-content: space-between;
   padding: 1.5vh 3.5vw;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid rgba(255, 255, 255,0.06);
 }
 .pp-placement-row:last-child { border-bottom: none; }
 
 /* 1st place / top prize row — gradient tint, accent left border, larger value */
 .pp-pl-highlight {
-  background: linear-gradient(to right, rgba(31,250,255,0.07) 0%, transparent 55%);
+  background: linear-gradient(to right, rgba(var(--gfx-c1-rgb, 31, 250, 255),0.07) 0%, transparent 55%);
   border-left: 4px solid var(--gfx-c1, #1ffaff);
   padding-left: calc(3.5vw - 4px);
   padding-top: 2.2vh; padding-bottom: 2.2vh;
-  border-bottom-color: rgba(31,250,255,0.12);
+  border-bottom-color: rgba(var(--gfx-c1-rgb, 31, 250, 255),0.12);
 }
-.pp-pl-highlight .pp-pl-label { color: rgba(255,255,255,0.65); font-size: 1.8vh; }
+.pp-pl-highlight .pp-pl-label { color: rgba(255, 255, 255,0.65); font-size: 1.8vh; }
 .pp-pl-highlight .pp-pl-value { color: var(--gfx-c1, #1ffaff); font-size: 4.5vh; }
 
 /* Optional product image attached inline to 1st place row */
@@ -111,12 +111,12 @@ html, body {
 .pp-pl-label {
   font-size: 1.6vh; font-weight: 700;
   letter-spacing: 0.16em; text-transform: uppercase;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255, 255, 255,0.4);
 }
 .pp-pl-value {
   font-size: 3vh; font-weight: 800;
   letter-spacing: 0.04em; text-transform: uppercase;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255,0.9);
 }
 
 /* ── Bonus / sponsor award cards (row below placements, same width) ──────── */
@@ -127,16 +127,16 @@ html, body {
 }
 .pp-bonus-card {
   flex: 1; min-width: 0;
-  background: rgba(5,11,16,0.92);
-  border: 1px solid rgba(255,255,255,0.09);
-  border-top: 3px solid rgba(255,255,255,0.15);
+  background: rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92);
+  border: 1px solid rgba(255, 255, 255,0.09);
+  border-top: 3px solid rgba(255, 255, 255,0.15);
   border-radius: 2px; overflow: hidden;
   display: flex; flex-direction: column;
 }
 /* Fixed-height container controlled by imageScale slider */
 .pp-bonus-img-wrap {
   width: 100%; flex-shrink: 0;
-  background: rgba(255,255,255,0.03);
+  background: rgba(255, 255, 255,0.03);
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
 }
@@ -157,17 +157,17 @@ html, body {
 .pp-bonus-value {
   font-size: 2.5vh; font-weight: 700;
   letter-spacing: 0.04em;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255, 255, 255,0.7);
 }
 .pp-bonus-footer {
   padding: 1.2vh 2.5vw;
-  border-top: 1px solid rgba(255,255,255,0.07);
+  border-top: 1px solid rgba(255, 255, 255,0.07);
   display: flex; align-items: center; justify-content: flex-end; gap: 1vw;
 }
 .pp-bonus-sponsor-name {
   font-size: 1.3vh; font-weight: 700;
   letter-spacing: 0.18em; text-transform: uppercase;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255, 255, 255,0.35);
 }
 .pp-bonus-sponsor-logo {
   height: 4vh; max-width: 10vw;

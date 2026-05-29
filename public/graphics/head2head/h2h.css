@@ -40,7 +40,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   gap: 2vw;
   padding: 0 3vw;
   background: var(--gfx-c4, #07101a);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255, 255, 255,0.08);
 }
 .h2h-header-right { flex-direction: row-reverse; }
 
@@ -65,7 +65,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--gfx-c4, #07101a);
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255, 255, 255,0.08);
 }
 .h2h-header-centre img {
   max-height: 6.5vh;
@@ -95,7 +95,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: flex;
   flex-shrink: 0;
   overflow: hidden;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid rgba(255, 255, 255,0.06);
   transition: height 0.7s var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1));
   position: relative;
   will-change: height;
@@ -133,22 +133,22 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   content: '';
   position: absolute; inset: 0;
   background:
-    linear-gradient(to right, transparent 55%, rgba(4,8,16,0.8) 100%),
-    linear-gradient(to top,   rgba(4,8,16,0.95) 0%, rgba(4,8,16,0.55) 25%, rgba(4,8,16,0.1) 55%, transparent 75%);
+    linear-gradient(to right, transparent 55%, rgba(var(--gfx-c4-rgb, 4, 8, 16),0.8) 100%),
+    linear-gradient(to top,   rgba(var(--gfx-c4-rgb, 4, 8, 16),0.95) 0%, rgba(var(--gfx-c4-rgb, 4, 8, 16),0.55) 25%, rgba(var(--gfx-c4-rgb, 4, 8, 16),0.1) 55%, transparent 75%);
 }
 .h2h-card-right::after {
   content: '';
   position: absolute; inset: 0;
   background:
-    linear-gradient(to left,  transparent 55%, rgba(4,8,16,0.8) 100%),
-    linear-gradient(to top,   rgba(4,8,16,0.95) 0%, rgba(4,8,16,0.55) 25%, rgba(4,8,16,0.1) 55%, transparent 75%);
+    linear-gradient(to left,  transparent 55%, rgba(var(--gfx-c4-rgb, 4, 8, 16),0.8) 100%),
+    linear-gradient(to top,   rgba(var(--gfx-c4-rgb, 4, 8, 16),0.95) 0%, rgba(var(--gfx-c4-rgb, 4, 8, 16),0.55) 25%, rgba(var(--gfx-c4-rgb, 4, 8, 16),0.1) 55%, transparent 75%);
 }
 
 /* Dim overlay on inactive rows in spotlight mode */
 #h2h-root.mode-spotlight .h2h-row:not(.active) .h2h-card::before {
   content: '';
   position: absolute; inset: 0; z-index: 1;
-  background: rgba(0,0,0,0.5);
+  background: rgba(0, 0, 0,0.5);
 }
 
 /* ── Player info (absolute — bottom of the card) ─────────────────────────── */
@@ -196,8 +196,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   justify-content: center;
   gap: 0.8vh;
   background: var(--gfx-c4, #07101a); /* fully opaque — prevents canvas animation bleeding through */
-  border-left:  1px solid rgba(255,255,255,0.07);
-  border-right: 1px solid rgba(255,255,255,0.07);
+  border-left:  1px solid rgba(255, 255, 255,0.07);
+  border-right: 1px solid rgba(255, 255, 255,0.07);
   position: relative;
   z-index: 3;
 }
@@ -225,7 +225,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.3vh; font-weight: 700;
   letter-spacing: 0.22em; text-transform: uppercase;
-  color: rgba(255,255,255,0.35);
+  color: rgba(255, 255, 255,0.35);
   transition: color 0.4s ease, font-size 0.4s ease;
 }
 .h2h-row.active .h2h-role-label {
@@ -262,7 +262,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: flex;
   flex-direction: column;
   gap: 0.2vh;
-  background: rgba(0,0,0,0.45);
+  background: rgba(0, 0, 0,0.45);
   padding: 0.5vh 0.8vw;
   border-radius: 2px;
   min-width: 0;
@@ -271,7 +271,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.2vh; font-weight: 700;
   letter-spacing: 0.14em; text-transform: uppercase;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255, 255, 255,0.45);
   white-space: nowrap;
 }
 .h2h-stat-pill-value {
@@ -284,7 +284,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .h2h-stat-no-data {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.3vh; font-weight: 600;
-  color: rgba(255,255,255,0.25);
+  color: rgba(255, 255, 255,0.25);
   letter-spacing: 0.06em;
   margin-top: 0.8vh;
 }
@@ -302,7 +302,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 #h2h-root.mode-lineup .h2h-player-handle { font-size: 3.8vh; }
 #h2h-root.mode-lineup .h2h-champ-name    { font-size: 1.4vh; }
 #h2h-root.mode-lineup .h2h-role-icon     { transform: scale(calc(5 / 7)); opacity: 0.7; filter: brightness(0) invert(1); }
-#h2h-root.mode-lineup .h2h-role-label    { font-size: 1.2vh; color: rgba(255,255,255,0.45); }
+#h2h-root.mode-lineup .h2h-role-label    { font-size: 1.2vh; color: rgba(255, 255, 255,0.45); }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    ENTRY / EXIT ANIMATIONS

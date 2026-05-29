@@ -64,7 +64,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   bottom:  calc(5.5vh + var(--pip-bar-h));
   padding: 4vh 1.2vw;
   align-items: center;
-  border-right-color: rgba(255,255,255,0.12);
+  border-right-color: rgba(255, 255, 255,0.12);
   transition: border-right-color 0.5s ease 0.5s;
 }
 /* Logo to very top, sponsor to very bottom */
@@ -98,7 +98,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-tourn-name {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.3vh; font-weight: 700; letter-spacing: 0.35em;
-  text-transform: uppercase; color: rgba(255,255,255,0.45);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.45);
   text-align: center;
 }
 
@@ -112,7 +112,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-subtext {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2.2vh; font-weight: 400; letter-spacing: 0.28em;
-  text-transform: uppercase; color: rgba(255,255,255,0.5);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.5);
   text-align: center;
 }
 
@@ -154,7 +154,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 5.5vh; font-weight: 900; letter-spacing: 0;
   line-height: 1;
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255,0.9);
 }
 .break-series-centre {
   flex-shrink: 0;
@@ -168,12 +168,12 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-series-format {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 3.5vh; font-weight: 900; letter-spacing: 0.12em;
-  text-transform: uppercase; color: rgba(255,255,255,0.75);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.75);
 }
 .break-series-game {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 3.5vh; font-weight: 800; letter-spacing: 0.1em;
-  text-transform: uppercase; color: rgba(255,255,255,0.65);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.65);
 }
 
 /* ── Countdown timer ───────────────────────────────────────────────────── */
@@ -183,7 +183,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-timer-label {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.1vh; font-weight: 700; letter-spacing: 0.32em;
-  text-transform: uppercase; color: rgba(255,255,255,0.4);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.4);
 }
 .break-timer-value {
   font-family: 'Barlow Condensed', sans-serif;
@@ -196,8 +196,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-next {
   display: flex; align-items: center; gap: 1.2vw;
   padding: 1.2vh 2vw;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255,0.05);
+  border: 1px solid rgba(255, 255, 255,0.12);
 }
 .break-next-label {
   font-family: 'Barlow Condensed', sans-serif;
@@ -235,8 +235,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: flex;
   align-items: center;
   overflow: hidden;
-  background: rgba(0,0,0,0.45);
-  border-top: 1px solid rgba(255,255,255,0.08);
+  background: rgba(0, 0, 0,0.45);
+  border-top: 1px solid rgba(255, 255, 255,0.08);
   z-index: 6; /* above pip-bottom (z-index:5) so ticker slides over the reserved slot */
 }
 .break-ticker-label {
@@ -245,7 +245,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.3vh; font-weight: 800; letter-spacing: 0.22em;
   text-transform: uppercase; color: var(--gfx-c1);
-  border-right: 1px solid rgba(255,255,255,0.12);
+  border-right: 1px solid rgba(255, 255, 255,0.12);
   height: 100%; display: flex; align-items: center;
 }
 .break-ticker-track {
@@ -266,7 +266,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.9vh; font-weight: 600; letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.82);
+  color: rgba(255, 255, 255,0.82);
   white-space: nowrap;
 }
 .ticker-result-win {
@@ -274,10 +274,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-weight: 800;
 }
 .ticker-result-loss {
-  color: rgba(255,255,255,0.82);
+  color: rgba(255, 255, 255,0.82);
 }
 .ticker-result-score {
-  color: rgba(255,255,255,0.65);
+  color: rgba(255, 255, 255,0.65);
 }
 .break-ticker-live-label {
   color: var(--gfx-red, #ff3b3b);
@@ -345,7 +345,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-items: stretch;
   pointer-events: none;
   z-index: 5;
-  border-top: 1px solid rgba(255,255,255,0.12);
+  border-top: 1px solid rgba(255, 255, 255,0.12);
   opacity: 0;
   transform: translateY(20px);
   transition: opacity 0.6s ease, transform 0.6s ease;
@@ -366,8 +366,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-items: center;
   justify-content: center;
   gap: 0.4vh;
-  border-right: 1px solid rgba(255,255,255,0.12); /* vertical guide — aligns with content div right border */
-  background: rgba(0,0,0,0.12);
+  border-right: 1px solid rgba(255, 255, 255,0.12); /* vertical guide — aligns with content div right border */
+  background: rgba(0, 0, 0,0.12);
   padding: 1vh 1.5vw;
 }
 /* Extend the dark tint and vertical border-right into the 5.5vh ticker slot below.
@@ -381,8 +381,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: var(--pip-left);
   bottom: 0;
   height: 5.5vh;
-  background: rgba(0,0,0,0.12);
-  border-right: 1px solid rgba(255,255,255,0.12);
+  background: rgba(0, 0, 0,0.12);
+  border-right: 1px solid rgba(255, 255, 255,0.12);
   clip-path: inset(0 0 100% 0); /* hidden by default (ticker covering) */
   pointer-events: none;
 }
@@ -409,7 +409,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-pip-timer-label {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.1vh; font-weight: 700; letter-spacing: 0.32em;
-  text-transform: uppercase; color: rgba(255,255,255,0.4);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.4);
 }
 .break-pip-timer-value {
   font-family: 'Barlow Condensed', sans-serif;
@@ -468,7 +468,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-pip-score {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 5vh; font-weight: 900; letter-spacing: 0;
-  line-height: 1; color: rgba(255,255,255,0.9);
+  line-height: 1; color: rgba(255, 255, 255,0.9);
 }
 .break-pip-centre {
   flex-shrink: 0;
@@ -479,7 +479,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-pip-game {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 3.2vh; font-weight: 900; letter-spacing: 0.1em;
-  text-transform: uppercase; color: rgba(255,255,255,0.75);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.75);
 }
 
 /* Upcoming row — vertically centred, same font size as series for alignment continuity */
@@ -497,6 +497,6 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-pip-upcoming-text {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2vh; font-weight: 600; letter-spacing: 0.04em;
-  text-transform: uppercase; color: rgba(255,255,255,0.65);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.65);
   line-height: 1;
 }
