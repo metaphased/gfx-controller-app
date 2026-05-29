@@ -2,7 +2,7 @@
 html, body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
 
 :root {
-  --win-color:    #1ffaff;
+  --win-color:    var(--gfx-c1, #1ffaff);
   --win-col-a70:  rgba(31,250,255,0.7);
   --win-col-a30:  rgba(31,250,255,0.3);
   --win-col-a12:  rgba(31,250,255,0.12);

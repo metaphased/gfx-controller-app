@@ -280,7 +280,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: rgba(255,255,255,0.65);
 }
 .break-ticker-live-label {
-  color: #ff3b3b;
+  color: var(--gfx-red, #ff3b3b);
   font-weight: 800;
   letter-spacing: 0.12em;
 }
@@ -288,7 +288,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: inline-block;
   width: 0.55em; height: 0.55em;
   border-radius: 50%;
-  background: #ff3b3b;
+  background: var(--gfx-red, #ff3b3b);
   margin: 0 0.55em;
   vertical-align: middle;
   position: relative; top: -0.05em;

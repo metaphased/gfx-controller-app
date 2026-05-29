@@ -2,7 +2,7 @@
 html, body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
 
 :root {
-  --ps-c1:        #1ffaff;
+  --ps-c1:        var(--gfx-c1, #1ffaff);
   --ps-panel:     rgba(7,15,18,0.88);
   --ps-ticker-h:  5.5vh;
   --ps-logo-scale: 8vh;
@@ -427,11 +427,11 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .ps-ticker-result-win  { color: var(--ps-c1); font-weight: 800; }
 .ps-ticker-result-loss { color: rgba(255,255,255,0.82); }
 .ps-ticker-result-score { color: rgba(255,255,255,0.65); }
-.ps-ticker-live-label  { color: #ff3b3b; font-weight: 800; letter-spacing: 0.12em; }
+.ps-ticker-live-label  { color: var(--gfx-red, #ff3b3b); font-weight: 800; letter-spacing: 0.12em; }
 .ps-ticker-live-dot {
   display: inline-block;
   width: 0.55em; height: 0.55em; border-radius: 50%;
-  background: #ff3b3b; margin: 0 0.55em;
+  background: var(--gfx-red, #ff3b3b); margin: 0 0.55em;
   vertical-align: middle; position: relative; top: -0.05em;
 }
 
