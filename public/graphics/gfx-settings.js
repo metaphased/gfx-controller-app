@@ -105,6 +105,99 @@ window.GfxSettings = (function () {
 
   function logo(s, type) { return (get(s).logoSet || {})[type] || ''; }
 
+  // ── Easing library + animation token injection ──────────────────────────────
+  // Standard easing curves expressible as a single cubic-bezier.
+  var EASINGS = {
+    linear:        'linear',
+    easeInSine:    'cubic-bezier(0.12,0,0.39,0)',
+    easeOutSine:   'cubic-bezier(0.61,1,0.88,1)',
+    easeInOutSine: 'cubic-bezier(0.37,0,0.63,1)',
+    easeInQuad:    'cubic-bezier(0.11,0,0.5,0)',
+    easeOutQuad:   'cubic-bezier(0.5,1,0.89,1)',
+    easeInOutQuad: 'cubic-bezier(0.45,0,0.55,1)',
+    easeInCubic:   'cubic-bezier(0.32,0,0.67,0)',
+    easeOutCubic:  'cubic-bezier(0.33,1,0.68,1)',
+    easeInOutCubic:'cubic-bezier(0.65,0,0.35,1)',
+    easeInQuart:   'cubic-bezier(0.5,0,0.75,0)',
+    easeOutQuart:  'cubic-bezier(0.25,1,0.5,1)',
+    easeInOutQuart:'cubic-bezier(0.76,0,0.24,1)',
+    easeInQuint:   'cubic-bezier(0.64,0,0.78,0)',
+    easeOutQuint:  'cubic-bezier(0.22,1,0.36,1)',
+    easeInOutQuint:'cubic-bezier(0.83,0,0.17,1)',
+    easeInExpo:    'cubic-bezier(0.7,0,0.84,0)',
+    easeOutExpo:   'cubic-bezier(0.16,1,0.3,1)',
+    easeInOutExpo: 'cubic-bezier(0.87,0,0.13,1)',
+    easeInCirc:    'cubic-bezier(0.55,0,1,0.45)',
+    easeOutCirc:   'cubic-bezier(0,0.55,0.45,1)',
+    easeInOutCirc: 'cubic-bezier(0.85,0,0.15,1)',
+    easeInBack:    'cubic-bezier(0.36,0,0.66,-0.56)',
+    easeOutBack:   'cubic-bezier(0.34,1.56,0.64,1)',
+    easeInOutBack: 'cubic-bezier(0.68,-0.6,0.32,1.6)',
+  };
+
+  // Bounce/elastic can't be a single cubic-bezier — sample the Penner formula into
+  // a CSS linear() easing function. When linear() is unsupported (older CEF), we
+  // fall back to the nearest overshoot bezier below.
+  function _bounceOut(t) {
+    var n1 = 7.5625, d1 = 2.75;
+    if (t < 1 / d1) return n1 * t * t;
+    if (t < 2 / d1) { t -= 1.5 / d1;   return n1 * t * t + 0.75; }
+    if (t < 2.5 / d1) { t -= 2.25 / d1; return n1 * t * t + 0.9375; }
+    t -= 2.625 / d1; return n1 * t * t + 0.984375;
+  }
+  var _EASE_FN = {
+    easeOutBounce: _bounceOut,
+    easeInBounce:  function (t) { return 1 - _bounceOut(1 - t); },
+    easeInOutBounce: function (t) { return t < 0.5 ? (1 - _bounceOut(1 - 2 * t)) / 2 : (1 + _bounceOut(2 * t - 1)) / 2; },
+    easeOutElastic: function (t) { var c4 = (2 * Math.PI) / 3; return t === 0 ? 0 : t === 1 ? 1 : Math.pow(2, -10 * t) * Math.sin((t * 10 - 0.75) * c4) + 1; },
+    easeInElastic:  function (t) { var c4 = (2 * Math.PI) / 3; return t === 0 ? 0 : t === 1 ? 1 : -Math.pow(2, 10 * t - 10) * Math.sin((t * 10 - 10.75) * c4); },
+    easeInOutElastic: function (t) { var c5 = (2 * Math.PI) / 4.5; return t === 0 ? 0 : t === 1 ? 1 : t < 0.5 ? -(Math.pow(2, 20 * t - 10) * Math.sin((20 * t - 11.125) * c5)) / 2 : (Math.pow(2, -20 * t + 10) * Math.sin((20 * t - 11.125) * c5)) / 2 + 1; },
+  };
+  function _toLinear(fn, samples) {
+    var pts = [];
+    for (var i = 0; i <= samples; i++) pts.push(+fn(i / samples).toFixed(4));
+    return 'linear(' + pts.join(',') + ')';
+  }
+  Object.keys(_EASE_FN).forEach(function (name) {
+    EASINGS[name] = _toLinear(_EASE_FN[name], /elastic/i.test(name) ? 32 : 24);
+  });
+
+  // Nearest single-bezier fallback for renderers without CSS linear().
+  var _EASE_FALLBACK = {
+    easeOutBounce: EASINGS.easeOutBack, easeInBounce: EASINGS.easeInBack, easeInOutBounce: EASINGS.easeInOutBack,
+    easeOutElastic: EASINGS.easeOutBack, easeInElastic: EASINGS.easeInBack, easeInOutElastic: EASINGS.easeInOutBack,
+  };
+  var _supportsLinear = (function () {
+    try { return !!(window.CSS && CSS.supports && CSS.supports('transition-timing-function', 'linear(0,1)')); }
+    catch (e) { return false; }
+  })();
+
+  // Resolve an easing name to a timing-function string the current renderer can parse.
+  function resolveEasing(name) {
+    var v = EASINGS[name] || EASINGS.easeOutQuart;
+    if (!_supportsLinear && v.indexOf('linear(') === 0) return _EASE_FALLBACK[name] || EASINGS.easeOutBack;
+    return v;
+  }
+
+  var _SPEED_MULT = { instant: 0, fast: 0.5, medium: 1, slow: 1.6 };
+  // Base durations (seconds) for each animation role, scaled by the speed multiplier.
+  var _DUR_BASE = { enter: 0.55, exit: 0.40, move: 0.30 };
+
+  // Inject the six animation tokens onto `el` (usually document.documentElement),
+  // resolving global settings merged with this graphic's overrides.
+  function applyAnimation(el, s, graphicKey) {
+    var anim = get(s).animation || {};
+    var ov   = (anim.overrides && graphicKey && anim.overrides[graphicKey]) || {};
+    var mult = _SPEED_MULT[ov.speed || anim.speed];
+    if (mult == null) mult = 1;
+    el.style.setProperty('--gfx-ease-enter', resolveEasing(ov.enterEase || anim.enterEase || 'easeOutQuart'));
+    el.style.setProperty('--gfx-ease-exit',  resolveEasing(ov.exitEase  || anim.exitEase  || 'easeInQuart'));
+    el.style.setProperty('--gfx-ease-move',  resolveEasing(ov.moveEase  || anim.moveEase  || 'easeInOutQuad'));
+    el.style.setProperty('--gfx-dur-enter', (_DUR_BASE.enter * mult).toFixed(3) + 's');
+    el.style.setProperty('--gfx-dur-exit',  (_DUR_BASE.exit  * mult).toFixed(3) + 's');
+    el.style.setProperty('--gfx-dur-move',  (_DUR_BASE.move  * mult).toFixed(3) + 's');
+  }
+
   // ── Read --gfx-c1 as [r,g,b] ────────────────────────────────────────────────
   function _accentRgb() {
     const hex = (getComputedStyle(document.documentElement).getPropertyValue('--gfx-c1') || '')
@@ -640,5 +733,5 @@ window.GfxSettings = (function () {
     frame();
   }
 
-  return { applyTheme, applyBackground, dur, ease, dataChangeStyle, bgSpeed, palette, accent, logo, stopBgAnimation };
+  return { applyTheme, applyBackground, applyAnimation, resolveEasing, EASINGS, dur, ease, dataChangeStyle, bgSpeed, palette, accent, logo, stopBgAnimation };
 })();

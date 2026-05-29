@@ -342,10 +342,13 @@ const makeDefault = () => ({
     draftLayout: 'arena',      // 'arena' | 'classic'
     graphicsToken: require('crypto').randomBytes(16).toString('hex'),
     animation: {
-      transitionSpeed: 'medium',   // 'instant' | 'fast' | 'medium' | 'slow'
-      dataChangeStyle: 'fade',     // 'none' | 'fade' | 'slide' | 'scale'
-      motionEnergy:    'smooth',   // 'linear' | 'smooth' | 'bouncy' | 'snap'
-      bgSpeed:         'medium',   // 'slow' | 'medium' | 'fast'
+      speed:           'medium',        // 'instant' | 'fast' | 'medium' | 'slow' (duration multiplier)
+      enterEase:       'easeOutQuart',  // easing name from GfxSettings.EASINGS
+      exitEase:        'easeInQuart',
+      moveEase:        'easeInOutQuad',
+      dataChangeStyle: 'fade',          // 'none' | 'fade' | 'slide' | 'scale'
+      bgSpeed:         'medium',        // 'slow' | 'medium' | 'fast'
+      overrides:       {},              // { [graphicKey]: { enterEase?, exitEase?, moveEase?, speed? } }
     },
     logoSet: { logos: [] },        // [{ name: string, url: string }]
     buses: [
@@ -376,9 +379,34 @@ function deepMerge(target, source) {
   return target;
 }
 
+// Migrate the legacy animation settings (transitionSpeed/motionEnergy) to the new
+// easing model. Only fills new fields when absent so a user's explicit choices win.
+function migrateAnimationSettings(st) {
+  const a = st && st.settings && st.settings.animation;
+  if (!a) return;
+  const MOTION = {
+    smooth: { enterEase: 'easeOutQuart', exitEase: 'easeInQuart', moveEase: 'easeInOutQuad' },
+    linear: { enterEase: 'linear',       exitEase: 'linear',      moveEase: 'linear' },
+    bouncy: { enterEase: 'easeOutBack',  exitEase: 'easeInBack',  moveEase: 'easeInOutBack' },
+    snap:   { enterEase: 'easeOutExpo',  exitEase: 'easeInExpo',  moveEase: 'easeInOutExpo' },
+  };
+  if (a.speed === undefined && a.transitionSpeed !== undefined) a.speed = a.transitionSpeed;
+  if (a.enterEase === undefined && a.motionEnergy !== undefined) {
+    const m = MOTION[a.motionEnergy] || MOTION.smooth;
+    a.enterEase = m.enterEase; a.exitEase = m.exitEase; a.moveEase = m.moveEase;
+  }
+  if (!a.overrides || typeof a.overrides !== 'object') a.overrides = {};
+  delete a.transitionSpeed; delete a.motionEnergy;
+}
+
 function loadState() {
-  try { if (fs.existsSync(DATA_FILE)) return deepMerge(makeDefault(), JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'))); }
-  catch(e) { console.error('State load:', e.message); }
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const st = deepMerge(makeDefault(), JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')));
+      migrateAnimationSettings(st);
+      return st;
+    }
+  } catch(e) { console.error('State load:', e.message); }
   return makeDefault();
 }
 function saveState() { try { fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2)); } catch(e) { console.error(e); } }
