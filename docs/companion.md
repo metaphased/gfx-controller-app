@@ -34,10 +34,10 @@ Both use the same underlying action API, so any action triggerable from a button
 
 | Category | Action |
 |---|---|
-| Graphics | Show / Hide / Toggle for each overlay (Lower Third, Head to Head, Player Intro, Draft, Win Screen, Break Screen, Bracket, Group Stage, Tournament Structure, Prizepool, Ticker) |
-| Match | Team 1 score +1 / -1, Team 2 score +1 / -1, Next game, Prev game, Swap sides |
+| Graphics | Show / Hide / Toggle for each overlay (Lower Third, Head to Head, Player Intro, Draft, Bracket, Group Stage, Break Screen, Win Screen, Prizepool, Ticker) |
+| Match | Team 1 score +1 / −1, Team 2 score +1 / −1, Next game, Previous game |
 | Draft | Reset draft, Replay intro, Toggle timer |
-| Bus | Show / Hide / Next graphic for each configured bus |
+| Bus | Next graphic (cycle) for each configured bus |
 
 ---
 
@@ -47,9 +47,9 @@ Both use the same underlying action API, so any action triggerable from a button
 
 - [Bitfocus Companion](https://bitfocus.io/companion) v4.x installed
 - MetaGFX server running and accessible from the Companion machine
-- A **Graphics Token** set in MetaGFX (**Settings → Security**)
+- A **Graphics Token** set in MetaGFX (**Settings → Graphics Output URLs → Graphics Token**)
 
-> The graphics token is embedded in all button URLs so Companion can authenticate. Without it the buttons will get 401 responses. Set one in Settings before downloading the profile.
+> The graphics token is embedded in all button URLs so Companion can authenticate. Without it the buttons get 401 responses. A token is generated automatically on first run; you can rotate it with the regenerate button next to the field (re-download the profile afterwards).
 
 ### Downloading the profile
 
@@ -161,3 +161,16 @@ GET /api/companion/profile
 ```
 
 Returns a downloadable `.companionconfig` file pre-populated with all action buttons and the MetaGFX connection. Requires auth.
+
+---
+
+## Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| **Import fails in Companion** | The profile targets Companion 4.x (config `version: 12`). Use Companion 4.x — it won't import into v3. |
+| **Buttons do nothing, 401 in MetaGFX logs** | No graphics token, or the token changed after the profile was generated. Set/confirm the token, re-download the profile, re-import. |
+| **Buttons hit the wrong host** | The connection's Base URL is whatever host you downloaded the profile from (e.g. `localhost`). If Companion runs on a different machine, edit **Connections → MetaGFX → Base URL** to the server's LAN IP. |
+| **`$(custom:undefined)` warnings in the Companion log** | Resolved — the generated profile leaves the generic-http response-variable fields empty in the correct wrapped format. If you still see it, you're on a profile generated before that fix; re-download and re-import. |
+
+> The profile is generated to match the **generic-http** module's expected option format (option values wrapped as `{value, isExpression}`, `definitionId: "post"`, `moduleId: "generic-http"`). If a future Companion/module update changes that format, re-generating from `/api/companion/profile` is the place to adjust.
