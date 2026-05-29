@@ -508,12 +508,6 @@ body {
         <button class="mode-btn" id="lt-pos-left"  onclick="patchLT('left')">Left</button>
         <button class="mode-btn" id="lt-pos-right" onclick="patchLT('right')">Right</button>
       </div>
-      <div class="ops-ctrl-group">
-        <span class="ops-ctrl-label">Accent</span>
-        <button class="mode-btn" id="lt-acc-def"  onclick="patchLTColor('')">Default</button>
-        <button class="mode-btn" id="lt-acc-t1"   onclick="patchLTColor('team1')">T1</button>
-        <button class="mode-btn" id="lt-acc-t2"   onclick="patchLTColor('team2')">T2</button>
-      </div>
     </div>
     <div class="ops-panel-body">
       <div class="field-row">
@@ -813,10 +807,6 @@ socket.on('state', state => {
   const ltSide = state.lowerThird && state.lowerThird.side;
   setModeActive('lt-pos-left',  ltSide === 'left'  || !ltSide);
   setModeActive('lt-pos-right', ltSide === 'right');
-  const ltColor = state.lowerThird && state.lowerThird.teamColor;
-  setModeActive('lt-acc-def', !ltColor);
-  setModeActive('lt-acc-t1',  ltColor === 'team1');
-  setModeActive('lt-acc-t2',  ltColor === 'team2');
 
   /* Break screen fields */
   setInp('ops-break-msg',  state.breakScreen && state.breakScreen.message);
@@ -914,13 +904,6 @@ function setWinner(team) {
 /* ── Lower Third ── */
 function patchLT(side) {
   api('/api/lowerThird', { side });
-}
-function patchLTColor(teamColor) {
-  const s = window._state;
-  let color = '';
-  if (teamColor === 'team1' && s.settings) color = s.settings.redAccent || '';
-  if (teamColor === 'team2' && s.settings) color = s.settings.blueAccent || '';
-  api('/api/lowerThird', { teamColor: color });
 }
 
 /* ── Player Intro ── */

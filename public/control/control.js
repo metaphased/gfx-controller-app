@@ -831,11 +831,9 @@ function setInpSafe(id, val) { setInp(id, val); }
 function setText(id, val) { const e = g(id); if (e) e.textContent = val != null ? val : ''; }
 function setSpan(id, val) { setText(id, val); }
 function setColorPicker(id, val) { const e = g(id); if (e && val && /^#[0-9a-fA-F]{6}$/.test(val)) e.value = val; }
-function setDotColor(id, color) { const e = g(id); if (e) e.style.background = color || '#1ffaff'; }
 
 // ── Match ──────────────────────────────────────────────────────────────────────
 function patchMatch(data) { api('/api/match', data); }
-function getLTColor(k) { return (window._state&&window._state.match&&window._state.match[k]&&window._state.match[k].color)||'#1ffaff'; }
 function patchScore(team, delta) { api('/api/score', { team, delta }); }
 function resetState(btn) { confirmDestructive(btn, 'Reset all state', () => api('/api/state/reset', {})); }
 
@@ -843,7 +841,6 @@ function syncTeamDisplay(n, team) {
   const prefix = 't' + n;
   setText(prefix + '-name-disp', team.name || 'No team loaded');
   setText(prefix + '-tag-disp',  team.tag  || '');
-  setDotColor(prefix + '-dot',   team.color);
   setSpan(prefix + '-score',     team.score);
   const thumb = g(prefix + '-logo-thumb');
   if (thumb) {
@@ -864,8 +861,8 @@ function patchLT(data) { api('/api/lowerThird', data); }
 
 function renderLTQuickGrid(players, match) {
   const grid = g('lt-player-grid'); if (!grid) return;
-  const t1 = (players.team1||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team1.name, teamTag:match.team1.tag, teamColor:match.team1.color}));
-  const t2 = (players.team2||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team2.name, teamTag:match.team2.tag, teamColor:match.team2.color}));
+  const t1 = (players.team1||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team1.name, teamTag:match.team1.tag}));
+  const t2 = (players.team2||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team2.name, teamTag:match.team2.tag}));
   const all = [];
   const len = Math.max(t1.length, t2.length);
   for (let i = 0; i < len; i++) { if (t1[i]) all.push(t1[i]); if (t2[i]) all.push(t2[i]); }
@@ -881,7 +878,7 @@ function renderLTQuickGrid(players, match) {
 function quickLT(i) {
   const grid = g('lt-player-grid');
   const p = grid&&grid._players&&grid._players[i]; if (!p) return;
-  api('/api/lowerThird', { text:p.handle||p.name, subtext:(p.role?p.role+' · ':'')+p.teamName, supertext:(window._state&&window._state.match&&window._state.match.tournament)||'', teamColor:p.teamColor||'', visible:true });
+  api('/api/lowerThird', { text:p.handle||p.name, subtext:(p.role?p.role+' · ':'')+p.teamName, supertext:(window._state&&window._state.match&&window._state.match.tournament)||'', visible:true });
 }
 
 // ── Draft ──────────────────────────────────────────────────────────────────────
@@ -2585,7 +2582,7 @@ function _intelPlayerCard(p, cardKey) {
 
 function _intelTeamCol(team, players, teamKey) {
   const logoHtml = team.logo ? '<img class="intel-team-logo" src="' + escHtml(team.logo) + '" alt="">' : '<div class="intel-team-logo"></div>';
-  const border   = escHtml(team.color || '#1ffaff');
+  const border   = 'var(--primary)';
   const cards    = (players || []).map(function(p, i) { return _intelPlayerCard(p, teamKey + '_' + i); }).join('');
   return '<div class="intel-team-col">' +
     '<div class="intel-team-header" style="border-left:3px solid ' + border + '">' +
@@ -2756,7 +2753,6 @@ async function importBuildTeams(rows) {
     const teamData = {
       name:    teamName,
       tag:     match ? (match.tag   || '') : '',
-      color:   match ? (match.color || '#1ffaff') : '#1ffaff',
       logo:    match ? (match.logo  || '') : '',
       players: players,
       subs:    match ? (match.subs  || []) : [],
@@ -2788,12 +2784,11 @@ async function renderTeamsList() {
   if(empty)empty.style.display='none';
   container.innerHTML=teams.map(function(team){
     const logo=team.logo?'<img src="'+team.logo+'" style="width:44px;height:44px;object-fit:contain;flex-shrink:0">':'<div style="width:44px;height:44px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-dim);flex-shrink:0">LOGO</div>';
-    const dot='width:10px;height:10px;border-radius:50%;background:'+(team.color||'#1ffaff')+';display:inline-block;margin-right:6px;flex-shrink:0';
     const pc=(team.players||[]).filter(function(p){return p.handle||p.name;}).length;
     const sc=(team.subs||[]).filter(function(s){return s.handle||s.name;}).length;
     return '<div class="team-db-row">'+logo+
       '<div style="flex:1;min-width:0">'+
-        '<div style="display:flex;align-items:center;gap:6px"><div style="'+dot+'"></div>'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
           '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:800;color:#fff;text-transform:uppercase">'+esc(team.name)+'</span>'+
           '<span style="font-size:11px;color:var(--accent);letter-spacing:0.12em">'+esc(team.tag||'')+'</span></div>'+
         '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">'+pc+' player'+(pc!==1?'s':'')+' · '+sc+' sub'+(sc!==1?'s':'')+'</div>'+
@@ -2825,14 +2820,12 @@ async function openTeamEditor(teamId) {
     if (!team) return;
     title.textContent='Edit Team — '+team.name;
     g('edit-team-id').value=team.id; g('edit-team-name').value=team.name||''; g('edit-team-tag').value=team.tag||'';
-    g('edit-team-color').value=team.color||'#1ffaff'; g('edit-team-color-text').value=team.color||'#1ffaff';
     g('edit-team-logo').value=team.logo||''; updateEditLogoPreview(team.logo||'');
     renderEditPlayers(team.players||[], team.subs||[]);
     deleteBtn.style.display='block';
   } else {
     title.textContent='New Team';
     g('edit-team-id').value=''; g('edit-team-name').value=''; g('edit-team-tag').value='';
-    g('edit-team-color').value='#1ffaff'; g('edit-team-color-text').value='#1ffaff';
     g('edit-team-logo').value=''; updateEditLogoPreview('');
     renderEditPlayers([], []);
     deleteBtn.style.display='none';
@@ -2914,7 +2907,7 @@ async function saveTeamEditor() {
     };
   });
   const idVal=g('edit-team-id').value;
-  const team={name,tag:(g('edit-team-tag').value||'').trim().toUpperCase(),color:g('edit-team-color').value||'#1ffaff',logo:(g('edit-team-logo').value||'').trim(),players,subs};
+  const team={name,tag:(g('edit-team-tag').value||'').trim().toUpperCase(),logo:(g('edit-team-logo').value||'').trim(),players,subs};
   if(idVal)team.id=idVal;
   const res=await api('/api/teams/save',team);
   if(res&&res.ok){closeTeamEditor();renderTeamsList();}
@@ -2947,11 +2940,10 @@ async function openTeamPicker(slot) {
   }
   list.innerHTML=teams.map(function(team){
     const logo=team.logo?'<img src="'+team.logo+'" style="width:52px;height:52px;object-fit:contain;flex-shrink:0">':'<div style="width:52px;height:52px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-dim);flex-shrink:0">LOGO</div>';
-    const dot='width:10px;height:10px;border-radius:50%;background:'+(team.color||'#1ffaff')+';display:inline-block;margin-right:6px;flex-shrink:0';
     const pc=(team.players||[]).filter(function(p){return p.handle||p.name;}).length;
     return '<div class="team-picker-option" onclick="selectTeamFromPicker(\''+team.id+'\')">' +
       logo+'<div style="flex:1;min-width:0">'+
-        '<div style="display:flex;align-items:center;gap:6px"><div style="'+dot+'"></div>'+
+        '<div style="display:flex;align-items:center;gap:6px">'+
           '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:800;color:#fff;text-transform:uppercase">'+esc(team.name)+'</span>'+
           '<span style="font-size:11px;color:var(--accent);letter-spacing:0.12em">'+esc(team.tag||'')+'</span></div>'+
         '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">'+pc+' players</div>'+
@@ -3144,8 +3136,8 @@ function syncOperatorPage(s) {
 function renderOpsLTQuickGrid(players, match) {
   const grid = g('ops-lt-player-grid');
   if (!grid) return;
-  const t1 = (players.team1||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team1.name, teamTag:match.team1.tag, teamColor:match.team1.color}));
-  const t2 = (players.team2||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team2.name, teamTag:match.team2.tag, teamColor:match.team2.color}));
+  const t1 = (players.team1||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team1.name, teamTag:match.team1.tag}));
+  const t2 = (players.team2||[]).filter(p => p.handle||p.name).map(p => ({...p, teamName:match.team2.name, teamTag:match.team2.tag}));
   const all = [];
   const len = Math.max(t1.length, t2.length);
   for (let i = 0; i < len; i++) { if (t1[i]) all.push(t1[i]); if (t2[i]) all.push(t2[i]); }
@@ -3165,7 +3157,7 @@ function renderOpsLTQuickGrid(players, match) {
 function opsQuickLT(i) {
   const grid = g('ops-lt-player-grid');
   const p = grid&&grid._players&&grid._players[i]; if (!p) return;
-  api('/api/lowerThird', { text:p.handle||p.name, subtext:(p.role?p.role+' · ':'')+p.teamName, supertext:(window._state&&window._state.match&&window._state.match.tournament)||'', teamColor:p.teamColor||'', visible:true });
+  api('/api/lowerThird', { text:p.handle||p.name, subtext:(p.role?p.role+' · ':'')+p.teamName, supertext:(window._state&&window._state.match&&window._state.match.tournament)||'', visible:true });
 }
 
 // ── Operator page timer helper ─────────────────────────────────────────────────

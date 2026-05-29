@@ -478,7 +478,7 @@
       <div class="grid2">
         <div class="card">
           <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:8px"><div class="team-color-dot" id="t1-dot"></div>Team 1</div>
+            <div style="display:flex;align-items:center;gap:8px">Team 1</div>
             <button class="btn btn-sm btn-primary gs-load-team-btn" style="display:none" onclick="openTeamPicker('team1')">Load Team ▾</button>
           </div>
           <div class="gs-team-display">
@@ -494,7 +494,7 @@
         </div>
         <div class="card">
           <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:8px"><div class="team-color-dot" id="t2-dot"></div>Team 2</div>
+            <div style="display:flex;align-items:center;gap:8px">Team 2</div>
             <button class="btn btn-sm btn-primary gs-load-team-btn" style="display:none" onclick="openTeamPicker('team2')">Load Team ▾</button>
           </div>
           <div class="gs-team-display">
@@ -550,12 +550,6 @@
           <div>
             <div class="field-row"><label>Team Name</label><input type="text" id="edit-team-name" placeholder="e.g. Cloud9"></div>
             <div class="field-row"><label>Tag</label><input type="text" id="edit-team-tag" maxlength="6" placeholder="e.g. C9"></div>
-            <div class="field-row"><label>Accent Color</label>
-              <div style="display:flex;gap:8px;align-items:center">
-                <input type="color" id="edit-team-color" value="#1ffaff" style="width:48px;height:32px;padding:2px;background:none;border:1px solid var(--border);cursor:pointer" onchange="document.getElementById('edit-team-color-text').value=this.value">
-                <input type="text" id="edit-team-color-text" placeholder="#1ffaff" value="#1ffaff" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value))document.getElementById('edit-team-color').value=this.value">
-              </div>
-            </div>
             <div class="field-row"><label>Logo</label>
               <div class="upload-row">
                 <input type="text" id="edit-team-logo" placeholder="URL or upload" oninput="updateEditLogoPreview(this.value)">
@@ -676,12 +670,6 @@
             <span class="gfx-ctrl-section-label">Position</span>
             <label class="ctrl-radio-label"><input type="radio" name="lt-side" value="left" onchange="patchLT({side:'left'})" checked> Left</label>
             <label class="ctrl-radio-label"><input type="radio" name="lt-side" value="right" onchange="patchLT({side:'right'})"> Right</label>
-          </div>
-          <div class="gfx-ctrl-group">
-            <span class="gfx-ctrl-section-label">Accent</span>
-            <label class="ctrl-radio-label"><input type="radio" name="lt-color" value="" onchange="patchLT({teamColor:''})" checked> Default</label>
-            <label class="ctrl-radio-label"><input type="radio" name="lt-color" value="team1" onchange="patchLT({teamColor:getLTColor('team1')})"> Team 1</label>
-            <label class="ctrl-radio-label"><input type="radio" name="lt-color" value="team2" onchange="patchLT({teamColor:getLTColor('team2')})"> Team 2</label>
           </div>
         </div>
       </div>
