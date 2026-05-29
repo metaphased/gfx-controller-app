@@ -1,3 +1,11 @@
+// Global HTML-escape helper — wrap any user-entered data (team/player names,
+// handles, ticker/lower-third text, titles) before interpolating into innerHTML.
+window.esc = function (s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+};
+
 // Shared graphics settings helper — include in every graphic overlay
 window.GfxSettings = (function () {
 

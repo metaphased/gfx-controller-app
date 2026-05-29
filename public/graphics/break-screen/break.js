@@ -429,7 +429,7 @@ function renderAll(state) {
   if (sponsorEl) {
     const logos = match.sponsorLogos || [];
     sponsorEl.innerHTML = logos.map(function(url) {
-      return '<div class="break-sponsor" style="background-image:url(' + url + ')"></div>';
+      return '<div class="break-sponsor" style="background-image:url(' + esc(url) + ')"></div>';
     }).join('');
   }
 

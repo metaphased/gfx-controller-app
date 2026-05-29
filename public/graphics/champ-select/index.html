@@ -154,6 +154,7 @@
 <script src="/socket.io/socket.io.js"></script>
 <script>
 const _gfxToken = new URLSearchParams(window.location.search).get('token') || '';
+function esc(s) { return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 const PHASE_LABELS = {
   notstarted: '—',
   bans1:  'PHASE 1 — BANS',
@@ -185,7 +186,7 @@ function renderBans(id, bans) {
   const el = document.getElementById(id);
   el.innerHTML = (bans || ['','','','','']).map(function(b) {
     return '<div class="ban-slot' + (b ? '' : ' empty') + '">' +
-      (b ? '<img src="' + b + '" alt="">' : '') +
+      (b ? '<img src="' + esc(b) + '" alt="">' : '') +
       (b ? '<div class="ban-x">✕</div>' : '') +
       '</div>';
   }).join('');
@@ -198,11 +199,11 @@ function renderPicks(id, picks, players, isRight) {
     const champName = champNameFromUrl(p);
     return '<div class="pick-slot">' +
       '<div class="pick-bar"></div>' +
-      (p ? '<img class="pick-champ-img" src="' + p + '" alt="">' : '<div style="width:120px;height:120px;background:rgba(255,255,255,0.04)"></div>') +
+      (p ? '<img class="pick-champ-img" src="' + esc(p) + '" alt="">' : '<div style="width:120px;height:120px;background:rgba(255,255,255,0.04)"></div>') +
       '<div class="pick-info">' +
-        '<div class="pick-player">' + (player.handle || player.name || ('Player ' + (i+1))) + '</div>' +
-        '<div class="pick-champ">' + (champName || '—') + '</div>' +
-        '<div class="pick-role">' + (player.role || '') + '</div>' +
+        '<div class="pick-player">' + esc(player.handle || player.name || ('Player ' + (i+1))) + '</div>' +
+        '<div class="pick-champ">' + esc(champName || '—') + '</div>' +
+        '<div class="pick-role">' + esc(player.role || '') + '</div>' +
       '</div>' +
       '</div>';
   }).join('');
