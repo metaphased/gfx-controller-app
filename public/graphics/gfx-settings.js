@@ -180,11 +180,11 @@ window.GfxSettings = (function () {
   }
 
   var _SPEED_MULT = { instant: 0, fast: 0.5, medium: 1, slow: 1.6 };
-  // Base durations (seconds) for each animation role, scaled by the speed multiplier.
-  var _DUR_BASE = { enter: 0.55, exit: 0.40, move: 0.30 };
 
-  // Inject the six animation tokens onto `el` (usually document.documentElement),
+  // Inject the animation tokens onto `el` (usually document.documentElement),
   // resolving global settings merged with this graphic's overrides.
+  // Easings are role-based (enter/exit/move); duration is a single unitless scale
+  // so overlay CSS keeps its own choreographed timings: calc(0.55s * var(--gfx-dur-scale)).
   function applyAnimation(el, s, graphicKey) {
     var anim = get(s).animation || {};
     var ov   = (anim.overrides && graphicKey && anim.overrides[graphicKey]) || {};
@@ -193,9 +193,7 @@ window.GfxSettings = (function () {
     el.style.setProperty('--gfx-ease-enter', resolveEasing(ov.enterEase || anim.enterEase || 'easeOutQuart'));
     el.style.setProperty('--gfx-ease-exit',  resolveEasing(ov.exitEase  || anim.exitEase  || 'easeInQuart'));
     el.style.setProperty('--gfx-ease-move',  resolveEasing(ov.moveEase  || anim.moveEase  || 'easeInOutQuad'));
-    el.style.setProperty('--gfx-dur-enter', (_DUR_BASE.enter * mult).toFixed(3) + 's');
-    el.style.setProperty('--gfx-dur-exit',  (_DUR_BASE.exit  * mult).toFixed(3) + 's');
-    el.style.setProperty('--gfx-dur-move',  (_DUR_BASE.move  * mult).toFixed(3) + 's');
+    el.style.setProperty('--gfx-dur-scale',  String(mult));
   }
 
   // ── Read --gfx-c1 as [r,g,b] ────────────────────────────────────────────────

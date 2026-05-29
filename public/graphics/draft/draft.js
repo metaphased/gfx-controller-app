@@ -67,6 +67,7 @@ socket.on('state', (state) => {
   }
 
   GfxSettings.applyTheme(document.documentElement, state);
+  GfxSettings.applyAnimation(document.documentElement, state, 'draft');
   GfxSettings.applyBackground(document.getElementById('draft-root'), state);
 
   const root    = document.getElementById('draft-root');

@@ -133,7 +133,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   position: absolute; inset: 0;
   width: 100%; height: 100%;
   object-fit: cover; object-position: center top;
-  opacity: 0; transition: opacity 0.4s ease;
+  opacity: 0; transition: opacity calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-move, ease);
 }
 .ban-slot img.ban-img.loaded { opacity: 1; }
 
@@ -369,7 +369,7 @@ body.phase-bold .fearless-label {
   position: absolute; inset: 0;
   background: radial-gradient(ellipse at 50% 50%, var(--clock-color) 0%, transparent 75%);
   opacity: 0;
-  transition: opacity 0.5s;
+  transition: opacity calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-move, ease);
   pointer-events: none;
 }
 .clock-center.active-blue::before,
@@ -432,7 +432,7 @@ body.phase-bold .clock-series-phase {
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  transition: filter 0.45s ease, transform 0.45s ease;
+  transition: filter calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-move, ease), transform calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-move, ease);
 }
 
 /* Pulse + glow when on the clock */
@@ -474,7 +474,7 @@ body.phase-bold .clock-series-phase {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 3.5vh; font-weight: 900;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: opacity calc(0.3s * var(--gfx-dur-scale, 1)) var(--gfx-ease-move, ease);
   flex-shrink: 0;
 }
 #clock-arrow-l { color: var(--gfx-blue); }

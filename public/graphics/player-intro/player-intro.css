@@ -8,7 +8,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: 100vw; height: 100vh;
   position: relative;
   opacity: 0;
-  transition: opacity 0.5s ease;
+  transition: opacity calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-move, ease);
 }
 #pi-root.visible { opacity: 1; }
 
@@ -486,30 +486,30 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* ── Rise (default): box slides up as a unit ────────────────────────────── */
 #pi-root.layout-panel.pi-entering .pi-panel-box {
-  animation: pi-rise 0.55s cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation: pi-rise calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
 }
 #pi-root.layout-panel.pi-exiting .pi-panel-box {
-  animation: pi-sink 0.42s cubic-bezier(0.5, 0, 0.75, 0) forwards;
+  animation: pi-sink calc(0.42s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.5,0,0.75,0)) forwards;
 }
 
 /* ── Stagger: per-row, T1 from left / T2 from right ────────────────────── */
 #pi-root.layout-panel.anim-stagger.pi-entering .pi-panel-box { animation: none; }
 
-#pi-root.layout-panel.anim-stagger.pi-entering .pi-panel-header { animation: pi-rise 0.38s cubic-bezier(0.25, 1, 0.5, 1) 0.05s both; }
+#pi-root.layout-panel.anim-stagger.pi-entering .pi-panel-header { animation: pi-rise calc(0.38s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) calc(0.05s * var(--gfx-dur-scale, 1)) both; }
 
-#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t1-rows .pi-pnl-row { animation: pi-in-l 0.42s cubic-bezier(0.25, 1, 0.5, 1) both; }
-#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row { animation: pi-in-r 0.42s cubic-bezier(0.25, 1, 0.5, 1) both; }
+#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t1-rows .pi-pnl-row { animation: pi-in-l calc(0.42s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both; }
+#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row { animation: pi-in-r calc(0.42s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both; }
 
 #pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t1-rows .pi-pnl-row:nth-child(1),
-#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row:nth-child(1) { animation-delay: 0.16s; }
+#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row:nth-child(1) { animation-delay: calc(0.16s * var(--gfx-dur-scale, 1)); }
 #pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t1-rows .pi-pnl-row:nth-child(2),
-#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row:nth-child(2) { animation-delay: 0.24s; }
+#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row:nth-child(2) { animation-delay: calc(0.24s * var(--gfx-dur-scale, 1)); }
 #pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t1-rows .pi-pnl-row:nth-child(3),
-#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row:nth-child(3) { animation-delay: 0.32s; }
+#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row:nth-child(3) { animation-delay: calc(0.32s * var(--gfx-dur-scale, 1)); }
 #pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t1-rows .pi-pnl-row:nth-child(4),
-#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row:nth-child(4) { animation-delay: 0.40s; }
+#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row:nth-child(4) { animation-delay: calc(0.40s * var(--gfx-dur-scale, 1)); }
 #pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t1-rows .pi-pnl-row:nth-child(5),
-#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row:nth-child(5) { animation-delay: 0.48s; }
+#pi-root.layout-panel.anim-stagger.pi-entering #pi-panel-t2-rows .pi-pnl-row:nth-child(5) { animation-delay: calc(0.48s * var(--gfx-dur-scale, 1)); }
 
 /* ── Fade: root opacity handles it; cancel box animation ───────────────── */
 #pi-root.layout-panel.anim-fade.pi-entering .pi-panel-box { animation: none; }
@@ -519,23 +519,23 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Split (default): halves slide in from edges, players stagger ───────── */
-#pi-root.layout-stack.pi-entering .pi-stack-t1 { animation: pi-in-l 0.55s cubic-bezier(0.25, 1, 0.5, 1) both; }
-#pi-root.layout-stack.pi-entering .pi-stack-t2 { animation: pi-in-r 0.55s cubic-bezier(0.25, 1, 0.5, 1) both; }
+#pi-root.layout-stack.pi-entering .pi-stack-t1 { animation: pi-in-l calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both; }
+#pi-root.layout-stack.pi-entering .pi-stack-t2 { animation: pi-in-r calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both; }
 
-#pi-root.layout-stack.pi-entering .pi-stk-player { animation: pi-rise 0.4s cubic-bezier(0.25, 1, 0.5, 1) both; }
-#pi-root.layout-stack.pi-entering .pi-stk-player:nth-child(1) { animation-delay: 0.30s; }
-#pi-root.layout-stack.pi-entering .pi-stk-player:nth-child(2) { animation-delay: 0.37s; }
-#pi-root.layout-stack.pi-entering .pi-stk-player:nth-child(3) { animation-delay: 0.44s; }
-#pi-root.layout-stack.pi-entering .pi-stk-player:nth-child(4) { animation-delay: 0.51s; }
-#pi-root.layout-stack.pi-entering .pi-stk-player:nth-child(5) { animation-delay: 0.58s; }
+#pi-root.layout-stack.pi-entering .pi-stk-player { animation: pi-rise calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both; }
+#pi-root.layout-stack.pi-entering .pi-stk-player:nth-child(1) { animation-delay: calc(0.30s * var(--gfx-dur-scale, 1)); }
+#pi-root.layout-stack.pi-entering .pi-stk-player:nth-child(2) { animation-delay: calc(0.37s * var(--gfx-dur-scale, 1)); }
+#pi-root.layout-stack.pi-entering .pi-stk-player:nth-child(3) { animation-delay: calc(0.44s * var(--gfx-dur-scale, 1)); }
+#pi-root.layout-stack.pi-entering .pi-stk-player:nth-child(4) { animation-delay: calc(0.51s * var(--gfx-dur-scale, 1)); }
+#pi-root.layout-stack.pi-entering .pi-stk-player:nth-child(5) { animation-delay: calc(0.58s * var(--gfx-dur-scale, 1)); }
 
-#pi-root.layout-stack.pi-exiting .pi-stack-t1 { animation: pi-out-l 0.38s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
-#pi-root.layout-stack.pi-exiting .pi-stack-t2 { animation: pi-out-r 0.38s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+#pi-root.layout-stack.pi-exiting .pi-stack-t1 { animation: pi-out-l calc(0.38s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.5,0,0.75,0)) forwards; }
+#pi-root.layout-stack.pi-exiting .pi-stack-t2 { animation: pi-out-r calc(0.38s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.5,0,0.75,0)) forwards; }
 
 /* ── Rise: whole stack rises, override split ────────────────────────────── */
 #pi-root.layout-stack.anim-rise.pi-entering .pi-stack-t1,
 #pi-root.layout-stack.anim-rise.pi-entering .pi-stack-t2 {
-  animation: pi-rise 0.6s cubic-bezier(0.25, 1, 0.5, 1) both;
+  animation: pi-rise calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
 }
 #pi-root.layout-stack.anim-rise.pi-entering .pi-stk-player { animation: none; }
 
@@ -549,8 +549,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ── Slide (default): bar slides up from bottom ─────────────────────────── */
-#pi-root.layout-bar.pi-entering .pi-bar-band { animation: pi-up 0.5s cubic-bezier(0.25, 1, 0.5, 1) both; }
-#pi-root.layout-bar.pi-exiting  .pi-bar-band { animation: pi-down 0.42s cubic-bezier(0.5, 0, 0.75, 0) forwards; }
+#pi-root.layout-bar.pi-entering .pi-bar-band { animation: pi-up calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both; }
+#pi-root.layout-bar.pi-exiting  .pi-bar-band { animation: pi-down calc(0.42s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.5,0,0.75,0)) forwards; }
 
 /* ── Fade: cancel slide ─────────────────────────────────────────────────── */
 #pi-root.layout-bar.anim-fade.pi-entering .pi-bar-band { animation: none; }
