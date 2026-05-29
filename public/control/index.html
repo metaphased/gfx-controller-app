@@ -1263,6 +1263,36 @@
             </div>
           </div>
 
+          <!-- Animation -->
+          <div class="card" style="margin-top:16px">
+            <div class="card-title">Animation</div>
+            <p class="hint">Global motion feel for graphic entrances and exits. Pick a speed and an easing curve for each phase, then preview it below.</p>
+
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Speed</span>
+              <div class="theme-pills" id="ts-anim-speed">
+                <button class="theme-pill" data-speed="instant" onclick="setAnimSpeed('instant')">Instant</button>
+                <button class="theme-pill" data-speed="fast"    onclick="setAnimSpeed('fast')">Fast</button>
+                <button class="theme-pill" data-speed="medium"  onclick="setAnimSpeed('medium')">Medium</button>
+                <button class="theme-pill" data-speed="slow"    onclick="setAnimSpeed('slow')">Slow</button>
+              </div>
+            </div>
+
+            <div class="theme-ease-grid">
+              <label class="theme-ease-field"><span>Entrance</span>
+                <select id="ts-ease-enter" onchange="setAnimEase('enterEase', this.value)"></select></label>
+              <label class="theme-ease-field"><span>Exit</span>
+                <select id="ts-ease-exit" onchange="setAnimEase('exitEase', this.value)"></select></label>
+              <label class="theme-ease-field"><span>Data change</span>
+                <select id="ts-ease-move" onchange="setAnimEase('moveEase', this.value)"></select></label>
+            </div>
+
+            <div class="theme-ease-preview">
+              <div class="theme-ease-track"><div class="theme-ease-dot" id="ts-ease-preview"></div></div>
+              <button class="btn btn-sm" onclick="playEasePreview()">▶ Preview entrance</button>
+            </div>
+          </div>
+
         </div><!-- /right col -->
 
       </div><!-- /theme-two-col -->
@@ -2153,6 +2183,7 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/graphics/gfx-settings.js"></script>
 <script src="champion-picker.js"></script>
 <script src="action-registry.js"></script>
 <script src="control.js"></script>

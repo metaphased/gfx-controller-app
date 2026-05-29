@@ -5097,8 +5097,75 @@ function syncThemeTab(st) {
   const fogInt = g('ts-fog-intensity');
   if (fogInt && document.activeElement !== fogInt) fogInt.value = st.bgFogIntensity != null ? st.bgFogIntensity : 50;
 
+  // Animation — easing selects + speed pills
+  populateEasingSelects();
+  const aEnter = animation.enterEase || 'easeOutQuart';
+  const aExit  = animation.exitEase  || 'easeInQuart';
+  const aMove  = animation.moveEase  || 'easeInOutQuad';
+  const aSpeed = animation.speed     || 'medium';
+  const seEnter = g('ts-ease-enter'); if (seEnter && document.activeElement !== seEnter) seEnter.value = aEnter;
+  const seExit  = g('ts-ease-exit');  if (seExit  && document.activeElement !== seExit)  seExit.value  = aExit;
+  const seMove  = g('ts-ease-move');  if (seMove  && document.activeElement !== seMove)  seMove.value  = aMove;
+  const speedWrap = g('ts-anim-speed');
+  if (speedWrap) speedWrap.querySelectorAll('.theme-pill').forEach(b => b.classList.toggle('is-active', b.dataset.speed === aSpeed));
+
   // Logo library
   renderThemeLogos((logoSet.logos || []));
+}
+
+// ── Animation controls ──────────────────────────────────────────────────────
+const _SPEED_MULT_UI = { instant: 0, fast: 0.5, medium: 1, slow: 1.6 };
+const _EASING_GROUPS = [
+  ['Basic',            ['linear']],
+  ['Sine',             ['easeInSine', 'easeOutSine', 'easeInOutSine']],
+  ['Quad',             ['easeInQuad', 'easeOutQuad', 'easeInOutQuad']],
+  ['Cubic',            ['easeInCubic', 'easeOutCubic', 'easeInOutCubic']],
+  ['Quart',            ['easeInQuart', 'easeOutQuart', 'easeInOutQuart']],
+  ['Quint',            ['easeInQuint', 'easeOutQuint', 'easeInOutQuint']],
+  ['Expo',             ['easeInExpo', 'easeOutExpo', 'easeInOutExpo']],
+  ['Circ',             ['easeInCirc', 'easeOutCirc', 'easeInOutCirc']],
+  ['Back (overshoot)', ['easeInBack', 'easeOutBack', 'easeInOutBack']],
+  ['Bounce',           ['easeInBounce', 'easeOutBounce', 'easeInOutBounce']],
+  ['Elastic',          ['easeInElastic', 'easeOutElastic', 'easeInOutElastic']],
+];
+function _easingLabel(name) {
+  if (name === 'linear') return 'Linear';
+  return name.replace(/^ease/, '').replace(/([A-Z])/g, ' $1').trim(); // easeInOutQuart → In Out Quart
+}
+let _easingSelectsReady = false;
+function populateEasingSelects() {
+  if (_easingSelectsReady) return;
+  const avail = (window.GfxSettings && GfxSettings.EASINGS) || {};
+  const optsHtml = _EASING_GROUPS.map(([label, names]) => {
+    const opts = names.filter(n => avail[n] || n === 'linear')
+      .map(n => `<option value="${n}">${escHtml(_easingLabel(n))}</option>`).join('');
+    return opts ? `<optgroup label="${escHtml(label)}">${opts}</optgroup>` : '';
+  }).join('');
+  ['ts-ease-enter', 'ts-ease-exit', 'ts-ease-move'].forEach(id => {
+    const sel = g(id); if (sel && !sel.options.length) sel.innerHTML = optsHtml;
+  });
+  _easingSelectsReady = true;
+}
+function setAnimEase(field, val) { patchSettings({ animation: { [field]: val } }); if (field === 'enterEase') playEasePreview(); }
+function setAnimSpeed(val) {
+  patchSettings({ animation: { speed: val } });
+  const wrap = g('ts-anim-speed');
+  if (wrap) wrap.querySelectorAll('.theme-pill').forEach(b => b.classList.toggle('is-active', b.dataset.speed === val));
+  playEasePreview();
+}
+// Replay the preview dot using the current entrance easing + speed.
+function playEasePreview() {
+  const dot = g('ts-ease-preview'); if (!dot) return;
+  const a = (window._state && window._state.settings && window._state.settings.animation) || {};
+  const ease = (window.GfxSettings && GfxSettings.resolveEasing(a.enterEase || 'easeOutQuart')) || 'ease';
+  const mult = _SPEED_MULT_UI[a.speed] != null ? _SPEED_MULT_UI[a.speed] : 1;
+  const track = dot.parentElement;
+  const travel = Math.max(40, (track ? track.clientWidth : 240) - 30);
+  dot.style.transition = 'none';
+  dot.style.transform = 'translateX(0)';
+  void dot.offsetWidth; // force reflow so the reset takes before re-animating
+  dot.style.transition = `transform ${(0.6 * mult).toFixed(3)}s ${ease}`;
+  dot.style.transform = `translateX(${travel}px)`;
 }
 
 // ── BG Output tab ─────────────────────────────────────────────────────────────
