@@ -3689,7 +3689,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (savedTab === 'users')    loadUsersTab();
     if (savedTab === 'log')      loadActionLog();
     if (savedTab === 'profiles') loadProfilesTab();
-    if (savedTab === 'theme')    loadLooksList();
     if (savedTab === 'home')     renderDashboard(window._state);
   }
 });
@@ -5049,8 +5048,12 @@ function renderThemeLogos(logos) {
   ).join('');
 }
 
+let _looksAutoLoaded = false;
 function syncThemeTab(st) {
   if (!st) return;
+  // Reliable one-time Looks load after the socket delivers state (the
+  // DOMContentLoaded restore can race the fetch on a cold first load).
+  if (!_looksAutoLoaded) { _looksAutoLoaded = true; loadLooksList(); }
   const { palette = [], blueAccent = '#1e6fff', redAccent = '#ff3b3b',
           bgType = 'transparent', bgColor = '#070f12', bgImage = '',
           bgAnimation = 'none', animation = {}, logoSet = {} } = st;
