@@ -190,28 +190,31 @@ body {
 .sidebar-user-chip {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 7px;
   margin-top: 10px;
   background: none;
   border: 1px solid rgba(31,250,255,0.12);
   border-radius: 4px;
-  padding: 6px 10px;
+  padding: 5px 8px;
   cursor: pointer;
   font-family: var(--ui-font), sans-serif;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
   color: var(--text-dim);
   width: 100%;
-  transition: border-color 0.15s, color 0.15s;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
   overflow: hidden;
 }
-.sidebar-user-chip:hover { border-color: var(--primary); color: var(--text); }
-.suc-icon { color: var(--primary); flex-shrink: 0; }
+.sidebar-user-chip:hover { border-color: var(--primary); color: var(--text); background: rgba(31,250,255,0.04); }
+.suc-icon { color: var(--primary); flex-shrink: 0; font-size: 11px; }
 .suc-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-transform: uppercase; }
-.suc-sep { color: rgba(31,250,255,0.3); flex-shrink: 0; }
-.suc-role { flex-shrink: 0; text-transform: uppercase; font-size: 10px; color: rgba(31,250,255,0.5); }
-.suc-caret { flex-shrink: 0; opacity: 0.5; }
+.suc-role {
+  flex-shrink: 0; margin-left: auto;
+  text-transform: uppercase; font-size: 9px; font-weight: 700; letter-spacing: 0.12em;
+  color: var(--primary); background: rgba(31,250,255,0.08);
+  border: 1px solid rgba(31,250,255,0.18); border-radius: 3px; padding: 1px 6px;
+}
 
 /* ── Profile / keybinds modal ─────────────────────────── */
 .profile-modal-overlay {
@@ -262,24 +265,45 @@ body {
 }
 .pm-footer-right { display: flex; align-items: center; gap: 8px; }
 
-/* ── Keybind table ───────────────────────────────────── */
-.kb-section { margin-bottom: 22px; }
-.kb-section:last-child { margin-bottom: 0; }
-.kb-section-label {
-  font-size: 10px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--text-dim); margin-bottom: 6px; padding-bottom: 6px;
-  border-bottom: 1px solid var(--border);
+/* ── Keybind table (accordion) ───────────────────────── */
+.kb-section {
+  border: 1px solid var(--border); border-radius: 5px;
+  margin-bottom: 8px; overflow: hidden;
 }
+.kb-section:last-child { margin-bottom: 0; }
+.kb-section-header {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; background: var(--bg3); border: none;
+  padding: 9px 12px; cursor: pointer;
+  font-family: var(--ui-font), sans-serif;
+  transition: background 0.15s;
+}
+.kb-section-header:hover { background: rgba(31,250,255,0.05); }
+.kb-section.open .kb-section-header { border-bottom: 1px solid var(--border); }
+.kb-section-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text);
+}
+.kb-section-meta {
+  display: flex; align-items: center; gap: 9px;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.06em; color: var(--text-dim);
+}
+.kb-section-count { color: var(--primary); opacity: 0.85; }
+.kb-section-chevron { font-size: 11px; transition: transform 0.18s; opacity: 0.6; }
+.kb-section.open .kb-section-chevron { transform: rotate(180deg); }
+.kb-section-body { display: none; padding: 4px 12px; }
+.kb-section.open .kb-section-body { display: block; }
 .kb-row {
   display: grid;
-  grid-template-columns: 1fr 140px 28px;
-  gap: 8px;
+  grid-template-columns: 1fr 132px 26px;
+  gap: 10px;
   align-items: center;
-  padding: 4px 0;
-  border-bottom: 1px solid rgba(167,163,142,0.05);
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(167,163,142,0.06);
 }
 .kb-row:last-child { border-bottom: none; }
-.kb-action-label { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kb-row:hover .kb-action-label { color: var(--primary); }
+.kb-action-label { font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: color 0.12s; }
 .kb-combo-btn {
   font-family: var(--ui-font), monospace;
   font-size: 11px; font-weight: 600; letter-spacing: 0.04em;

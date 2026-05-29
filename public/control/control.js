@@ -5652,6 +5652,7 @@ window._userKeybinds = {};
 let _kbListening = null;  // { btn, actionId, prevCombo } | null
 let _kbStaged    = {};
 let _kbDirty     = false;
+let _kbOpenSection = null; // category name of the currently expanded accordion section
 
 function _comboFromEvent(e) {
   const parts = [];
@@ -5713,19 +5714,37 @@ function renderKeybindTable() {
   const actions = ActionRegistry.getAll();
   const cats = {};
   actions.forEach(a => { if (!cats[a.category]) cats[a.category] = []; cats[a.category].push(a); });
-  body.innerHTML = Object.keys(cats).map(cat =>
-    `<div class="kb-section">
-      <div class="kb-section-label">${cat}</div>
-      ${cats[cat].map(a => {
-        const combo = _kbStaged[a.id] || '';
-        return `<div class="kb-row" data-action-id="${a.id}">
-          <span class="kb-action-label">${a.label}</span>
-          <button class="kb-combo-btn${combo ? '' : ' unbound'}" data-action-id="${a.id}" onclick="kbStartRecord(this)">${combo || '— unbound —'}</button>
-          <button class="kb-clear-btn" onclick="kbClear('${a.id}')" title="Clear">✕</button>
-        </div>`;
-      }).join('')}
-    </div>`
-  ).join('');
+  const catNames = Object.keys(cats);
+  // Default the first section open; keep the user's choice across re-renders.
+  if (!_kbOpenSection || !cats[_kbOpenSection]) _kbOpenSection = catNames[0];
+  body.innerHTML = catNames.map(cat => {
+    const bound  = cats[cat].filter(a => _kbStaged[a.id]).length;
+    const isOpen = cat === _kbOpenSection;
+    return `<div class="kb-section${isOpen ? ' open' : ''}" data-cat="${escHtml(cat)}">
+      <button type="button" class="kb-section-header" onclick="kbToggleSection('${escHtml(cat)}')">
+        <span class="kb-section-label">${escHtml(cat)}</span>
+        <span class="kb-section-meta">${bound ? `<span class="kb-section-count">${bound} set</span>` : ''}<span class="kb-section-chevron">▾</span></span>
+      </button>
+      <div class="kb-section-body">
+        ${cats[cat].map(a => {
+          const combo = _kbStaged[a.id] || '';
+          return `<div class="kb-row" data-action-id="${a.id}">
+            <span class="kb-action-label">${escHtml(a.label)}</span>
+            <button class="kb-combo-btn${combo ? '' : ' unbound'}" data-action-id="${a.id}" onclick="kbStartRecord(this)">${escHtml(combo) || '— unbound —'}</button>
+            <button class="kb-clear-btn" onclick="kbClear('${a.id}')" title="Clear">✕</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function kbToggleSection(cat) {
+  if (_kbListening) kbCancelListening();
+  _kbOpenSection = (_kbOpenSection === cat) ? null : cat;
+  document.querySelectorAll('#profile-modal-body .kb-section').forEach(sec => {
+    sec.classList.toggle('open', sec.dataset.cat === _kbOpenSection);
+  });
 }
 
 function kbStartRecord(btn) {
