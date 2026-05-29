@@ -201,7 +201,7 @@ html, body {
 
 /* ── Logo entry animation ───────────────────────────────────────────────────── */
 .groups-entering #groups-logo-wrap {
-  animation: gs-fade-in 0.6s ease 0.1s both;
+  animation: gs-fade-in calc(0.6s * var(--gfx-dur-scale, 1)) ease calc(0.1s * var(--gfx-dur-scale, 1)) both;
 }
 
 @keyframes gs-fade-in {
@@ -211,7 +211,7 @@ html, body {
 
 /* ── Entry animation ────────────────────────────────────────────────────────── */
 .groups-entering .gs-group {
-  animation: gs-slide-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: gs-slide-in calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both;
 }
 
 @keyframes gs-slide-in {
@@ -221,7 +221,7 @@ html, body {
 
 /* ── Exit ───────────────────────────────────────────────────────────────────── */
 .groups-exiting {
-  animation: gs-fade-out 0.5s ease forwards;
+  animation: gs-fade-out calc(0.5s * var(--gfx-dur-scale, 1)) ease forwards;
 }
 
 @keyframes gs-fade-out {

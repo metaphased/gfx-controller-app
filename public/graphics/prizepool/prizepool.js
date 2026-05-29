@@ -162,6 +162,7 @@ socket.on('connect', function() { _visible = false; });
 
 socket.on('state', function(state) {
   GfxSettings.applyTheme(document.documentElement, state);
+  GfxSettings.applyAnimation(document.documentElement, state, 'prizepool');
   GfxSettings.applyBackground(document.body, state);
 
   var pp      = state.prizepool || {};

@@ -176,12 +176,12 @@ html, body {
 
 /* ── Animation ────────────────────────────────────────────────────────────── */
 .pp-entering #pp-content {
-  animation: pp-fade-up 0.4s cubic-bezier(0.22,1,0.36,1) 0.05s both;
+  animation: pp-fade-up calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) calc(0.05s * var(--gfx-dur-scale, 1)) both;
 }
 .pp-entering .pp-highlight-card,
 .pp-entering .pp-placements-wrap,
 .pp-entering .pp-bonus-card {
-  animation: pp-slide-up 0.45s cubic-bezier(0.22,1,0.36,1) both;
+  animation: pp-slide-up calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both;
 }
 @keyframes pp-fade-up {
   from { opacity: 0; transform: translateY(1vh); }
@@ -193,5 +193,5 @@ html, body {
 }
 
 /* ── Exit ─────────────────────────────────────────────────────────────────── */
-.pp-exiting { animation: pp-fade-out 0.45s ease forwards; }
+.pp-exiting { animation: pp-fade-out calc(0.45s * var(--gfx-dur-scale, 1)) ease forwards; }
 @keyframes pp-fade-out { to { opacity: 0; } }

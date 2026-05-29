@@ -3684,6 +3684,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (savedTab === 'users')    loadUsersTab();
     if (savedTab === 'log')      loadActionLog();
     if (savedTab === 'profiles') loadProfilesTab();
+    if (savedTab === 'theme')    loadLooksList();
     if (savedTab === 'home')     renderDashboard(window._state);
   }
 });
@@ -4007,6 +4008,7 @@ function switchToTab(tabKey) {
     loadTeamsCache();
     if (tabKey === 'users')    loadUsersTab();
     if (tabKey === 'profiles') loadProfilesTab();
+    if (tabKey === 'theme')    loadLooksList();
     if (tabKey === 'home')     renderDashboard(window._state);
     localStorage.setItem('gfx_ctrl_tab', tabKey);
   });
@@ -5097,8 +5099,195 @@ function syncThemeTab(st) {
   const fogInt = g('ts-fog-intensity');
   if (fogInt && document.activeElement !== fogInt) fogInt.value = st.bgFogIntensity != null ? st.bgFogIntensity : 50;
 
+  // Animation — global default or per-graphic override (target-aware)
+  syncAnimControls();
+
   // Logo library
   renderThemeLogos((logoSet.logos || []));
+}
+
+// ── Animation controls ──────────────────────────────────────────────────────
+const _SPEED_MULT_UI = { instant: 0, fast: 0.5, medium: 1, slow: 1.6 };
+const _EASING_GROUPS = [
+  ['Basic',            ['linear']],
+  ['Sine',             ['easeInSine', 'easeOutSine', 'easeInOutSine']],
+  ['Quad',             ['easeInQuad', 'easeOutQuad', 'easeInOutQuad']],
+  ['Cubic',            ['easeInCubic', 'easeOutCubic', 'easeInOutCubic']],
+  ['Quart',            ['easeInQuart', 'easeOutQuart', 'easeInOutQuart']],
+  ['Quint',            ['easeInQuint', 'easeOutQuint', 'easeInOutQuint']],
+  ['Expo',             ['easeInExpo', 'easeOutExpo', 'easeInOutExpo']],
+  ['Circ',             ['easeInCirc', 'easeOutCirc', 'easeInOutCirc']],
+  ['Back (overshoot)', ['easeInBack', 'easeOutBack', 'easeInOutBack']],
+  ['Bounce',           ['easeInBounce', 'easeOutBounce', 'easeInOutBounce']],
+  ['Elastic',          ['easeInElastic', 'easeOutElastic', 'easeInOutElastic']],
+];
+// Graphics that consume the animation tokens (eligible for per-graphic overrides).
+const _ANIM_GRAPHICS = [
+  ['playerIntro', 'Player Intro'], ['headToHead', 'Head to Head'], ['draft', 'Draft'],
+  ['winScreen', 'Win Screen'], ['breakScreen', 'Break Screen'], ['preShow', 'Pre-show'],
+  ['bracket', 'Bracket'], ['groupStage', 'Group Stage'],
+  ['tournamentStructure', 'Tournament Structure'], ['prizepool', 'Prizepool'],
+];
+let _animTarget = 'global'; // 'global' or a graphic key — what the controls edit
+
+function _easingLabel(name) {
+  if (name === 'linear') return 'Linear';
+  return name.replace(/^ease/, '').replace(/([A-Z])/g, ' $1').trim(); // easeInOutQuart → In Out Quart
+}
+function _easingOptionsHtml(includeGlobal) {
+  const avail = (window.GfxSettings && GfxSettings.EASINGS) || {};
+  let html = includeGlobal ? '<option value="">— Use global —</option>' : '';
+  html += _EASING_GROUPS.map(([label, names]) => {
+    const opts = names.filter(n => avail[n] || n === 'linear')
+      .map(n => `<option value="${n}">${escHtml(_easingLabel(n))}</option>`).join('');
+    return opts ? `<optgroup label="${escHtml(label)}">${opts}</optgroup>` : '';
+  }).join('');
+  return html;
+}
+let _animTargetReady = false;
+function populateAnimTarget() {
+  if (_animTargetReady) return;
+  const sel = g('ts-anim-target'); if (!sel) return;
+  sel.innerHTML = '<option value="global">All graphics (global default)</option>' +
+    '<optgroup label="Override one graphic">' +
+    _ANIM_GRAPHICS.map(([k, l]) => `<option value="${k}">${escHtml(l)}</option>`).join('') +
+    '</optgroup>';
+  _animTargetReady = true;
+}
+// Rebuild easing select options only when switching between global/graphic editing.
+let _easeOptsMode = null;
+function _refreshEaseOptions() {
+  const mode = _animTarget === 'global' ? 'global' : 'graphic';
+  if (mode === _easeOptsMode) return;
+  _easeOptsMode = mode;
+  const html = _easingOptionsHtml(mode === 'graphic');
+  ['ts-ease-enter', 'ts-ease-exit', 'ts-ease-move'].forEach(id => { const s = g(id); if (s) s.innerHTML = html; });
+}
+function _animSettings() { return (window._state && window._state.settings && window._state.settings.animation) || {}; }
+function _syncSpeedPills(activeVal) {
+  const wrap = g('ts-anim-speed'); if (!wrap) return;
+  wrap.querySelectorAll('.theme-pill').forEach(b => b.classList.toggle('is-active', b.dataset.speed === (activeVal || '')));
+}
+function setAnimTarget(v) { _animTarget = v || 'global'; syncAnimControls(); }
+function setAnimEase(field, val) {
+  if (_animTarget === 'global') patchSettings({ animation: { [field]: val } });
+  else patchSettings({ animation: { overrides: { [_animTarget]: { [field]: val } } } });
+  if (field === 'enterEase') playEasePreview();
+}
+function setAnimSpeed(val) {
+  if (_animTarget === 'global') patchSettings({ animation: { speed: val } });
+  else patchSettings({ animation: { overrides: { [_animTarget]: { speed: val } } } });
+  _syncSpeedPills(val);
+  playEasePreview();
+}
+// "Reset to global" clears a graphic's override fields (empty = fall back to global).
+function resetAnimTarget() {
+  if (_animTarget === 'global') return;
+  patchSettings({ animation: { overrides: { [_animTarget]: { enterEase: '', exitEase: '', moveEase: '', speed: '' } } } });
+}
+// Reflect the current target's values into the controls + override note.
+function syncAnimControls() {
+  populateAnimTarget();
+  _refreshEaseOptions();
+  const isGraphic = _animTarget !== 'global';
+  const anim = _animSettings();
+  const m = isGraphic ? ((anim.overrides && anim.overrides[_animTarget]) || {}) : anim;
+  const enter = isGraphic ? (m.enterEase || '') : (m.enterEase || 'easeOutQuart');
+  const exit  = isGraphic ? (m.exitEase  || '') : (m.exitEase  || 'easeInQuart');
+  const move  = isGraphic ? (m.moveEase  || '') : (m.moveEase  || 'easeInOutQuad');
+  const speed = isGraphic ? (m.speed     || '') : (m.speed     || 'medium');
+  const se = g('ts-ease-enter'); if (se && document.activeElement !== se) se.value = enter;
+  const sx = g('ts-ease-exit');  if (sx && document.activeElement !== sx) sx.value = exit;
+  const sm = g('ts-ease-move');  if (sm && document.activeElement !== sm) sm.value = move;
+  _syncSpeedPills(speed);
+  const tgtSel = g('ts-anim-target'); if (tgtSel && document.activeElement !== tgtSel) tgtSel.value = _animTarget;
+  const gp = document.querySelector('#ts-anim-speed .ts-speed-global'); if (gp) gp.style.display = isGraphic ? '' : 'none';
+  const rb = g('ts-anim-reset'); if (rb) rb.style.display = isGraphic ? '' : 'none';
+  const note = g('ts-anim-override-note');
+  if (note) {
+    const custom = Object.keys(anim.overrides || {})
+      .filter(k => { const o = anim.overrides[k]; return o && (o.enterEase || o.exitEase || o.moveEase || o.speed); })
+      .map(k => (_ANIM_GRAPHICS.find(x => x[0] === k) || [k, k])[1]);
+    note.textContent = custom.length
+      ? 'Custom overrides: ' + custom.join(', ')
+      : 'No per-graphic overrides — every graphic follows the global default.';
+  }
+}
+// Replay the preview dot using the current target's entrance easing + speed.
+function playEasePreview() {
+  const dot = g('ts-ease-preview'); if (!dot) return;
+  const anim = _animSettings();
+  const ov = _animTarget !== 'global' ? ((anim.overrides && anim.overrides[_animTarget]) || {}) : {};
+  const enterName = ov.enterEase || anim.enterEase || 'easeOutQuart';
+  const ease = (window.GfxSettings && GfxSettings.resolveEasing(enterName)) || 'ease';
+  const speed = ov.speed || anim.speed || 'medium';
+  const mult = _SPEED_MULT_UI[speed] != null ? _SPEED_MULT_UI[speed] : 1;
+  const track = dot.parentElement;
+  const travel = Math.max(40, (track ? track.clientWidth : 240) - 30);
+  dot.style.transition = 'none';
+  dot.style.transform = 'translateX(0)';
+  void dot.offsetWidth; // force reflow so the reset takes before re-animating
+  dot.style.transition = `transform ${(0.6 * mult).toFixed(3)}s ${ease}`;
+  dot.style.transform = `translateX(${travel}px)`;
+}
+
+// ── Looks (save / apply reusable visual identities) ──────────────────────────
+function loadLooksList() {
+  fetch('/api/looks').then(r => r.json()).then(d => renderLooks(d.looks || [])).catch(() => {});
+}
+function renderLooks(looks) {
+  const list = g('looks-list'); if (!list) return;
+  if (!looks.length) { list.innerHTML = '<p class="hint" style="margin:0">No Looks saved yet.</p>'; return; }
+  list.innerHTML = looks.map(lk =>
+    `<div class="look-row" data-id="${lk.id}">
+      <span class="look-name" id="look-name-${lk.id}">${escHtml(lk.name)}</span>
+      <div class="look-actions">
+        <button class="btn btn-sm btn-primary" onclick="applyLook('${lk.id}')">Apply</button>
+        <button class="btn btn-sm" onclick="updateLook('${lk.id}', '${escHtml(lk.name)}')" title="Overwrite this Look with the current theme + animation">Update</button>
+        <button class="btn btn-sm" onclick="renameLookInline('${lk.id}')">Rename</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteLook('${lk.id}', this)">✕</button>
+      </div>
+    </div>`).join('');
+}
+function saveLook() {
+  const inp = g('look-name-input'); if (!inp) return;
+  const name = inp.value.trim();
+  if (!name) return showAlert('Give the Look a name first.');
+  fetch('/api/looks/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) })
+    .then(r => r.json()).then(d => {
+      if (!d.ok) return showAlert(d.error || 'Failed to save Look.');
+      inp.value = ''; loadLooksList();
+    });
+}
+function applyLook(id) {
+  fetch('/api/looks/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    .then(r => r.json()).then(d => { if (!d.ok) showAlert(d.error || 'Failed to apply Look.'); });
+}
+function updateLook(id, name) {
+  showConfirm(`Overwrite "${name}" with the current palette, accents, background and animation?`, () => {
+    fetch('/api/looks/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+      .then(r => r.json()).then(d => { if (d.ok) { loadLooksList(); showAlert('Look updated.'); } else showAlert(d.error || 'Failed to update Look.'); });
+  }, { okLabel: 'Update' });
+}
+function renameLookInline(id) {
+  const nameEl = g('look-name-' + id); if (!nameEl) return;
+  const input = document.createElement('input');
+  input.type = 'text'; input.value = nameEl.textContent; input.className = 'look-rename-input'; input.maxLength = 40;
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') _confirmLookRename(id, input); if (e.key === 'Escape') loadLooksList(); });
+  input.addEventListener('blur', () => _confirmLookRename(id, input));
+  nameEl.replaceWith(input); input.focus(); input.select();
+}
+function _confirmLookRename(id, input) {
+  const name = input.value.trim();
+  if (!name) { loadLooksList(); return; }
+  fetch('/api/looks/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, name }) })
+    .then(r => r.json()).then(d => { if (!d.ok) showAlert(d.error || 'Failed to rename.'); loadLooksList(); });
+}
+function deleteLook(id, btn) {
+  confirmDestructive(btn, 'Delete Look', () => {
+    fetch('/api/looks/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+      .then(r => r.json()).then(d => { if (d.ok) loadLooksList(); else showAlert(d.error || 'Failed to delete.'); });
+  });
 }
 
 // ── BG Output tab ─────────────────────────────────────────────────────────────

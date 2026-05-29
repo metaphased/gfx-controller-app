@@ -326,6 +326,48 @@ body {
   grid-column: 1 / -1; font-size: 11px; color: var(--danger); padding: 1px 0 4px;
 }
 
+/* ── Animation controls (Broadcast Theme) ─────────────── */
+.theme-ease-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 14px;
+}
+.theme-ease-field { display: flex; flex-direction: column; gap: 4px; }
+.theme-ease-field > span {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-dim);
+}
+.theme-ease-field select {
+  background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-family: var(--ui-font), sans-serif; font-size: 12px; padding: 5px 6px; width: 100%;
+}
+.theme-ease-preview { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.theme-ease-track {
+  position: relative; flex: 1; height: 28px; border-radius: 6px;
+  background: var(--bg3); border: 1px solid var(--border); overflow: hidden;
+}
+.theme-ease-dot {
+  position: absolute; top: 50%; left: 6px; width: 18px; height: 18px; margin-top: -9px;
+  border-radius: 50%; background: var(--primary); box-shadow: 0 0 10px rgba(31,250,255,0.5);
+  transform: translateX(0);
+}
+@media (max-width: 720px) { .theme-ease-grid { grid-template-columns: 1fr; } }
+
+/* ── Looks ────────────────────────────────────────────── */
+.look-save-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.look-save-row input {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-family: var(--ui-font), sans-serif; font-size: 13px; padding: 6px 10px;
+}
+.looks-list { display: flex; flex-direction: column; gap: 6px; }
+.look-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 5px;
+}
+.look-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
+.look-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.look-rename-input {
+  flex: 1; background: var(--bg2); border: 1px solid var(--primary); border-radius: 4px;
+  color: var(--text); font-family: var(--ui-font), sans-serif; font-size: 13px; padding: 4px 8px;
+}
+
 /* ── Profiles tab ─────────────────────────────────── */
 .profile-card {
   background: var(--bg2);

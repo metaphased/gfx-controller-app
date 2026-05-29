@@ -93,7 +93,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: auto;
   max-width: 84vw; /* matches the usable content area width (100vw - 2×8vw padding) */
   object-fit: contain;
-  transition: height 2s cubic-bezier(0.16, 1, 0.3, 1); /* pip scale happens in sync with container */
+  transition: height 2s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)); /* pip scale happens in sync with container */
 }
 .break-tourn-name {
   font-family: 'Barlow Condensed', sans-serif;
@@ -296,10 +296,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* Ticker strip slide-in / slide-out */
 .break-ticker.ticker-entering {
-  animation: break-ticker-slide-in 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: break-ticker-slide-in calc(1.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) forwards;
 }
 .break-ticker.ticker-leaving {
-  animation: break-ticker-slide-out 1.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  animation: break-ticker-slide-out calc(1.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,0.84,0)) forwards;
 }
 @keyframes break-ticker-slide-in {
   from { transform: translateY(100%); }
@@ -354,7 +354,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   opacity: 1;
   transform: translateY(0);
   pointer-events: all;
-  transition: opacity 1s ease 0.4s, transform 1.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s;
+  transition: opacity 1s ease 0.4s, transform 1.5s var(--gfx-ease-enter, cubic-bezier(0.34,1.56,0.64,1)) 0.3s;
 }
 
 /* ── Timer cell (left section, width = left column = L-corner box) ────────── */
@@ -392,11 +392,11 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 /* Ticker entering — wipe the border out from bottom, tracking the ticker's rising edge */
 #break-root.ticker-entering .break-pip-bottom::after {
-  animation: pip-border-hide 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: pip-border-hide calc(1.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) forwards;
 }
 /* Ticker exiting — wipe the border in from top, tracking the ticker's descending edge */
 #break-root.ticker-leaving .break-pip-bottom::after {
-  animation: pip-border-reveal 1.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  animation: pip-border-reveal calc(1.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,0.84,0)) forwards;
 }
 @keyframes pip-border-hide {
   from { clip-path: inset(0 0 0%   0); }

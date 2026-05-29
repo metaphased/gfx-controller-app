@@ -451,6 +451,7 @@ socket.on('state', function(state) {
   _preloadSplashes(state.players);
 
   GfxSettings.applyTheme(document.documentElement, state);
+  GfxSettings.applyAnimation(document.documentElement, state, 'playerIntro');
   GfxSettings.applyBackground(root, getEffectiveBgState(state));
 
   if (root) {
