@@ -1997,6 +1997,19 @@ function syncWinTab(ws, match) {
   // Message
   setInpSafe('win-msg', ws.message || '');
 
+  // Accent source radios + custom colour
+  const accSrc = ws.accentSource || 'side';
+  ['side','primary','custom'].forEach(v => {
+    const r = document.querySelector('input[name="win-accent"][value="' + v + '"]');
+    if (r) r.checked = accSrc === v;
+  });
+  const customRow = g('win-accent-custom-row');
+  if (customRow) customRow.style.display = accSrc === 'custom' ? 'block' : 'none';
+  const accCol = g('win-accent-color'), accTxt = g('win-accent-color-text');
+  const accHex = ws.accentCustom || '#1ffaff';
+  if (accCol) accCol.value = accHex;
+  if (accTxt && document.activeElement !== accTxt) accTxt.value = accHex;
+
   // Animation style radios — migrate legacy 'surge' → 'burst'
   const style = (ws.style === 'surge' ? 'burst' : ws.style) || 'blade';
   ['blade','burst','slam','split','spotlight','wipe'].forEach(v => {

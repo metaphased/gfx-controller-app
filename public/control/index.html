@@ -1876,6 +1876,22 @@
                      oninput="patchWin({message:this.value})">
             </form>
           </div>
+
+          <div class="card">
+            <div class="card-title">Accent Colour</div>
+            <p class="hint" style="margin-bottom:8px">Where the win screen's accent comes from. Played straight out of the game, the winning side's colour usually reads best.</p>
+            <div class="gfx-ctrl-group">
+              <label class="ctrl-radio-label"><input type="radio" name="win-accent" value="side"    onchange="patchWin({accentSource:'side'})"> Winning side (blue / red)</label>
+              <label class="ctrl-radio-label"><input type="radio" name="win-accent" value="primary" onchange="patchWin({accentSource:'primary'})"> Broadcast Primary</label>
+              <label class="ctrl-radio-label"><input type="radio" name="win-accent" value="custom"  onchange="patchWin({accentSource:'custom'})"> Custom</label>
+            </div>
+            <div id="win-accent-custom-row" style="display:none;margin-top:8px">
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="win-accent-color" value="#1ffaff" style="width:48px;height:32px;padding:2px;background:none;border:1px solid var(--border);cursor:pointer" onchange="document.getElementById('win-accent-color-text').value=this.value;patchWin({accentCustom:this.value})">
+                <input type="text" id="win-accent-color-text" placeholder="#1ffaff" value="#1ffaff" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){document.getElementById('win-accent-color').value=this.value;patchWin({accentCustom:this.value})}">
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Right column: animation style -->

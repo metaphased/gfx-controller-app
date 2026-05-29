@@ -23,7 +23,7 @@ socket.on('connect', () => {
 socket.on('state', state => {
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyAnimation(document.documentElement, state, 'winScreen');
-  _accentHex = GfxSettings.palette(state, 0);
+  _accentHex = resolveWinAccent(state);
 
   const ws    = state.winScreen || {};
   const match = state.match     || {};
@@ -53,6 +53,21 @@ socket.on('state', state => {
     populateContent(ws, match);
   }
 });
+
+// Win accent source: 'side' = winning team's draft side (blue/red), 'custom' = a
+// fixed hex, anything else = palette Primary. Returns a real hex (setWinColor derives rgba).
+function resolveWinAccent(state) {
+  const ws = state.winScreen || {};
+  const settings = state.settings || {};
+  const src = ws.accentSource || 'side';
+  if (src === 'custom') return /^#[0-9a-fA-F]{6}$/.test(ws.accentCustom || '') ? ws.accentCustom : '#1ffaff';
+  if (src === 'side') {
+    const blueTeam = (state.draft && state.draft.blueSideTeam) || 'team1';
+    const winnerOnBlue = (ws.team || 'team1') === blueTeam;
+    return (winnerOnBlue ? settings.blueAccent : settings.redAccent) || GfxSettings.palette(state, 0);
+  }
+  return GfxSettings.palette(state, 0); // 'primary'
+}
 
 function populateContent(ws, match) {
   const teamKey = ws.team || 'team1';
