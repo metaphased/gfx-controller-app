@@ -1,0 +1,23 @@
+# Normalize all text files to LF in the repo and working tree.
+# The repo already stores LF; this stops core.autocrlf from converting to CRLF
+# on checkout (which produced the "LF will be replaced by CRLF" warnings).
+* text=auto eol=lf
+
+# Binary assets — never apply line-ending conversion to these.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.svg  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+*.mp4  binary
+*.webm binary
+*.mov  binary
+*.zip  binary
+*.pdf  binary
