@@ -1945,6 +1945,19 @@ app.post('/api/looks/save', requireAdmin, (req, res) => {
   res.json({ ok: true, look });
 });
 
+app.post('/api/looks/update', requireAdmin, (req, res) => {
+  const { id } = req.body || {};
+  const looks = getLooks();
+  const lk = looks.find(l => l.id === id);
+  if (!lk) return res.status(404).json({ error: 'Look not found' });
+  const data = {};
+  LOOK_FIELDS.forEach(f => { if (state.settings[f] !== undefined) data[f] = JSON.parse(JSON.stringify(state.settings[f])); });
+  lk.data = data; lk.updatedAt = new Date().toISOString();
+  saveLooks(looks);
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'update-look', lk.name);
+  res.json({ ok: true });
+});
+
 app.post('/api/looks/apply', requireAdmin, (req, res) => {
   const { id } = req.body || {};
   const look = getLooks().find(l => l.id === id);

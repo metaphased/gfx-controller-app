@@ -373,8 +373,9 @@
   color: var(--text-dim);
 }
 .theme-palette-header span:first-child  { flex: 1; min-width: 0; }
-.theme-palette-header span:nth-child(2) { width: 36px; text-align: center; flex-shrink: 0; }
-.theme-palette-header span:nth-child(3) { width: 84px; flex-shrink: 0; }
+/* One label spanning the swatch (36) + gap (10) + hex (84) columns so "Colour"
+   never overflows the narrow swatch column and clashes with the hex header. */
+.theme-palette-header .tph-colour { width: 130px; text-align: center; flex-shrink: 0; }
 
 .theme-palette-slot {
   display: flex;

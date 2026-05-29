@@ -5243,6 +5243,7 @@ function renderLooks(looks) {
       <span class="look-name" id="look-name-${lk.id}">${escHtml(lk.name)}</span>
       <div class="look-actions">
         <button class="btn btn-sm btn-primary" onclick="applyLook('${lk.id}')">Apply</button>
+        <button class="btn btn-sm" onclick="updateLook('${lk.id}', '${escHtml(lk.name)}')" title="Overwrite this Look with the current theme + animation">Update</button>
         <button class="btn btn-sm" onclick="renameLookInline('${lk.id}')">Rename</button>
         <button class="btn btn-sm btn-danger" onclick="deleteLook('${lk.id}', this)">✕</button>
       </div>
@@ -5261,6 +5262,12 @@ function saveLook() {
 function applyLook(id) {
   fetch('/api/looks/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
     .then(r => r.json()).then(d => { if (!d.ok) showAlert(d.error || 'Failed to apply Look.'); });
+}
+function updateLook(id, name) {
+  showConfirm(`Overwrite "${name}" with the current palette, accents, background and animation?`, () => {
+    fetch('/api/looks/update', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+      .then(r => r.json()).then(d => { if (d.ok) { loadLooksList(); showAlert('Look updated.'); } else showAlert(d.error || 'Failed to update Look.'); });
+  }, { okLabel: 'Update' });
 }
 function renameLookInline(id) {
   const nameEl = g('look-name-' + id); if (!nameEl) return;
