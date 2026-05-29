@@ -424,7 +424,7 @@ html, body {
 /* ── Entry animation ─────────────────────────────────────────────────────────── */
 
 .bracket-entering #bracket-logo-wrap {
-  animation: bkt-fade-in 0.6s ease 0.1s both;
+  animation: bkt-fade-in calc(0.6s * var(--gfx-dur-scale, 1)) ease calc(0.1s * var(--gfx-dur-scale, 1)) both;
 }
 
 @keyframes bkt-fade-in {
@@ -437,7 +437,7 @@ html, body {
 .bracket-entering .bkt-3p-section,
 .bracket-entering .bkt-section-label,
 .bracket-entering .bkt-round-header {
-  animation: bkt-slide-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: bkt-slide-in calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both;
 }
 
 @keyframes bkt-fade-in {
@@ -452,7 +452,7 @@ html, body {
 
 /* ── Exit ────────────────────────────────────────────────────────────────────── */
 .bracket-exiting {
-  animation: bkt-fade-out 0.6s ease forwards;
+  animation: bkt-fade-out calc(0.6s * var(--gfx-dur-scale, 1)) ease forwards;
 }
 
 @keyframes bkt-fade-out {

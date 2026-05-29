@@ -227,6 +227,7 @@ socket.on('state', function(state) {
   if (!root) return;
 
   GfxSettings.applyTheme(document.documentElement, state);
+  GfxSettings.applyAnimation(document.documentElement, state, 'preShow');
   GfxSettings.applyBackground(root, state);
 
   if (!_initialised) {

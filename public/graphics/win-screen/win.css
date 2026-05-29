@@ -163,17 +163,17 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 .style-blade.is-entering .ws-blade-bg,
 .style-blade.is-entering .ws-blade-line {
-  animation: ws-blade-sweep-in 0.65s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: ws-blade-sweep-in calc(0.65s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both;
 }
 .style-blade.is-entering .ws-card {
-  animation: ws-card-blade-in 0.4s ease-out 0.48s both;
+  animation: ws-card-blade-in calc(0.4s * var(--gfx-dur-scale, 1)) ease-out calc(0.48s * var(--gfx-dur-scale, 1)) both;
 }
 .style-blade.is-exiting .ws-card {
-  animation: ws-card-blade-out 0.18s ease-in both;
+  animation: ws-card-blade-out calc(0.18s * var(--gfx-dur-scale, 1)) ease-in both;
 }
 .style-blade.is-exiting .ws-blade-bg,
 .style-blade.is-exiting .ws-blade-line {
-  animation: ws-blade-sweep-out 0.55s cubic-bezier(0.7, 0, 1, 0.45) 0.12s both;
+  animation: ws-blade-sweep-out calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.45)) calc(0.12s * var(--gfx-dur-scale, 1)) both;
 }
 
 .style-blade .ws-burst-bg, .style-blade .ws-burst-flash, .style-blade .ws-burst-ring,
@@ -250,15 +250,15 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 @keyframes ws-burst-card-in  { 0% { opacity:0; transform:translate(-50%,-50%) scale(0.15); } 65% { opacity:1; transform:translate(-50%,-50%) scale(1.05); } 100% { opacity:1; transform:translate(-50%,-50%) scale(1); } }
 @keyframes ws-burst-card-out { from { opacity:1; transform:translate(-50%,-50%) scale(1); } to { opacity:0; transform:translate(-50%,-50%) scale(0.2); } }
 
-.style-burst.is-entering .ws-burst-bg     { animation: ws-burst-expand    0.6s cubic-bezier(0.22,1,0.36,1)         both; }
-.style-burst.is-entering .ws-burst-flash  { animation: ws-burst-flash-anim 0.45s ease-out 0.42s                     both; }
-.style-burst.is-entering .ws-burst-ring-1 { animation: ws-ring-expand      0.7s ease-out 0.42s                     both; }
-.style-burst.is-entering .ws-burst-ring-2 { animation: ws-ring-expand      0.7s ease-out 0.52s                     both; }
-.style-burst.is-entering .ws-burst-ring-3 { animation: ws-ring-expand      0.7s ease-out 0.62s                     both; }
-.style-burst.is-entering .ws-card         { animation: ws-burst-card-in    0.55s cubic-bezier(0.34,1.56,0.64,1) 0.38s both; }
-.style-burst.is-exiting  .ws-card         { animation: ws-burst-card-out   0.2s ease-in both; }
-.style-burst.is-exiting  .ws-burst-bg     { animation: ws-burst-collapse   0.5s cubic-bezier(0.7,0,1,0.4) 0.14s both; }
-.style-burst.is-exiting  .ws-fullscreen-bg { animation: ws-fullscreen-bg-out 0.65s ease both; }
+.style-burst.is-entering .ws-burst-bg     { animation: ws-burst-expand    calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1))         both; }
+.style-burst.is-entering .ws-burst-flash  { animation: ws-burst-flash-anim calc(0.45s * var(--gfx-dur-scale, 1)) ease-out calc(0.42s * var(--gfx-dur-scale, 1))                     both; }
+.style-burst.is-entering .ws-burst-ring-1 { animation: ws-ring-expand      calc(0.7s * var(--gfx-dur-scale, 1)) ease-out calc(0.42s * var(--gfx-dur-scale, 1))                     both; }
+.style-burst.is-entering .ws-burst-ring-2 { animation: ws-ring-expand      calc(0.7s * var(--gfx-dur-scale, 1)) ease-out calc(0.52s * var(--gfx-dur-scale, 1))                     both; }
+.style-burst.is-entering .ws-burst-ring-3 { animation: ws-ring-expand      calc(0.7s * var(--gfx-dur-scale, 1)) ease-out calc(0.62s * var(--gfx-dur-scale, 1))                     both; }
+.style-burst.is-entering .ws-card         { animation: ws-burst-card-in    calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.34,1.56,0.64,1)) calc(0.38s * var(--gfx-dur-scale, 1)) both; }
+.style-burst.is-exiting  .ws-card         { animation: ws-burst-card-out   calc(0.2s * var(--gfx-dur-scale, 1)) ease-in both; }
+.style-burst.is-exiting  .ws-burst-bg     { animation: ws-burst-collapse   calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) calc(0.14s * var(--gfx-dur-scale, 1)) both; }
+.style-burst.is-exiting  .ws-fullscreen-bg { animation: ws-fullscreen-bg-out calc(0.65s * var(--gfx-dur-scale, 1)) ease both; }
 
 .style-burst .ws-blade-bg, .style-burst .ws-blade-line,
 .style-burst .ws-slam-overlay,
@@ -317,11 +317,11 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   to   { opacity: 0; transform: translate(calc(-50% - 60vw), -50%) scale(0.95); }
 }
 
-.style-slam.is-entering .ws-slam-overlay { animation: ws-slam-overlay-in  0.35s ease both; }
-.style-slam.is-entering .ws-card         { animation: ws-slam-card-in     0.75s cubic-bezier(0.34, 1.4, 0.64, 1) 0.2s both; }
-.style-slam.is-exiting  .ws-card         { animation: ws-slam-card-out    0.45s cubic-bezier(0.7, 0, 1, 0.4) both; }
-.style-slam.is-exiting  .ws-slam-overlay { animation: ws-slam-overlay-out 0.4s ease 0.3s both; }
-.style-slam.is-exiting  .ws-fullscreen-bg { animation: ws-fullscreen-bg-out 0.75s ease both; }
+.style-slam.is-entering .ws-slam-overlay { animation: ws-slam-overlay-in  calc(0.35s * var(--gfx-dur-scale, 1)) ease both; }
+.style-slam.is-entering .ws-card         { animation: ws-slam-card-in     calc(0.75s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.34,1.4,0.64,1)) calc(0.2s * var(--gfx-dur-scale, 1)) both; }
+.style-slam.is-exiting  .ws-card         { animation: ws-slam-card-out    calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) both; }
+.style-slam.is-exiting  .ws-slam-overlay { animation: ws-slam-overlay-out calc(0.4s * var(--gfx-dur-scale, 1)) ease calc(0.3s * var(--gfx-dur-scale, 1)) both; }
+.style-slam.is-exiting  .ws-fullscreen-bg { animation: ws-fullscreen-bg-out calc(0.75s * var(--gfx-dur-scale, 1)) ease both; }
 
 .style-slam .ws-blade-bg, .style-slam .ws-blade-line,
 .style-slam .ws-burst-bg, .style-slam .ws-burst-flash, .style-slam .ws-burst-ring,
@@ -397,19 +397,19 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 @keyframes ws-split-card-in     { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ws-split-card-out    { from { opacity: 1; } to { opacity: 0; } }
 
-.style-split.is-entering .ws-split-overlay { animation: ws-split-overlay-in  0.22s ease both; }
-.style-split.is-entering .ws-split-panel-l { animation: ws-split-panel-in    0.62s cubic-bezier(0.16,1,0.3,1) 0.12s both; transform-origin: left center; }
-.style-split.is-entering .ws-split-divider { animation: ws-split-divider-in  0.4s  cubic-bezier(0.22,1,0.36,1) 0.52s both; transform-origin: center; }
-.style-split.is-entering .ws-card          { animation: ws-split-card-in     0.45s cubic-bezier(0.22,1,0.36,1) 0.58s both; }
-.style-split.is-exiting  .ws-card          { animation: ws-split-card-out    0.18s ease both; }
-.style-split.is-exiting  .ws-split-panel-l { animation: ws-split-panel-out   0.5s  cubic-bezier(0.7,0,1,0.4) 0.1s both; transform-origin: left center; }
-.style-split.is-exiting  .ws-split-divider { animation: ws-split-divider-out 0.28s ease both; }
-.style-split.is-exiting  .ws-split-overlay { animation: ws-split-overlay-out 0.4s  ease 0.35s both; }
-.style-split.is-exiting  .ws-fullscreen-bg { animation: ws-fullscreen-bg-out 0.9s  ease both; }
+.style-split.is-entering .ws-split-overlay { animation: ws-split-overlay-in  calc(0.22s * var(--gfx-dur-scale, 1)) ease both; }
+.style-split.is-entering .ws-split-panel-l { animation: ws-split-panel-in    calc(0.62s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) calc(0.12s * var(--gfx-dur-scale, 1)) both; transform-origin: left center; }
+.style-split.is-entering .ws-split-divider { animation: ws-split-divider-in  calc(0.4s * var(--gfx-dur-scale, 1))  var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) calc(0.52s * var(--gfx-dur-scale, 1)) both; transform-origin: center; }
+.style-split.is-entering .ws-card          { animation: ws-split-card-in     calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) calc(0.58s * var(--gfx-dur-scale, 1)) both; }
+.style-split.is-exiting  .ws-card          { animation: ws-split-card-out    calc(0.18s * var(--gfx-dur-scale, 1)) ease both; }
+.style-split.is-exiting  .ws-split-panel-l { animation: ws-split-panel-out   calc(0.5s * var(--gfx-dur-scale, 1))  var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) calc(0.1s * var(--gfx-dur-scale, 1)) both; transform-origin: left center; }
+.style-split.is-exiting  .ws-split-divider { animation: ws-split-divider-out calc(0.28s * var(--gfx-dur-scale, 1)) ease both; }
+.style-split.is-exiting  .ws-split-overlay { animation: ws-split-overlay-out calc(0.4s * var(--gfx-dur-scale, 1))  ease calc(0.35s * var(--gfx-dur-scale, 1)) both; }
+.style-split.is-exiting  .ws-fullscreen-bg { animation: ws-fullscreen-bg-out calc(0.9s * var(--gfx-dur-scale, 1))  ease both; }
 
 /* Divider line breathes slowly once the entry animation has settled */
 .style-split.is-visible .ws-split-divider {
-  animation: ws-split-divider-pulse 3.5s ease-in-out infinite;
+  animation: ws-split-divider-pulse calc(3.5s * var(--gfx-dur-scale, 1)) ease-in-out infinite;
 }
 @keyframes ws-split-divider-pulse {
   0%, 100% { opacity: 1;    box-shadow: 0 0 22px var(--win-col-a70), 0 0 55px var(--win-col-a30); }
@@ -492,12 +492,12 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 @keyframes ws-spotlight-card-out { from { opacity: 1; } to { opacity: 0; } }
 
-.style-spotlight.is-entering .ws-spotlight-overlay  { animation: ws-spotlight-overlay-in  0.38s ease both; }
-.style-spotlight.is-entering .ws-spotlight-beam     { animation: ws-spotlight-beam-in     0.75s ease-out 0.28s both; transform-origin: 50% 0%; }
-.style-spotlight.is-entering .ws-card               { animation: ws-spotlight-card-in     0.65s cubic-bezier(0.34,1.56,0.64,1) 0.52s both; }
-.style-spotlight.is-exiting  .ws-card               { animation: ws-spotlight-card-out    0.22s ease both; }
-.style-spotlight.is-exiting  .ws-spotlight-overlay  { animation: ws-spotlight-overlay-out 0.5s ease 0.18s both; }
-.style-spotlight.is-exiting  .ws-fullscreen-bg      { animation: ws-fullscreen-bg-out     0.75s ease both; }
+.style-spotlight.is-entering .ws-spotlight-overlay  { animation: ws-spotlight-overlay-in  calc(0.38s * var(--gfx-dur-scale, 1)) ease both; }
+.style-spotlight.is-entering .ws-spotlight-beam     { animation: ws-spotlight-beam-in     calc(0.75s * var(--gfx-dur-scale, 1)) ease-out calc(0.28s * var(--gfx-dur-scale, 1)) both; transform-origin: 50% 0%; }
+.style-spotlight.is-entering .ws-card               { animation: ws-spotlight-card-in     calc(0.65s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.34,1.56,0.64,1)) calc(0.52s * var(--gfx-dur-scale, 1)) both; }
+.style-spotlight.is-exiting  .ws-card               { animation: ws-spotlight-card-out    calc(0.22s * var(--gfx-dur-scale, 1)) ease both; }
+.style-spotlight.is-exiting  .ws-spotlight-overlay  { animation: ws-spotlight-overlay-out calc(0.5s * var(--gfx-dur-scale, 1)) ease calc(0.18s * var(--gfx-dur-scale, 1)) both; }
+.style-spotlight.is-exiting  .ws-fullscreen-bg      { animation: ws-fullscreen-bg-out     calc(0.75s * var(--gfx-dur-scale, 1)) ease both; }
 
 .style-spotlight .ws-blade-bg, .style-spotlight .ws-blade-line,
 .style-spotlight .ws-burst-bg, .style-spotlight .ws-burst-flash, .style-spotlight .ws-burst-ring,
@@ -556,13 +556,13 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   to   { opacity: 0; transform: translateY(-50%) translateX(-5vw); }
 }
 
-.style-wipe.is-entering .ws-wipe-bar-top { animation: ws-wipe-bar-in-t    0.52s cubic-bezier(0.16,1,0.3,1) both; }
-.style-wipe.is-entering .ws-wipe-bar-bot { animation: ws-wipe-bar-in-b    0.52s cubic-bezier(0.16,1,0.3,1) both; }
-.style-wipe.is-entering .ws-wipe-streak  { animation: ws-wipe-streak-anim 0.75s ease-out 0.42s both; }
-.style-wipe.is-entering .ws-card         { animation: ws-wipe-card-in     0.5s  cubic-bezier(0.22,1,0.36,1) 0.44s both; }
-.style-wipe.is-exiting  .ws-card         { animation: ws-wipe-card-out    0.22s ease both; }
-.style-wipe.is-exiting  .ws-wipe-bar-top { animation: ws-wipe-bar-out-t   0.48s cubic-bezier(0.7,0,1,0.4) 0.1s both; }
-.style-wipe.is-exiting  .ws-wipe-bar-bot { animation: ws-wipe-bar-out-b   0.48s cubic-bezier(0.7,0,1,0.4) 0.1s both; }
+.style-wipe.is-entering .ws-wipe-bar-top { animation: ws-wipe-bar-in-t    calc(0.52s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both; }
+.style-wipe.is-entering .ws-wipe-bar-bot { animation: ws-wipe-bar-in-b    calc(0.52s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both; }
+.style-wipe.is-entering .ws-wipe-streak  { animation: ws-wipe-streak-anim calc(0.75s * var(--gfx-dur-scale, 1)) ease-out calc(0.42s * var(--gfx-dur-scale, 1)) both; }
+.style-wipe.is-entering .ws-card         { animation: ws-wipe-card-in     calc(0.5s * var(--gfx-dur-scale, 1))  var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) calc(0.44s * var(--gfx-dur-scale, 1)) both; }
+.style-wipe.is-exiting  .ws-card         { animation: ws-wipe-card-out    calc(0.22s * var(--gfx-dur-scale, 1)) ease both; }
+.style-wipe.is-exiting  .ws-wipe-bar-top { animation: ws-wipe-bar-out-t   calc(0.48s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) calc(0.1s * var(--gfx-dur-scale, 1)) both; }
+.style-wipe.is-exiting  .ws-wipe-bar-bot { animation: ws-wipe-bar-out-b   calc(0.48s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) calc(0.1s * var(--gfx-dur-scale, 1)) both; }
 
 .style-wipe .ws-blade-bg, .style-wipe .ws-blade-line,
 .style-wipe .ws-burst-bg, .style-wipe .ws-burst-flash, .style-wipe .ws-burst-ring,

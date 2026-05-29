@@ -180,10 +180,10 @@ html, body {
    ANIMATION
    ══════════════════════════════════════════════════════════════════════════ */
 .ts-entering #ts-content {
-  animation: ts-fade-up 0.4s cubic-bezier(0.22,1,0.36,1) 0.05s both;
+  animation: ts-fade-up calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) calc(0.05s * var(--gfx-dur-scale, 1)) both;
 }
 .ts-entering .ts-stage {
-  animation: ts-slide-up 0.45s cubic-bezier(0.22,1,0.36,1) both;
+  animation: ts-slide-up calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both;
 }
 @keyframes ts-fade-up {
   from { opacity: 0; transform: translateY(1vh); }
@@ -197,5 +197,5 @@ html, body {
 /* ══════════════════════════════════════════════════════════════════════════
    EXIT
    ══════════════════════════════════════════════════════════════════════════ */
-.ts-exiting { animation: ts-fade-out 0.45s ease forwards; }
+.ts-exiting { animation: ts-fade-out calc(0.45s * var(--gfx-dur-scale, 1)) ease forwards; }
 @keyframes ts-fade-out { to { opacity: 0; } }

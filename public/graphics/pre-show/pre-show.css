@@ -278,12 +278,12 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* Ticker entering — clip section from bottom as ticker rises */
 #ps-root.layout-side.ps-ticker-entering .ps-timer-section {
-  animation: ps-section-clip-in 1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: ps-section-clip-in calc(1.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) forwards;
 }
 
 /* Ticker leaving — restore section as ticker descends */
 #ps-root.layout-side.ps-ticker-leaving .ps-timer-section {
-  animation: ps-section-clip-out 1.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;
+  animation: ps-section-clip-out calc(1.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,0.84,0)) forwards;
 }
 
 @keyframes ps-section-clip-in {
@@ -435,8 +435,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   vertical-align: middle; position: relative; top: -0.05em;
 }
 
-.ps-ticker.ticker-entering { animation: ps-ticker-slide-in  1.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-.ps-ticker.ticker-leaving  { animation: ps-ticker-slide-out 1.5s cubic-bezier(0.7, 0, 0.84, 0) forwards; }
+.ps-ticker.ticker-entering { animation: ps-ticker-slide-in  calc(1.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) forwards; }
+.ps-ticker.ticker-leaving  { animation: ps-ticker-slide-out calc(1.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,0.84,0)) forwards; }
 
 @keyframes ps-ticker-slide-in  { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes ps-ticker-slide-out { from { transform: translateY(0); } to { transform: translateY(100%); } }

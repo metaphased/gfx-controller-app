@@ -21,6 +21,7 @@ socket.on('connect', () => {
 
 socket.on('state', state => {
   GfxSettings.applyTheme(document.documentElement, state);
+  GfxSettings.applyAnimation(document.documentElement, state, 'winScreen');
 
   const ws    = state.winScreen || {};
   const match = state.match     || {};
