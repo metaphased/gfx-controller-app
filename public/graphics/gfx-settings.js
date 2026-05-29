@@ -185,14 +185,23 @@ window.GfxSettings = (function () {
   // resolving global settings merged with this graphic's overrides.
   // Easings are role-based (enter/exit/move); duration is a single unitless scale
   // so overlay CSS keeps its own choreographed timings: calc(0.55s * var(--gfx-dur-scale)).
+  var _lastAnimKey = null;
   function applyAnimation(el, s, graphicKey) {
     var anim = get(s).animation || {};
     var ov   = (anim.overrides && graphicKey && anim.overrides[graphicKey]) || {};
     var mult = _SPEED_MULT[ov.speed || anim.speed];
     if (mult == null) mult = 1;
-    el.style.setProperty('--gfx-ease-enter', resolveEasing(ov.enterEase || anim.enterEase || 'easeOutQuart'));
-    el.style.setProperty('--gfx-ease-exit',  resolveEasing(ov.exitEase  || anim.exitEase  || 'easeInQuart'));
-    el.style.setProperty('--gfx-ease-move',  resolveEasing(ov.moveEase  || anim.moveEase  || 'easeInOutQuad'));
+    var enter = resolveEasing(ov.enterEase || anim.enterEase || 'easeOutQuart');
+    var exit  = resolveEasing(ov.exitEase  || anim.exitEase  || 'easeInQuart');
+    var move  = resolveEasing(ov.moveEase  || anim.moveEase  || 'easeInOutQuad');
+    // Skip redundant :root writes — only touch styles when something actually changed,
+    // so frequent state broadcasts don't trigger needless style recalcs.
+    var key = graphicKey + '|' + enter + '|' + exit + '|' + move + '|' + mult;
+    if (key === _lastAnimKey) return;
+    _lastAnimKey = key;
+    el.style.setProperty('--gfx-ease-enter', enter);
+    el.style.setProperty('--gfx-ease-exit',  exit);
+    el.style.setProperty('--gfx-ease-move',  move);
     el.style.setProperty('--gfx-dur-scale',  String(mult));
   }
 
