@@ -1266,11 +1266,17 @@
           <!-- Animation -->
           <div class="card" style="margin-top:16px">
             <div class="card-title">Animation</div>
-            <p class="hint">Global motion feel for graphic entrances and exits. Pick a speed and an easing curve for each phase, then preview it below.</p>
+            <p class="hint">Motion feel for graphic entrances and exits. Set a global default, or pick a specific graphic to override just that one.</p>
+
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Editing</span>
+              <select id="ts-anim-target" onchange="setAnimTarget(this.value)" style="flex:1;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);font-family:var(--ui-font),sans-serif;font-size:12px;padding:5px 6px"></select>
+            </div>
 
             <div class="theme-palette-slot">
               <span class="theme-fixed-label">Speed</span>
               <div class="theme-pills" id="ts-anim-speed">
+                <button class="theme-pill ts-speed-global" data-speed="" onclick="setAnimSpeed('')" style="display:none">Global</button>
                 <button class="theme-pill" data-speed="instant" onclick="setAnimSpeed('instant')">Instant</button>
                 <button class="theme-pill" data-speed="fast"    onclick="setAnimSpeed('fast')">Fast</button>
                 <button class="theme-pill" data-speed="medium"  onclick="setAnimSpeed('medium')">Medium</button>
@@ -1290,7 +1296,9 @@
             <div class="theme-ease-preview">
               <div class="theme-ease-track"><div class="theme-ease-dot" id="ts-ease-preview"></div></div>
               <button class="btn btn-sm" onclick="playEasePreview()">▶ Preview entrance</button>
+              <button class="btn btn-sm" id="ts-anim-reset" onclick="resetAnimTarget()" style="display:none">Reset to global</button>
             </div>
+            <p class="hint" id="ts-anim-override-note" style="margin-top:8px"></p>
           </div>
 
         </div><!-- /right col -->
