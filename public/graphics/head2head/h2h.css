@@ -39,7 +39,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-items: center;
   gap: 2vw;
   padding: 0 3vw;
-  background: #07101a;
+  background: var(--gfx-c4, #07101a);
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .h2h-header-right { flex-direction: row-reverse; }
@@ -56,7 +56,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 4.8vh; font-weight: 900;
   letter-spacing: 0.05em; text-transform: uppercase;
-  color: #fff;
+  color: var(--gfx-c3, #fff);
   line-height: 1;
 }
 
@@ -64,7 +64,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: var(--h2h-centre-w);
   flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: #07101a;
+  background: var(--gfx-c4, #07101a);
   border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .h2h-header-centre img {
@@ -81,7 +81,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #07101a; /* backstop — fills any sub-pixel gaps between rows */
+  background: var(--gfx-c4, #07101a); /* backstop — fills any sub-pixel gaps between rows */
   position: relative;
   z-index: 1; /* sits above the canvas injected at z-index:0 by applyBackground */
   contain: layout;
@@ -113,7 +113,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   flex: 1;
   position: relative;
   overflow: hidden;
-  background-color: #0a0f18; /* fallback when art hasn't loaded / no champ assigned */
+  background-color: var(--gfx-c4, #0a0f18); /* fallback when art hasn't loaded / no champ assigned */
   background-size: cover;
   background-repeat: no-repeat;
   will-change: transform;
@@ -171,7 +171,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 6vh; font-weight: 900;
   letter-spacing: 0.04em; text-transform: uppercase;
-  color: #fff;
+  color: var(--gfx-c3, #fff);
   line-height: 1;
   transition: font-size 0.6s var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1));
 }
@@ -195,7 +195,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-items: center;
   justify-content: center;
   gap: 0.8vh;
-  background: #07101a; /* fully opaque — prevents canvas animation bleeding through */
+  background: var(--gfx-c4, #07101a); /* fully opaque — prevents canvas animation bleeding through */
   border-left:  1px solid rgba(255,255,255,0.07);
   border-right: 1px solid rgba(255,255,255,0.07);
   position: relative;
@@ -278,7 +278,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2.1vh; font-weight: 900;
   letter-spacing: 0.03em;
-  color: #fff;
+  color: var(--gfx-c3, #fff);
   line-height: 1;
 }
 .h2h-stat-no-data {

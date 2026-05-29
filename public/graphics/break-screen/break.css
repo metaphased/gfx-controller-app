@@ -106,7 +106,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-main-msg {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 8.5vh; font-weight: 900; letter-spacing: 0.1em;
-  text-transform: uppercase; color: #fff;
+  text-transform: uppercase; color: var(--gfx-c3, #fff);
   text-align: center; line-height: 1;
 }
 .break-subtext {
@@ -147,7 +147,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-team-name {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 3.5vh; font-weight: 800; letter-spacing: 0.05em;
-  text-transform: uppercase; color: #fff;
+  text-transform: uppercase; color: var(--gfx-c3, #fff);
   white-space: nowrap;
 }
 .break-team-score {
@@ -208,7 +208,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-next-text {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2.1vh; font-weight: 800; letter-spacing: 0.05em;
-  text-transform: uppercase; color: #fff;
+  text-transform: uppercase; color: var(--gfx-c3, #fff);
 }
 
 /* ── Sponsor logos ─────────────────────────────────────────────────────── */
@@ -462,7 +462,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .break-pip-name {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 3.5vh; font-weight: 800; letter-spacing: 0.05em;
-  text-transform: uppercase; color: #fff;
+  text-transform: uppercase; color: var(--gfx-c3, #fff);
   white-space: nowrap;
 }
 .break-pip-score {

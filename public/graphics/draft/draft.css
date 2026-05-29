@@ -5,7 +5,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   --gfx-blue:    #1e6fff;
   --gfx-red:     #ff3b3b;
   --gfx-c1:      #1ffaff;
-  --clock-color: #ffffff;
+  --clock-color: var(--gfx-c3, #ffffff);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -70,7 +70,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .team-name {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2.7vh; font-weight: 800; letter-spacing: 0.07em;
-  text-transform: uppercase; color: #fff;
+  text-transform: uppercase; color: var(--gfx-c3, #fff);
   flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* Red side name reads right-to-left, anchored toward its logo on the outer edge */
@@ -313,7 +313,7 @@ body.phase-bold .fearless-label {
 .player-name {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.4vh; font-weight: 700; letter-spacing: 0.06em;
-  text-transform: uppercase; color: #fff;
+  text-transform: uppercase; color: var(--gfx-c3, #fff);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 100%; text-align: center;
 }

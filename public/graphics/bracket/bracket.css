@@ -384,7 +384,7 @@ html, body {
   background: var(--bkt-accent, var(--gfx-c1, #1ffaff));
 }
 
-.bkt-team.bkt-winner .bkt-team-name  { color: #fff; }
+.bkt-team.bkt-winner .bkt-team-name  { color: var(--gfx-c3, #fff); }
 .bkt-team.bkt-winner .bkt-team-score { color: var(--bkt-accent, var(--gfx-c1, #1ffaff)); }
 
 /* Loser */

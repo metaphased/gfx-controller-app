@@ -143,7 +143,7 @@ html, body {
   transition: color 0.45s ease;
 }
 
-.gs-team.qualifying .gs-team-name { color: #fff; }
+.gs-team.qualifying .gs-team-name { color: var(--gfx-c3, #fff); }
 
 /* ── W-L record ─────────────────────────────────────────────────────────────── */
 .gs-record {

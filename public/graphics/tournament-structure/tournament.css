@@ -41,7 +41,7 @@ html, body {
 #ts-title {
   font-size: 5vh; font-weight: 900;
   letter-spacing: 0.08em; text-transform: uppercase;
-  color: #fff; line-height: 1;
+  color: var(--gfx-c3, #fff); line-height: 1;
 }
 
 /* ── Info pills (sits just above the stage cards) ─────────────────────────── */
@@ -140,7 +140,7 @@ html, body {
 .ts-stage-name {
   font-size: 5.5vh; font-weight: 900;
   letter-spacing: 0.03em; text-transform: uppercase;
-  color: #fff; line-height: 1;
+  color: var(--gfx-c3, #fff); line-height: 1;
 }
 .ts-stage-sub {
   font-size: 1.8vh; font-weight: 700;

@@ -152,7 +152,7 @@ html, body {
 .pp-bonus-label {
   font-size: 2vh; font-weight: 900;
   letter-spacing: 0.06em; text-transform: uppercase;
-  color: #fff; line-height: 1;
+  color: var(--gfx-c3, #fff); line-height: 1;
 }
 .pp-bonus-value {
   font-size: 2.5vh; font-weight: 700;

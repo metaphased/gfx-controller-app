@@ -20,7 +20,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
    Blade and Wipe are intentional partial overlays so they stay transparent. */
 .ws-fullscreen-bg {
   position: absolute; inset: 0;
-  background: #040810;
+  background: var(--gfx-c4, #040810);
   display: none;
 }
 .style-burst .ws-fullscreen-bg,
@@ -68,7 +68,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #ffffff;
+  color: var(--gfx-c3, #ffffff);
   line-height: 0.95;
   text-shadow: 0 0 5vw var(--win-col-a70);
 }
