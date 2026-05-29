@@ -350,6 +350,24 @@ body {
 }
 @media (max-width: 720px) { .theme-ease-grid { grid-template-columns: 1fr; } }
 
+/* ── Looks ────────────────────────────────────────────── */
+.look-save-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.look-save-row input {
+  flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); font-family: var(--ui-font), sans-serif; font-size: 13px; padding: 6px 10px;
+}
+.looks-list { display: flex; flex-direction: column; gap: 6px; }
+.look-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 7px 10px; background: var(--bg3); border: 1px solid var(--border); border-radius: 5px;
+}
+.look-name { flex: 1; font-size: 13px; font-weight: 600; color: var(--text); }
+.look-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.look-rename-input {
+  flex: 1; background: var(--bg2); border: 1px solid var(--primary); border-radius: 4px;
+  color: var(--text); font-family: var(--ui-font), sans-serif; font-size: 13px; padding: 4px 8px;
+}
+
 /* ── Profiles tab ─────────────────────────────────── */
 .profile-card {
   background: var(--bg2);

@@ -1127,6 +1127,17 @@
     <section class="tab" id="tab-theme">
       <div class="tab-header"><h1>Broadcast Theme</h1></div>
 
+      <!-- Looks: save / apply full visual identities -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-title">Looks</div>
+        <p class="hint">A Look bundles the colour palette, accents, background and animation feel into a reusable visual identity. Apply one over any tournament — it never touches teams or schedule.</p>
+        <div class="look-save-row">
+          <input type="text" id="look-name-input" placeholder="Name this Look…" maxlength="40">
+          <button class="btn btn-sm btn-primary" onclick="saveLook()">Save current as Look</button>
+        </div>
+        <div id="looks-list" class="looks-list"></div>
+      </div>
+
       <div class="theme-two-col">
 
         <!-- ── Left column ── -->

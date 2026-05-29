@@ -23,6 +23,7 @@ const DATA_FILE   = path.join(DATA_DIR, 'state.json');
 const TEAMS_FILE    = path.join(DATA_DIR, 'teams.json');
 const USERS_FILE    = path.join(DATA_DIR, 'users.json');
 const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
+const LOOKS_FILE    = path.join(DATA_DIR, 'looks.json');
 const SECRET_FILE = path.join(DATA_DIR, 'session-secret.txt');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
@@ -416,6 +417,30 @@ function saveTeams(t) { _teams = t; try { fs.writeFileSync(TEAMS_FILE, JSON.stri
 
 function loadProfiles() { try { if (fs.existsSync(PROFILES_FILE)) return JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8')); } catch(e) {} return []; }
 function saveProfiles(p) { try { fs.writeFileSync(PROFILES_FILE, JSON.stringify(p, null, 2)); } catch(e) { console.error(e); } }
+
+// ── Looks (reusable visual identities: palette + accents + background + animation) ──
+// A Look is theme-only and additive; it can be applied over any tournament profile
+// without touching teams/schedule. Logo library is intentionally excluded.
+const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation'];
+function loadLooks() { try { if (fs.existsSync(LOOKS_FILE)) return JSON.parse(fs.readFileSync(LOOKS_FILE, 'utf8')); } catch(e) {} return null; }
+function saveLooks(l) { try { fs.writeFileSync(LOOKS_FILE, JSON.stringify(l, null, 2)); } catch(e) { console.error(e); } }
+function _seedLooks() {
+  const mkAnim = (speed, e, x, m) => ({ speed, enterEase: e, exitEase: x, moveEase: m, dataChangeStyle: 'fade', bgSpeed: 'medium', overrides: {} });
+  const pal = (a, b, c, d) => [
+    { name: 'Primary', hex: a }, { name: 'Secondary', hex: b }, { name: 'Light', hex: c }, { name: 'Dark', hex: d },
+  ];
+  const mk = (name, data) => ({ id: 'look_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), data });
+  return [
+    mk('Broadcast Clean', { palette: pal('#1ffaff', '#a7a38e', '#F7F5F0', '#0a1b20'), blueAccent: '#1e6fff', redAccent: '#ff3b3b', bgType: 'transparent', bgColor: '#070f12', animation: mkAnim('medium', 'easeOutQuart', 'easeInQuart', 'easeInOutQuad') }),
+    mk('Neon Surge',      { palette: pal('#ff2bd1', '#19e3ff', '#fdf0ff', '#120018'), blueAccent: '#19e3ff', redAccent: '#ff2bd1', bgType: 'transparent', bgColor: '#0a0014', animation: mkAnim('fast', 'easeOutExpo', 'easeInExpo', 'easeInOutExpo') }),
+    mk('Big Impact',      { palette: pal('#ffc83d', '#ff5a3c', '#fff6e6', '#1a1208'), blueAccent: '#3d7bff', redAccent: '#ff5a3c', bgType: 'transparent', bgColor: '#120c04', animation: mkAnim('slow', 'easeOutBack', 'easeInBack', 'easeInOutQuint') }),
+  ];
+}
+function getLooks() {
+  let looks = loadLooks();
+  if (!Array.isArray(looks)) { looks = _seedLooks(); saveLooks(looks); }
+  return looks;
+}
 
 function snapshotForProfile() {
   // Settings snapshot — exclude graphicsToken so each install keeps its own auth token
@@ -1903,6 +1928,53 @@ app.post('/api/profiles/delete', requireAdmin, (req, res) => {
   saveProfiles(loadProfiles().filter(p => p.id !== id));
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'delete-profile', (_delProf && _delProf.name) || id);
   if (state.meta.activeProfileId === id) { state.meta.activeProfileId = null; state.meta.activeProfileName = null; broadcast(); }
+  res.json({ ok: true });
+});
+
+// ── Looks (admin only) ─────────────────────────────────────────────────────────
+app.get('/api/looks', requireAdmin, (req, res) => res.json({ looks: getLooks() }));
+
+app.post('/api/looks/save', requireAdmin, (req, res) => {
+  const { name } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Look name required' });
+  const data = {};
+  LOOK_FIELDS.forEach(f => { if (state.settings[f] !== undefined) data[f] = JSON.parse(JSON.stringify(state.settings[f])); });
+  const look = { id: 'look_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), name: name.trim(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), data };
+  const looks = getLooks(); looks.unshift(look); saveLooks(looks);
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'save-look', look.name);
+  res.json({ ok: true, look });
+});
+
+app.post('/api/looks/apply', requireAdmin, (req, res) => {
+  const { id } = req.body || {};
+  const look = getLooks().find(l => l.id === id);
+  if (!look) return res.status(404).json({ error: 'Look not found' });
+  // Replace (not merge) each captured field so stale per-graphic overrides don't linger.
+  LOOK_FIELDS.forEach(f => { if (look.data[f] !== undefined) state.settings[f] = JSON.parse(JSON.stringify(look.data[f])); });
+  if (look.data.buses) initBusState();
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'apply-look', look.name);
+  broadcast();
+  res.json({ ok: true });
+});
+
+app.post('/api/looks/rename', requireAdmin, (req, res) => {
+  const { id, name } = req.body || {};
+  if (!id || !name || !name.trim()) return res.status(400).json({ error: 'id and name required' });
+  const looks = getLooks();
+  const lk = looks.find(l => l.id === id);
+  if (!lk) return res.status(404).json({ error: 'Look not found' });
+  lk.name = name.trim(); lk.updatedAt = new Date().toISOString();
+  saveLooks(looks);
+  res.json({ ok: true });
+});
+
+app.post('/api/looks/delete', requireAdmin, (req, res) => {
+  const { id } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'id required' });
+  const looks = getLooks();
+  const lk = looks.find(l => l.id === id);
+  saveLooks(looks.filter(l => l.id !== id));
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'delete-look', (lk && lk.name) || id);
   res.json({ ok: true });
 });
 

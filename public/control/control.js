@@ -3684,6 +3684,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (savedTab === 'users')    loadUsersTab();
     if (savedTab === 'log')      loadActionLog();
     if (savedTab === 'profiles') loadProfilesTab();
+    if (savedTab === 'theme')    loadLooksList();
     if (savedTab === 'home')     renderDashboard(window._state);
   }
 });
@@ -4007,6 +4008,7 @@ function switchToTab(tabKey) {
     loadTeamsCache();
     if (tabKey === 'users')    loadUsersTab();
     if (tabKey === 'profiles') loadProfilesTab();
+    if (tabKey === 'theme')    loadLooksList();
     if (tabKey === 'home')     renderDashboard(window._state);
     localStorage.setItem('gfx_ctrl_tab', tabKey);
   });
@@ -5227,6 +5229,58 @@ function playEasePreview() {
   void dot.offsetWidth; // force reflow so the reset takes before re-animating
   dot.style.transition = `transform ${(0.6 * mult).toFixed(3)}s ${ease}`;
   dot.style.transform = `translateX(${travel}px)`;
+}
+
+// ── Looks (save / apply reusable visual identities) ──────────────────────────
+function loadLooksList() {
+  fetch('/api/looks').then(r => r.json()).then(d => renderLooks(d.looks || [])).catch(() => {});
+}
+function renderLooks(looks) {
+  const list = g('looks-list'); if (!list) return;
+  if (!looks.length) { list.innerHTML = '<p class="hint" style="margin:0">No Looks saved yet.</p>'; return; }
+  list.innerHTML = looks.map(lk =>
+    `<div class="look-row" data-id="${lk.id}">
+      <span class="look-name" id="look-name-${lk.id}">${escHtml(lk.name)}</span>
+      <div class="look-actions">
+        <button class="btn btn-sm btn-primary" onclick="applyLook('${lk.id}')">Apply</button>
+        <button class="btn btn-sm" onclick="renameLookInline('${lk.id}')">Rename</button>
+        <button class="btn btn-sm btn-danger" onclick="deleteLook('${lk.id}', this)">✕</button>
+      </div>
+    </div>`).join('');
+}
+function saveLook() {
+  const inp = g('look-name-input'); if (!inp) return;
+  const name = inp.value.trim();
+  if (!name) return showAlert('Give the Look a name first.');
+  fetch('/api/looks/save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) })
+    .then(r => r.json()).then(d => {
+      if (!d.ok) return showAlert(d.error || 'Failed to save Look.');
+      inp.value = ''; loadLooksList();
+    });
+}
+function applyLook(id) {
+  fetch('/api/looks/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+    .then(r => r.json()).then(d => { if (!d.ok) showAlert(d.error || 'Failed to apply Look.'); });
+}
+function renameLookInline(id) {
+  const nameEl = g('look-name-' + id); if (!nameEl) return;
+  const input = document.createElement('input');
+  input.type = 'text'; input.value = nameEl.textContent; input.className = 'look-rename-input'; input.maxLength = 40;
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') _confirmLookRename(id, input); if (e.key === 'Escape') loadLooksList(); });
+  input.addEventListener('blur', () => _confirmLookRename(id, input));
+  nameEl.replaceWith(input); input.focus(); input.select();
+}
+function _confirmLookRename(id, input) {
+  const name = input.value.trim();
+  if (!name) { loadLooksList(); return; }
+  fetch('/api/looks/rename', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id, name }) })
+    .then(r => r.json()).then(d => { if (!d.ok) showAlert(d.error || 'Failed to rename.'); loadLooksList(); });
+}
+function deleteLook(id, btn) {
+  confirmDestructive(btn, 'Delete Look', () => {
+    fetch('/api/looks/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) })
+      .then(r => r.json()).then(d => { if (d.ok) loadLooksList(); else showAlert(d.error || 'Failed to delete.'); });
+  });
 }
 
 // ── BG Output tab ─────────────────────────────────────────────────────────────
