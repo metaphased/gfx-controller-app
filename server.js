@@ -1449,7 +1449,8 @@ app.post('/api/schedule/game/add', requireAdmin, (req, res) => {
     }
   }
   day.games.push(game);
-  broadcastSchedule(); broadcast(); res.json({ ok: true, game, schedule: state.tournament.schedule });
+  _seedLinkedBracketTeams(game);
+  deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, game, schedule: state.tournament.schedule });
 });
 app.post('/api/schedule/game/update', requireAdmin, (req, res) => {
   const { dayId, gameId, team1Id, team2Id, team1Override, team2Override, stage, format, fearlessDraft, bracketMatchRef } = req.body;
@@ -1477,6 +1478,7 @@ app.post('/api/schedule/game/update', requireAdmin, (req, res) => {
       delete game.bracketMatchIdx;
     }
   }
+  _seedLinkedBracketTeams(game);
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, schedule: state.tournament.schedule });
 });
 app.post('/api/schedule/game/delete', requireAdmin, (req, res) => {
@@ -1615,6 +1617,64 @@ app.post('/api/match/edit-save', requireAdmin, (req, res) => {
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true });
 });
 
+// Write the just-played match (state.match teams + scores) into its linked bracket
+// match so the bracket graphic reflects the result. Where the bracket slots are
+// already named, match by name (in either order) so scores land on the right slot;
+// otherwise fill the slots from the played match.
+function _updateLinkedBracket(sg) {
+  if (!sg || sg.bracketRoundIdx == null || sg.bracketMatchIdx == null) return;
+  const bRound = (state.bracket.rounds || [])[sg.bracketRoundIdx];
+  const bMatch = bRound && bRound.matches[sg.bracketMatchIdx];
+  if (!bMatch) return;
+  const t1Name = state.match.team1.name || state.match.team1.tag || 'TBD';
+  const t2Name = state.match.team2.name || state.match.team2.tag || 'TBD';
+  const t1Score = state.match.team1.score, t2Score = state.match.team2.score;
+  const norm = s => String(s || '').trim().toLowerCase();
+  const resolved = nm => { const n = norm(nm); return n && n !== 'tbd' && n !== 'bye' && n.indexOf('winner of') !== 0 && n.indexOf('loser of') !== 0; };
+  bMatch.team1 = bMatch.team1 || {};
+  bMatch.team2 = bMatch.team2 || {};
+  const b1 = bMatch.team1.name, b2 = bMatch.team2.name;
+  if (resolved(b1) && resolved(b2) && norm(b1) === norm(t2Name) && norm(b2) === norm(t1Name)) {
+    bMatch.team1.score = t2Score; bMatch.team2.score = t1Score; // bracket slots reversed vs played match
+  } else if (resolved(b1) && resolved(b2) && norm(b1) === norm(t1Name) && norm(b2) === norm(t2Name)) {
+    bMatch.team1.score = t1Score; bMatch.team2.score = t2Score;
+  } else {
+    bMatch.team1.name = t1Name; bMatch.team1.score = t1Score; // slots unresolved (TBD/pending) — fill from played match
+    bMatch.team2.name = t2Name; bMatch.team2.score = t2Score;
+  }
+  bMatch.complete = true;
+}
+
+// Revert a linked bracket match when its result is cleared (scores 0, not complete).
+function _clearLinkedBracket(sg) {
+  if (!sg || sg.bracketRoundIdx == null || sg.bracketMatchIdx == null) return;
+  const bRound = (state.bracket.rounds || [])[sg.bracketRoundIdx];
+  const bMatch = bRound && bRound.matches[sg.bracketMatchIdx];
+  if (!bMatch) return;
+  if (bMatch.team1) bMatch.team1.score = 0;
+  if (bMatch.team2) bMatch.team2.score = 0;
+  bMatch.complete = false;
+}
+
+// Forward-fill: when a schedule game is linked to a bracket match and has teams
+// assigned, show that matchup on the bracket (0-0) before it's played. Only fills
+// unresolved (TBD/pending) slots of a not-yet-complete match — never overwrites
+// teams that advanced into the slot, nor a recorded result.
+function _seedLinkedBracketTeams(sg) {
+  if (!sg || sg.bracketRoundIdx == null || sg.bracketMatchIdx == null) return;
+  const bRound = (state.bracket.rounds || [])[sg.bracketRoundIdx];
+  const bMatch = bRound && bRound.matches[sg.bracketMatchIdx];
+  if (!bMatch || bMatch.complete) return;
+  const nameFor = (id, ov) => ov || (id ? ((_teams.find(t => t.id === id) || {}).name || '') : '');
+  const t1 = nameFor(sg.team1Id, sg.team1Override);
+  const t2 = nameFor(sg.team2Id, sg.team2Override);
+  const unresolved = nm => { const n = String(nm || '').trim().toLowerCase(); return !n || n === 'tbd' || n.indexOf('winner of') === 0 || n.indexOf('loser of') === 0; };
+  bMatch.team1 = bMatch.team1 || {};
+  bMatch.team2 = bMatch.team2 || {};
+  if (t1 && unresolved(bMatch.team1.name)) { bMatch.team1.name = t1; if (bMatch.team1.score == null) bMatch.team1.score = 0; }
+  if (t2 && unresolved(bMatch.team2.name)) { bMatch.team2.name = t2; if (bMatch.team2.score == null) bMatch.team2.score = 0; }
+}
+
 app.post('/api/match/record-game', (req, res) => {
   const { winner, t1Side, t2Side, t1Picks, t2Picks, t1RolePicks, t2RolePicks } = req.body;
   if (!winner || !['team1','team2'].includes(winner)) return res.status(400).json({ error: 'winner must be team1 or team2' });
@@ -1662,18 +1722,7 @@ app.post('/api/match/record-game', (req, res) => {
       const sg = day.games.find(g => g.id === state.match.scheduleGameId);
       if (sg) {
         sg.result = { completed: true, winner: state.match.team1.score >= winsNeeded ? 'team1' : 'team2', team1SeriesScore: state.match.team1.score, team2SeriesScore: state.match.team2.score, games: [...state.match.seriesGames] };
-        // Auto-update linked bracket match with series scores
-        if (sg.bracketRoundIdx != null && sg.bracketMatchIdx != null) {
-          const bRound = (state.bracket.rounds || [])[sg.bracketRoundIdx];
-          const bMatch = bRound && bRound.matches[sg.bracketMatchIdx];
-          if (bMatch) {
-            bMatch.team1 = bMatch.team1 || {};
-            bMatch.team2 = bMatch.team2 || {};
-            bMatch.team1.score = state.match.team1.score;
-            bMatch.team2.score = state.match.team2.score;
-            bMatch.complete = true;
-          }
-        }
+        _updateLinkedBracket(sg); // reflect the result on the linked bracket match
       }
     }
   }
@@ -1726,7 +1775,7 @@ app.post('/api/match/record-bye', requireAdmin, (req, res) => {
       const day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
       if (day) {
         const sg = day.games.find(g => g.id === state.match.scheduleGameId);
-        if (sg) sg.result = { completed: true, winner, team1SeriesScore: state.match.team1.score, team2SeriesScore: state.match.team2.score, games: [...state.match.seriesGames] };
+        if (sg) { sg.result = { completed: true, winner, team1SeriesScore: state.match.team1.score, team2SeriesScore: state.match.team2.score, games: [...state.match.seriesGames] }; _updateLinkedBracket(sg); }
       }
     }
   }
@@ -1753,7 +1802,7 @@ app.post('/api/match/reset-series', (req, res) => {
   if (state.match.scheduleDayId && state.match.scheduleGameId) {
     const _day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
     const _sg  = _day && _day.games.find(g => g.id === state.match.scheduleGameId);
-    if (_sg) _sg.result = null;
+    if (_sg) { _sg.result = null; _clearLinkedBracket(_sg); }
   }
   invalidateStatsCache();
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'reset-series', '');
@@ -1766,6 +1815,7 @@ app.post('/api/schedule/game/clear-result', requireAdmin, (req, res) => {
   const sg  = day && day.games.find(g => g.id === gameId);
   if (!sg) return res.status(404).json({ error: 'Game not found' });
   sg.result = null;
+  _clearLinkedBracket(sg);
   // If this game is currently loaded, reset the series state too
   if (state.match.scheduleDayId === dayId && state.match.scheduleGameId === gameId) {
     state.match.currentGameNum = 1;

@@ -3823,15 +3823,13 @@ function getScheduleStageOptions(t) {
   const rounds = (window._state && window._state.bracket && window._state.bracket.rounds) || [];
   const opts = [];
   if (hasGroups) opts.push({ key: 'groupStage', label: 'Group Stage' });
+  // List every bracket round as a stage so a game can be linked to a match even
+  // before its teams resolve (e.g. the Grand Final while it's still TBD).
   rounds.forEach(function(round, idx) {
-    const hasTeam = (round.matches || []).some(function(m) {
-      return (m.team1 && m.team1.name && m.team1.name.trim()) ||
-             (m.team2 && m.team2.name && m.team2.name.trim());
-    });
-    if (hasTeam) opts.push({ key: 'bracket-round-' + idx, label: round.label || ('Round ' + (idx + 1)) });
+    opts.push({ key: 'bracket-round-' + idx, label: round.label || ('Round ' + (idx + 1)) });
   });
-  // Fallback to hardcoded stages if no bracket rounds have teams yet
-  if (!opts.some(function(o) { return o.key.startsWith('bracket-round-'); })) {
+  // Fallback to hardcoded stage labels only when no bracket exists yet
+  if (!rounds.length) {
     const playoffFmt = (t && t.playoffFormat) || 'singleElim';
     (playoffFmt === 'doubleElim' ? PLAYOFF_STAGES_DOUBLE : PLAYOFF_STAGES_SINGLE)
       .forEach(function(s) { opts.push({ key: s.key, label: s.label }); });
@@ -4668,27 +4666,34 @@ function updateAddGameFormat(dayId, stageKey) {
   if (stages && stages[stageKey]) fmtEl.value = stages[stageKey].format || 'Bo3';
 }
 
-function _syncBracketMatchRow(dayId, stageKey) {
-  const matchRow = g('sadd-match-row-' + dayId);
+// Populate a bracket-match link <select> for a schedule game form (add or edit).
+// Lists all matches in the round — including TBD ones — so a game can be linked to a
+// match whose teams haven't resolved yet (e.g. the Grand Final); shows the row only
+// for bracket-round stages. selectedRef ("ri-mi") preselects the current link.
+function _populateBracketMatchSelect(rowId, selId, stageKey, selectedRef) {
+  const matchRow = g(rowId);
   if (!matchRow) return;
   if (!stageKey || !stageKey.startsWith('bracket-round-')) { matchRow.style.display = 'none'; return; }
   const ri = parseInt(stageKey.replace('bracket-round-', ''));
   const rounds = (window._state && window._state.bracket && window._state.bracket.rounds) || [];
   const round = rounds[ri];
-  if (!round) { matchRow.style.display = 'none'; return; }
-  const valid = (round.matches || []).filter(function(m) {
-    return (m.team1 && m.team1.name && m.team1.name.trim()) || (m.team2 && m.team2.name && m.team2.name.trim());
-  });
-  if (valid.length === 0) { matchRow.style.display = 'none'; return; }
-  const sel = g('sadd-match-' + dayId);
+  if (!round || !(round.matches || []).length) { matchRow.style.display = 'none'; return; }
+  const sel = g(selId);
   if (!sel) return;
   sel.innerHTML = '<option value="">— select match (optional) —</option>' +
-    valid.map(function(m) {
-      const origIdx = round.matches.indexOf(m);
-      return '<option value="' + ri + '-' + origIdx + '">' +
-        escHtml((m.team1 && m.team1.name || 'TBD') + ' vs ' + (m.team2 && m.team2.name || 'TBD')) + '</option>';
+    (round.matches || []).map(function(m, idx) {
+      const teams = (m.team1 && m.team1.name || 'TBD') + ' vs ' + (m.team2 && m.team2.name || 'TBD');
+      const val = ri + '-' + idx;
+      return '<option value="' + val + '"' + (val === selectedRef ? ' selected' : '') + '>' +
+        escHtml(getBracketMatchLabel(ri, idx) + ' — ' + teams) + '</option>';
     }).join('');
   matchRow.style.display = '';
+}
+function _syncBracketMatchRow(dayId, stageKey) {
+  _populateBracketMatchSelect('sadd-match-row-' + dayId, 'sadd-match-' + dayId, stageKey);
+}
+function _syncEditBracketMatchRow(gid, stageKey, selectedRef) {
+  _populateBracketMatchSelect('sedit-match-row-' + gid, 'sedit-match-' + gid, stageKey, selectedRef);
 }
 
 function onBracketMatchSelect(dayId, value) {
@@ -4762,7 +4767,9 @@ function renderScheduleGameEditForm(dayId, game) {
   const fmtOpts = fmts.map(function(f) { return '<option' + (f === game.format ? ' selected' : '') + '>' + f + '</option>'; }).join('');
 
   return '<div class="sadd-form sedit-form">' +
-    '<div class="sadd-row"><label>Stage</label><select id="sedit-stage-' + gid + '">' + stageOpts + '</select></div>' +
+    '<div class="sadd-row"><label>Stage</label><select id="sedit-stage-' + gid + '" onchange="_syncEditBracketMatchRow(\'' + gid + '\', this.value)">' + stageOpts + '</select></div>' +
+    '<div class="sadd-row" id="sedit-match-row-' + gid + '" style="display:none"><label>Match</label>' +
+      '<select id="sedit-match-' + gid + '"><option value="">— select match (optional) —</option></select></div>' +
     '<div class="sadd-row"><label>Team 1</label><select id="sedit-t1-' + gid + '">' + teamOpts(game.team1Id) + '</select></div>' +
     '<div class="sadd-row"><label>Team 2</label><select id="sedit-t2-' + gid + '">' + teamOpts(game.team2Id) + '</select></div>' +
     '<div class="sadd-row"><label>Format</label><select id="sedit-format-' + gid + '">' + fmtOpts + '</select></div>' +
@@ -4783,6 +4790,8 @@ function openEditGameForm(dayId, gameId) {
   if (!game) return;
   container.innerHTML = renderScheduleGameEditForm(dayId, game);
   container.style.display = 'block';
+  const ref = (game.bracketRoundIdx != null && game.bracketMatchIdx != null) ? (game.bracketRoundIdx + '-' + game.bracketMatchIdx) : '';
+  _syncEditBracketMatchRow(gameId, game.stage, ref);
 }
 function closeEditGameForm(gameId) {
   const c = g('sedit-' + gameId); if (c) { c.style.display = 'none'; c.innerHTML = ''; }
@@ -4795,6 +4804,7 @@ function submitEditGame(dayId, gameId) {
   const fearEl  = g('sedit-fearless-' + gameId);
   const t1OvEl  = g('sedit-t1override-' + gameId);
   const t2OvEl  = g('sedit-t2override-' + gameId);
+  const matchEl = g('sedit-match-' + gameId);
   api('/api/schedule/game/update', {
     dayId, gameId,
     team1Id:       t1El  && t1El.value,
@@ -4804,6 +4814,7 @@ function submitEditGame(dayId, gameId) {
     fearlessDraft: !!(fearEl && fearEl.checked),
     team1Override: (t1OvEl && t1OvEl.value.trim()) || '',
     team2Override: (t2OvEl && t2OvEl.value.trim()) || '',
+    bracketMatchRef: (matchEl && matchEl.value) || '',
   }).then(function(data) { _applySchedule(data); closeEditGameForm(gameId); });
 }
 
