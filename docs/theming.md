@@ -4,10 +4,19 @@ Everything visual is configured under **Broadcast Theme** in the control panel a
 
 ## Colour palette & accents
 
-- **Colour Palette** — four named slots (Primary / Secondary / Light / Dark) exposed to the overlays as the CSS variables `--gfx-c1`–`--gfx-c4`.
-- **Team Side Accents** — Blue side / Red side colours (`--gfx-blue` / `--gfx-red`), used to differentiate sides in the Draft and Head-to-Head graphics.
+Four palette slots are wired across **every** overlay (exposed as CSS variables `--gfx-c1`–`--gfx-c4`, plus RGB-triplet variants `--gfx-cN-rgb` for translucent surfaces). Each has a role:
 
-> Note: today the overlays mainly consume **Primary** + the side accents; the other palette slots are wired sparsely. Broadening palette usage is a planned enhancement.
+| Slot | Var | Drives |
+|---|---|---|
+| **Primary** | `--gfx-c1` | main accent — headers, key highlights, winner accent, accent tints/gradients |
+| **Secondary** | `--gfx-c2` | stage/format labels (Grand Final, "Advances to Playoffs", match format) & secondary highlights |
+| **Light** | `--gfx-c3` | primary foreground text (muted/secondary text deliberately left neutral) |
+| **Dark** | `--gfx-c4` | panel / card / bar backgrounds (kept translucent — the dark "glass" look) |
+
+- **Team Side Accents** — Blue side / Red side colours (`--gfx-blue` / `--gfx-red`), used to differentiate sides in Draft, Head-to-Head and Player Intro (team 1 = blue, team 2 = red). These are *side*-based, not per-team.
+- **Per-team colours were removed** — team logos and names differentiate teams; a designed palette + side accents avoid clashes. The Win Screen accent comes from the winning side, Primary, or a custom colour (see its **Accent Colour** control).
+
+Every wiring keeps the original colour as a literal fallback, so the default palette reproduces the standard look exactly and unsupported renderers degrade gracefully. Changing a slot updates all graphics live. A wild palette can reduce legibility — the seeded **Looks** are safe starting points.
 
 ## Background
 

@@ -279,8 +279,8 @@ const makeDefault = () => ({
   },
   tournamentStructure: { visible: false, showLogo: false, logoScale: 7, logoPosition: 'left', displayTitle: '', showTitle: false },
   match: {
-    team1: { name: 'Team One', tag: 'T1', logo: '', color: '#1ffaff', score: 0 },
-    team2: { name: 'Team Two', tag: 'T2', logo: '', color: '#a7a38e', score: 0 },
+    team1: { name: 'Team One', tag: 'T1', logo: '', score: 0 },
+    team2: { name: 'Team Two', tag: 'T2', logo: '', score: 0 },
     game: 'lol', format: 'Bo3', tournament: '', tournamentLogo: '', sponsorLogos: [],
     fearlessDraft: false,
     currentGameNum: 1,
@@ -292,7 +292,7 @@ const makeDefault = () => ({
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),
     team1subs: makeDefaultSubs(), team2subs: makeDefaultSubs()
   },
-  lowerThird:  { visible: false, text: '', subtext: '', supertext: '', side: 'left', teamColor: '' },
+  lowerThird:  { visible: false, text: '', subtext: '', supertext: '', side: 'left' },
   headToHead:  { visible: false, mode: 'spotlight', spotlightRole: 0, animStyle: 'standard' },
   playerIntro: { visible: false, layout: 'panel', animVariant: 'rise', showLogo: true, showRank: false, showChamps: false, piBg: 'transparent', piLogoUrl: '' },
   preShow:     { visible: false, timerEnd: null, logoUrl: '', logoScale: 8, hideLogo: false, headerText: '', hideHeaderText: false, timerLabel: '', layout: 'center' },
@@ -316,7 +316,7 @@ const makeDefault = () => ({
   bracket:     { visible: false, title: 'TOURNAMENT BRACKET', type: 'single', logoUrl: '', logoScale: 7, logoPosition: 'left', showLogo: false, rounds: [] },
   groupStage:  { visible: false, mode: 'live', logoUrl: '', logoScale: 7, logoPosition: 'left', showLogo: false },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
-  winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '' },
+  winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff' },
   prizepool: { visible: false, showLogo: false, logoScale: 7, logoPosition: 'left', entries: [] },
   bgOutput: {
     bgType: 'animation', bgAnimation: 'particles',
@@ -744,7 +744,7 @@ app.post('/api/match/load-team', requireAdmin, (req, res) => {
   const team = _teams.find(t => t.id === teamId);
   if (!team) return res.status(404).json({ error: 'Team not found' });
   const score = state.match[slot] ? state.match[slot].score : 0;
-  state.match[slot] = { name: team.name||'', tag: team.tag||'', logo: team.logo||'', color: team.color||'#1ffaff', score, teamId: team.id };
+  state.match[slot] = { name: team.name||'', tag: team.tag||'', logo: team.logo||'', score, teamId: team.id };
   const tp = team.players || [];
   DEFAULT_ROLES.forEach((role, i) => {
     const p = tp[i] || {};
@@ -1297,7 +1297,6 @@ app.post('/api/teams/save', requireAdmin, (req, res) => {
         name:  inc.name  || '',
         tag:   inc.tag   || '',
         logo:  inc.logo  != null ? inc.logo  : slotMatch.logo,
-        color: inc.color != null ? inc.color : slotMatch.color,
       });
 
       // Sync players + subs so roster, H2H, draft all reflect the updated team
@@ -1540,13 +1539,12 @@ app.post('/api/match/load-schedule-game', (req, res) => {
     const t = teamId ? teams.find(x => x.id === teamId) : null;
     if (!t) {
       // No team assigned — clear slot to TBD so stale data from a previous match doesn't persist
-      const defaultColor = slot === 'team1' ? '#1ffaff' : '#a7a38e';
-      state.match[slot] = { name: 'TBD', tag: 'TBD', logo: '', color: defaultColor, score: 0 };
+      state.match[slot] = { name: 'TBD', tag: 'TBD', logo: '', score: 0 };
       state.players[slot]            = makeDefaultPlayers();
       state.players[slot + 'subs']   = makeDefaultSubs();
       return;
     }
-    state.match[slot] = { name: t.name||'', tag: t.tag||'', logo: t.logo||'', color: t.color||(slot==='team1'?'#1ffaff':'#a7a38e'), score: 0 };
+    state.match[slot] = { name: t.name||'', tag: t.tag||'', logo: t.logo||'', score: 0 };
     const tp = t.players || [];
     DEFAULT_ROLES.forEach((role, i) => {
       const p = tp[i] || {};
@@ -1836,7 +1834,7 @@ app.post('/api/profiles/save-empty', requireAdmin, (req, res) => {
   // Use system defaults — don't inherit colours/logos from whatever is currently loaded
   const defaultSettingsSnap = JSON.parse(JSON.stringify(makeDefault().settings));
   delete defaultSettingsSnap.graphicsToken;
-  const emptyTeam = { name: '', tag: '', color: '#1ffaff', logo: '' };
+  const emptyTeam = { name: '', tag: '', logo: '' };
   const profile = {
     id: 'prof_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
     name: name.trim(),

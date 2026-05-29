@@ -5,7 +5,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   --gfx-blue:    #1e6fff;
   --gfx-red:     #ff3b3b;
   --gfx-c1:      #1ffaff;
-  --clock-color: #ffffff;
+  --clock-color: var(--gfx-c3, #ffffff);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -45,8 +45,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 .side-blue .team-header {
   background: linear-gradient(90deg,
-    rgba(30,111,255,0.92) 0%,
-    rgba(30,111,255,0.28) 55%,
+    rgba(var(--gfx-blue-rgb, 30, 111, 255),0.92) 0%,
+    rgba(var(--gfx-blue-rgb, 30, 111, 255),0.28) 55%,
     transparent 100%);
   border-top: 2px solid var(--gfx-blue);
 }
@@ -54,8 +54,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .side-red .team-header {
   flex-direction: row-reverse;
   background: linear-gradient(270deg,
-    rgba(255,59,59,0.92) 0%,
-    rgba(255,59,59,0.28) 55%,
+    rgba(var(--gfx-red-rgb, 255, 59, 59),0.92) 0%,
+    rgba(var(--gfx-red-rgb, 255, 59, 59),0.28) 55%,
     transparent 100%);
   border-top: 2px solid var(--gfx-red);
 }
@@ -70,7 +70,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .team-name {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2.7vh; font-weight: 800; letter-spacing: 0.07em;
-  text-transform: uppercase; color: #fff;
+  text-transform: uppercase; color: var(--gfx-c3, #fff);
   flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 /* Red side name reads right-to-left, anchored toward its logo on the outer edge */
@@ -78,7 +78,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .team-score {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2.7vh; font-weight: 800;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255, 255, 255,0.6);
   flex-shrink: 0;
 }
 
@@ -99,14 +99,14 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 .side-blue .team-header.on-clock::before {
   background: linear-gradient(90deg,
-    rgba(30,111,255,0.55) 0%,
-    rgba(30,111,255,0.18) 55%,
+    rgba(var(--gfx-blue-rgb, 30, 111, 255),0.55) 0%,
+    rgba(var(--gfx-blue-rgb, 30, 111, 255),0.18) 55%,
     transparent 100%);
 }
 .side-red .team-header.on-clock::before {
   background: linear-gradient(270deg,
-    rgba(255,59,59,0.55) 0%,
-    rgba(255,59,59,0.18) 55%,
+    rgba(var(--gfx-red-rgb, 255, 59, 59),0.55) 0%,
+    rgba(var(--gfx-red-rgb, 255, 59, 59),0.18) 55%,
     transparent 100%);
 }
 
@@ -127,7 +127,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   position: relative;
   overflow: hidden;
   flex-shrink: 0;
-  background: rgba(14,18,28,0.85);
+  background: rgba(var(--gfx-c4-rgb, 14, 18, 28),0.85);
 }
 .ban-slot img.ban-img {
   position: absolute; inset: 0;
@@ -139,25 +139,25 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* Diagonal placeholder */
 .ban-slot.empty-ban {
-  background-color: rgba(18,20,30,0.85);
+  background-color: rgba(var(--gfx-c4-rgb, 18, 20, 30),0.85);
   background-image: repeating-linear-gradient(
     135deg, transparent 0px, transparent 7px,
-    rgba(0,0,0,0.3) 7px, rgba(0,0,0,0.3) 9px
+    rgba(0, 0, 0,0.3) 7px, rgba(0, 0, 0,0.3) 9px
   );
 }
 .ban-slot.empty-ban-blue::after {
-  content: ''; position: absolute; inset: 0; background: rgba(30,111,255,0.08);
+  content: ''; position: absolute; inset: 0; background: rgba(var(--gfx-blue-rgb, 30, 111, 255),0.08);
 }
 .ban-slot.empty-ban-red::after {
-  content: ''; position: absolute; inset: 0; background: rgba(255,59,59,0.08);
+  content: ''; position: absolute; inset: 0; background: rgba(var(--gfx-red-rgb, 255, 59, 59),0.08);
 }
 .ban-slot .ban-overlay {
   position: absolute; inset: 0;
-  background: rgba(0,0,0,0.52);
+  background: rgba(0, 0, 0,0.52);
   display: flex; align-items: center; justify-content: center;
 }
 .ban-slot .ban-overlay::after {
-  content: '✕'; color: rgba(255,255,255,0.4); font-size: 1.5vh;
+  content: '✕'; color: rgba(255, 255, 255,0.4); font-size: 1.5vh;
 }
 
 /* ── Centre column: transparent camera space + fearless at bottom ─────── */
@@ -176,7 +176,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .fearless-label {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.4vh; font-weight: 700; letter-spacing: 0.22em;
-  text-transform: uppercase; color: rgba(255,255,255,0.65);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.65);
   text-align: center; margin-bottom: 0.5vh;
 }
 /* Grid layout: 5 role columns, one row per game.
@@ -210,14 +210,14 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.4vh; font-weight: 800; letter-spacing: 0.2em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.55); /* fallback if side unknown */
+  color: rgba(255, 255, 255,0.55); /* fallback if side unknown */
 }
 .fearless-bye-row::before,
 .fearless-bye-row::after {
   content: '';
   flex: 1;
   height: 1px;
-  background: rgba(255,255,255,0.22);
+  background: rgba(255, 255, 255,0.22);
 }
 /* Winning-side accent colour on the rules only — text stays white for readability */
 .fearless-bye-row[data-side="blue"]::before,
@@ -225,7 +225,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .fearless-bye-row[data-side="red"]::before,
 .fearless-bye-row[data-side="red"]::after  { background: var(--gfx-red);  opacity: 0.55; }
 /* Bold mode — brighten text and bump line opacity */
-body.phase-bold .fearless-bye-row                          { color: rgba(255,255,255,0.9); }
+body.phase-bold .fearless-bye-row                          { color: rgba(255, 255, 255,0.9); }
 body.phase-bold .fearless-bye-row[data-side="blue"]::before,
 body.phase-bold .fearless-bye-row[data-side="blue"]::after,
 body.phase-bold .fearless-bye-row[data-side="red"]::before,
@@ -235,12 +235,12 @@ body.phase-bold .fearless-role-icon-hdr {
   opacity: 0.9;
 }
 body.phase-bold .fearless-label {
-  color: rgba(255,255,255,0.9);
+  color: rgba(255, 255, 255,0.9);
 }
 .fearless-icon {
   width: 1.7vw; height: 1.7vw;
   background-size: cover; background-position: center top;
-  background-color: rgba(18,20,28,0.85);
+  background-color: rgba(var(--gfx-c4-rgb, 18, 20, 28),0.85);
   flex-shrink: 0;
 }
 
@@ -279,14 +279,14 @@ body.phase-bold .fearless-label {
   content: '';
   position: absolute; inset: 0;
   background: linear-gradient(to top,
-    rgba(0,0,0,0.88) 0%, rgba(0,0,0,0.2) 45%, transparent 100%);
+    rgba(0, 0, 0,0.88) 0%, rgba(0, 0, 0,0.2) 45%, transparent 100%);
 }
 /* Placeholder when no champion picked — linear bottom-to-top */
 .player-card.side-blue .player-bg.no-champ {
-  background: linear-gradient(to top, rgba(22,60,140,0.9) 0%, rgba(5,8,22,1) 100%);
+  background: linear-gradient(to top, rgba(22, 60, 140,0.9) 0%, rgba(var(--gfx-c4-rgb, 5, 8, 22),1) 100%);
 }
 .player-card.side-red .player-bg.no-champ {
-  background: linear-gradient(to top, rgba(140,20,22,0.9) 0%, rgba(5,6,18,1) 100%);
+  background: linear-gradient(to top, rgba(140, 20, 22,0.9) 0%, rgba(var(--gfx-c4-rgb, 5, 6, 18),1) 100%);
 }
 /* Bottom accent line */
 .player-card.side-blue::after {
@@ -313,7 +313,7 @@ body.phase-bold .fearless-label {
 .player-name {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.4vh; font-weight: 700; letter-spacing: 0.06em;
-  text-transform: uppercase; color: #fff;
+  text-transform: uppercase; color: var(--gfx-c3, #fff);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 100%; text-align: center;
 }
@@ -362,7 +362,7 @@ body.phase-bold .fearless-label {
 
 .series-choice-blue { color: var(--gfx-blue); }
 .series-choice-red  { color: var(--gfx-red); }
-.series-choice-pick { color: rgba(255,255,255,0.9); }
+.series-choice-pick { color: rgba(255, 255, 255,0.9); }
 /* Ambient glow behind clock center */
 .clock-center::before {
   content: '';
@@ -379,19 +379,19 @@ body.phase-bold .fearless-label {
 .clock-series-game {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.6vh; font-weight: 800; letter-spacing: 0.16em;
-  text-transform: uppercase; color: rgba(255,255,255,0.9);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.9);
   white-space: nowrap; text-align: center;
 }
 
 .clock-series-phase {
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.3vh; font-weight: 700; letter-spacing: 0.14em;
-  text-transform: uppercase; color: rgba(255,255,255,0.65);
+  text-transform: uppercase; color: rgba(255, 255, 255,0.65);
   white-space: nowrap; text-align: center;
 }
 body.phase-bold .clock-series-phase {
-  color: rgba(255,255,255,0.95);
-  text-shadow: 0 1px 5px rgba(0,0,0,0.9), 0 0 10px rgba(0,0,0,0.7);
+  color: rgba(255, 255, 255,0.95);
+  text-shadow: 0 1px 5px rgba(0, 0, 0,0.9), 0 0 10px rgba(0, 0, 0,0.7);
 }
 
 /* Logo + timer ring merged into one element */
@@ -409,7 +409,7 @@ body.phase-bold .clock-series-phase {
 }
 /* Track starts fully hidden (dashoffset = circumference); ring-track-draw reveals it */
 .timer-track {
-  fill: none; stroke: rgba(255,255,255,0.12); stroke-width: 3;
+  fill: none; stroke: rgba(255, 255, 255,0.12); stroke-width: 3;
   stroke-dasharray: 276.46;
   stroke-dashoffset: 276.46;
 }
@@ -455,7 +455,7 @@ body.phase-bold .clock-series-phase {
 /* Timer countdown value — always in layout flow; opacity controls visibility */
 .timer-val {
   font-family: 'Barlow Condensed', sans-serif;
-  font-size: 2.2vh; font-weight: 800; color: rgba(255,255,255,0.75);
+  font-size: 2.2vh; font-weight: 800; color: rgba(255, 255, 255,0.75);
   text-align: center;
   opacity: 0; /* hidden by default; anim-slide-up-sm reveals it */
 }

@@ -425,12 +425,12 @@ function matchHtml(match, teams, roundLabel, matchCount, mi) {
 
 function teamRowHtml(name, score, teams, done, isWinner, isLoser) {
   var td      = resolveTeam(name, teams);
-  var color   = td ? (td.color || '') : '';
   var logoUrl = td ? (td.logo  || '') : '';
   var isTbd   = !name || name === 'TBD' || name === 'BYE';
   var isPending = !isTbd && isPendingRef(name);
   var cls = 'bkt-team' + (isTbd ? ' bkt-tbd' : '') + (isPending ? ' bkt-pending-ref' : '') + (isWinner ? ' bkt-winner' : '') + (isLoser ? ' bkt-loser' : '');
-  var sty = isWinner && color ? ' style="--bkt-accent:' + _eH(color) + '"' : '';
+  // Winner accent comes from the palette Primary (per-team colour removed).
+  var sty = isWinner ? ' style="--bkt-accent:var(--gfx-c1)"' : '';
   var logo = logoUrl
     ? '<img class="bkt-team-logo" src="' + _eH(logoUrl) + '" alt="">'
     : '<div class="bkt-team-logo-ph"></div>';
@@ -570,7 +570,7 @@ function bracketHash(state) {
     rounds: bkt.rounds || [],
     type:   bkt.type,
     format: tourn.playoffFormat,
-    teams:  (state.teams || []).map(function(t) { return { id: t.id, name: t.name, tag: t.tag, logo: t.logo, color: t.color }; }),
+    teams:  (state.teams || []).map(function(t) { return { id: t.id, name: t.name, tag: t.tag, logo: t.logo }; }),
     logo:   bkt.logoUrl || tourn.logo,
     scale:  bkt.logoScale,
     pos:    bkt.logoPosition,

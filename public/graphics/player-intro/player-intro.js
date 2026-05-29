@@ -223,8 +223,8 @@ function renderPanel(state) {
   fitText($('pi-panel-t2-name'), maxPanelNamePx, Math.round(maxPanelNamePx * 0.42));
 
   var t1Hdr = $('pi-panel-t1-hdr'), t2Hdr = $('pi-panel-t2-hdr');
-  if (t1Hdr) t1Hdr.style.setProperty('--team-color', t1.color || 'var(--gfx-blue)');
-  if (t2Hdr) t2Hdr.style.setProperty('--team-color', t2.color || 'var(--gfx-red)');
+  if (t1Hdr) t1Hdr.style.setProperty('--team-color', 'var(--gfx-blue)');
+  if (t2Hdr) t2Hdr.style.setProperty('--team-color', 'var(--gfx-red)');
 
   setLogoOrVs($('pi-panel-centre-img'), $('pi-panel-vs'), showLogo ? getCentreLogo(state) : '');
 
@@ -277,8 +277,8 @@ function renderStack(state) {
   var showLogo   = pi.showLogo !== false;
 
   var t1El = $('pi-stack-t1'), t2El = $('pi-stack-t2');
-  if (t1El) t1El.style.setProperty('--team-color', t1.color || 'var(--gfx-blue)');
-  if (t2El) t2El.style.setProperty('--team-color', t2.color || 'var(--gfx-red)');
+  if (t1El) t1El.style.setProperty('--team-color', 'var(--gfx-blue)');
+  if (t2El) t2El.style.setProperty('--team-color', 'var(--gfx-red)');
 
   setBg('pi-stack-t1-logo', t1.logo);
   setBg('pi-stack-t2-logo', t2.logo);
@@ -351,8 +351,8 @@ function renderBar(state) {
   setBg('pi-bar-t2-logo', t2.logo);
 
   var t1El = $('pi-bar-t1'), t2El = $('pi-bar-t2');
-  if (t1El) t1El.style.setProperty('--team-color', t1.color || 'var(--gfx-blue)');
-  if (t2El) t2El.style.setProperty('--team-color', t2.color || 'var(--gfx-red)');
+  if (t1El) t1El.style.setProperty('--team-color', 'var(--gfx-blue)');
+  if (t2El) t2El.style.setProperty('--team-color', 'var(--gfx-red)');
 
   // Team names in dead space flanking the centre
   var t1NameEl = $('pi-bar-t1-team-name');

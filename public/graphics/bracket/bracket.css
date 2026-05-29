@@ -145,8 +145,8 @@ html, body {
   font-weight: 900;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--gfx-c1, #1ffaff);
-  text-shadow: 0 0 28px var(--gfx-c1, #1ffaff);
+  color: var(--gfx-c2, #a7a38e);
+  text-shadow: 0 0 28px var(--gfx-c2, #a7a38e);
   line-height: 1.1;
   padding-bottom: 1.5vh;
 }
@@ -301,7 +301,7 @@ html, body {
 
 /* ── Match card ─────────────────────────────────────────────────────────────── */
 .bkt-match {
-  background: rgba(5, 11, 16, 0.90);
+  background: rgba(var(--gfx-c4-rgb, 5, 11, 16), 0.90);
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 2px;
   overflow: hidden;
@@ -384,7 +384,7 @@ html, body {
   background: var(--bkt-accent, var(--gfx-c1, #1ffaff));
 }
 
-.bkt-team.bkt-winner .bkt-team-name  { color: #fff; }
+.bkt-team.bkt-winner .bkt-team-name  { color: var(--gfx-c3, #fff); }
 .bkt-team.bkt-winner .bkt-team-score { color: var(--bkt-accent, var(--gfx-c1, #1ffaff)); }
 
 /* Loser */

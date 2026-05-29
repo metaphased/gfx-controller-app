@@ -32,7 +32,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   background-size: 220%;
   background-position: center 15%;
   background-repeat: no-repeat;
-  border: 1px solid rgba(255,255,255,0.18);
+  border: 1px solid rgba(255, 255, 255,0.18);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -40,8 +40,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
    ═══════════════════════════════════════════════════════════════════════════ */
 .pi-panel-box {
   width: 80vw;
-  background: rgba(6, 12, 20, 0.94);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(var(--gfx-c4-rgb, 6, 12, 20), 0.94);
+  border: 1px solid rgba(255, 255, 255,0.1);
   overflow: hidden;
 }
 
@@ -50,7 +50,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: grid;
   grid-template-columns: 1fr 11vw 1fr;  /* matches .pi-panel-centre-zone width exactly */
   height: 9vh;
-  border-bottom: 1px solid rgba(255,255,255,0.08);
+  border-bottom: 1px solid rgba(255, 255, 255,0.08);
 }
 
 .pi-panel-team-hdr {
@@ -59,7 +59,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-items: center;
   gap: 1.5vw;
   padding: 0 2.5vw;
-  background: rgba(0,0,0,0.25);
+  background: rgba(0, 0, 0,0.25);
   border-bottom: 3px solid var(--team-color, var(--gfx-c1));
 }
 .pi-panel-t2-hdr { flex-direction: row-reverse; }
@@ -76,7 +76,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 4.2vh; font-weight: 900;
   letter-spacing: 0.08em; text-transform: uppercase;
-  color: #fff;
+  color: var(--gfx-c3, #fff);
   line-height: 1;
   flex: 1;
   min-width: 0;
@@ -90,8 +90,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0,0,0,0.45);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  background: rgba(0, 0, 0,0.45);
+  border-bottom: 1px solid rgba(255, 255, 255,0.06);
 }
 .pi-panel-centre-zone img { max-height: 6vh; max-width: 9vw; object-fit: contain; }
 
@@ -99,7 +99,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2.6vh; font-weight: 900;
   letter-spacing: 0.28em; text-transform: uppercase;
-  color: rgba(255,255,255,0.28);
+  color: rgba(255, 255, 255,0.28);
 }
 
 /* ── Body columns ───────────────────────────────────────────────────────── */
@@ -114,7 +114,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-panel-divider {
   width: 1px;
   flex-shrink: 0;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255,0.08);
   margin: 1.2vh 0;
 }
 
@@ -125,7 +125,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   gap: 1.2vw;
   padding: 1.5vh 2vw;
   min-height: 9vh;   /* fixed height so both columns stay aligned regardless of rank/champ data */
-  border-bottom: 1px solid rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255, 255, 255,0.05);
 }
 .pi-pnl-row:last-child { border-bottom: none; }
 .pi-pnl-row-right { flex-direction: row-reverse; }
@@ -153,7 +153,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 4vh; font-weight: 800;
   letter-spacing: 0.03em; text-transform: uppercase;
-  color: #fff;
+  color: var(--gfx-c3, #fff);
   line-height: 1;
   white-space: nowrap;
   overflow: hidden;
@@ -182,7 +182,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.2vh; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase;
-  color: rgba(255,255,255,0.45);
+  color: rgba(255, 255, 255,0.45);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -194,7 +194,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  background: #07101a;
+  background: var(--gfx-c4, #07101a);
 }
 
 /* Team-colour gradient overlay via pseudo-element */
@@ -218,7 +218,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-items: center;
   gap: 2.5vw;
   flex-shrink: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
+  border-bottom: 1px solid rgba(255, 255, 255,0.07);
 }
 .pi-stack-t2 .pi-stack-team-block { flex-direction: row-reverse; }
 
@@ -234,7 +234,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 6.5vh; font-weight: 900;
   letter-spacing: 0.05em; text-transform: uppercase;
-  color: #fff;
+  color: var(--gfx-c3, #fff);
   line-height: 1;
 }
 
@@ -271,7 +271,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 5.8vh; font-weight: 900;
   letter-spacing: 0.02em; text-transform: uppercase;
-  color: #fff;
+  color: var(--gfx-c3, #fff);
   line-height: 1;
   white-space: nowrap;
 }
@@ -299,14 +299,14 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 1.3vh; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255, 255, 255,0.4);
 }
 
 /* ── Centre divider ─────────────────────────────────────────────────────── */
 .pi-stack-divider {
   width: 2px;
   flex-shrink: 0;
-  background: rgba(255,255,255,0.12);
+  background: rgba(255, 255, 255,0.12);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -320,7 +320,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   flex-direction: column;
   align-items: center;
   gap: 1vh;
-  background: #07101a;
+  background: var(--gfx-c4, #07101a);
   padding: 1.5vh 0;
 }
 .pi-stack-divider-centre img { max-height: 7vh; max-width: 7vw; object-fit: contain; }
@@ -329,7 +329,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2vh; font-weight: 900;
   letter-spacing: 0.12em; text-transform: uppercase;
-  color: rgba(255,255,255,0.22);
+  color: rgba(255, 255, 255,0.22);
   writing-mode: vertical-rl;
   text-orientation: mixed;
 }
@@ -342,8 +342,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   height: 20vh;     /* fixed height so bar is consistent with/without data */
   display: flex;
   overflow: hidden;
-  background: rgba(6, 12, 20, var(--pi-bar-alpha, 0.93));
-  border-top: 1px solid rgba(255,255,255,0.1);
+  background: rgba(var(--gfx-c4-rgb, 6, 12, 20), var(--pi-bar-alpha, 0.93));
+  border-top: 1px solid rgba(255, 255, 255,0.1);
 }
 .pi-bar-band.has-rank { height: 23vh; }
 
@@ -408,7 +408,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2.5vh; font-weight: 800;
   letter-spacing: 0.04em; text-transform: uppercase;
-  color: #fff;
+  color: var(--gfx-c3, #fff);
   line-height: 1;
   white-space: nowrap;
 }
@@ -445,7 +445,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 5vh; font-weight: 900;
   letter-spacing: 0.04em; text-transform: uppercase;
-  color: rgba(255,255,255,0.82);
+  color: rgba(255, 255, 255,0.82);
   line-height: 1;
   white-space: nowrap;
 }
@@ -456,8 +456,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: flex;
   align-items: center;
   justify-content: center;
-  border-left:  1px solid rgba(255,255,255,0.07);
-  border-right: 1px solid rgba(255,255,255,0.07);
+  border-left:  1px solid rgba(255, 255, 255,0.07);
+  border-right: 1px solid rgba(255, 255, 255,0.07);
 }
 .pi-bar-centre img { max-height: 6vh; max-width: 7vw; object-fit: contain; }
 
@@ -465,7 +465,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: 'Barlow Condensed', sans-serif;
   font-size: 2.6vh; font-weight: 900;
   letter-spacing: 0.22em; text-transform: uppercase;
-  color: rgba(255,255,255,0.28);
+  color: rgba(255, 255, 255,0.28);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════

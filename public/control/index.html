@@ -478,7 +478,7 @@
       <div class="grid2">
         <div class="card">
           <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:8px"><div class="team-color-dot" id="t1-dot"></div>Team 1</div>
+            <div style="display:flex;align-items:center;gap:8px">Team 1</div>
             <button class="btn btn-sm btn-primary gs-load-team-btn" style="display:none" onclick="openTeamPicker('team1')">Load Team ▾</button>
           </div>
           <div class="gs-team-display">
@@ -494,7 +494,7 @@
         </div>
         <div class="card">
           <div class="card-title" style="display:flex;align-items:center;justify-content:space-between">
-            <div style="display:flex;align-items:center;gap:8px"><div class="team-color-dot" id="t2-dot"></div>Team 2</div>
+            <div style="display:flex;align-items:center;gap:8px">Team 2</div>
             <button class="btn btn-sm btn-primary gs-load-team-btn" style="display:none" onclick="openTeamPicker('team2')">Load Team ▾</button>
           </div>
           <div class="gs-team-display">
@@ -550,12 +550,6 @@
           <div>
             <div class="field-row"><label>Team Name</label><input type="text" id="edit-team-name" placeholder="e.g. Cloud9"></div>
             <div class="field-row"><label>Tag</label><input type="text" id="edit-team-tag" maxlength="6" placeholder="e.g. C9"></div>
-            <div class="field-row"><label>Accent Color</label>
-              <div style="display:flex;gap:8px;align-items:center">
-                <input type="color" id="edit-team-color" value="#1ffaff" style="width:48px;height:32px;padding:2px;background:none;border:1px solid var(--border);cursor:pointer" onchange="document.getElementById('edit-team-color-text').value=this.value">
-                <input type="text" id="edit-team-color-text" placeholder="#1ffaff" value="#1ffaff" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value))document.getElementById('edit-team-color').value=this.value">
-              </div>
-            </div>
             <div class="field-row"><label>Logo</label>
               <div class="upload-row">
                 <input type="text" id="edit-team-logo" placeholder="URL or upload" oninput="updateEditLogoPreview(this.value)">
@@ -676,12 +670,6 @@
             <span class="gfx-ctrl-section-label">Position</span>
             <label class="ctrl-radio-label"><input type="radio" name="lt-side" value="left" onchange="patchLT({side:'left'})" checked> Left</label>
             <label class="ctrl-radio-label"><input type="radio" name="lt-side" value="right" onchange="patchLT({side:'right'})"> Right</label>
-          </div>
-          <div class="gfx-ctrl-group">
-            <span class="gfx-ctrl-section-label">Accent</span>
-            <label class="ctrl-radio-label"><input type="radio" name="lt-color" value="" onchange="patchLT({teamColor:''})" checked> Default</label>
-            <label class="ctrl-radio-label"><input type="radio" name="lt-color" value="team1" onchange="patchLT({teamColor:getLTColor('team1')})"> Team 1</label>
-            <label class="ctrl-radio-label"><input type="radio" name="lt-color" value="team2" onchange="patchLT({teamColor:getLTColor('team2')})"> Team 2</label>
           </div>
         </div>
       </div>
@@ -1146,7 +1134,7 @@
           <!-- Colour Palette -->
           <div class="card" style="margin-bottom:16px">
             <div class="card-title">Colour Palette</div>
-            <p class="hint">4 core colours used across all graphics. Name each slot for your own reference, then set the colour.</p>
+            <p class="hint">Four colours wired across every graphic — change one and it updates live. <strong>Primary</strong> = main accent (headers, highlights, winner). <strong>Secondary</strong> = stage/format labels &amp; secondary highlights. <strong>Light</strong> = primary text. <strong>Dark</strong> = panel backgrounds. The slot names are just your own labels.</p>
             <div class="theme-palette-header">
               <span>Slot Name</span>
               <span class="tph-colour">Colour</span>
@@ -1887,6 +1875,22 @@
                      autocomplete="off" data-form-type="other" data-lpignore="true" readonly
                      oninput="patchWin({message:this.value})">
             </form>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Accent Colour</div>
+            <p class="hint" style="margin-bottom:8px">Where the win screen's accent comes from. Played straight out of the game, the winning side's colour usually reads best.</p>
+            <div class="gfx-ctrl-group">
+              <label class="ctrl-radio-label"><input type="radio" name="win-accent" value="side"    onchange="patchWin({accentSource:'side'})"> Winning side (blue / red)</label>
+              <label class="ctrl-radio-label"><input type="radio" name="win-accent" value="primary" onchange="patchWin({accentSource:'primary'})"> Broadcast Primary</label>
+              <label class="ctrl-radio-label"><input type="radio" name="win-accent" value="custom"  onchange="patchWin({accentSource:'custom'})"> Custom</label>
+            </div>
+            <div id="win-accent-custom-row" style="display:none;margin-top:8px">
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="win-accent-color" value="#1ffaff" style="width:48px;height:32px;padding:2px;background:none;border:1px solid var(--border);cursor:pointer" onchange="document.getElementById('win-accent-color-text').value=this.value;patchWin({accentCustom:this.value})">
+                <input type="text" id="win-accent-color-text" placeholder="#1ffaff" value="#1ffaff" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){document.getElementById('win-accent-color').value=this.value;patchWin({accentCustom:this.value})}">
+              </div>
+            </div>
           </div>
         </div>
 

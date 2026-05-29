@@ -11,15 +11,33 @@ window.GfxSettings = (function () {
 
   function get(s) { return (s && s.settings) || {}; }
 
+  // Hex (#rgb or #rrggbb) → "r, g, b" triplet string for use inside rgba(var(...), a).
+  function _hexTriplet(hex) {
+    let h = String(hex || '').trim().replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    if (h.length !== 6) return null;
+    const r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    if ([r, g, b].some(isNaN)) return null;
+    return r + ', ' + g + ', ' + b;
+  }
+
   function applyTheme(el, s) {
     const st = get(s);
     const pal = st.palette || [];
     const defaults = ['#1ffaff', '#a7a38e', '#e8e6df', '#070f12'];
     for (let i = 0; i < 4; i++) {
-      el.style.setProperty('--gfx-c' + (i + 1), (pal[i] && pal[i].hex) || defaults[i]);
+      const hex = (pal[i] && pal[i].hex) || defaults[i];
+      el.style.setProperty('--gfx-c' + (i + 1), hex);
+      // RGB triplet so overlays can theme translucent surfaces: rgba(var(--gfx-cN-rgb, …), a)
+      const trip = _hexTriplet(hex);
+      if (trip) el.style.setProperty('--gfx-c' + (i + 1) + '-rgb', trip);
     }
-    el.style.setProperty('--gfx-blue', st.blueAccent || '#1e6fff');
-    el.style.setProperty('--gfx-red',  st.redAccent  || '#ff3b3b');
+    const blue = st.blueAccent || '#1e6fff', red = st.redAccent || '#ff3b3b';
+    el.style.setProperty('--gfx-blue', blue);
+    el.style.setProperty('--gfx-red',  red);
+    const blueTrip = _hexTriplet(blue), redTrip = _hexTriplet(red);
+    if (blueTrip) el.style.setProperty('--gfx-blue-rgb', blueTrip);
+    if (redTrip)  el.style.setProperty('--gfx-red-rgb',  redTrip);
     el.style.setProperty('--gfx-bg',   st.bgColor    || 'transparent');
   }
 

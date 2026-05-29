@@ -2,12 +2,12 @@
 html, body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
 
 :root {
-  --win-color:    #1ffaff;
-  --win-col-a70:  rgba(31,250,255,0.7);
-  --win-col-a30:  rgba(31,250,255,0.3);
-  --win-col-a12:  rgba(31,250,255,0.12);
-  --win-col-a06:  rgba(31,250,255,0.06);
-  --win-dark:     rgba(6,12,18,0.97);
+  --win-color:    var(--gfx-c1, #1ffaff);
+  --win-col-a70:  rgba(var(--gfx-c1-rgb, 31, 250, 255),0.7);
+  --win-col-a30:  rgba(var(--gfx-c1-rgb, 31, 250, 255),0.3);
+  --win-col-a12:  rgba(var(--gfx-c1-rgb, 31, 250, 255),0.12);
+  --win-col-a06:  rgba(var(--gfx-c1-rgb, 31, 250, 255),0.06);
+  --win-dark:     rgba(var(--gfx-c4-rgb, 6, 12, 18),0.97);
 }
 
 #win-root {
@@ -20,7 +20,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
    Blade and Wipe are intentional partial overlays so they stay transparent. */
 .ws-fullscreen-bg {
   position: absolute; inset: 0;
-  background: #040810;
+  background: var(--gfx-c4, #040810);
   display: none;
 }
 .style-burst .ws-fullscreen-bg,
@@ -68,7 +68,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: #ffffff;
+  color: var(--gfx-c3, #ffffff);
   line-height: 0.95;
   text-shadow: 0 0 5vw var(--win-col-a70);
 }
@@ -78,7 +78,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-weight: 700;
   letter-spacing: 0.25em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.6);
+  color: rgba(255, 255, 255,0.6);
   margin-top: 0.7vh;
 }
 
@@ -103,7 +103,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .ws-score-sep {
   font-size: 2.5vh;
   font-weight: 300;
-  color: rgba(255,255,255,0.25);
+  color: rgba(255, 255, 255,0.25);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -120,9 +120,9 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
     var(--win-col-a70)      8%,
     var(--win-col-a30)      22%,
     var(--win-col-a12)      38%,
-    rgba(6,12,18,0.75)      52%,
-    rgba(6,12,18,0.92)      68%,
-    rgba(4,9,14,0.97)       100%
+    rgba(var(--gfx-c4-rgb, 6, 12, 18),0.75)      52%,
+    rgba(var(--gfx-c4-rgb, 6, 12, 18),0.92)      68%,
+    rgba(var(--gfx-c4-rgb, 4, 9, 14),0.97)       100%
   );
 }
 
@@ -132,7 +132,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   background: repeating-linear-gradient(
     135deg,
     transparent 0px, transparent 18px,
-    rgba(0,0,0,0.11) 18px, rgba(0,0,0,0.11) 20px
+    rgba(0, 0, 0,0.11) 18px, rgba(0, 0, 0,0.11) 20px
   );
 }
 
@@ -192,10 +192,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
     radial-gradient(ellipse 90vw 70vh at 50% 50%,
       var(--win-col-a30)   0%,
       var(--win-col-a12)   35%,
-      rgba(4,9,14,0.75)    55%,
-      rgba(4,9,14,0.97)    80%
+      rgba(var(--gfx-c4-rgb, 4, 9, 14),0.75)    55%,
+      rgba(var(--gfx-c4-rgb, 4, 9, 14),0.97)    80%
     ),
-    rgba(4, 9, 14, 0.97);
+    rgba(var(--gfx-c4-rgb, 4, 9, 14), 0.97);
   transform-origin: 50% 50%;
 }
 
@@ -228,7 +228,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: 58vw;
   max-width: 900px;
   padding: 4vh 4vw;
-  background: rgba(8, 16, 24, 0.75);
+  background: rgba(var(--gfx-c4-rgb, 8, 16, 24), 0.75);
   border: 1px solid var(--win-col-a30);
   box-shadow: 0 0 8vw var(--win-col-a12), inset 0 0 4vw var(--win-col-a06);
 }
@@ -276,8 +276,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
     radial-gradient(ellipse 90vw 70vh at 50% 50%,
       var(--win-col-a12)   0%,
       var(--win-col-a06)   40%,
-      rgba(4,9,14,0.87)    65%,
-      rgba(4,9,14,0.97)    100%
+      rgba(var(--gfx-c4-rgb, 4, 9, 14),0.87)    65%,
+      rgba(var(--gfx-c4-rgb, 4, 9, 14),0.97)    100%
     );
 }
 
@@ -290,7 +290,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: 58vw;
   max-width: 900px;
   padding: 4vh 4vw;
-  background: rgba(8, 16, 24, 0.75);
+  background: rgba(var(--gfx-c4-rgb, 8, 16, 24), 0.75);
   border: 1px solid var(--win-col-a30);
   box-shadow: 0 0 8vw var(--win-col-a12), inset 0 0 4vw var(--win-col-a06);
 }
@@ -335,7 +335,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 .ws-split-overlay {
   position: absolute; inset: 0;
-  background: rgba(2, 6, 10, 0.97);
+  background: rgba(var(--gfx-c4-rgb, 2, 6, 10), 0.97);
 }
 
 .ws-split-panel-l {
@@ -437,7 +437,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 .ws-spotlight-overlay {
   position: absolute; inset: 0;
-  background: rgba(1, 4, 9, 0.95);
+  background: rgba(var(--gfx-c4-rgb, 1, 4, 9), 0.95);
 }
 
 .ws-spotlight-beam {
@@ -513,7 +513,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   position: absolute;
   left: 0; right: 0;
   height: 28vh;
-  background: rgba(3, 7, 12, 0.97);
+  background: rgba(var(--gfx-c4-rgb, 3, 7, 12), 0.97);
 }
 .ws-wipe-bar-top { top: 0; }
 .ws-wipe-bar-bot { bottom: 0; }

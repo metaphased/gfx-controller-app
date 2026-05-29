@@ -57,7 +57,7 @@ html, body {
 
 /* ── Group card ─────────────────────────────────────────────────────────────── */
 .gs-group {
-  background: rgba(5, 11, 16, 0.90);
+  background: rgba(var(--gfx-c4-rgb, 5, 11, 16), 0.90);
   border: 1px solid rgba(255, 255, 255, 0.09);
   border-radius: 3px;
   overflow: hidden;
@@ -73,7 +73,7 @@ html, body {
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--gfx-c1, #1ffaff);
-  text-shadow: 0 0 20px rgba(31, 250, 255, 0.45);
+  text-shadow: 0 0 20px rgba(var(--gfx-c1-rgb, 31, 250, 255), 0.45);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
@@ -143,7 +143,7 @@ html, body {
   transition: color 0.45s ease;
 }
 
-.gs-team.qualifying .gs-team-name { color: #fff; }
+.gs-team.qualifying .gs-team-name { color: var(--gfx-c3, #fff); }
 
 /* ── W-L record ─────────────────────────────────────────────────────────────── */
 .gs-record {
@@ -167,9 +167,9 @@ html, body {
   justify-content: center;
   height: 2vh;
   overflow: hidden;
-  background: rgba(31, 250, 255, 0.04);
-  border-top: 1px solid rgba(31, 250, 255, 0.18);
-  border-bottom: 1px solid rgba(31, 250, 255, 0.18);
+  background: rgba(var(--gfx-c1-rgb, 31, 250, 255), 0.04);
+  border-top: 1px solid rgba(var(--gfx-c1-rgb, 31, 250, 255), 0.18);
+  border-bottom: 1px solid rgba(var(--gfx-c1-rgb, 31, 250, 255), 0.18);
   transition: opacity 0.45s ease, height 0.45s ease;
 }
 
@@ -178,7 +178,7 @@ html, body {
   font-weight: 800;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--gfx-c1, #1ffaff);
+  color: var(--gfx-c2, #a7a38e);
   opacity: 0.55;
 }
 
