@@ -149,6 +149,7 @@ The seeded `admin` account is `superadmin` by default. Create additional users i
 - Background animation system — 12 canvas-based animations + fog overlay
 - Bo1/Bo3/Bo5 series tracking with game-by-game draft snapshots
 - Bracket (single + double elimination), Group Stage standings, Tournament Structure, Prizepool graphics
+- Schedule ↔ bracket linking — link a scheduled game to a playoff bracket match; the matchup shows on the bracket before it's played, and recording the series result fills the score + winner automatically (clearing reverts it)
 - **Multi-user workflow** — built for shared production crew use:
   - Presence strip on all operator/caster/admin views — see who is connected and which page they're on
   - Last-action attribution on every GFX ctrl-bar — shows who last showed/hid a graphic and when
