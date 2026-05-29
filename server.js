@@ -892,8 +892,11 @@ app.get('/api/companion/profile', (req, res) => {
                        url:                    { value: `${baseUrl}${a.path}${tokenSuffix}`, isExpression: false },
                        body:                   { value: a.body || '',                         isExpression: false },
                        contenttype:            { value: 'application/json',                  isExpression: false },
-                       statusCodeVariable:     '',
-                       jsonResultDataVariable: '',
+                       // Must be wrapped like the other options — Companion unwraps {value} at
+                       // runtime; a bare '' resolves to undefined → String(undefined)='undefined'
+                       // → the module logs "set variable $(custom:undefined)" on every press.
+                       statusCodeVariable:     { value: '', isExpression: false },
+                       jsonResultDataVariable: { value: '', isExpression: false },
                      },
                      upgradeIndex: 1 }],
             up: [],

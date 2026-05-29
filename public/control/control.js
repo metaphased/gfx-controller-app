@@ -2664,13 +2664,30 @@ function addSponsor() { triggerUpload('sponsor-file', function(url) { const logo
 function removeSponsor(i) { const logos=((window._state&&window._state.match&&window._state.match.sponsorLogos)||[]).slice(); logos.splice(i,1); api('/api/match',{sponsorLogos:logos}); }
 
 // ── Upload ─────────────────────────────────────────────────────────────────────
+// Upload an image to /api/upload, surfacing server rejections (size/type) to the
+// user instead of silently failing. Returns the uploaded URL, or null on failure.
+async function uploadImageFile(file) {
+  const fd = new FormData(); fd.append('file', file);
+  try {
+    const res = await fetch('/api/upload', { method: 'POST', body: fd });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.url) {
+      showAlert(data.error || 'Upload failed — images only (PNG, JPEG, GIF, WebP, max 8 MB).');
+      return null;
+    }
+    return data.url;
+  } catch (e) {
+    console.error('Upload error', e);
+    showAlert('Upload failed — could not reach the server.');
+    return null;
+  }
+}
 function triggerUpload(inputId, callback) {
   const inp = g(inputId); if (!inp) return;
   inp.onchange = async function() {
     const file = inp.files[0]; if (!file) return;
-    const fd = new FormData(); fd.append('file', file);
-    try { const res = await fetch('/api/upload',{method:'POST',body:fd}); const data = await res.json(); if (data.url) callback(data.url); }
-    catch(e) { console.error('Upload error',e); }
+    const url = await uploadImageFile(file);
+    if (url) callback(url);
     inp.value = '';
   };
   inp.click();
@@ -4985,9 +5002,8 @@ function setBgSpeed(val) {
 
 function uploadThemeBg(input) {
   if (!input.files || !input.files[0]) return;
-  const fd = new FormData(); fd.append('file', input.files[0]);
-  fetch('/api/upload', { method: 'POST', body: fd }).then(r => r.json()).then(d => {
-    if (d.url) { const el = g('ts-bg-img-url'); if (el) el.value = d.url; patchSettings({ bgImage: d.url }); }
+  uploadImageFile(input.files[0]).then(url => {
+    if (url) { const el = g('ts-bg-img-url'); if (el) el.value = url; patchSettings({ bgImage: url }); }
   });
 }
 
@@ -5010,10 +5026,7 @@ function patchThemeLogo(i, key, val) {
 }
 function uploadThemeLogo(i, input) {
   if (!input.files || !input.files[0]) return;
-  const fd = new FormData(); fd.append('file', input.files[0]);
-  fetch('/api/upload', { method: 'POST', body: fd }).then(r => r.json()).then(d => {
-    if (d.url) patchThemeLogo(i, 'url', d.url);
-  });
+  uploadImageFile(input.files[0]).then(url => { if (url) patchThemeLogo(i, 'url', url); });
 }
 function renderThemeLogos(logos) {
   const list = g('ts-logos-list'); if (!list) return;
@@ -5117,9 +5130,8 @@ function setBgoSpeed(val) {
 
 function uploadBgoImage(input) {
   if (!input.files || !input.files[0]) return;
-  const fd = new FormData(); fd.append('file', input.files[0]);
-  fetch('/api/upload', { method: 'POST', body: fd }).then(r => r.json()).then(d => {
-    if (d.url) { const el = g('bgo-img-url'); if (el) el.value = d.url; patchBgo({ bgImage: d.url }); }
+  uploadImageFile(input.files[0]).then(url => {
+    if (url) { const el = g('bgo-img-url'); if (el) el.value = url; patchBgo({ bgImage: url }); }
   });
 }
 
@@ -5640,6 +5652,7 @@ window._userKeybinds = {};
 let _kbListening = null;  // { btn, actionId, prevCombo } | null
 let _kbStaged    = {};
 let _kbDirty     = false;
+let _kbOpenSection = null; // category name of the currently expanded accordion section
 
 function _comboFromEvent(e) {
   const parts = [];
@@ -5701,19 +5714,37 @@ function renderKeybindTable() {
   const actions = ActionRegistry.getAll();
   const cats = {};
   actions.forEach(a => { if (!cats[a.category]) cats[a.category] = []; cats[a.category].push(a); });
-  body.innerHTML = Object.keys(cats).map(cat =>
-    `<div class="kb-section">
-      <div class="kb-section-label">${cat}</div>
-      ${cats[cat].map(a => {
-        const combo = _kbStaged[a.id] || '';
-        return `<div class="kb-row" data-action-id="${a.id}">
-          <span class="kb-action-label">${a.label}</span>
-          <button class="kb-combo-btn${combo ? '' : ' unbound'}" data-action-id="${a.id}" onclick="kbStartRecord(this)">${combo || '— unbound —'}</button>
-          <button class="kb-clear-btn" onclick="kbClear('${a.id}')" title="Clear">✕</button>
-        </div>`;
-      }).join('')}
-    </div>`
-  ).join('');
+  const catNames = Object.keys(cats);
+  // Default the first section open; keep the user's choice across re-renders.
+  if (!_kbOpenSection || !cats[_kbOpenSection]) _kbOpenSection = catNames[0];
+  body.innerHTML = catNames.map(cat => {
+    const bound  = cats[cat].filter(a => _kbStaged[a.id]).length;
+    const isOpen = cat === _kbOpenSection;
+    return `<div class="kb-section${isOpen ? ' open' : ''}" data-cat="${escHtml(cat)}">
+      <button type="button" class="kb-section-header" onclick="kbToggleSection('${escHtml(cat)}')">
+        <span class="kb-section-label">${escHtml(cat)}</span>
+        <span class="kb-section-meta">${bound ? `<span class="kb-section-count">${bound} set</span>` : ''}<span class="kb-section-chevron">▾</span></span>
+      </button>
+      <div class="kb-section-body">
+        ${cats[cat].map(a => {
+          const combo = _kbStaged[a.id] || '';
+          return `<div class="kb-row" data-action-id="${a.id}">
+            <span class="kb-action-label">${escHtml(a.label)}</span>
+            <button class="kb-combo-btn${combo ? '' : ' unbound'}" data-action-id="${a.id}" onclick="kbStartRecord(this)">${escHtml(combo) || '— unbound —'}</button>
+            <button class="kb-clear-btn" onclick="kbClear('${a.id}')" title="Clear">✕</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function kbToggleSection(cat) {
+  if (_kbListening) kbCancelListening();
+  _kbOpenSection = (_kbOpenSection === cat) ? null : cat;
+  document.querySelectorAll('#profile-modal-body .kb-section').forEach(sec => {
+    sec.classList.toggle('open', sec.dataset.cat === _kbOpenSection);
+  });
 }
 
 function kbStartRecord(btn) {
