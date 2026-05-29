@@ -107,8 +107,8 @@ function buildRowHTML(i, t1Picks, t2Picks, t1Players, t2Players) {
   return (
     '<div class="h2h-card h2h-card-left" style="' + splashStyle1 + '">' +
       '<div class="h2h-player-info">' +
-        '<div class="h2h-champ-name">' + t1ChampName + '</div>' +
-        '<div class="h2h-player-handle">' + (t1Player.handle || '') + '</div>' +
+        '<div class="h2h-champ-name">' + esc(t1ChampName) + '</div>' +
+        '<div class="h2h-player-handle">' + esc(t1Player.handle || '') + '</div>' +
         '<div class="h2h-stats-strip" id="h2h-stats-t1-' + i + '"></div>' +
       '</div>' +
     '</div>' +
@@ -118,8 +118,8 @@ function buildRowHTML(i, t1Picks, t2Picks, t1Players, t2Players) {
     '</div>' +
     '<div class="h2h-card h2h-card-right" style="' + splashStyle2 + '">' +
       '<div class="h2h-player-info">' +
-        '<div class="h2h-champ-name">' + t2ChampName + '</div>' +
-        '<div class="h2h-player-handle">' + (t2Player.handle || '') + '</div>' +
+        '<div class="h2h-champ-name">' + esc(t2ChampName) + '</div>' +
+        '<div class="h2h-player-handle">' + esc(t2Player.handle || '') + '</div>' +
         '<div class="h2h-stats-strip" id="h2h-stats-t2-' + i + '"></div>' +
       '</div>' +
     '</div>'
@@ -239,7 +239,7 @@ function renderAll(state) {
 }
 
 function buildStatsStripHtml(stats, tokens, champName) {
-  var champ = (stats && stats.champ) || champName || 'this champion';
+  var champ = esc((stats && stats.champ) || champName || 'this champion');
   if (!stats) return '<span class="h2h-stat-no-data">No Solo Queue data on ' + champ + ' this season</span>';
   if (!tokens || !tokens.length) return '';
 

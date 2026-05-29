@@ -142,7 +142,7 @@ function champHtml(champName, wrapClass, iconClass, labelClass) {
   return (
     '<span class="' + wrapClass + '">' +
       iconHtml +
-      '<span class="' + labelClass + '">' + champName + '</span>' +
+      '<span class="' + labelClass + '">' + esc(champName) + '</span>' +
     '</span>'
   );
 }
@@ -193,7 +193,7 @@ function buildPanelRowHtml(player, roleKey, side, showRank, showChamps) {
   var roleEl = '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>';
   var textEl = (
     '<span class="pi-pnl-text">' +
-      '<span class="pi-pnl-handle">' + handle + '</span>' +
+      '<span class="pi-pnl-handle">' + esc(handle) + '</span>' +
       (rank      ? '<span class="pi-pnl-rank">'  + rank      + '</span>' : '') +
       (champName ? champHtml(champName, 'pi-pnl-champ', '', 'pi-pnl-champ-label') : '') +
     '</span>'
@@ -258,7 +258,7 @@ function buildStackPlayerHtml(player, roleKey, showRank, showChamps) {
   return (
     '<div class="pi-stk-player">' +
       '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' +
-      '<span class="pi-stk-handle">' + handle + '</span>' +
+      '<span class="pi-stk-handle">' + esc(handle) + '</span>' +
       (rank      ? '<span class="pi-stk-rank">' + rank + '</span>' : '') +
       (champName ? champHtml(champName, 'pi-stk-champ', '', 'pi-stk-champ-label') : '') +
     '</div>'
@@ -320,7 +320,7 @@ function buildBarPlayerHtml(player, roleKey, showRank, showChamps) {
     '<div class="pi-bar-player">' +
       '<span class="pi-bar-role" style="background-image:url(' + icon + ')"></span>' +
       '<span class="pi-bar-text">' +
-        '<span class="pi-bar-handle">' + handle + '</span>' +
+        '<span class="pi-bar-handle">' + esc(handle) + '</span>' +
         (rank ? '<span class="pi-bar-rank">' + rank + '</span>' : '') +
       '</span>' +
       '<span class="pi-bar-champ-cell">' +
@@ -357,8 +357,8 @@ function renderBar(state) {
   // Team names in dead space flanking the centre
   var t1NameEl = $('pi-bar-t1-team-name');
   var t2NameEl = $('pi-bar-t2-team-name');
-  if (t1NameEl) t1NameEl.innerHTML = '<span>' + (t1.name || t1.tag || '') + '</span>';
-  if (t2NameEl) t2NameEl.innerHTML = '<span>' + (t2.name || t2.tag || '') + '</span>';
+  if (t1NameEl) t1NameEl.innerHTML = '<span>' + esc(t1.name || t1.tag || '') + '</span>';
+  if (t2NameEl) t2NameEl.innerHTML = '<span>' + esc(t2.name || t2.tag || '') + '</span>';
 
   var maxBarNamePx = Math.round(window.innerHeight * 0.05);
   var minBarNamePx = Math.round(maxBarNamePx * 0.42);

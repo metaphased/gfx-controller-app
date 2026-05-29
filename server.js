@@ -39,7 +39,11 @@ const sessionMiddleware = session({
   secret: getSessionSecret(),
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 h
+  cookie: {
+    maxAge: 24 * 60 * 60 * 1000, // 24 h
+    httpOnly: true,              // not readable from JS — mitigates XSS cookie theft
+    sameSite: 'lax',            // mitigates CSRF / cross-site socket hijack
+  }
 });
 app.use(sessionMiddleware);
 app.use(express.json());
@@ -187,11 +191,45 @@ app.use('/api', requireAuth);
 // ── Uploads ───────────────────────────────────────────────────────────────────
 const uploadDir = path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+// Strip any path components and unsafe chars from the client filename to prevent
+// path traversal (e.g. originalname "../../evil.js") and odd characters on disk.
+function safeFilename(original) {
+  const base = path.basename(original || 'file');
+  return base.replace(/[^a-zA-Z0-9._-]/g, '_').replace(/^\.+/, '') || 'file';
+}
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
-  filename:    (req, file, cb) => cb(null, Date.now() + '-' + file.originalname)
+  filename:    (req, file, cb) => cb(null, Date.now() + '-' + safeFilename(file.originalname))
 });
-const upload = multer({ storage });
+// Images only, 8 MB cap — uploads are served unauthenticated from /uploads, so an
+// uploaded .html/.svg/.js would be a same-origin stored-XSS vector. SVG is excluded
+// because it can carry scripts.
+const ALLOWED_UPLOAD_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+const upload = multer({
+  storage,
+  limits: { fileSize: 8 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (ALLOWED_UPLOAD_MIME.includes(file.mimetype)) return cb(null, true);
+    cb(new Error('Only PNG, JPEG, GIF, or WebP images are allowed'));
+  }
+});
+// Separate uploader for data imports (CSV / JSON) — filtered by extension, 5 MB cap.
+const uploadData = multer({
+  storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (/\.(csv|json)$/i.test(file.originalname || '')) return cb(null, true);
+    cb(new Error('Only .csv or .json files are allowed'));
+  }
+});
+// Run a multer single-file middleware and convert size/type/parse errors into a
+// clean 400 JSON response instead of bubbling up to a 500.
+function singleUpload(mw) {
+  return (req, res, next) => mw(req, res, err => {
+    if (err) return res.status(400).json({ error: err.message || 'Upload rejected' });
+    next();
+  });
+}
 
 // ── State / defaults ───────────────────────────────────────────────────────────
 const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
@@ -325,8 +363,10 @@ const makeDefault = () => ({
   },
 });
 
+const _PROTO_BLOCKLIST = ['__proto__', 'constructor', 'prototype'];
 function deepMerge(target, source) {
   for (const key of Object.keys(source)) {
+    if (_PROTO_BLOCKLIST.includes(key)) continue; // block prototype pollution
     const val = source[key];
     if (val !== null && val !== undefined && typeof val === 'object' && !Array.isArray(val)) {
       if (!target[key] || typeof target[key] !== 'object') target[key] = {};
@@ -388,10 +428,22 @@ process.on('SIGINT',  function() { if (_saveTimer) { clearTimeout(_saveTimer); s
 process.on('SIGTERM', function() { if (_saveTimer) { clearTimeout(_saveTimer); saveState(); } process.exit(0); });
 
 function broadcastSchedule() { io.emit('schedule', state.tournament.schedule || []); }
+// Build the state payload sent over sockets / GET /api/state. The graphics token
+// is only included for admins (the control panel needs it to render output URLs);
+// operators and graphics-token connections get it stripped.
+function buildStatePayload(includeToken) {
+  const { schedule: _s, ...tournamentForBcast } = (state.tournament || {});
+  const payload = Object.assign({}, state, { tournament: tournamentForBcast, teams: _teams, busState });
+  if (!includeToken && payload.settings) {
+    payload.settings = Object.assign({}, payload.settings); // clone so we don't mutate real state
+    delete payload.settings.graphicsToken;
+  }
+  return payload;
+}
 function broadcast() {
   scheduleSave();
-  const { schedule: _s, ...tournamentForBcast } = (state.tournament || {});
-  io.emit('state', Object.assign({}, state, { tournament: tournamentForBcast, teams: _teams, busState }));
+  io.to('gfxAdmins').emit('state', buildStatePayload(true));
+  io.to('gfxBasic').emit('state', buildStatePayload(false));
   pushSSEState();
 }
 
@@ -595,7 +647,13 @@ deriveTodayGames();
 app.get('/api/config', (req, res) => res.json({ externalUrl: EXTERNAL_URL }));
 
 // ── State API ──────────────────────────────────────────────────────────────────
-app.get('/api/state', (req, res) => res.json(state));
+app.get('/api/state', (req, res) => {
+  const isAdmin = req.session && req.session.user && ['admin','superadmin'].includes(req.session.user.role);
+  if (isAdmin) return res.json(state);
+  const safe = Object.assign({}, state, { settings: Object.assign({}, state.settings) });
+  delete safe.settings.graphicsToken;
+  res.json(safe);
+});
 app.post('/api/state/reset', requireAdmin, (req, res) => { state = makeDefault(); deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true }); });
 app.post('/api/match',  requireAdmin, (req, res) => { deepMerge(state.match, req.body); broadcast(); res.json({ ok: true }); });
 
@@ -1226,16 +1284,16 @@ app.get('/api/champions', (req, res) => {
 });
 
 // Upload / Import (admin only)
-app.post('/api/upload', requireAdmin, upload.single('file'), (req, res) => {
+app.post('/api/upload', requireAdmin, singleUpload(upload.single('file')), (req, res) => {
   if (!req.file) return res.status(400).json({error:'No file'});
   res.json({ ok: true, url: '/uploads/' + req.file.filename });
 });
-app.post('/api/import/csv', requireAdmin, upload.single('file'), (req, res) => {
+app.post('/api/import/csv', requireAdmin, singleUpload(uploadData.single('file')), (req, res) => {
   if (!req.file) return res.status(400).json({error:'No file'});
   const results = [];
   fs.createReadStream(req.file.path).pipe(csv()).on('data',d=>results.push(d)).on('end',()=>res.json({ok:true,data:results})).on('error',e=>res.status(400).json({error:e.message}));
 });
-app.post('/api/import/json', requireAdmin, upload.single('file'), (req, res) => {
+app.post('/api/import/json', requireAdmin, singleUpload(uploadData.single('file')), (req, res) => {
   if (!req.file) return res.status(400).json({error:'No file'});
   try { res.json({ok:true,data:JSON.parse(fs.readFileSync(req.file.path,'utf8'))}); } catch(e) { res.status(400).json({error:'Invalid JSON'}); }
 });
@@ -1835,7 +1893,8 @@ app.post('/api/users/create', requireAdmin, (req, res) => {
   saveUsers(users); res.json({ ok: true });
 });
 app.post('/api/users/change-password', (req, res) => {
-  const me = req.session.user;
+  const me = req.session && req.session.user;
+  if (!me) return res.status(403).json({ error: 'Session required' }); // token auth has no user
   const { userId, newPassword } = req.body;
   if (!newPassword || newPassword.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters' });
   const users = _users.slice();
@@ -1915,8 +1974,11 @@ io.on('connection', socket => {
 
   const label = isUser ? sess.user.username + ' (' + sess.user.role + ')' : 'graphics[token]';
   console.log('Connected:', label);
-  const { schedule: _s, ...tournamentForConnect } = (state.tournament || {});
-  socket.emit('state', Object.assign({}, state, { tournament: tournamentForConnect, teams: _teams, busState }));
+  // Admins receive the graphics token in state (for output-URL rendering); everyone
+  // else is stripped. Room membership keeps the broadcast() hot path a simple emit.
+  const isAdmin = isUser && ['admin','superadmin'].includes(sess.user.role);
+  socket.join(isAdmin ? 'gfxAdmins' : 'gfxBasic');
+  socket.emit('state', buildStatePayload(isAdmin));
   socket.emit('schedule', state.tournament.schedule || []);
 
   if (isUser) {
