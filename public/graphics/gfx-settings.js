@@ -67,26 +67,6 @@ window.GfxSettings = (function () {
     }
   }
 
-  function dur(s, baseMs) {
-    const speed = (get(s).animation || {}).transitionSpeed || 'medium';
-    if (speed === 'instant') return 0;
-    const mult = { fast: 0.5, medium: 1, slow: 1.6 };
-    return Math.round(baseMs * (mult[speed] || 1));
-  }
-
-  function ease(s) {
-    const energy = (get(s).animation || {}).motionEnergy || 'smooth';
-    const map = {
-      linear: 'linear',
-      smooth: 'cubic-bezier(0.4, 0, 0.2, 1)',
-      bouncy: 'cubic-bezier(0.34, 1.56, 0.64, 1)',
-      snap:   'cubic-bezier(0.0, 0.0, 0.2, 1)',
-    };
-    return map[energy] || map.smooth;
-  }
-
-  function dataChangeStyle(s) { return (get(s).animation || {}).dataChangeStyle || 'fade'; }
-
   function bgSpeed(s) {
     const speed = (get(s).animation || {}).bgSpeed || 'medium';
     return speed === 'slow' ? 0.4 : speed === 'fast' ? 2 : 1;
@@ -185,12 +165,17 @@ window.GfxSettings = (function () {
   // resolving global settings merged with this graphic's overrides.
   // Easings are role-based (enter/exit/move); duration is a single unitless scale
   // so overlay CSS keeps its own choreographed timings: calc(0.55s * var(--gfx-dur-scale)).
+  var _prefersReducedMotion = (function () {
+    try { return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches; }
+    catch (e) { return false; }
+  })();
   var _lastAnimKey = null;
   function applyAnimation(el, s, graphicKey) {
     var anim = get(s).animation || {};
     var ov   = (anim.overrides && graphicKey && anim.overrides[graphicKey]) || {};
     var mult = _SPEED_MULT[ov.speed || anim.speed];
     if (mult == null) mult = 1;
+    if (_prefersReducedMotion) mult = 0; // honour OS/browser reduced-motion → instant
     var enter = resolveEasing(ov.enterEase || anim.enterEase || 'easeOutQuart');
     var exit  = resolveEasing(ov.exitEase  || anim.exitEase  || 'easeInQuart');
     var move  = resolveEasing(ov.moveEase  || anim.moveEase  || 'easeInOutQuad');
@@ -740,5 +725,5 @@ window.GfxSettings = (function () {
     frame();
   }
 
-  return { applyTheme, applyBackground, applyAnimation, resolveEasing, EASINGS, dur, ease, dataChangeStyle, bgSpeed, palette, accent, logo, stopBgAnimation };
+  return { applyTheme, applyBackground, applyAnimation, resolveEasing, EASINGS, bgSpeed, palette, accent, logo, stopBgAnimation };
 })();

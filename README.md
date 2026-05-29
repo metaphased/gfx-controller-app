@@ -157,6 +157,7 @@ The seeded `admin` account is `superadmin` by default. Create additional users i
   - System Log — server-side ring buffer of significant actions (show/hide, record game, load profile, etc.), viewable by admin under **System → Log**
   - Superadmin / admin role hierarchy — prevents admins from modifying each other's accounts
 - **Custom modal system** — all confirm/alert dialogs use an in-app styled overlay matching the UI theme, replacing browser-native popups
+- **Animation customization** — global + per-graphic easing and speed control with a full easing library (Sine→Expo, Back, Bounce, Elastic), a live preview, and reusable named **Looks** that bundle palette + accents + background + animation into a visual identity applied over any profile; see [docs/theming.md](docs/theming.md)
 - **Per-user keybinds** — each operator records their own keyboard shortcuts for any graphics or match action; managed via a profile modal (sidebar chip); keybinds are stored per-user account and ignored when an input field has focus
 - **Bitfocus Companion / Stream Deck integration** — download a ready-to-import Companion 4.x profile from the profile modal; 4 pages of buttons (Show/Hide, Toggle, Match & Draft, Bus); auth token embedded in all URLs; SSE stream at `/api/events` for live state feedback (graphic visibility, scores, draft phase); see [docs/companion.md](docs/companion.md)
 - Champion asset sync — download/update champion tiles, centered images, and role icons from DDragon; real-time progress in the admin UI or via `node scripts/sync-assets.js`
