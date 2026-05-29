@@ -1449,7 +1449,8 @@ app.post('/api/schedule/game/add', requireAdmin, (req, res) => {
     }
   }
   day.games.push(game);
-  broadcastSchedule(); broadcast(); res.json({ ok: true, game, schedule: state.tournament.schedule });
+  _seedLinkedBracketTeams(game);
+  deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, game, schedule: state.tournament.schedule });
 });
 app.post('/api/schedule/game/update', requireAdmin, (req, res) => {
   const { dayId, gameId, team1Id, team2Id, team1Override, team2Override, stage, format, fearlessDraft, bracketMatchRef } = req.body;
@@ -1477,6 +1478,7 @@ app.post('/api/schedule/game/update', requireAdmin, (req, res) => {
       delete game.bracketMatchIdx;
     }
   }
+  _seedLinkedBracketTeams(game);
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, schedule: state.tournament.schedule });
 });
 app.post('/api/schedule/game/delete', requireAdmin, (req, res) => {
@@ -1652,6 +1654,25 @@ function _clearLinkedBracket(sg) {
   if (bMatch.team1) bMatch.team1.score = 0;
   if (bMatch.team2) bMatch.team2.score = 0;
   bMatch.complete = false;
+}
+
+// Forward-fill: when a schedule game is linked to a bracket match and has teams
+// assigned, show that matchup on the bracket (0-0) before it's played. Only fills
+// unresolved (TBD/pending) slots of a not-yet-complete match — never overwrites
+// teams that advanced into the slot, nor a recorded result.
+function _seedLinkedBracketTeams(sg) {
+  if (!sg || sg.bracketRoundIdx == null || sg.bracketMatchIdx == null) return;
+  const bRound = (state.bracket.rounds || [])[sg.bracketRoundIdx];
+  const bMatch = bRound && bRound.matches[sg.bracketMatchIdx];
+  if (!bMatch || bMatch.complete) return;
+  const nameFor = (id, ov) => ov || (id ? ((_teams.find(t => t.id === id) || {}).name || '') : '');
+  const t1 = nameFor(sg.team1Id, sg.team1Override);
+  const t2 = nameFor(sg.team2Id, sg.team2Override);
+  const unresolved = nm => { const n = String(nm || '').trim().toLowerCase(); return !n || n === 'tbd' || n.indexOf('winner of') === 0 || n.indexOf('loser of') === 0; };
+  bMatch.team1 = bMatch.team1 || {};
+  bMatch.team2 = bMatch.team2 || {};
+  if (t1 && unresolved(bMatch.team1.name)) { bMatch.team1.name = t1; if (bMatch.team1.score == null) bMatch.team1.score = 0; }
+  if (t2 && unresolved(bMatch.team2.name)) { bMatch.team2.name = t2; if (bMatch.team2.score == null) bMatch.team2.score = 0; }
 }
 
 app.post('/api/match/record-game', (req, res) => {
