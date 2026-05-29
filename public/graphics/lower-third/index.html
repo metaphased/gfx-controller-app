@@ -15,9 +15,9 @@
   }
 
   :root {
-    --bg: #0a1b20;
-    --accent: #a7a38e;
-    --primary: #1ffaff;
+    --bg: var(--gfx-c4, #0a1b20);
+    --accent: var(--gfx-c2, #a7a38e);
+    --primary: var(--gfx-c1, #1ffaff);
   }
 
   .lower-third {
@@ -73,7 +73,7 @@
     font-family: 'Barlow Condensed', sans-serif;
     font-size: 36px;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--gfx-c3, #ffffff);
     text-transform: uppercase;
     letter-spacing: 0.04em;
     line-height: 1;
@@ -108,6 +108,7 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/graphics/gfx-settings.js"></script>
 <script>
 const _gfxToken = new URLSearchParams(window.location.search).get('token') || '';
 const socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
@@ -117,6 +118,7 @@ const bar = document.getElementById('lt-bar');
 
 let _ltFp = null;
 socket.on('state', (state) => {
+  if (window.GfxSettings) GfxSettings.applyTheme(document.documentElement, state); // palette, always (before fingerprint guard)
   const lt = state.lowerThird;
   const key = JSON.stringify([lt.visible, lt.text, lt.subtext, lt.supertext, lt.side, state.match.tournament]);
   if (_ltFp === key) return;

@@ -178,7 +178,7 @@ html, body {
   font-weight: 800;
   letter-spacing: 0.3em;
   text-transform: uppercase;
-  color: var(--gfx-c1, #1ffaff);
+  color: var(--gfx-c2, #a7a38e);
   opacity: 0.55;
 }
 
