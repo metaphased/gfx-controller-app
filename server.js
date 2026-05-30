@@ -274,6 +274,7 @@ const makeDefault = () => ({
     showTiebreaker:  false,
     showPatch:       false,
     hasPrizepool:    false,
+    teamPool:        [],   // team IDs competing in THIS tournament (subset of global Teams DB)
     groups: [],
     schedule: []
   },
@@ -415,6 +416,23 @@ let _teams = [];
 function loadTeams() { try { if (fs.existsSync(TEAMS_FILE)) return JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf8')); } catch(e) {} return []; }
 function saveTeams(t) { _teams = t; try { fs.writeFileSync(TEAMS_FILE, JSON.stringify(t, null, 2)); } catch(e) { console.error(e); } }
 
+// Team IDs referenced anywhere in the active tournament (schedule games + groups).
+function _referencedTeamIds() {
+  const ids = new Set();
+  ((state.tournament && state.tournament.schedule) || []).forEach(d =>
+    (d.games || []).forEach(g => { if (g.team1Id) ids.add(g.team1Id); if (g.team2Id) ids.add(g.team2Id); }));
+  ((state.tournament && state.tournament.groups) || []).forEach(gr =>
+    (gr.teamIds || []).forEach(id => ids.add(id)));
+  return [...ids];
+}
+// Ensure the active tournament has a teamPool. Legacy tournaments (saved before
+// this feature) have none — seed it from teams already referenced in the
+// schedule/groups so nothing disappears from their dropdowns mid-event.
+function _ensureTeamPool() {
+  if (!state.tournament) return;
+  if (!Array.isArray(state.tournament.teamPool)) state.tournament.teamPool = _referencedTeamIds();
+}
+
 function loadProfiles() { try { if (fs.existsSync(PROFILES_FILE)) return JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8')); } catch(e) {} return []; }
 function saveProfiles(p) { try { fs.writeFileSync(PROFILES_FILE, JSON.stringify(p, null, 2)); } catch(e) { console.error(e); } }
 
@@ -462,6 +480,7 @@ function snapshotForProfile() {
 
 let state = loadState();
 _teams = loadTeams(); // prime in-memory cache after state is ready
+_ensureTeamPool();    // migrate legacy tournaments to an explicit competing-teams pool
 
 // ── Bus state (in-memory, not persisted) ───────────────────────────────────────
 let busState = {};
@@ -1271,6 +1290,7 @@ app.post('/api/teams/save', requireAdmin, (req, res) => {
   const teams = _teams.slice();
   const inc = req.body;
   if (!inc || !inc.name) return res.status(400).json({ error: 'Team name required' });
+  const addToPool = inc.addToPool; delete inc.addToPool; // control flag, not part of the team record
   if (inc.id) {
     const idx = teams.findIndex(t => t.id === inc.id);
     if (idx !== -1) teams[idx] = { ...teams[idx], ...inc }; else teams.push(inc);
@@ -1279,6 +1299,13 @@ app.post('/api/teams/save', requireAdmin, (req, res) => {
     teams.push(inc);
   }
   saveTeams(teams);
+
+  // Optionally add the saved team to the active tournament's competing-teams pool
+  let poolChanged = false;
+  if (addToPool && inc.id) {
+    _ensureTeamPool();
+    if (!state.tournament.teamPool.includes(inc.id)) { state.tournament.teamPool.push(inc.id); poolChanged = true; }
+  }
 
   // Sync live state for any active-match slot that has this team loaded
   if (inc.id) {
@@ -1313,15 +1340,41 @@ app.post('/api/teams/save', requireAdmin, (req, res) => {
       });
       synced = true;
     });
-    if (synced) { deriveTodayGames(); broadcast(); }
+    if (synced) { deriveTodayGames(); broadcast(); poolChanged = false; }
   }
+  // Pool changed without an active-slot sync — still broadcast + persist
+  if (poolChanged) broadcast();
 
   res.json({ ok: true, team: inc });
 });
 app.post('/api/teams/delete', requireAdmin, (req, res) => {
   const { id } = req.body;
   if (!id) return res.status(400).json({ error: 'id required' });
-  saveTeams(_teams.filter(t => t.id !== id)); broadcast(); res.json({ ok: true });
+  saveTeams(_teams.filter(t => t.id !== id));
+  // Drop the deleted team from the active tournament's pool so it can't linger
+  if (state.tournament && Array.isArray(state.tournament.teamPool)) {
+    state.tournament.teamPool = state.tournament.teamPool.filter(tid => tid !== id);
+  }
+  broadcast(); res.json({ ok: true });
+});
+
+// ── Per-tournament competing-teams pool (subset of the global Teams DB) ──────────
+app.post('/api/tournament/pool/add', requireAdmin, (req, res) => {
+  const { teamId } = req.body;
+  if (!teamId) return res.status(400).json({ error: 'teamId required' });
+  if (!_teams.find(t => t.id === teamId)) return res.status(404).json({ error: 'Team not found' });
+  _ensureTeamPool();
+  if (!state.tournament.teamPool.includes(teamId)) state.tournament.teamPool.push(teamId);
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'pool-add', (_teams.find(t => t.id === teamId) || {}).name || teamId);
+  broadcast(); res.json({ ok: true, teamPool: state.tournament.teamPool });
+});
+app.post('/api/tournament/pool/remove', requireAdmin, (req, res) => {
+  const { teamId } = req.body;
+  if (!teamId) return res.status(400).json({ error: 'teamId required' });
+  _ensureTeamPool();
+  state.tournament.teamPool = state.tournament.teamPool.filter(tid => tid !== teamId);
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'pool-remove', (_teams.find(t => t.id === teamId) || {}).name || teamId);
+  broadcast(); res.json({ ok: true, teamPool: state.tournament.teamPool });
 });
 
 // Champions
@@ -1589,15 +1642,12 @@ app.post('/api/match/load-schedule-game', (req, res) => {
       }
     } else {
       // In progress — resume on the next unplayed game with a clean draft
-      state.match.currentGameNum   = savedGames.length + 1;
-      state.draft.phase            = 'notstarted';
-      state.draft.picks            = ['','','','','','','','','','','','','','','','','','','',''];
-      state.draft.currentStep      = 0;
-      state.draft.committedT1Picks = [];
-      state.draft.committedT2Picks = [];
-      state.draft.team1RolePicks   = [];
-      state.draft.team2RolePicks   = [];
-      state.draft.timerEnd         = null;
+      // (preserve the operator's timer config, like profile load does).
+      state.match.currentGameNum = savedGames.length + 1;
+      state.draft = Object.assign(makeDefault().draft, {
+        timerDuration: state.draft.timerDuration,
+        timerVisible:  state.draft.timerVisible,
+      });
     }
   } else {
     // Fresh start
@@ -1605,6 +1655,12 @@ app.post('/api/match/load-schedule-game', (req, res) => {
     state.match.seriesGames    = [];
     state.match.team1.score    = 0;
     state.match.team2.score    = 0;
+    // Reset the live draft so the previous match's picks/sides don't leak in
+    // (preserve the operator's timer config, like profile load does).
+    state.draft = Object.assign(makeDefault().draft, {
+      timerDuration: state.draft.timerDuration,
+      timerVisible:  state.draft.timerVisible,
+    });
   }
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'load-game', (restore ? 'restore ' : '') + dayId + '/' + gameId);
   deriveTodayGames(); broadcast(); res.json({ ok: true });
@@ -1985,6 +2041,7 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
       ? JSON.parse(JSON.stringify(state.tournament.schedule)) : [];
     state.tournament = deepMerge({}, d.tournament);
     if (keepSchedule) state.tournament.schedule = currentSchedule;
+    _ensureTeamPool(); // legacy profiles without a pool: seed from referenced teams
   }
   if (d.bracket)    { state.bracket.title = d.bracket.title || state.bracket.title; state.bracket.rounds = d.bracket.rounds || []; }
   if (d.match) {

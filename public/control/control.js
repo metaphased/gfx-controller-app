@@ -683,6 +683,9 @@ function syncUI(s) {
     console.warn('Incomplete state', s); return;
   }
   const m = s.match, p = s.players;
+  // Keep the teams cache fresh from the broadcast so pool changes / new teams
+  // show in dropdowns immediately (the separate /api/teams fetch can lag).
+  if (Array.isArray(s.teams)) window._cachedTeams = s.teams;
 
   // Tournament Setup tab
   const t = s.tournament || {};
@@ -690,6 +693,7 @@ function syncUI(s) {
   setInpSafe('ts-logo',  m.tournamentLogo);
   setInp('ts-game', m.game);
   syncTournamentStructure(t);
+  renderCompetingTeams(s);
 
   // Game Setup tab
   setInpSafe('gs-format', m.format);
@@ -2332,7 +2336,8 @@ function handleBracketInput(e) {
 // Load teams into bracket selects cache then re-render
 async function refreshBracketTeams() {
   const res = await fetch('/api/teams').then(r=>r.json()).catch(()=>({teams:[]}));
-  window._bracketTeams = res.teams || [];
+  // Only the competing-teams pool is selectable in the bracket
+  window._bracketTeams = poolFilter(res.teams || []);
 }
 
 // ── Players + Subs ─────────────────────────────────────────────────────────────
@@ -2849,7 +2854,7 @@ async function openTeamEditor(teamId) {
   }
 }
 
-function closeTeamEditor() { const e=g('team-editor'); if(e)e.style.display='none'; }
+function closeTeamEditor() { const e=g('team-editor'); if(e)e.style.display='none'; _createTeamForPool=false; }
 
 function updateEditLogoPreview(url) {
   const p=g('edit-team-logo-preview'); if(!p)return;
@@ -2926,8 +2931,16 @@ async function saveTeamEditor() {
   const idVal=g('edit-team-id').value;
   const team={name,tag:(g('edit-team-tag').value||'').trim().toUpperCase(),logo:(g('edit-team-logo').value||'').trim(),players,subs};
   if(idVal)team.id=idVal;
+  // When the editor was opened from the Competing Teams "+ Create New Team" flow,
+  // add the new team to the active tournament's pool in the same save.
+  const forPool=_createTeamForPool;
+  if(forPool){team.addToPool=true;}
   const res=await api('/api/teams/save',team);
-  if(res&&res.ok){closeTeamEditor();renderTeamsList();}
+  if(res&&res.ok){
+    _createTeamForPool=false;
+    closeTeamEditor();renderTeamsList();
+    if(forPool)switchToTab('tournament');
+  }
 }
 
 function deleteEditingTeam() {
@@ -2950,9 +2963,9 @@ async function openTeamPicker(slot) {
   list.innerHTML='<div style="color:var(--text-dim);font-size:13px;padding:12px">Loading…</div>';
   modal.style.display='flex';
   const res=await fetch('/api/teams').then(r=>r.json()).catch(()=>({teams:[]}));
-  const teams=res.teams||[];
+  const teams=poolFilter(res.teams||[]);
   if(!teams.length){
-    list.innerHTML='<div style="color:var(--text-dim);font-size:13px;padding:20px;text-align:center">No teams saved yet.<br><br>Go to <strong style="color:var(--text)">Teams Database</strong> to create your first team.</div>';
+    list.innerHTML='<div style="color:var(--text-dim);font-size:13px;padding:20px;text-align:center">No competing teams in this tournament yet.<br><br>Add them under <strong style="color:var(--text)">Tournament Setup → Competing Teams</strong>.</div>';
     return;
   }
   list.innerHTML=teams.map(function(team){
@@ -2981,6 +2994,100 @@ async function selectTeamFromPicker(teamId) {
 
 function closeTeamPicker() { const m=g('team-picker-modal'); if(m)m.style.display='none'; _teamPickerSlot=null; }
 g('team-picker-modal').addEventListener('click', function(e){ if(e.target===this)closeTeamPicker(); });
+
+// ── Competing-teams pool (per-tournament subset of the global Teams DB) ──────────
+let _createTeamForPool = false;
+
+// Active tournament's pool team IDs, or null when no pool is defined (legacy
+// fallback → callers show all teams). Server migrates legacy profiles, so this
+// is normally an array (possibly empty).
+function _poolIds() {
+  const tp = window._state && window._state.tournament && window._state.tournament.teamPool;
+  return Array.isArray(tp) ? tp : null;
+}
+// Filter a teams list down to the competing-teams pool. No pool defined → unchanged.
+function poolFilter(teams) {
+  const ids = _poolIds();
+  if (!ids) return teams;
+  const set = new Set(ids);
+  return (teams || []).filter(function(t) { return set.has(t.id); });
+}
+function _allTeams() { return (window._state && window._state.teams) || window._cachedTeams || []; }
+
+function renderCompetingTeams(s) {
+  const list = g('pool-list'), empty = g('pool-empty'); if (!list) return;
+  const ids = (s.tournament && s.tournament.teamPool) || [];
+  const all = (s.teams) || window._cachedTeams || [];
+  const byId = {}; all.forEach(function(t) { byId[t.id] = t; });
+  const teams = ids.map(function(id) { return byId[id]; }).filter(Boolean);
+  if (!teams.length) { list.innerHTML = ''; if (empty) empty.style.display = 'block'; return; }
+  if (empty) empty.style.display = 'none';
+  list.innerHTML = teams.map(function(t) {
+    const logo = t.logo
+      ? '<img src="' + esc(t.logo) + '" style="width:34px;height:34px;object-fit:contain;flex-shrink:0">'
+      : '<div style="width:34px;height:34px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:8px;color:var(--text-dim);flex-shrink:0">LOGO</div>';
+    return '<div class="pool-team-row">' + logo +
+      '<span class="pool-team-name">' + esc(t.name || t.tag || '?') + '</span>' +
+      '<span class="pool-team-tag">' + esc(t.tag || '') + '</span>' +
+      '<button class="btn btn-xs btn-danger" style="margin-left:auto" onclick="removeTeamFromPool(this,\'' + t.id + '\')">Remove</button>' +
+      '</div>';
+  }).join('');
+}
+
+function openPoolAddModal() {
+  const modal = g('pool-add-modal'); if (!modal) return;
+  const search = g('pool-add-search'); if (search) search.value = '';
+  modal.style.display = 'flex';
+  renderPoolAddList();
+}
+function closePoolAddModal() { const m = g('pool-add-modal'); if (m) m.style.display = 'none'; }
+g('pool-add-modal').addEventListener('click', function(e) { if (e.target === this) closePoolAddModal(); });
+
+function renderPoolAddList() {
+  const listEl = g('pool-add-list'); if (!listEl) return;
+  const poolIds = new Set((window._state && window._state.tournament && window._state.tournament.teamPool) || []);
+  const q = ((g('pool-add-search') || {}).value || '').trim().toLowerCase();
+  const candidates = _allTeams().filter(function(t) {
+    if (poolIds.has(t.id)) return false; // already in the pool
+    if (!q) return true;
+    return (t.name || '').toLowerCase().indexOf(q) !== -1 || (t.tag || '').toLowerCase().indexOf(q) !== -1;
+  });
+  if (!candidates.length) {
+    listEl.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:20px;text-align:center">' +
+      (q ? 'No matching teams.' : 'All saved teams are already in this tournament.<br><br>Use <strong style="color:var(--text)">+ Create New Team</strong> to add a new one.') +
+      '</div>';
+    return;
+  }
+  listEl.innerHTML = candidates.map(function(t) {
+    const logo = t.logo
+      ? '<img src="' + esc(t.logo) + '" style="width:44px;height:44px;object-fit:contain;flex-shrink:0">'
+      : '<div style="width:44px;height:44px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-dim);flex-shrink:0">LOGO</div>';
+    const pc = (t.players || []).filter(function(p) { return p.handle || p.name; }).length;
+    return '<div class="team-picker-option" onclick="addTeamToPool(\'' + t.id + '\')">' + logo +
+      '<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px">' +
+        '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:800;color:#fff;text-transform:uppercase">' + esc(t.name) + '</span>' +
+        '<span style="font-size:11px;color:var(--accent);letter-spacing:0.12em">' + esc(t.tag || '') + '</span></div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + pc + ' players</div></div>' +
+      '<div style="color:var(--primary);font-size:18px;flex-shrink:0">+ Add</div></div>';
+  }).join('');
+}
+
+function addTeamToPool(teamId) {
+  api('/api/tournament/pool/add', { teamId }).then(function(res) {
+    if (res && res.ok) renderPoolAddList(); // refresh modal so the added team drops out
+  });
+}
+function removeTeamFromPool(btn, teamId) {
+  confirmDestructive(btn, 'Remove from tournament', function() {
+    api('/api/tournament/pool/remove', { teamId });
+  });
+}
+function openPoolCreateTeam() {
+  _createTeamForPool = true;
+  closePoolAddModal();
+  switchToTab('teams');
+  openTeamEditor(null);
+}
 
 // ── Utility ────────────────────────────────────────────────────────────────────
 function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -4055,7 +4162,7 @@ function renderGroupsList(t) {
           }).join('') +
           '<select class="group-add-team" onchange="addGroupTeam(\'' + grp.id + '\',this.value);this.value=\'\'">' +
           '<option value="">+ Add team</option>' +
-          teams.filter(tm => !assignedIds.has(tm.id)).map(tm => '<option value="' + tm.id + '">' + escHtml(tm.name) + '</option>').join('') +
+          poolFilter(teams).filter(tm => !assignedIds.has(tm.id)).map(tm => '<option value="' + tm.id + '">' + escHtml(tm.name) + '</option>').join('') +
           '</select>' +
           '</div>'
       // View mode: compact chips
@@ -4591,7 +4698,7 @@ function renderDayGames(day) {
       '<div class="sched-game-btns">' +
       (hasDraftHistory ? '<button class="btn btn-sm ds-toggle-btn" id="dh-btn-' + histId + '" onclick="toggleDraftHistory(\'' + histId + '\')">▼ Draft</button>' : '') +
       (!isCompleted ? '<button class="btn btn-sm" onclick="openEditGameForm(\'' + day.id + '\',\'' + gm.id + '\')">Edit</button>' : '') +
-      (isCompleted ? '<button class="btn btn-sm btn-danger" onclick="clearScheduleGameResult(\'' + day.id + '\',\'' + gm.id + '\',this)">Clear Result</button>' : '') +
+      (isCompleted && _schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="clearScheduleGameResult(\'' + day.id + '\',\'' + gm.id + '\',this)">Clear Result</button>' : '') +
       (_schedEditMode && idx > 0 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'up\'}).then(_applySchedule)">↑</button>' : '') +
       (_schedEditMode && idx < day.games.length-1 ? '<button class="sched-reorder-btn" onclick="api(\'/api/schedule/game/reorder\',{dayId:\'' + day.id + '\',gameId:\'' + gm.id + '\',direction:\'down\'}).then(_applySchedule)">↓</button>' : '') +
       (_schedEditMode ? '<button class="btn btn-sm btn-danger" onclick="schedDeleteGame(\'' + day.id + '\',\'' + gm.id + '\')">×</button>' : '') +
@@ -4623,7 +4730,7 @@ const STAGE_LABEL_MAP = {
 };
 
 function renderAddGameForm(dayId) {
-  const teams = window._cachedTeams || [];
+  const teams = poolFilter(window._cachedTeams || []);
   const t = window._state && window._state.tournament;
   const stageDefs = getScheduleStageOptions(t);
   const stageOpts = stageDefs.map(function(d) { return '<option value="' + d.key + '">' + escHtml(d.label) + '</option>'; }).join('');
@@ -4751,14 +4858,21 @@ function submitAddGame(dayId) {
 
 // ── Schedule game inline editing ───────────────────────────────────────────────
 function renderScheduleGameEditForm(dayId, game) {
-  const teams  = window._cachedTeams || [];
+  const allTeams = window._cachedTeams || [];
+  const poolTeams = poolFilter(allTeams);
   const t = window._state && window._state.tournament;
   const stageDefs = getScheduleStageOptions(t);
   const isLol = !t || t.game === 'lol' || window._state.match.game === 'lol';
   const gid   = game.id;
   const teamOpts = function(selectedId) {
+    let opts = poolTeams.slice();
+    // Keep a currently-assigned team visible even if it's no longer in the pool
+    if (selectedId && !opts.some(function(tm) { return tm.id === selectedId; })) {
+      const sel = allTeams.find(function(tm) { return tm.id === selectedId; });
+      if (sel) opts = opts.concat([sel]);
+    }
     return '<option value="">— TBD —</option>' +
-      teams.map(function(tm) {
+      opts.map(function(tm) {
         return '<option value="' + tm.id + '"' + (tm.id === selectedId ? ' selected' : '') + '>' + escHtml(tm.name) + '</option>';
       }).join('');
   };

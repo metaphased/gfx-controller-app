@@ -983,6 +983,11 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 .gs-sched-teams { font-family: var(--ui-font), sans-serif; font-size: 13px; font-weight: 700; color: var(--text); flex: 1; min-width: 140px; }
 .gs-sched-meta { font-size: 12px; color: var(--accent); }
 
+/* ── Competing Teams pool (Tournament Setup) ──────────────────────────────────── */
+.pool-team-row { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: var(--bg3); border: 1px solid var(--border); margin-bottom: 6px; }
+.pool-team-name { font-family: 'Barlow Condensed', sans-serif; font-size: 17px; font-weight: 800; color: #fff; text-transform: uppercase; }
+.pool-team-tag { font-size: 11px; color: var(--accent); letter-spacing: 0.12em; }
+
 /* ── Series Tracker ───────────────────────────────────────────────────────────── */
 .series-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 0 10px; border-bottom: 1px solid var(--border); margin-bottom: 10px; flex-wrap: wrap; gap: 6px; }
 .series-score-disp { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: 0.04em; }
