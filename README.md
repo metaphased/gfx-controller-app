@@ -4,7 +4,7 @@
 
 <h1 align="center">MetaGFX — Esports Broadcast Graphics Controller</h1>
 
-A self-hosted Node.js broadcast graphics system for live esports production. Runs locally, connects to OBS/vMix via browser sources, controlled by a web-based admin panel.
+A self-hosted Node.js tournament & broadcast platform for esports. Teams, schedule, groups, brackets and prize pool are managed in one web panel that drives live OBS/vMix graphics — every overlay stays in sync, no manual re-entry. Runs locally.
 
 > [!IMPORTANT]
 > **MetaGFX is built for community and grassroots tournaments — not paid or commercial productions.**
