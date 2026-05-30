@@ -1036,6 +1036,26 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 }
 
 /* ── Draft status bar ────────────────────────────────────────────────────────── */
+/* Draft setup: side assignment (left) + pick/ban timer (right) */
+.draft-setup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22px;
+  align-items: start;
+}
+.draft-timer-cell {
+  border-left: 1px solid var(--border);
+  padding-left: 22px;
+}
+.draft-cell-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 10px;
+}
+@media (max-width: 760px) {
+  .draft-setup-grid { grid-template-columns: 1fr; gap: 14px; }
+  .draft-timer-cell { border-left: none; padding-left: 0; border-top: 1px solid var(--border); padding-top: 14px; }
+}
+
 .draft-status-bar {
   display: flex;
   align-items: center;
