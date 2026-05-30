@@ -1566,26 +1566,38 @@ app.post('/api/match/load-schedule-game', (req, res) => {
   state.match.scheduleGameId = gameId;
 
   const result = sg.result;
-  if (restore && result && result.completed) {
-    // Restore saved series state so the overlay shows the completed game correctly
-    const savedGames = result.games || [];
+  const savedGames = (result && result.games) || [];
+  if (restore && result && savedGames.length) {
+    // Restore saved series state (completed OR in-progress) so progress survives a reload
     state.match.seriesGames = savedGames;
     state.match.team1.score = result.team1SeriesScore || 0;
     state.match.team2.score = result.team2SeriesScore || 0;
-    state.match.currentGameNum = savedGames.length || 1;
-
-    // Restore draft state from the last completed game so the overlay reflects it
-    const lastGame = savedGames[savedGames.length - 1];
-    if (lastGame) {
-      state.draft.picks       = lastGame.draftPicks   || [];
-      state.draft.banFirstTeam= lastGame.banFirstTeam || 'blue';
-      state.draft.blueSideTeam= lastGame.blueSideTeam || 'team1';
-      state.draft.sideChooser = lastGame.sideChooser  || '';
-      state.draft.team1RolePicks = lastGame.t1RolePicks || [];
-      state.draft.team2RolePicks = lastGame.t2RolePicks || [];
-      state.draft.phase       = 'complete';
-      state.draft.currentStep = 21;
-      state.draft.timerEnd    = null;
+    if (result.completed) {
+      // Completed — show the last game's draft as the final state
+      state.match.currentGameNum = savedGames.length || 1;
+      const lastGame = savedGames[savedGames.length - 1];
+      if (lastGame) {
+        state.draft.picks       = lastGame.draftPicks   || [];
+        state.draft.banFirstTeam= lastGame.banFirstTeam || 'blue';
+        state.draft.blueSideTeam= lastGame.blueSideTeam || 'team1';
+        state.draft.sideChooser = lastGame.sideChooser  || '';
+        state.draft.team1RolePicks = lastGame.t1RolePicks || [];
+        state.draft.team2RolePicks = lastGame.t2RolePicks || [];
+        state.draft.phase       = 'complete';
+        state.draft.currentStep = 21;
+        state.draft.timerEnd    = null;
+      }
+    } else {
+      // In progress — resume on the next unplayed game with a clean draft
+      state.match.currentGameNum   = savedGames.length + 1;
+      state.draft.phase            = 'notstarted';
+      state.draft.picks            = ['','','','','','','','','','','','','','','','','','','',''];
+      state.draft.currentStep      = 0;
+      state.draft.committedT1Picks = [];
+      state.draft.committedT2Picks = [];
+      state.draft.team1RolePicks   = [];
+      state.draft.team2RolePicks   = [];
+      state.draft.timerEnd         = null;
     }
   } else {
     // Fresh start
@@ -1675,6 +1687,32 @@ function _seedLinkedBracketTeams(sg) {
   if (t2 && unresolved(bMatch.team2.name)) { bMatch.team2.name = t2; if (bMatch.team2.score == null) bMatch.team2.score = 0; }
 }
 
+// Persist the current series state onto its linked schedule game so it survives
+// switching matches / reloads. Writes a completed result when the series is over,
+// an in-progress snapshot (completed:false) while games remain, or null when empty.
+// Keeps the linked bracket in sync (only a completed series writes a bracket result).
+function _persistSeriesProgress() {
+  if (!state.match.scheduleDayId || !state.match.scheduleGameId) return;
+  const day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
+  const sg  = day && day.games.find(g => g.id === state.match.scheduleGameId);
+  if (!sg) return;
+  const games = state.match.seriesGames || [];
+  const formatNum  = parseInt((state.match.format || 'Bo3').replace('Bo','')) || 3;
+  const winsNeeded = Math.ceil(formatNum / 2);
+  const t1 = state.match.team1.score || 0, t2 = state.match.team2.score || 0;
+  const over = t1 >= winsNeeded || t2 >= winsNeeded;
+  if (games.length === 0) {
+    sg.result = null;
+    _clearLinkedBracket(sg);
+  } else if (over) {
+    sg.result = { completed: true, winner: t1 >= winsNeeded ? 'team1' : 'team2', team1SeriesScore: t1, team2SeriesScore: t2, games: [...games] };
+    _updateLinkedBracket(sg);
+  } else {
+    sg.result = { completed: false, team1SeriesScore: t1, team2SeriesScore: t2, games: [...games] };
+    _clearLinkedBracket(sg);
+  }
+}
+
 app.post('/api/match/record-game', (req, res) => {
   const { winner, t1Side, t2Side, t1Picks, t2Picks, t1RolePicks, t2RolePicks } = req.body;
   if (!winner || !['team1','team2'].includes(winner)) return res.status(400).json({ error: 'winner must be team1 or team2' });
@@ -1716,16 +1754,9 @@ app.post('/api/match/record-game', (req, res) => {
   state.winScreen.seriesScore = (formatNum > 1)
     ? (state.match.team1.score + ' — ' + state.match.team2.score)
     : '';
-  if (seriesOver && state.match.scheduleGameId && state.match.scheduleDayId) {
-    const day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
-    if (day) {
-      const sg = day.games.find(g => g.id === state.match.scheduleGameId);
-      if (sg) {
-        sg.result = { completed: true, winner: state.match.team1.score >= winsNeeded ? 'team1' : 'team2', team1SeriesScore: state.match.team1.score, team2SeriesScore: state.match.team2.score, games: [...state.match.seriesGames] };
-        _updateLinkedBracket(sg); // reflect the result on the linked bracket match
-      }
-    }
-  }
+  // Persist progress to the linked schedule game after every game (completed
+  // result on series end, in-progress snapshot otherwise) so it survives reloads.
+  _persistSeriesProgress();
   invalidateStatsCache();
   const _rgWinner = winner === 'team1' ? (state.match.team1.tag||state.match.team1.name||'Team 1') : (state.match.team2.tag||state.match.team2.name||'Team 2');
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'record-game', _rgWinner + (seriesOver ? ' — series over' : ''));
@@ -1765,20 +1796,15 @@ app.post('/api/match/record-bye', requireAdmin, (req, res) => {
     recordOne();
   }
 
-  // Auto-populate win screen and sync schedule on series end
+  // Auto-populate win screen on series end
   const seriesNowOver = state.match.team1.score >= winsNeeded || state.match.team2.score >= winsNeeded;
   if (seriesNowOver) {
     state.winScreen.team    = winner;
     state.winScreen.message = formatNum === 1 ? 'WINS THE MATCH' : 'WINS THE SERIES';
     state.winScreen.seriesScore = formatNum > 1 ? (state.match.team1.score + ' — ' + state.match.team2.score) : '';
-    if (state.match.scheduleGameId && state.match.scheduleDayId) {
-      const day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
-      if (day) {
-        const sg = day.games.find(g => g.id === state.match.scheduleGameId);
-        if (sg) { sg.result = { completed: true, winner, team1SeriesScore: state.match.team1.score, team2SeriesScore: state.match.team2.score, games: [...state.match.seriesGames] }; _updateLinkedBracket(sg); }
-      }
-    }
   }
+  // Persist progress to the linked schedule game (completed on end, in-progress otherwise)
+  _persistSeriesProgress();
   invalidateStatsCache();
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'record-bye', (seriesWalkover ? 'walkover → ' : 'bye → ') + winner);
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, seriesOver: seriesNowOver });
@@ -1807,6 +1833,36 @@ app.post('/api/match/reset-series', (req, res) => {
   invalidateStatsCache();
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'reset-series', '');
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true });
+});
+
+// Clear a single recorded game from the current series, recompute the series
+// score from the remaining games, renumber them, and re-sync the linked
+// schedule result + bracket. Unlike RESET SERIES (full wipe), this keeps the
+// other games intact — for fixing a single data-entry error mid-series.
+app.post('/api/match/game/:index/clear', (req, res) => {
+  const idx = parseInt(req.params.index, 10);
+  const games = state.match.seriesGames || [];
+  if (isNaN(idx) || idx < 0 || idx >= games.length) {
+    return res.status(404).json({ error: 'Game not found' });
+  }
+  const removed = games.splice(idx, 1)[0];
+  // Renumber remaining games sequentially so gameNum stays consistent
+  games.forEach(function(gm, i) { gm.gameNum = i + 1; });
+  // Recompute series score from the remaining winners
+  state.match.team1.score = games.filter(function(gm) { return gm.winner === 'team1'; }).length;
+  state.match.team2.score = games.filter(function(gm) { return gm.winner === 'team2'; }).length;
+  const formatNum  = parseInt((state.match.format || 'Bo3').replace('Bo','')) || 3;
+  const winsNeeded = Math.ceil(formatNum / 2);
+  const seriesOver = state.match.team1.score >= winsNeeded || state.match.team2.score >= winsNeeded;
+  // Next game to play (or the deciding game number if the series is still over)
+  state.match.currentGameNum = seriesOver ? games.length : games.length + 1;
+  // Keep the win-screen series score string in sync with the new score
+  if (formatNum > 1) state.winScreen.seriesScore = state.match.team1.score + ' — ' + state.match.team2.score;
+  // Re-sync the linked schedule result + bracket (in-progress snapshot if games remain)
+  _persistSeriesProgress();
+  invalidateStatsCache();
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'clear-series-game', 'Game ' + ((removed && removed.gameNum) || (idx + 1)));
+  deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true, seriesOver });
 });
 
 app.post('/api/schedule/game/clear-result', requireAdmin, (req, res) => {
