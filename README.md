@@ -47,7 +47,7 @@ EXTERNAL_URL=http://YOUR_STATIC_IP:3000
 
 | Variable | Required | Description |
 |---|---|---|
-| `RIOT_API_KEY` | No | Riot Games Developer API key for Solo Queue rank lookups. Dev keys expire every 24 h — regenerate at https://developer.riotgames.com |
+| `RIOT_API_KEY` | No | Riot Games API key for Solo Queue rank lookups. **Do not use the temporary 24-hour Development key with this system** — it's only for *building* a tool and will expire mid-event. **Register a persistent key** by applying for a registered app/product at https://developer.riotgames.com. |
 | `PORT` | No | Server port, defaults to `3000` |
 | `EXTERNAL_URL` | No | Static IP/hostname for sharing output URLs outside localhost (e.g. to a remote OBS on the same LAN). When set, a **Local / External** toggle appears in **Settings → Output URLs** |
 
