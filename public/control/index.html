@@ -1049,33 +1049,51 @@
       </div>
 
       <div class="card" id="draft-setup-card" style="margin-bottom:16px">
-        <div class="card-title">Side Assignment</div>
-        <div class="field-row" style="flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap">
-          <label style="white-space:nowrap">Blue Side</label>
-          <div class="radio-group">
-            <label><input type="radio" name="draft-blue" value="team1" id="draft-blue-t1" onchange="api('/api/draft',{blueSideTeam:'team1'})"> <span id="draft-t1-label">Team 1</span></label>
-            <label><input type="radio" name="draft-blue" value="team2" id="draft-blue-t2" onchange="api('/api/draft',{blueSideTeam:'team2'})"> <span id="draft-t2-label">Team 2</span></label>
+        <div class="card-title">Side Assignment &amp; Timer</div>
+        <div class="draft-setup-grid">
+
+          <!-- Left cell: side assignment -->
+          <div class="draft-setup-cell">
+            <div class="field-row" style="flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap">
+              <label style="white-space:nowrap">Blue Side</label>
+              <div class="radio-group">
+                <label><input type="radio" name="draft-blue" value="team1" id="draft-blue-t1" onchange="api('/api/draft',{blueSideTeam:'team1'})"> <span id="draft-t1-label">Team 1</span></label>
+                <label><input type="radio" name="draft-blue" value="team2" id="draft-blue-t2" onchange="api('/api/draft',{blueSideTeam:'team2'})"> <span id="draft-t2-label">Team 2</span></label>
+              </div>
+            </div>
+            <div class="field-row" style="flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
+              <label style="white-space:nowrap">Side Chosen By</label>
+              <div class="radio-group">
+                <label><input type="radio" name="draft-side-chooser" value="team1" id="draft-sc-t1" onchange="api('/api/draft',{sideChooser:'team1'})"> <span id="draft-sc-t1-label">Team 1</span></label>
+                <label><input type="radio" name="draft-side-chooser" value="team2" id="draft-sc-t2" onchange="api('/api/draft',{sideChooser:'team2'})"> <span id="draft-sc-t2-label">Team 2</span></label>
+              </div>
+            </div>
+            <div class="field-row" style="flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
+              <label style="white-space:nowrap">Bans First</label>
+              <div class="radio-group">
+                <label><input type="radio" name="draft-ban-first" value="blue" id="draft-ban-first-blue" onchange="api('/api/draft',{banFirstTeam:'blue'})"> <span style="color:var(--primary)">Blue Side</span></label>
+                <label><input type="radio" name="draft-ban-first" value="red"  id="draft-ban-first-red"  onchange="api('/api/draft',{banFirstTeam:'red'})">  <span style="color:var(--danger)">Red Side</span></label>
+              </div>
+            </div>
           </div>
-        </div>
-        <div class="field-row" style="flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
-          <label style="white-space:nowrap">Side Chosen By</label>
-          <div class="radio-group">
-            <label><input type="radio" name="draft-side-chooser" value="team1" id="draft-sc-t1" onchange="api('/api/draft',{sideChooser:'team1'})"> <span id="draft-sc-t1-label">Team 1</span></label>
-            <label><input type="radio" name="draft-side-chooser" value="team2" id="draft-sc-t2" onchange="api('/api/draft',{sideChooser:'team2'})"> <span id="draft-sc-t2-label">Team 2</span></label>
+
+          <!-- Right cell: pick/ban timer -->
+          <div class="draft-setup-cell draft-timer-cell">
+            <div class="draft-cell-label">Pick/Ban Timer</div>
+            <div class="field-row" style="flex-direction:row;align-items:center;gap:10px">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;color:var(--text);font-size:13px">
+                <input type="checkbox" id="draft-timer-visible-main" onchange="api('/api/draft',{timerVisible:this.checked})">
+                Use pick/ban timer
+              </label>
+            </div>
+            <div class="field-row" style="flex-direction:row;align-items:center;gap:10px;margin-top:8px">
+              <label style="white-space:nowrap">Seconds per step</label>
+              <input type="number" id="draft-timer-dur" min="5" max="300" value="60" style="width:80px"
+                     onchange="api('/api/draft',{timerDuration:Number(this.value)})">
+            </div>
+            <p class="hint" style="margin-top:8px;margin-bottom:0">Shows a countdown on the draft overlay each pick/ban step.</p>
           </div>
-        </div>
-        <div class="field-row" style="flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
-          <label style="white-space:nowrap">Bans First</label>
-          <div class="radio-group">
-            <label><input type="radio" name="draft-ban-first" value="blue" id="draft-ban-first-blue" onchange="api('/api/draft',{banFirstTeam:'blue'})"> <span style="color:var(--primary)">Blue Side</span></label>
-            <label><input type="radio" name="draft-ban-first" value="red"  id="draft-ban-first-red"  onchange="api('/api/draft',{banFirstTeam:'red'})">  <span style="color:var(--danger)">Red Side</span></label>
-          </div>
-        </div>
-        <div class="field-row" style="flex-direction:row;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px">
-          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;color:var(--text);font-size:13px">
-            <input type="checkbox" id="draft-timer-visible-main" onchange="api('/api/draft',{timerVisible:this.checked})">
-            Use pick/ban timer
-          </label>
+
         </div>
         <div id="draft-setup-hint" style="margin-top:8px;font-size:12px;color:var(--text-dim);font-family:var(--ui-font),sans-serif;letter-spacing:0.06em">Draft not started — assign sides then fill picks in order</div>
         <div id="draft-start-wrap" style="margin-top:12px">
@@ -1339,22 +1357,8 @@
           </div>
         </div>
 
-        <!-- Right: timer settings + phase label + centre logo -->
+        <!-- Right: phase label + centre logo -->
         <div class="ps-col">
-          <div class="card">
-            <div class="card-title">Pick/Ban Timer Settings</div>
-            <div class="field-row">
-              <label>Duration per step (seconds)</label>
-              <input type="number" id="draft-timer-dur" min="5" max="300" value="60" style="width:80px"
-                     onchange="api('/api/draft',{timerDuration:Number(this.value)})">
-            </div>
-            <div class="field-row" style="margin-top:8px">
-              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-weight:400;color:var(--text);font-size:13px">
-                <input type="checkbox" id="draft-timer-visible" onchange="api('/api/draft',{timerVisible:this.checked})">
-                Show timer on overlay
-              </label>
-            </div>
-          </div>
 
           <div class="card">
             <div class="card-title">Phase Label</div>

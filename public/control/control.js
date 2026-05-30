@@ -3023,11 +3023,9 @@ function syncDraftGfxTab(draft, settings) {
     btn.classList.toggle('is-active', btn.dataset.phaseContrast === phaseContrast);
   });
 
-  // Timer duration + visible
+  // Timer duration + visible (now in the Draft panel's Side Assignment & Timer card)
   const durEl = g('draft-timer-dur');
   if (durEl && document.activeElement !== durEl) durEl.value = draft.timerDuration || 60;
-  const visEl = g('draft-timer-visible');
-  if (visEl) visEl.checked = !!draft.timerVisible;
   const visEl2 = g('draft-timer-visible-main');
   if (visEl2) visEl2.checked = !!draft.timerVisible;
 
