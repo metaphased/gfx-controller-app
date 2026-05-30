@@ -1949,6 +1949,13 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
     delete incoming.graphicsToken; // never restore token from profile
     deepMerge(state.settings, incoming);
   }
+  // Draft is live per-game state and is never part of a profile snapshot — reset it
+  // to a clean slate so the previous tournament's picks/phase/committed picks don't
+  // leak into the new profile (preserve the operator's timer config).
+  state.draft = Object.assign(makeDefault().draft, {
+    timerDuration: state.draft.timerDuration,
+    timerVisible:  state.draft.timerVisible,
+  });
   state.meta.activeProfileId   = id;
   state.meta.activeProfileName = profile.name;
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'load-profile', profile.name);
