@@ -165,12 +165,16 @@ socket.on('schedule', (schedule) => {
   if (!window._state.tournament) window._state.tournament = {};
   window._state.tournament.schedule = schedule;
   renderSchedule();
+  // Schedule arrives separately from `state`, so refresh the Game Setup day
+  // picker here too — otherwise it stays empty until the next state event.
+  renderGsDaySelect(window._state);
 });
 
 function _applySchedule(data) {
   if (data && Array.isArray(data.schedule) && window._state && window._state.tournament) {
     window._state.tournament.schedule = data.schedule;
     renderSchedule();
+    renderGsDaySelect(window._state);
   }
   return data;
 }
@@ -4881,10 +4885,12 @@ function renderScheduleGamePicker(dayId) {
     const t1n = resolveGsTeam('team1');
     const t2n = resolveGsTeam('team2');
     const isCompleted = !!(gm.result && gm.result.completed);
+    const hasProgress = !isCompleted && !!(gm.result && (gm.result.games || []).length);
     const isActive    = gm.id === activeGameId && !isCompleted;
-    const resultStr   = isCompleted ? ' ✓ ' + gm.result.team1SeriesScore + '–' + gm.result.team2SeriesScore : '';
-    const btnLabel    = isActive ? '● Active' : (isCompleted ? 'Restore' : 'Set Active');
-    const btnCls      = isActive ? ' btn-primary' : (isCompleted ? ' btn-secondary' : '');
+    const resultStr   = isCompleted ? ' ✓ ' + gm.result.team1SeriesScore + '–' + gm.result.team2SeriesScore
+                      : (hasProgress && !isActive ? ' ⋯ ' + gm.result.team1SeriesScore + '–' + gm.result.team2SeriesScore : '');
+    const btnLabel    = isActive ? '● Active' : (isCompleted ? 'Restore' : (hasProgress ? 'Resume' : 'Set Active'));
+    const btnCls      = isActive ? ' btn-primary' : (isCompleted || hasProgress ? ' btn-secondary' : '');
     return '<div class="gs-sched-game' + (isActive ? ' gs-sched-active' : '') + (isCompleted && !isActive ? ' gs-sched-done' : '') + '">' +
       '<span class="gs-sched-num">' + (i+1) + '</span>' +
       '<span class="gs-sched-teams">' + escHtml(t1n) + ' <span class="vs-sep">vs</span> ' + escHtml(t2n) + '</span>' +
@@ -4903,6 +4909,7 @@ function loadScheduleGame(dayId, gameId) {
   const day = ((s.tournament||{}).schedule||[]).find(function(d) { return d.id === dayId; });
   const gm  = day && day.games.find(function(g) { return g.id === gameId; });
   const isCompleted = !!(gm && gm.result && gm.result.completed);
+  const hasProgress = !isCompleted && !!(gm && gm.result && (gm.result.games || []).length);
 
   if (isCompleted) {
     showConfirm('This game is already completed.\n\nRestore its saved state (teams, scores, draft) so you can review or edit it?', function() {
@@ -4910,6 +4917,13 @@ function loadScheduleGame(dayId, gameId) {
         fetch('/api/teams').then(function(r) { return r.json(); }).then(function(d) { window._cachedTeams = d.teams||[]; });
       });
     }, { okLabel: 'Restore' });
+  } else if (hasProgress) {
+    const sc = gm.result.team1SeriesScore + '–' + gm.result.team2SeriesScore;
+    showConfirm('This series is in progress (' + sc + ').\n\nResume it with the games played so far?', function() {
+      api('/api/match/load-schedule-game', { dayId, gameId, restore: true }).then(function() {
+        fetch('/api/teams').then(function(r) { return r.json(); }).then(function(d) { window._cachedTeams = d.teams||[]; });
+      });
+    }, { okLabel: 'Resume' });
   } else {
     showConfirm('Load this game? This will replace the current team data and reset the series.', function() {
       api('/api/match/load-schedule-game', { dayId, gameId }).then(function() {
@@ -5430,7 +5444,7 @@ function renderSeriesTracker(s) {
     format + (seriesOver ? ' · Series Complete' : ' · Game ' + currentGame) + '</span></div>';
 
   // Completed games
-  seriesGames.forEach(function(sg) {
+  seriesGames.forEach(function(sg, idx) {
     const winner = sg.winner === 'team1' ? (m.team1.tag||m.team1.name||'T1') : (m.team2.tag||m.team2.name||'T2');
     const hasDraft = (sg.draftPicks || []).some(Boolean);
     const draftId  = 'dh-sg-' + sg.gameNum + '-' + (m.currentGameNum || 0);
@@ -5441,6 +5455,10 @@ function renderSeriesTracker(s) {
     html += '<span class="sg-sides">' + escHtml(m.team1.tag||'T1') + ': ' + (sg.t1Side||'?').toUpperCase() + ' · ' + escHtml(m.team2.tag||'T2') + ': ' + (sg.t2Side||'?').toUpperCase() + '</span>';
     if (hasDraft) {
       html += '<button class="btn btn-xs ds-toggle-btn" id="dh-btn-' + draftId + '" onclick="toggleDraftHistory(\'' + draftId + '\')">▼ Draft</button>';
+    }
+    // Per-game clear — edit mode only; recomputes series score from remaining games
+    if (_gsEditMode) {
+      html += '<button class="btn btn-xs btn-danger" onclick="clearSeriesGame(this,' + idx + ')">Clear</button>';
     }
     html += '</div>';
     if (fearless && (sg.t1Picks||[]).some(Boolean)) {
@@ -5721,6 +5739,14 @@ function recordBye(winner, seriesWalkover) {
       }
     });
   }, { okLabel: seriesWalkover ? 'Award Walkover' : 'Record BYE' });
+}
+
+// Clear a single recorded game in the series (vs RESET SERIES which wipes all).
+// Server recomputes the series score from the remaining games and renumbers them.
+function clearSeriesGame(btn, idx) {
+  confirmDestructive(btn, 'Clear Game ' + (idx + 1), function() {
+    api('/api/match/game/' + idx + '/clear', {});
+  });
 }
 
 // Countdown ticker for the live bar display
