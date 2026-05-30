@@ -143,34 +143,34 @@ The seeded `admin` account is `superadmin` by default. Create additional users i
 
 ## Key features
 
-- Real-time state sync across all browser tabs and graphics via Socket.io
-- Profile system — save/restore full tournament configurations per event
-- Dashboard — active match, tournament info, live schedule with scores and BOx status, live graphics status
-- GFX ctrl-bar — persistent live control zone on every graphics page (show/hide, position, opacity, and graphic-specific options)
-- Draft overlay with role-commit → auto-fetch champion stats from op.gg MCP (optional, separate setup); role assignment panel uses role-first rows (Top→Support) with a dropdown selector per role and a drag-drop toggle; caster view displays picks in role order once roles are committed
-- Match Intel panel — live rank, champion pool, and draft stats for both teams
-- Pick/ban timer with pause/resume — timer freezes on the overlay when paused
-- Player Intro graphic — 3 layout variants (Panel, Stack/Mirror, Champion Showcase) with rank icons and team logos
-- Caster view — live read-only dashboard for casters with roster intel, live draft board, series history, and fearless pool
-- External URL toggle — serve OBS-ready URLs pointing to your static IP without changing the `.env` each run
-- Break screen PIP mode — shrink to corner while other content shows
-- Ticker feed — shared across Break Screen and Pre-show
-- Background animation system — 12 canvas-based animations + fog overlay
-- Bo1/Bo3/Bo5 series tracking with game-by-game draft snapshots
-- Bracket (single + double elimination), Group Stage standings, Tournament Structure, Prizepool graphics
-- Schedule ↔ bracket linking — link a scheduled game to a playoff bracket match; the matchup shows on the bracket before it's played, and recording the series result fills the score + winner automatically (clearing reverts it)
+- **Real-time state sync** across all browser tabs and graphics via Socket.io
+- **Profile system** — save/restore full tournament configurations per event
+- **Dashboard** — active match, tournament info, live schedule with scores and BOx status, live graphics status
+- **GFX ctrl-bar** — persistent live control zone on every graphics page (show/hide, position, opacity, and graphic-specific options)
+- **Draft overlay** with role-commit → auto-fetch champion stats from op.gg MCP (optional, separate setup); role assignment panel uses role-first rows (Top→Support) with a dropdown selector per role and a drag-drop toggle; caster view displays picks in role order once roles are committed
+- **Match Intel panel** — live rank, champion pool, and draft stats for both teams
+- **Pick/ban timer with pause/resume** — timer freezes on the overlay when paused
+- **Player Intro graphic** — 3 layout variants (Panel, Stack/Mirror, Champion Showcase) with rank icons and team logos
+- **Caster view** — live read-only dashboard for casters with roster intel, live draft board, series history, and fearless pool
+- **External URL toggle** — serve OBS-ready URLs pointing to your static IP without changing the `.env` each run
+- **Break screen PIP mode** — shrink to corner while other content shows
+- **Ticker feed** — shared across Break Screen and Pre-show
+- **Background animation system** — 12 canvas-based animations + fog overlay
+- **Bo1/Bo3/Bo5 series tracking** with game-by-game draft snapshots
+- **Bracket** (single + double elimination), **Group Stage** standings, **Tournament Structure**, and **Prizepool** graphics
+- **Schedule ↔ bracket linking** — link a scheduled game to a playoff bracket match; the matchup shows on the bracket before it's played, and recording the series result fills the score + winner automatically (clearing reverts it)
 - **Multi-user workflow** — built for shared production crew use:
-  - Presence strip on all operator/caster/admin views — see who is connected and which page they're on
-  - Last-action attribution on every GFX ctrl-bar — shows who last showed/hid a graphic and when
-  - Soft page claiming — navigating to a GFX page claims it; others see an amber "Operated by [name]" indicator in the ctrl-bar (no hard blocking)
-  - Destructive action confirmation — inline 2-second countdown confirm on reset, clear result, and delete operations
-  - System Log — server-side ring buffer of significant actions (show/hide, record game, load profile, etc.), viewable by admin under **System → Log**
-  - Superadmin / admin role hierarchy — prevents admins from modifying each other's accounts
+  - **Presence strip** on all operator/caster/admin views — see who is connected and which page they're on
+  - **Last-action attribution** on every GFX ctrl-bar — shows who last showed/hid a graphic and when
+  - **Soft page claiming** — navigating to a GFX page claims it; others see an amber "Operated by [name]" indicator in the ctrl-bar (no hard blocking)
+  - **Destructive action confirmation** — inline 2-second countdown confirm on reset, clear result, and delete operations
+  - **System Log** — server-side ring buffer of significant actions (show/hide, record game, load profile, etc.), viewable by admin under **System → Log**
+  - **Superadmin / admin role hierarchy** — prevents admins from modifying each other's accounts
 - **Custom modal system** — all confirm/alert dialogs use an in-app styled overlay matching the UI theme, replacing browser-native popups
 - **Animation customization** — global + per-graphic easing and speed control with a full easing library (Sine→Expo, Back, Bounce, Elastic), a live preview, and reusable named **Looks** that bundle palette + accents + background + animation into a visual identity applied over any profile; see [docs/theming.md](docs/theming.md)
 - **Per-user keybinds** — each operator records their own keyboard shortcuts for any graphics or match action; managed via a profile modal (sidebar chip); keybinds are stored per-user account and ignored when an input field has focus
 - **Bitfocus Companion / Stream Deck integration** — download a ready-to-import Companion 4.x profile from the profile modal; 4 pages of buttons (Show/Hide, Toggle, Match & Draft, Bus); auth token embedded in all URLs; SSE stream at `/api/events` for live state feedback (graphic visibility, scores, draft phase); see [docs/companion.md](docs/companion.md)
-- Champion asset sync — download/update champion tiles, centered images, and role icons from DDragon; real-time progress in the admin UI or via `node scripts/sync-assets.js`
+- **Champion asset sync** — download/update champion tiles, centered images, and role icons from DDragon; real-time progress in the admin UI or via `node scripts/sync-assets.js`
 - **GFX Bus system** — shared OBS/vMix browser sources that route automatically to whichever assigned graphic is currently visible; create named buses, assign any graphics to each, and switch live from the operator routing matrix; ctrl-bar bus tags turn orange when a graphic is live on a bus; graphics preload in hidden iframes so switching is instant with no blank frames; out-animations play in full before the iframe hides
 - **Head to Head improvements** — champion stats strip collapses to zero height when inactive (prevents player name overflow in lineup mode); header bars are fully opaque for clean scene masking
 
