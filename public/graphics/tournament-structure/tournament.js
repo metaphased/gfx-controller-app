@@ -290,7 +290,7 @@ socket.on('connect', function() { _visible = false; });
 socket.on('state', function(state) {
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyAnimation(document.documentElement, state, 'tournamentStructure');
-  GfxSettings.applyBackground(document.body, state);
+  GfxSettings.clearBackground(document.body);
 
   var ts      = state.tournamentStructure || {};
   var visible = !!ts.visible;

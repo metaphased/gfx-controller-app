@@ -85,6 +85,15 @@ window.GfxSettings = (function () {
     }
   }
 
+  // Force an overlay element fully transparent and tear down any running bg
+  // animation/fog. Graphic overlays are always transparent now — any animated
+  // background runs only in the dedicated BG Output source (cheaper: one canvas
+  // in its own browser source instead of a canvas composited inside every graphic).
+  function clearBackground(el) {
+    stopBgAnimation();
+    if (el) { el.style.background = 'transparent'; el.style.backgroundImage = 'none'; }
+  }
+
   function bgSpeed(s) {
     const speed = (get(s).animation || {}).bgSpeed || 'medium';
     return speed === 'slow' ? 0.4 : speed === 'fast' ? 2 : 1;
@@ -226,9 +235,32 @@ window.GfxSettings = (function () {
   let _persistedFogData = null; // fog puff state — survives animation restarts
   let _animFrameFn = null, _fogAnimFrameFn = null;
 
+  // Frame-rate cap. We output 60fps to Twitch, so there's no value rendering the
+  // bg canvas faster than that on a high-refresh dev monitor — skip frames that
+  // arrive early. 1000/61 keeps true 60Hz displays running every frame (16.67ms ≥
+  // 16.39ms) while clamping 120/144Hz down to ~60.
+  var _FRAME_MS = 1000 / 61;
+  var _mainLastTs = 0, _fogLastTs = 0;
+
   // Pause rAF loops when the tab is hidden; resume when it becomes visible.
-  function _rafMain(fn) { _animFrameFn = fn; _animId = document.hidden ? null : requestAnimationFrame(fn); }
-  function _rafFog(fn)  { _fogAnimFrameFn = fn; _fogAnimId = document.hidden ? null : requestAnimationFrame(fn); }
+  function _rafMain(fn) {
+    _animFrameFn = fn;
+    if (document.hidden) { _animId = null; return; }
+    _animId = requestAnimationFrame(function (ts) {
+      if (ts - _mainLastTs < _FRAME_MS) { _rafMain(fn); return; } // early frame — skip, recheck next tick
+      _mainLastTs = ts;
+      fn(ts);
+    });
+  }
+  function _rafFog(fn) {
+    _fogAnimFrameFn = fn;
+    if (document.hidden) { _fogAnimId = null; return; }
+    _fogAnimId = requestAnimationFrame(function (ts) {
+      if (ts - _fogLastTs < _FRAME_MS) { _rafFog(fn); return; }
+      _fogLastTs = ts;
+      fn(ts);
+    });
+  }
   document.addEventListener('visibilitychange', function () {
     if (!document.hidden) {
       if (_animFrameFn)    _animId    = requestAnimationFrame(_animFrameFn);
@@ -240,7 +272,7 @@ window.GfxSettings = (function () {
     if (_animId)     { cancelAnimationFrame(_animId); _animId = null; }
     if (_canvas && _canvas.parentNode) _canvas.parentNode.removeChild(_canvas);
     if (_bgResizeFn) { window.removeEventListener('resize', _bgResizeFn); _bgResizeFn = null; }
-    _canvas = null; _ctx = null; _animFrameFn = null;
+    _canvas = null; _ctx = null; _animFrameFn = null; _mainLastTs = 0;
     stopFogLayer();
   }
 
@@ -248,7 +280,7 @@ window.GfxSettings = (function () {
     if (_fogAnimId)     { cancelAnimationFrame(_fogAnimId); _fogAnimId = null; }
     if (_fogCanvas && _fogCanvas.parentNode) _fogCanvas.parentNode.removeChild(_fogCanvas);
     if (_fogResizeFn)   { window.removeEventListener('resize', _fogResizeFn); _fogResizeFn = null; }
-    _fogCanvas = null; _fogCtx = null; _fogAnimFrameFn = null;
+    _fogCanvas = null; _fogCtx = null; _fogAnimFrameFn = null; _fogLastTs = 0;
   }
 
   function _startBgAnimation(container, type, sp, bgImgUrl) {
@@ -410,7 +442,7 @@ window.GfxSettings = (function () {
   }
 
   function _dotwave(sp) {
-    const SPACING = 38, DOT_R = 1.4, BUCKETS = 16;
+    const SPACING = 44, DOT_R = 1.4, BUCKETS = 16; // spacing widened for perf (was 38)
     const slots = Array.from({ length: BUCKETS }, () => []);
     let phase = 0;
     function frame() {
@@ -566,7 +598,7 @@ window.GfxSettings = (function () {
   function _rain(sp) {
     const [r, g, b] = _accentRgb();
     const W = () => _canvas.width || 1920, H = () => _canvas.height || 1080;
-    const count = Math.floor(W() / 10);
+    const count = Math.floor(W() / 14); // density trimmed for perf (was /10)
     const drops = Array.from({ length: count }, () => ({
       x: Math.random() * W(), y: Math.random() * H(),
       len:   15 + Math.random() * 55,
@@ -743,5 +775,5 @@ window.GfxSettings = (function () {
     frame();
   }
 
-  return { applyTheme, applyBackground, applyAnimation, resolveEasing, EASINGS, bgSpeed, palette, accent, logo, stopBgAnimation };
+  return { applyTheme, applyBackground, clearBackground, applyAnimation, resolveEasing, EASINGS, bgSpeed, palette, accent, logo, stopBgAnimation };
 })();

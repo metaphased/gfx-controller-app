@@ -1663,9 +1663,11 @@ function setPiBackground(type) {
 }
 
 function syncPiBgBtns(piBg) {
-  ['transparent', 'dark', 'global'].forEach(function(t) {
+  // 'global' retired with the per-graphic theme background — treat it as transparent
+  const active = (piBg === 'dark') ? 'dark' : 'transparent';
+  ['transparent', 'dark'].forEach(function(t) {
     const btn = g('pi-bg-' + t);
-    if (btn) btn.className = 'btn btn-sm ' + (piBg === t ? 'btn-active-gfx' : 'btn-dim');
+    if (btn) btn.className = 'btn btn-sm ' + (active === t ? 'btn-active-gfx' : 'btn-dim');
   });
 }
 
@@ -5105,51 +5107,6 @@ function syncAccentHex(side, val) {
   patchSettings(side === 'blue' ? { blueAccent: val } : { redAccent: val });
 }
 
-function setBgType(type) {
-  patchSettings({ bgType: type });
-  ['color', 'image', 'animation'].forEach(t => {
-    const row = g('ts-bg-' + t + '-row'); if (row) row.style.display = t === type ? 'block' : 'none';
-  });
-  ['transparent', 'color', 'image', 'animation'].forEach(t => {
-    const btn = g('ts-bg-' + t); if (btn) btn.classList.toggle('is-active', t === type);
-  });
-  const bgSpeedRow = g('ts-bgspeed-row');
-  if (bgSpeedRow) bgSpeedRow.style.display = type === 'animation' ? 'block' : 'none';
-}
-const _BG_ANIMS = ['particles', 'scanlines', 'grid', 'hexgrid', 'diamonds', 'dotwave', 'lines', 'rings', 'circuit', 'rain', 'fog', 'wave'];
-
-function setBgAnim(val) {
-  patchSettings({ bgAnimation: val });
-  _BG_ANIMS.forEach(a => {
-    const btn = g('ts-bganim-' + a); if (btn) btn.classList.toggle('is-active', a === val);
-  });
-}
-function syncBgColor(val) {
-  const hexBg   = g('ts-bgcolor-hex');    if (hexBg   && document.activeElement !== hexBg)   hexBg.value   = val;
-  const hexAnim = g('ts-animcolor-hex');  if (hexAnim && document.activeElement !== hexAnim)  hexAnim.value = val;
-  patchSettings({ bgColor: val });
-}
-function syncBgColorHex(val) {
-  if (!isValidHex(val)) return;
-  const swBg   = g('ts-bgcolor-swatch');   if (swBg)   swBg.value   = val;
-  const swAnim = g('ts-animcolor-swatch'); if (swAnim) swAnim.value = val;
-  patchSettings({ bgColor: val });
-}
-
-function setBgSpeed(val) {
-  patchSettings({ animation: { bgSpeed: val } });
-  ['slow','medium','fast'].forEach(v => {
-    const btn = g('ts-bgspeed-' + v); if (btn) btn.classList.toggle('is-active', v === val);
-  });
-}
-
-function uploadThemeBg(input) {
-  if (!input.files || !input.files[0]) return;
-  uploadImageFile(input.files[0]).then(url => {
-    if (url) { const el = g('ts-bg-img-url'); if (el) el.value = url; patchSettings({ bgImage: url }); }
-  });
-}
-
 // Logo library
 function addThemeLogo() {
   const logos = JSON.parse(JSON.stringify((((window._state || {}).settings || {}).logoSet || {}).logos || []));
@@ -5191,10 +5148,7 @@ function syncThemeTab(st) {
   // Reliable one-time Looks load after the socket delivers state (the
   // DOMContentLoaded restore can race the fetch on a cold first load).
   if (!_looksAutoLoaded) { _looksAutoLoaded = true; loadLooksList(); }
-  const { palette = [], blueAccent = '#1e6fff', redAccent = '#ff3b3b',
-          bgType = 'transparent', bgColor = '#070f12', bgImage = '',
-          bgAnimation = 'none', animation = {}, logoSet = {} } = st;
-  const { bgSpeed = 'medium' } = animation;
+  const { palette = [], blueAccent = '#1e6fff', redAccent = '#ff3b3b', logoSet = {} } = st;
 
   // Palette
   [0,1,2,3].forEach(i => {
@@ -5211,38 +5165,8 @@ function syncThemeTab(st) {
   const rSw = g('ts-red-swatch');  if (rSw) rSw.value = redAccent;
   const rHx = g('ts-red-hex');     if (rHx && document.activeElement !== rHx) rHx.value = redAccent;
 
-  // Background type pills + sub-rows
-  ['transparent','color','image','animation'].forEach(t => {
-    const btn = g('ts-bg-' + t); if (btn) btn.classList.toggle('is-active', t === bgType);
-  });
-  ['color','image','animation'].forEach(t => {
-    const row = g('ts-bg-' + t + '-row'); if (row) row.style.display = t === bgType ? 'block' : 'none';
-  });
-
-  // Background colour + image
-  const bgSw = g('ts-bgcolor-swatch');   if (bgSw) bgSw.value = bgColor;
-  const bgHx = g('ts-bgcolor-hex');      if (bgHx && document.activeElement !== bgHx) bgHx.value = bgColor;
-  const anSw = g('ts-animcolor-swatch'); if (anSw) anSw.value = bgColor;
-  const anHx = g('ts-animcolor-hex');    if (anHx && document.activeElement !== anHx) anHx.value = bgColor;
-  const imgEl = g('ts-bg-img-url');      if (imgEl && document.activeElement !== imgEl) imgEl.value = bgImage;
-
-  // Background animation type
-  _BG_ANIMS.forEach(a => {
-    const btn = g('ts-bganim-' + a); if (btn) btn.classList.toggle('is-active', a === bgAnimation);
-  });
-
-  // Background animation speed pills
-  ['slow','medium','fast'].forEach(v => {
-    const btn = g('ts-bgspeed-' + v); if (btn) btn.classList.toggle('is-active', v === bgSpeed);
-  });
-
-  // Fog layer toggle + intensity
-  const fogChk = g('ts-fog-layer');
-  if (fogChk) fogChk.checked = !!(st.bgFogLayer);
-  const fogIntRow = g('ts-fog-intensity-row');
-  if (fogIntRow) fogIntRow.style.display = st.bgFogLayer ? 'flex' : 'none';
-  const fogInt = g('ts-fog-intensity');
-  if (fogInt && document.activeElement !== fogInt) fogInt.value = st.bgFogIntensity != null ? st.bgFogIntensity : 50;
+  // Graphic backgrounds removed — overlays are always transparent; animated
+  // backdrops live in the dedicated BG Output source (synced on its own tab).
 
   // Animation — global default or per-graphic override (target-aware)
   syncAnimControls();
@@ -5437,6 +5361,9 @@ function deleteLook(id, btn) {
 
 // ── BG Output tab ─────────────────────────────────────────────────────────────
 function patchBgo(data) { api('/api/bgOutput', data); }
+
+// Animation types offered by the BG Output source
+const _BG_ANIMS = ['particles', 'scanlines', 'grid', 'hexgrid', 'diamonds', 'dotwave', 'lines', 'rings', 'circuit', 'rain', 'fog', 'wave'];
 
 function setBgoType(type) {
   patchBgo({ bgType: type });

@@ -68,7 +68,7 @@ socket.on('state', (state) => {
 
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyAnimation(document.documentElement, state, 'draft');
-  GfxSettings.applyBackground(document.getElementById('draft-root'), state);
+  GfxSettings.clearBackground(document.getElementById('draft-root'));
 
   const root    = document.getElementById('draft-root');
   const visible = !!(state.draft && state.draft.visible);
