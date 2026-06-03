@@ -98,6 +98,25 @@ body {
 }
 .conn-dot.connected { color: #2ecc71; }
 .conn-dot.disconnected { color: var(--danger); }
+
+/* ── Live switcher indicators ── */
+.onair-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 2px; border: 1px solid var(--border-strong);
+  color: var(--text-dim); white-space: nowrap; flex-shrink: 0;
+}
+.onair-pill .onair-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text-dim); }
+.onair-pill.live { color: #fff; border-color: var(--live); background: var(--live); }
+.onair-pill.live .onair-dot { background: #fff; box-shadow: 0 0 6px #fff; animation: onair-pulse 1.1s ease-in-out infinite; }
+@keyframes onair-pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+.sig {
+  display: inline-flex; align-items: center; font-size: 9px; font-weight: 800;
+  letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 6px;
+  border-radius: 2px; border: 1px solid; white-space: nowrap; flex-shrink: 0; margin-left: 4px;
+}
+.sig-pgm { color: var(--pgm); border-color: var(--pgm); background: rgba(var(--live-rgb),0.14); }
+.sig-pvw { color: var(--pvw); border-color: var(--pvw); background: rgba(46,194,122,0.12); }
 .btn-logout {
   font-family: var(--ui-font), sans-serif;
   font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
@@ -498,6 +517,7 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
   </div>
 
   <div class="topbar-right">
+    <span class="onair-pill" id="op-onair" style="display:none"><span class="onair-dot"></span><span id="op-onair-label">OFF AIR</span></span>
     <button class="btn-edit-layout" id="btn-edit-layout" onclick="toggleLayoutEdit()" title="Drag panels to reorder your operator layout">✎ Edit Layout</button>
     <span class="conn-dot" id="conn-status">⬤ Connecting…</span>
     <a class="btn-logout" href="/api/auth/logout">Log Out</a>
@@ -801,6 +821,8 @@ socket.on('state', state => {
   window._state = state;
   const m = state.match;
 
+  if (state.switcher) applySwitcher(state.switcher);
+
   /* Topbar */
   const prEl = g('tb-profile'); if (prEl) prEl.textContent = (state.meta && state.meta.activeProfileName) || '—';
 
@@ -1068,6 +1090,7 @@ function renderBusPanel(state) {
     const btns = (bus.assignments || []).map(function(key) {
       const isActive = bs.activeGraphic === key && bs.visible;
       return '<button class="bus-btn' + (isActive ? ' is-active' : '') + '" ' +
+        'title="' + (isActive ? 'Live on ' + esc(bus.name || bus.id) + ' — click to take off air' : 'Put live on ' + esc(bus.name || bus.id)) + '" ' +
         'onclick="busRoute(\'' + bus.id + '\',\'' + key + '\',' + isActive + ')">' +
         esc(GFX_LABELS[key] || key) + '</button>';
     }).join('');
@@ -1084,6 +1107,33 @@ function busRoute(busId, graphic, isCurrentlyActive) {
   // Toggle: clicking the active graphic hides the bus; clicking another routes to it
   const visible = !isCurrentlyActive;
   socket.emit('bus:switch', { busId, graphic, visible });
+}
+
+/* ── Live switcher (OBS/vMix) indicators ─────────────────────────────────────── */
+socket.on('switcher:state', applySwitcher);
+function applySwitcher(snap) {
+  snap = snap || {};
+  const active = snap.type && snap.type !== 'none';
+  const pill = g('op-onair'), label = g('op-onair-label');
+  if (pill) {
+    pill.style.display = active ? '' : 'none';
+    if (active) {
+      pill.classList.toggle('live', !!snap.streamLive);
+      if (label) label.textContent = snap.streamLive ? 'LIVE' : (snap.connected ? 'OFF AIR' : 'NO SIGNAL');
+    }
+  }
+  const live = new Set(snap.liveGraphics || []);
+  const pvw  = new Set(snap.previewGraphics || []);
+  document.querySelectorAll('[id^="ops-grp-"]').forEach(function(grp) {
+    const key = grp.id.slice('ops-grp-'.length);
+    let tag = grp.querySelector('.sig');
+    const stt = live.has(key) ? 'pgm' : (pvw.has(key) ? 'pvw' : null);
+    if (!stt) { if (tag) tag.remove(); return; }
+    if (!tag) { tag = document.createElement('span'); tag.className = 'sig'; grp.appendChild(tag); }
+    tag.classList.remove('sig-pgm', 'sig-pvw');
+    tag.classList.add(stt === 'pgm' ? 'sig-pgm' : 'sig-pvw');
+    tag.textContent = stt === 'pgm' ? 'PGM' : 'PVW';
+  });
 }
 
 /* ── Layout editor — drag panels to reorder, persisted per-user ───────────────── */

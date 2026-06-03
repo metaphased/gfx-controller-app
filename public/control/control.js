@@ -158,6 +158,8 @@ socket.on('state', async (state) => {
   _dirtyCheckTimer = setTimeout(checkProfileDirty, 2000);
 });
 
+socket.on('switcher:state', applySwitcher);
+
 socket.on('stats:invalidated', () => refreshControlTournamentStats());
 
 socket.on('schedule', (schedule) => {
@@ -403,6 +405,79 @@ function openCasterView() {
   if (!token) { (typeof showAlert === 'function' ? showAlert : alert)('Caster token not ready yet — try again in a moment.'); return; }
   window.open('/caster/?token=' + encodeURIComponent(token), '_blank', 'noopener');
 }
+
+// ── Live switcher (OBS/vMix) indicators ──────────────────────────────────────────
+function applySwitcher(snap) {
+  snap = snap || {};
+  const active = snap.type && snap.type !== 'none';
+
+  // Topbar on-air pill
+  const pill = g('mtb-onair'), label = g('mtb-onair-label');
+  if (pill) {
+    pill.style.display = active ? '' : 'none';
+    if (active) {
+      pill.classList.toggle('live', !!snap.streamLive);
+      if (label) label.textContent = snap.streamLive ? 'LIVE' : (snap.connected ? 'OFF AIR' : 'NO SIGNAL');
+    }
+  }
+  // Settings status line
+  const st = g('sw-status');
+  if (st) {
+    if (!active) { st.textContent = '— off'; st.className = 'sw-status'; }
+    else if (snap.connected) { st.textContent = '● connected' + (snap.streamLive ? ' · LIVE' : ''); st.className = 'sw-status ok'; }
+    else { st.textContent = '○ disconnected'; st.className = 'sw-status err'; }
+  }
+  // Per-graphic PGM/PVW tags on each ctrl-bar group
+  const live = new Set(snap.liveGraphics || []);
+  const pvw  = new Set(snap.previewGraphics || []);
+  document.querySelectorAll('[id^="ctrlgrp-"]').forEach(function(grp) {
+    const key = grp.id.slice('ctrlgrp-'.length);
+    _setGroupTag(grp, live.has(key) ? 'pgm' : (pvw.has(key) ? 'pvw' : null));
+  });
+}
+function _setGroupTag(grp, state) {
+  let tag = grp.querySelector('.sig');
+  if (!state) { if (tag) tag.remove(); return; }
+  if (!tag) { tag = document.createElement('span'); tag.className = 'sig'; grp.appendChild(tag); }
+  tag.classList.remove('sig-pgm', 'sig-pvw');
+  tag.classList.add(state === 'pgm' ? 'sig-pgm' : 'sig-pvw');
+  tag.textContent = state === 'pgm' ? 'PGM' : 'PVW';
+}
+function _swToggleFields() {
+  const t = (g('sw-type') || {}).value;
+  if (g('sw-obs-fields'))  g('sw-obs-fields').style.display  = t === 'obs'  ? '' : 'none';
+  if (g('sw-vmix-fields')) g('sw-vmix-fields').style.display = t === 'vmix' ? '' : 'none';
+}
+function syncSwitcherSettings(settings) {
+  const sw = (settings && settings.switcher) || null;
+  if (!g('sw-type') || !sw) return;
+  // Don't clobber fields while the user is editing the switcher form.
+  const a = document.activeElement;
+  if (a && a.id && a.id.indexOf('sw-') === 0) return;
+  g('sw-type').value = sw.type || 'none';
+  g('sw-enabled').checked = !!sw.enabled;
+  g('sw-preview').checked = !!sw.showPreview;
+  const obs = sw.obs || {}, vmix = sw.vmix || {};
+  g('sw-obs-host').value = obs.host || '';
+  g('sw-obs-port').value = obs.port || '';
+  g('sw-obs-pass').value = obs.password || '';
+  g('sw-vmix-host').value = vmix.host || '';
+  g('sw-vmix-port').value = vmix.port || '';
+  _swToggleFields();
+}
+function saveSwitcher() {
+  const sw = {
+    type: (g('sw-type') || {}).value || 'none',
+    enabled: g('sw-enabled').checked,
+    showPreview: g('sw-preview').checked,
+    obs:  { host: g('sw-obs-host').value.trim(),  port: g('sw-obs-port').value.trim(),  password: g('sw-obs-pass').value },
+    vmix: { host: g('sw-vmix-host').value.trim(), port: g('sw-vmix-port').value.trim() },
+  };
+  fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ switcher: sw }) })
+    .then(r => r.json()).then(res => _swMsg(res && res.ok ? 'Saved — connecting…' : 'Save failed', !(res && res.ok)))
+    .catch(() => _swMsg('Save failed', true));
+}
+function _swMsg(t, e) { const el = g('sw-msg'); if (!el) return; el.textContent = t; el.style.color = e ? 'var(--danger)' : 'var(--ok,#2ecc71)'; clearTimeout(el._t); el._t = setTimeout(function(){ el.textContent = ''; }, 3000); }
 
 function syncGfxToken(settings) {
   const token   = (settings || {}).graphicsToken || '';
@@ -828,6 +903,8 @@ function syncUI(s) {
   syncTopBar(s);
   renderDashboard(s);
   if (s.settings) syncThemeTab(s.settings);
+  if (s.settings) syncSwitcherSettings(s.settings);
+  if (s.switcher) applySwitcher(s.switcher);
   if (s.settings) syncGfxToken(s.settings);
   syncBusConfig(s);
   if (s.settings && _sfp('breakLogo', { sel: s.settings.breakCenterLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderBreakCenterLogoPicker(s.settings);

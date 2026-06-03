@@ -135,6 +135,7 @@
     <span class="mtb-profile-name" id="mtb-profile-name">No profile loaded</span>
     <div class="mtb-sep"></div>
     <span class="mtb-match-context" id="lbar-game-context"></span>
+    <span class="onair-pill" id="mtb-onair" style="display:none"><span class="onair-dot"></span><span id="mtb-onair-label">OFF AIR</span></span>
     <div class="mtb-links">
       <a class="mtb-link" href="/operator/" target="_blank" rel="noopener" title="Open the Operator view in a new tab">Operator ↗</a>
       <button class="mtb-link" onclick="openCasterView()" title="Open the Caster view (with access token) in a new tab">Caster ↗</button>
@@ -1998,6 +1999,44 @@
               <button class="btn btn-sm" id="th-set-default-btn" style="display:none" onclick="setPanelDefaultTheme()" title="Superadmin: set the starting theme for everyone">Set as panel default</button>
             </div>
             <div class="users-msg" id="th-msg"></div>
+          </div>
+
+          <!-- Live Switcher (OBS / vMix on-air detection) -->
+          <div class="card">
+            <div class="card-title">Live Switcher <span id="sw-status" class="sw-status">— off</span></div>
+            <p class="hint" style="margin-bottom:12px">Connect to your switcher to flag when the broadcast is on air and which graphics are actually live on program.</p>
+            <div class="field-row"><label>Switcher</label>
+              <select id="sw-type" onchange="_swToggleFields()">
+                <option value="none">None (off)</option>
+                <option value="obs">OBS (WebSocket)</option>
+                <option value="vmix">vMix (HTTP API)</option>
+              </select>
+            </div>
+            <div id="sw-obs-fields" style="display:none">
+              <div class="field-row"><label>OBS Host</label><input type="text" id="sw-obs-host" placeholder="127.0.0.1"></div>
+              <div class="field-row"><label>OBS Port</label><input type="text" id="sw-obs-port" placeholder="4455"></div>
+              <div class="field-row"><label>OBS Password</label><input type="text" id="sw-obs-pass" class="pw-mask" autocomplete="off" placeholder="(WebSocket password)"></div>
+              <p class="hint" style="margin:-6px 0 12px">OBS → Tools → WebSocket Server Settings (enable + copy password).</p>
+            </div>
+            <div id="sw-vmix-fields" style="display:none">
+              <div class="field-row"><label>vMix Host</label><input type="text" id="sw-vmix-host" placeholder="127.0.0.1"></div>
+              <div class="field-row"><label>vMix Port</label><input type="text" id="sw-vmix-port" placeholder="8088"></div>
+              <p class="hint" style="margin:-6px 0 12px">vMix → Settings → Web Controller (enable). Per-graphic match is by input <b>title</b> (best-effort); the on-air flag is always reliable.</p>
+            </div>
+            <div class="field-row">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:400">
+                <input type="checkbox" id="sw-enabled"> Enabled
+              </label>
+            </div>
+            <div class="field-row">
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text);font-weight:400">
+                <input type="checkbox" id="sw-preview"> Show preview (PVW) tags
+              </label>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+              <button class="btn btn-primary btn-sm" onclick="saveSwitcher()">Save &amp; Connect</button>
+            </div>
+            <div class="users-msg" id="sw-msg"></div>
           </div>
 
         </div><!-- /ps-col left -->
