@@ -75,7 +75,7 @@ npm run dev
 Full admin interface for tournament setup, match management, graphic control, and system settings. Requires login.
 
 ### Operator View (`/operator`)
-Simplified live-production view with three columns: graphic controls (show/hide toggles + ctrl-bar), live score/series tracker, and lower third builder. Requires operator or admin login. Shows a live presence strip indicating who else is connected and on which page.
+Simplified live-production view with graphic controls (show/hide toggles + ctrl-bar), live score/series tracker, and lower third builder. Requires operator or admin login. Shows a live presence strip indicating who else is connected and on which page. Panels can be **drag-reordered per-user** via **Edit Layout**, and an on-air indicator appears when a [live switcher](docs/live-switcher.md) is connected.
 
 ### Caster View (`/caster?token=XXXX`)
 Read-only information page for casters during a live broadcast. Authenticated via the graphics token (same token as OBS browser sources). Tabs:
@@ -128,7 +128,7 @@ Configure buses and assign graphics to them under **Routing** in the control pan
 
 **Graphics:** Broadcast Theme, BG Output, Lower Third, Head to Head, Pre-show, Ticker, Draft, Bracket, Group Stage, Tournament Structure, Prizepool, Break Screen, Win Screen, Scoreboard, Player Intro
 
-**System:** Profiles, Routing (GFX bus config), Settings (users, token, output URLs, logos), Log (action history)
+**System:** Profiles, Routing (GFX bus config), Settings (users, token, output URLs, logos, **Appearance** theme, **Live Switcher**), Log (action history)
 
 ### User roles
 
@@ -168,6 +168,9 @@ The seeded `admin` account is `superadmin` by default. Create additional users i
   - **Superadmin / admin role hierarchy** — prevents admins from modifying each other's accounts
 - **Custom modal system** — all confirm/alert dialogs use an in-app styled overlay matching the UI theme, replacing browser-native popups
 - **Animation customization** — global + per-graphic easing and speed control with a full easing library (Sine→Expo, Back, Bounce, Elastic), a live preview, and reusable named **Looks** that bundle palette + accents + background + animation into a visual identity applied over any profile; see [docs/theming.md](docs/theming.md)
+- **Control-surface theming** — theme the control/operator UI (preset + accent hue/saturation + panel lightness), saved **per-user** with a superadmin-set panel default; one shared token system drives all chrome, plus a live styleguide at `/styleguide`; see [docs/ui-theming.md](docs/ui-theming.md)
+- **Operator layout editor** — drag-reorder the operator panels (**Edit Layout**) to prioritise what you watch; saved per-user, independent of theme
+- **Live on-air indicator (OBS / vMix)** — connect your switcher to flag when the broadcast is actually on air (LIVE/OFF AIR pill) and which graphics are genuinely live on program (PGM tags, optional PVW); OBS matches sources automatically by URL, vMix by input title; see [docs/live-switcher.md](docs/live-switcher.md)
 - **Per-user keybinds** — each operator records their own keyboard shortcuts for any graphics or match action; managed via a profile modal (sidebar chip); keybinds are stored per-user account and ignored when an input field has focus
 - **Bitfocus Companion / Stream Deck integration** — download a ready-to-import Companion 4.x profile from the profile modal; 4 pages of buttons (Show/Hide, Toggle, Match & Draft, Bus); auth token embedded in all URLs; SSE stream at `/api/events` for live state feedback (graphic visibility, scores, draft phase); see [docs/companion.md](docs/companion.md)
 - **Champion asset sync** — download/update champion tiles, centered images, and role icons from DDragon; real-time progress in the admin UI or via `node scripts/sync-assets.js`
