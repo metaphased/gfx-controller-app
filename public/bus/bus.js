@@ -51,8 +51,18 @@ function syncDisplay(s) {
   // Preload all assigned iframes so switching is instant
   (bus.assignments || []).forEach(g => ensureFrame(g));
 
-  // Show the first assigned graphic that is currently visible in state
-  const activeKey = (bus.assignments || []).find(k => s[k] && s[k].visible) || null;
+  // Show ONLY this bus's own active graphic (per-bus state), so a graphic
+  // assigned to multiple buses doesn't leak onto every bus just because its
+  // global visibility flag is set. Falls back to the legacy global-visibility
+  // rule only if this bus has no per-bus state yet (older saved states).
+  const bs = (s.busState && s.busState[busId]) || null;
+  let activeKey;
+  if (bs && typeof bs.visible !== 'undefined') {
+    activeKey = (bs.visible && bs.activeGraphic && (bus.assignments || []).includes(bs.activeGraphic))
+      ? bs.activeGraphic : null;
+  } else {
+    activeKey = (bus.assignments || []).find(k => s[k] && s[k].visible) || null;
+  }
 
   Object.entries(frames).forEach(([graphicId, frame]) => {
     if (graphicId === activeKey) {

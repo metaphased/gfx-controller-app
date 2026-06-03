@@ -11,6 +11,7 @@ const cors     = require('cors');
 const session  = require('express-session');
 const bcrypt   = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
+const switcher = require('./switcher');
 
 const app    = express();
 const server = http.createServer(app);
@@ -540,6 +541,54 @@ function initBusState() {
 }
 initBusState();
 
+// ── Live switcher (OBS / vMix) on-air detection ────────────────────────────────
+// Maps a switcher source to one of our graphic keys: OBS by browser-source URL,
+// vMix by input title (best-effort). Bus pages resolve to the bus's active graphic.
+const GRAPHIC_PATHS = {
+  lowerThird: 'graphics/lower-third', headToHead: 'graphics/head2head', playerIntro: 'graphics/player-intro',
+  preShow: 'graphics/pre-show', draft: 'graphics/draft', bracket: 'graphics/bracket',
+  groupStage: 'graphics/group-stage', tournamentStructure: 'graphics/tournament-structure',
+  prizepool: 'graphics/prizepool', winScreen: 'graphics/win-screen', breakScreen: 'graphics/break-screen',
+  bgOutput: 'graphics/bg-output',
+};
+const GRAPHIC_LABELS = {
+  lowerThird: 'lower third', headToHead: 'head to head', playerIntro: 'player intro',
+  preShow: 'pre-show', draft: 'draft', bracket: 'bracket', groupStage: 'group stage',
+  tournamentStructure: 'tournament structure', prizepool: 'prize', winScreen: 'win screen',
+  breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker',
+};
+function _switcherByUrl(url) {
+  if (!url) return null;
+  let pathname; try { pathname = new URL(url).pathname; } catch (e) { pathname = String(url); }
+  const busM = pathname.match(/\/bus\/([^/?#]+)/);
+  if (busM) { const bs = busState[busM[1]]; return (bs && bs.visible) ? (bs.activeGraphic || null) : null; }
+  for (const key in GRAPHIC_PATHS) { if (pathname.includes(GRAPHIC_PATHS[key])) return key; }
+  return null;
+}
+function _switcherByTitle(title) {
+  if (!title) return null;
+  const t = String(title).toLowerCase();
+  for (const key in GRAPHIC_LABELS) { if (t.includes(GRAPHIC_LABELS[key]) || t.includes(key.toLowerCase())) return key; }
+  return null;
+}
+function sanitizeSwitcher(s) {
+  if (!s || typeof s !== 'object' || Array.isArray(s)) return null;
+  const port = (v, d) => { const n = parseInt(v, 10); return (n >= 1 && n <= 65535) ? n : d; };
+  const str = (v) => (typeof v === 'string' ? v.slice(0, 200) : '');
+  return {
+    type: ['obs', 'vmix'].includes(s.type) ? s.type : 'none',
+    enabled: !!s.enabled,
+    showPreview: !!s.showPreview,
+    obs:  { host: str((s.obs || {}).host) || '127.0.0.1',  port: port((s.obs || {}).port, 4455),  password: str((s.obs || {}).password) },
+    vmix: { host: str((s.vmix || {}).host) || '127.0.0.1', port: port((s.vmix || {}).port, 8088) },
+  };
+}
+switcher.configure({
+  settings: state.settings,
+  matchers: { byUrl: _switcherByUrl, byTitle: _switcherByTitle },
+  onChange: (snap) => io.emit('switcher:state', snap),
+});
+
 let _saveTimer = null;
 function scheduleSave() {
   if (_saveTimer) clearTimeout(_saveTimer);
@@ -555,10 +604,14 @@ function broadcastSchedule() { io.emit('schedule', state.tournament.schedule || 
 // operators and graphics-token connections get it stripped.
 function buildStatePayload(includeToken) {
   const { schedule: _s, ...tournamentForBcast } = (state.tournament || {});
-  const payload = Object.assign({}, state, { tournament: tournamentForBcast, teams: _teams, busState });
+  const payload = Object.assign({}, state, { tournament: tournamentForBcast, teams: _teams, busState, switcher: switcher.getSnapshot() });
   if (!includeToken && payload.settings) {
     payload.settings = Object.assign({}, payload.settings); // clone so we don't mutate real state
     delete payload.settings.graphicsToken;
+    if (payload.settings.switcher) {            // hide switcher creds/config from non-admins
+      payload.settings = Object.assign({}, payload.settings);
+      delete payload.settings.switcher;
+    }
   }
   return payload;
 }
@@ -2006,8 +2059,10 @@ app.get('/api/tournament-stats', (req, res) => {
 app.post('/api/settings', requireAdmin, (req, res) => {
   if (!state.settings) state.settings = {};
   if (req.body && req.body.uiTheme) req.body.uiTheme = sanitizeTheme(req.body.uiTheme);  // panel-wide default
+  const switcherChanged = req.body && Object.prototype.hasOwnProperty.call(req.body, 'switcher');
   deepMerge(state.settings, req.body);
   if (req.body.buses) initBusState();
+  if (switcherChanged) { state.settings.switcher = sanitizeSwitcher(state.settings.switcher); switcher.reconfigure(state.settings); }
   broadcast(); res.json({ ok: true });
 });
 
@@ -2366,16 +2421,24 @@ io.on('connection', socket => {
 
     socket.on('bus:switch', ({ busId, graphic, visible }) => {
       const show = visible !== false && !!graphic;
+      // Is `g` still live on a bus other than `busId`? Used so switching/clearing
+      // one bus doesn't yank a graphic that's genuinely live on another bus.
+      const liveOnOtherBus = (gKey) => Object.keys(busState).some(bid =>
+        bid !== busId && busState[bid] && busState[bid].visible && busState[bid].activeGraphic === gKey);
       // Hide the currently active graphic on this bus (if switching away from it)
       const prev = busState[busId] && busState[busId].activeGraphic;
-      if (prev && prev !== graphic && state[prev]) state[prev].visible = false;
-      // Show or hide the target graphic
-      if (graphic && state[graphic]) state[graphic].visible = show;
+      if (prev && prev !== graphic && state[prev] && !liveOnOtherBus(prev)) state[prev].visible = false;
+      // Show or hide the target graphic (don't hide globally if another bus still shows it)
+      if (graphic && state[graphic]) {
+        if (show) state[graphic].visible = true;
+        else if (!liveOnOtherBus(graphic)) state[graphic].visible = false;
+      }
       // Update busState tracking
       if (!busState[busId]) busState[busId] = {};
       busState[busId].activeGraphic = show ? graphic : (prev || null);
       busState[busId].visible = show;
       io.emit('busState', busState);
+      broadcast();   // push updated state[graphic].visible so the /bus/<id> output page actually re-renders
       logAction(resolveUser(socket), resolveRole(socket), 'bus:switch', busId + ' → ' + (graphic || 'none'));
     });
   }
