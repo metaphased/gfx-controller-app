@@ -53,6 +53,6 @@ The app needs to know which switcher source corresponds to which MetaGFX graphic
 - vMix per-graphic matching is **best-effort** (title-based); the broadcast on-air flag is always accurate.
 - This is a read-only indicator — MetaGFX never changes your switcher; it only reflects its state.
 
-## Future
+## Read-only by design
 
-The on-air/PGM signal could eventually **drive** automation (e.g. auto-flagging). The signal-tag UI built here is the front-end for that.
+This integration only **reflects** the switcher's state — it never drives it, and switcher state never triggers actions in MetaGFX. Graphics control is manual at all times; any automation belongs in OBS/vMix.

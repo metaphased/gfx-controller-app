@@ -518,6 +518,7 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
 
   <div class="topbar-right">
     <span class="onair-pill" id="op-onair" style="display:none"><span class="onair-dot"></span><span id="op-onair-label">OFF AIR</span></span>
+    <button class="btn-edit-layout" onclick="MetaKeybinds && MetaKeybinds.openEditor()" title="Set your keyboard shortcuts">⌨ Keybinds</button>
     <button class="btn-edit-layout" id="btn-edit-layout" onclick="toggleLayoutEdit()" title="Drag panels to reorder your operator layout">✎ Edit Layout</button>
     <span class="conn-dot" id="conn-status">⬤ Connecting…</span>
     <a class="btn-logout" href="/api/auth/logout">Log Out</a>
@@ -778,6 +779,8 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
 </div><!-- /ops-main -->
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="/shared/action-registry.js"></script>
+<script src="/shared/keybinds.js"></script>
 <script>
 const socket = io();
 window._state = {};
@@ -797,6 +800,8 @@ socket.on('connect', () => {
   const el = g('conn-status'); el.textContent = '⬤ Connected'; el.className = 'conn-dot connected';
   socket.emit('presence:page', { page: 'Operator' });
 });
+// Load this user's saved keyboard shortcuts (shared with control panel + Companion)
+if (window.MetaKeybinds) MetaKeybinds.load();
 socket.on('disconnect', () => { const el = g('conn-status'); el.textContent = '⬤ Disconnected'; el.className = 'conn-dot disconnected'; });
 
 socket.on('presence:list', function(users) {
@@ -821,6 +826,7 @@ socket.on('state', state => {
   window._state = state;
   const m = state.match;
 
+  if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   if (state.switcher) applySwitcher(state.switcher);
 
   /* Topbar */
