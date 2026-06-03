@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="graphite">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MetaGFX — Styleguide</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/shared/tokens.css">
+<style>
+/* ============================================================================
+   STYLEGUIDE — prototype surface only.
+   Component styles below are the INTENDED tokenised look that Phase 1+ will
+   port into the real surfaces (control.css, operator, caster, login).
+   Everything reads from /shared/tokens.css so the palette is iterated in one
+   place. Nothing here is wired to app data.
+   ============================================================================ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: var(--ui-font), sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  min-height: 100vh;
+}
+
+/* ── Iteration toolbar ─────────────────────────────────────────────────────── */
+.sg-toolbar {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; flex-wrap: wrap; gap: 18px;
+  padding: 12px 20px;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border-strong);
+}
+.sg-toolbar h1 {
+  font-size: 14px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--text-strong); white-space: nowrap;
+}
+.sg-toolbar .sg-tag {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--accent); border: 1px solid var(--border-strong); padding: 2px 7px;
+}
+.sg-ctrl { display: flex; align-items: center; gap: 7px; }
+.sg-ctrl label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--label); white-space: nowrap;
+}
+.sg-ctrl select, .sg-ctrl input[type=range] { accent-color: var(--accent); }
+.sg-ctrl select {
+  background: var(--bg3); color: var(--text); border: 1px solid var(--border);
+  padding: 4px 8px; font-family: inherit; font-size: 12px; border-radius: var(--radius);
+}
+.sg-ctrl input[type=range] { width: 120px; }
+.sg-ctrl output { font-size: 11px; color: var(--text-dim); width: 34px; font-variant-numeric: tabular-nums; }
+.sg-reset {
+  margin-left: auto; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  background: var(--bg3); color: var(--text-dim); border: 1px solid var(--border);
+  padding: 5px 12px; cursor: pointer; border-radius: var(--radius);
+}
+.sg-reset:hover { color: var(--text-strong); border-color: var(--border-strong); }
+
+/* ── Layout ────────────────────────────────────────────────────────────────── */
+.sg-wrap { max-width: 1240px; margin: 0 auto; padding: 28px 20px 80px; }
+.sg-section { margin-bottom: 40px; }
+.sg-section > h2 {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--text-dim); margin-bottom: 14px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.sg-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-start; }
+.sg-note { font-size: 12px; color: var(--text-dim); margin-top: 10px; line-height: 1.5; }
+
+/* ── App-shell demo (sidebar + topbar + cards) ─────────────────────────────── */
+.shell {
+  display: grid; grid-template-columns: 210px 1fr; grid-template-rows: 40px 1fr;
+  height: 460px; border: 1px solid var(--border-strong); overflow: hidden;
+  border-radius: var(--radius);
+}
+.shell-side {
+  grid-row: 1 / -1; background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow-y: auto;
+}
+.shell-logo {
+  padding: 10px 16px; border-bottom: 1px solid var(--border);
+  font-size: 15px; font-weight: 800; letter-spacing: 0.1em; color: var(--text-strong);
+}
+.nav-section-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase;
+  color: var(--accent-dim); padding: 14px 16px 5px;
+  border-top: 1px solid var(--border); margin-top: 2px;
+}
+.nav-section-label:first-of-type { border-top: none; margin-top: 0; }
+.nav-item {
+  display: block; padding: 6px 16px; font-size: 13px; font-weight: 500;
+  color: var(--text); text-decoration: none; cursor: pointer;
+  border-left: 2px solid transparent; transition: background .12s, color .12s, border-color .12s;
+}
+.nav-item:hover { background: var(--bg-raise); color: var(--text-strong); }
+.nav-item.active {
+  color: var(--text-strong); border-left-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.10); font-weight: 700;
+}
+.shell-top {
+  grid-column: 2; background: var(--bg2); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 14px; padding: 0 18px;
+}
+.shell-top .t-title { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-dim); }
+.shell-main { grid-column: 2; background: var(--bg); overflow-y: auto; padding: 18px; }
+
+/* ── Cards ─────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg2); border: 1px solid var(--border);
+  padding: 18px; margin-bottom: 14px; border-radius: var(--radius);
+}
+.card-title {
+  font-size: 12px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-strong); margin-bottom: 14px; padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+.btn {
+  font-family: var(--ui-font), sans-serif; font-size: 13px; font-weight: 700;
+  letter-spacing: 0.04em; padding: 7px 14px; cursor: pointer; white-space: nowrap;
+  background: var(--bg3); color: var(--text); border: 1px solid var(--border-strong);
+  border-radius: var(--radius); transition: all .12s;
+}
+.btn:hover { border-color: var(--accent); color: var(--text-strong); background: var(--bg-raise); }
+.btn-primary { background: rgba(var(--accent-rgb),0.14); border-color: var(--accent); color: var(--text-strong); }
+.btn-primary:hover { background: rgba(var(--accent-rgb),0.24); }
+.btn-danger { background: rgba(var(--danger-rgb),0.12); border-color: var(--danger); color: var(--danger); }
+.btn-danger:hover { background: rgba(var(--danger-rgb),0.22); }
+.btn-secondary { background: transparent; border-color: var(--border); color: var(--text-dim); }
+.btn-secondary:hover { color: var(--text); border-color: var(--border-strong); }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+/* ── Fields ────────────────────────────────────────────────────────────────── */
+.field-row { display: flex; flex-direction: column; gap: 5px; margin-bottom: 14px; max-width: 320px; }
+.field-row label { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--label); }
+.field-row input[type=text], .field-row select {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+  padding: 8px 10px; font-family: inherit; font-size: 13px; border-radius: var(--radius); outline: none;
+}
+.field-row input[type=text]:focus, .field-row select:focus { border-color: var(--accent); }
+input[type=range].field { width: 100%; max-width: 320px; accent-color: var(--accent); }
+.chk { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text); cursor: pointer; }
+.chk input { accent-color: var(--accent); width: 16px; height: 16px; }
+
+/* ── Data table ────────────────────────────────────────────────────────────── */
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl thead th {
+  text-align: left; font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--label); padding: 9px 12px; border-bottom: 1px solid var(--border-strong);
+  background: var(--bg2);
+}
+.tbl tbody td { padding: 9px 12px; border-bottom: 1px solid var(--border); color: var(--text); }
+.tbl tbody tr:hover td { background: var(--bg-raise); }
+.tbl .t-name { color: var(--text-strong); font-weight: 600; }
+.tbl .t-num { font-family: var(--ui-font), sans-serif; font-weight: 600; font-size: 13px; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+
+/* ── Live control zone (ctrl-bar) ──────────────────────────────────────────── */
+.ctrl-bar {
+  display: flex; align-items: stretch; min-height: 46px;
+  background: var(--bg); border: 1px solid var(--border-strong); border-radius: var(--radius);
+  overflow: hidden;
+}
+.ctrl-group {
+  display: flex; align-items: center; gap: 7px; padding: 8px 12px;
+  border-top: 2px solid transparent;
+}
+.ctrl-group + .ctrl-group { border-left: 1px solid var(--border); }
+.ctrl-group.is-live { background: var(--live-bg); border-top-color: var(--live-bdr); }
+.ctrl-label { font-size: 9px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-dim); }
+.lbar-toggle {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  padding: 5px 11px; border-radius: var(--radius);
+  border: 1px solid var(--border-strong); background: var(--bg3); color: var(--text);
+  cursor: pointer; transition: all .12s;
+}
+.lbar-toggle:hover { border-color: var(--accent); color: var(--text-strong); }
+.lbar-toggle.is-on {
+  background: rgba(var(--live-rgb),0.18); border-color: var(--live-bdr); color: var(--live);
+  box-shadow: 0 0 8px rgba(var(--live-rgb),0.25);
+}
+.lbar-dot { width: 6px; height: 6px; border-radius: var(--radius-pill); background: rgba(255,255,255,0.25); }
+.lbar-toggle.is-on .lbar-dot { background: var(--live); box-shadow: 0 0 5px var(--live); }
+.mode-btn {
+  font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: var(--radius);
+  border: 1px solid var(--border); background: var(--bg3); color: var(--text-dim); cursor: pointer; transition: all .12s;
+}
+.mode-btn:hover { color: var(--text); border-color: var(--border-strong); }
+.mode-btn.is-active { background: rgba(var(--live-rgb),0.18); border-color: var(--live-bdr); color: var(--live); }
+
+/* ── Broadcast signal tags ─────────────────────────────────────────────────── */
+.sig {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: var(--radius); border: 1px solid;
+}
+.sig-dot { width: 7px; height: 7px; border-radius: var(--radius-pill); }
+.sig-pgm   { color: var(--pgm);   border-color: var(--pgm);   background: rgba(var(--live-rgb),0.12); }
+.sig-pgm   .sig-dot { background: var(--pgm); box-shadow: 0 0 6px var(--pgm); }
+.sig-pvw   { color: var(--pvw);   border-color: var(--pvw);   background: rgba(46,194,122,0.10); }
+.sig-pvw   .sig-dot { background: var(--pvw); }
+.sig-ready { color: var(--ready); border-color: var(--ready); background: rgba(240,180,41,0.10); }
+.sig-ready .sig-dot { background: var(--ready); }
+.sig-live  { color: #fff; border-color: var(--live); background: var(--live); }
+.sig-live  .sig-dot { background: #fff; box-shadow: 0 0 6px #fff; animation: sgpulse 1.1s ease-in-out infinite; }
+.conn { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; }
+.conn.up { color: var(--ok); }
+.conn.down { color: var(--danger); }
+@keyframes sgpulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+/* ── Token swatches ────────────────────────────────────────────────────────── */
+.sw { display: flex; flex-direction: column; gap: 6px; }
+.sw-chip { width: 96px; height: 56px; border: 1px solid var(--border); border-radius: var(--radius); }
+.sw small { font-size: 10px; color: var(--text-dim); font-family: monospace; }
+</style>
+</head>
+<body>
+
+<div class="sg-toolbar">
+  <h1>MetaGFX Styleguide</h1>
+  <span class="sg-tag">Prototype</span>
+
+  <div class="sg-ctrl">
+    <label>Preset</label>
+    <select id="sg-preset">
+      <option value="graphite">Graphite (neutral)</option>
+      <option value="steel">Steel (blue accent)</option>
+      <option value="bronze">Bronze (warm)</option>
+    </select>
+  </div>
+
+  <div class="sg-ctrl">
+    <label>Accent hue</label>
+    <input type="range" id="sg-hue" min="0" max="360" value="0">
+    <output id="sg-hue-o">—</output>
+  </div>
+  <div class="sg-ctrl">
+    <label>Accent sat</label>
+    <input type="range" id="sg-sat" min="0" max="60" value="0">
+    <output id="sg-sat-o">—</output>
+  </div>
+  <div class="sg-ctrl">
+    <label>Panel light</label>
+    <input type="range" id="sg-pl" min="6" max="22" value="9">
+    <output id="sg-pl-o">—</output>
+  </div>
+
+  <button class="sg-reset" id="sg-reset">Reset overrides</button>
+</div>
+
+<div class="sg-wrap">
+
+  <!-- App shell -->
+  <div class="sg-section">
+    <h2>App shell — sidebar · topbar · cards</h2>
+    <div class="shell">
+      <div class="shell-side">
+        <div class="shell-logo">METAGFX</div>
+        <div class="nav-section-label">Tournament</div>
+        <a class="nav-item">Tournament Setup</a>
+        <a class="nav-item">Teams Database</a>
+        <a class="nav-item">Schedule</a>
+        <div class="nav-section-label">Game</div>
+        <a class="nav-item active">Draft</a>
+        <a class="nav-item">Match Intel</a>
+        <div class="nav-section-label">Graphics</div>
+        <a class="nav-item">Lower Third</a>
+        <a class="nav-item">Win Screen</a>
+      </div>
+      <div class="shell-top">
+        <span class="t-title">Draft</span>
+        <span class="conn up" style="margin-left:auto">&#9679; Connected</span>
+      </div>
+      <div class="shell-main">
+        <div class="card">
+          <div class="card-title">Side Assignment</div>
+          <div class="field-row"><label>Blue Side</label><input type="text" value="Team Liquid"></div>
+          <div class="field-row"><label>Red Side</label><input type="text" value="Cloud9"></div>
+          <button class="btn btn-primary">Start Draft</button>
+        </div>
+        <div class="card">
+          <div class="card-title">Notes</div>
+          <p class="sg-note" style="margin-top:0">Titles and names now use <code>--text-strong</code>; labels use <code>--label</code> — both raised from the old dark values.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div class="sg-section">
+    <h2>Buttons</h2>
+    <div class="sg-row">
+      <button class="btn">Default</button>
+      <button class="btn btn-primary">Primary</button>
+      <button class="btn btn-danger">Danger</button>
+      <button class="btn btn-secondary">Secondary</button>
+      <button class="btn btn-sm">Small</button>
+      <button class="btn" disabled>Disabled</button>
+    </div>
+  </div>
+
+  <!-- Fields -->
+  <div class="sg-section">
+    <h2>Form fields</h2>
+    <div class="sg-row">
+      <div class="field-row"><label>Text input</label><input type="text" placeholder="Type here…"></div>
+      <div class="field-row"><label>Select</label>
+        <select><option>Best of 1</option><option>Best of 3</option><option>Best of 5</option></select>
+      </div>
+      <div class="field-row"><label>Range</label><input type="range" class="field" value="60"></div>
+      <div class="field-row"><label>Toggles</label>
+        <label class="chk"><input type="checkbox" checked> Show logo</label>
+        <label class="chk"><input type="radio" name="r" checked> Left</label>
+        <label class="chk"><input type="radio" name="r"> Right</label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="sg-section">
+    <h2>Data table</h2>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table class="tbl">
+        <thead><tr><th>Player</th><th>Champion</th><th>K / D / A</th><th>CS</th><th>KP%</th></tr></thead>
+        <tbody>
+          <tr><td class="t-name">Faker</td><td>Azir</td><td class="t-num">5 / 1 / 8</td><td class="t-num">312</td><td class="t-num">68</td></tr>
+          <tr><td class="t-name">Chovy</td><td>Orianna</td><td class="t-num">3 / 2 / 6</td><td class="t-num">298</td><td class="t-num">55</td></tr>
+          <tr><td class="t-name">Caps</td><td>Sylas</td><td class="t-num">7 / 0 / 4</td><td class="t-num">271</td><td class="t-num">72</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Live control zone -->
+  <div class="sg-section">
+    <h2>Live control zone — neon reserved for on-air state</h2>
+    <div class="ctrl-bar">
+      <div class="ctrl-group is-live">
+        <span class="ctrl-label">Output</span>
+        <button class="lbar-toggle is-on"><span class="lbar-dot"></span>Lower Third</button>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">Output</span>
+        <button class="lbar-toggle"><span class="lbar-dot"></span>Break Screen</button>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">Position</span>
+        <button class="mode-btn is-active">Left</button>
+        <button class="mode-btn">Right</button>
+      </div>
+    </div>
+    <p class="sg-note">Resting controls are fully neutral. Saturated red appears only on the live toggle + its group accent strip.</p>
+  </div>
+
+  <!-- Signal tags -->
+  <div class="sg-section">
+    <h2>Broadcast signal identifiers</h2>
+    <div class="sg-row" style="align-items:center">
+      <span class="sig sig-live"><span class="sig-dot"></span>Live</span>
+      <span class="sig sig-pgm"><span class="sig-dot"></span>PGM</span>
+      <span class="sig sig-pvw"><span class="sig-dot"></span>PVW</span>
+      <span class="sig sig-ready"><span class="sig-dot"></span>Ready</span>
+      <span class="conn up">&#9679; Connected</span>
+      <span class="conn down">&#9679; Disconnected</span>
+    </div>
+  </div>
+
+  <!-- Swatches -->
+  <div class="sg-section">
+    <h2>Token ramp (current preset)</h2>
+    <div class="sg-row" id="sg-swatches"></div>
+  </div>
+
+</div>
+
+<script>
+const root = document.documentElement;
+const $ = id => document.getElementById(id);
+
+// Preset switch — clears manual overrides so the preset's values show through.
+$('sg-preset').addEventListener('change', e => {
+  root.setAttribute('data-theme', e.target.value);
+  clearOverrides();
+  syncFromComputed();
+  renderSwatches();
+});
+
+function applyAccent() {
+  const h = +$('sg-hue').value, s = +$('sg-sat').value, l = 70;
+  $('sg-hue-o').textContent = h;
+  $('sg-sat-o').textContent = s + '%';
+  root.style.setProperty('--accent', `hsl(${h} ${s}% ${l}%)`);
+  // approximate rgb triplet for rgba() usages
+  const [r,g,b] = hslToRgb(h, s/100, l/100);
+  root.style.setProperty('--accent-rgb', `${r},${g},${b}`);
+  renderSwatches();
+}
+function applyPanel() {
+  const l = +$('sg-pl').value;
+  $('sg-pl-o').textContent = l + '%';
+  // shift the panel/inset ramp lightness, keep hue neutral-cool
+  root.style.setProperty('--bg2', `hsl(220 6% ${l}%)`);
+  root.style.setProperty('--bg3', `hsl(220 6% ${l + 5}%)`);
+  root.style.setProperty('--bg-raise', `hsl(220 6% ${l + 9}%)`);
+  renderSwatches();
+}
+$('sg-hue').addEventListener('input', applyAccent);
+$('sg-sat').addEventListener('input', applyAccent);
+$('sg-pl').addEventListener('input', applyPanel);
+
+$('sg-reset').addEventListener('click', () => { clearOverrides(); syncFromComputed(); renderSwatches(); });
+
+function clearOverrides() {
+  ['--accent','--accent-rgb','--bg2','--bg3','--bg-raise'].forEach(v => root.style.removeProperty(v));
+}
+// Pull slider positions from whatever the preset resolves to (best-effort labels).
+function syncFromComputed() {
+  $('sg-hue-o').textContent = $('sg-hue').value;
+  $('sg-sat-o').textContent = $('sg-sat').value + '%';
+  $('sg-pl-o').textContent  = $('sg-pl').value + '%';
+}
+
+function renderSwatches() {
+  const cs = getComputedStyle(root);
+  const toks = ['--bg','--bg2','--bg3','--bg-raise','--accent','--text-strong','--text','--live','--pvw','--ready'];
+  $('sg-swatches').innerHTML = toks.map(t => {
+    const val = cs.getPropertyValue(t).trim();
+    return `<div class="sw"><div class="sw-chip" style="background:${val}"></div><small>${t}</small><small>${val}</small></div>`;
+  }).join('');
+}
+
+function hslToRgb(h, s, l) {
+  h /= 360;
+  const hue2rgb = (p,q,t) => { if(t<0)t+=1; if(t>1)t-=1; if(t<1/6)return p+(q-p)*6*t; if(t<1/2)return q; if(t<2/3)return p+(q-p)*(2/3-t)*6; return p; };
+  let r,g,b;
+  if (s === 0) { r=g=b=l; }
+  else { const q = l<0.5 ? l*(1+s) : l+s-l*s; const p = 2*l-q; r=hue2rgb(p,q,h+1/3); g=hue2rgb(p,q,h); b=hue2rgb(p,q,h-1/3); }
+  return [Math.round(r*255), Math.round(g*255), Math.round(b*255)];
+}
+
+syncFromComputed();
+renderSwatches();
+</script>
+</body>
+</html>

@@ -5,21 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MetaGFX — Operator</title>
 <link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/shared/tokens.css">
+<script src="/shared/theme.js"></script>
 <style>
-:root {
-  --bg:       #070f12;
-  --bg2:      #0a1b20;
-  --bg3:      #0d2028;
-  --border:   rgba(167,163,142,0.15);
-  --accent:   #a7a38e;
-  --primary:  #1ffaff;
-  --danger:   #ff4444;
-  --text:     #e8e6df;
-  --text-dim: rgba(232,230,223,0.5);
-  --ui-font:  'Inter';
-  --live-bg:  rgba(220,40,40,0.06);
-  --live-bdr: #e03030;
-}
+/* Colour/contrast/radius come from /shared/tokens.css (themeable, per-user). */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
   font-family: var(--ui-font), sans-serif;
@@ -45,7 +34,7 @@ body {
   height: 38px;
   flex-shrink: 0;
   background: var(--bg2);
-  border-bottom: 1px solid rgba(31,250,255,0.1);
+  border-bottom: 1px solid rgba(var(--accent-rgb),0.1);
   padding: 0 16px;
   gap: 0;
   overflow: hidden;
@@ -141,13 +130,13 @@ body {
   flex-direction: column;
 }
 .ops-panel-title {
-  padding: 5px 12px;
-  font-size: 9px;
+  padding: 6px 12px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.25);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  color: var(--label);
+  border-bottom: 1px solid var(--border);
   background: var(--bg);
 }
 
@@ -185,7 +174,7 @@ body {
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.22);
+  color: var(--text-dim);
   flex-shrink: 0;
   white-space: nowrap;
 }
@@ -201,7 +190,7 @@ body {
   font-family: var(--ui-font), sans-serif;
   font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
   padding: 4px 10px;
-  border-radius: 3px;
+  border-radius: 2px;
   border: 1px solid rgba(255,255,255,0.22);
   background: rgba(255,255,255,0.05);
   color: rgba(255,255,255,0.65);
@@ -373,11 +362,37 @@ body {
 }
 
 /* ── Right col (stacked) ── */
-.ops-col-right {
+.ops-col {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 60px;
 }
+
+/* ── Layout edit mode (drag to reorder operator panels) ── */
+.btn-edit-layout {
+  font-family: var(--ui-font), sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 3px 10px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-dim);
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-edit-layout:hover { border-color: var(--accent); color: var(--text-strong); }
+.btn-edit-layout.is-editing { border-color: var(--accent); color: var(--text-strong); background: rgba(var(--accent-rgb),0.12); }
+
+body.layout-edit .ops-col { outline: 1px dashed var(--border-strong); outline-offset: 4px; }
+body.layout-edit .ops-panel { cursor: grab; }
+body.layout-edit .ops-panel::before {
+  content: '⠿ ' attr(data-panel-label);
+  display: block; padding: 4px 10px;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--bg); background: var(--accent);
+}
+/* Block control interaction while arranging — the panel is a drag handle. */
+body.layout-edit .ops-ctrl-row, body.layout-edit .ops-panel-body,
+body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-events: none; }
+.ops-panel.dragging { opacity: 0.4; }
+.ops-col.drop-active { outline: 2px dashed var(--accent); outline-offset: 4px; }
 
 /* ── Win team buttons ── */
 .win-team-btns {
@@ -426,7 +441,7 @@ body {
 #presence-strip {
   display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
   padding: 4px 16px; background: var(--bg2);
-  border-bottom: 1px solid rgba(31,250,255,0.05);
+  border-bottom: 1px solid rgba(var(--accent-rgb),0.05);
   min-height: 22px; font-size: 11px; color: rgba(232,230,223,0.35);
 }
 #presence-strip:empty { min-height: 0; padding: 0; border: none; }
@@ -483,6 +498,7 @@ body {
   </div>
 
   <div class="topbar-right">
+    <button class="btn-edit-layout" id="btn-edit-layout" onclick="toggleLayoutEdit()" title="Drag panels to reorder your operator layout">✎ Edit Layout</button>
     <span class="conn-dot" id="conn-status">⬤ Connecting…</span>
     <a class="btn-logout" href="/api/auth/logout">Log Out</a>
   </div>
@@ -494,7 +510,8 @@ body {
 <!-- ── Main ── -->
 <div class="ops-main">
 
-  <!-- ══ Col 1: Lower Third ══ -->
+  <!-- ══ Column 1 ══ -->
+  <div class="ops-col" data-col="0">
   <div class="ops-panel" id="ops-panel-lowerThird">
     <div class="ops-ctrl-row">
       <div class="ops-ctrl-group" id="ops-grp-lowerThird">
@@ -525,8 +542,10 @@ body {
       <div class="player-grid" id="ops-lt-grid"></div>
     </div>
   </div>
+  </div><!-- /ops-col 0 -->
 
-  <!-- ══ Col 2: Break Screen ══ -->
+  <!-- ══ Column 2 ══ -->
+  <div class="ops-col" data-col="1">
   <div class="ops-panel" id="ops-panel-breakScreen">
     <div class="ops-ctrl-row">
       <div class="ops-ctrl-group" id="ops-grp-breakScreen">
@@ -566,9 +585,10 @@ body {
       </div>
     </div>
   </div>
+  </div><!-- /ops-col 1 -->
 
-  <!-- ══ Col 3: Stacked panels ══ -->
-  <div class="ops-col-right">
+  <!-- ══ Column 3 ══ -->
+  <div class="ops-col" data-col="2">
 
     <!-- Win Screen -->
     <div class="ops-panel" id="ops-panel-winScreen">
@@ -637,7 +657,7 @@ body {
     </div>
 
     <!-- All other graphics -->
-    <div class="ops-panel">
+    <div class="ops-panel" id="ops-panel-graphics">
       <div class="ops-panel-title">Graphics</div>
 
       <!-- Pre-show -->
@@ -733,7 +753,7 @@ body {
       <div id="bus-routing-list"></div>
     </div>
 
-  </div><!-- /col-right -->
+  </div><!-- /ops-col 2 -->
 
 </div><!-- /ops-main -->
 
@@ -1065,6 +1085,103 @@ function busRoute(busId, graphic, isCurrentlyActive) {
   const visible = !isCurrentlyActive;
   socket.emit('bus:switch', { busId, graphic, visible });
 }
+
+/* ── Layout editor — drag panels to reorder, persisted per-user ───────────────── */
+const _PANEL_LABELS = {
+  'ops-panel-lowerThird': 'Lower Third', 'ops-panel-breakScreen': 'Break Screen',
+  'ops-panel-winScreen': 'Win Screen', 'ops-panel-headToHead': 'Head to Head',
+  'ops-panel-playerIntro': 'Player Intro', 'ops-panel-graphics': 'Graphics',
+  'bus-routing-panel': 'Bus Routing',
+};
+let _layoutEdit = false, _dragEl = null;
+
+function _panels() { return Array.from(document.querySelectorAll('.ops-panel')); }
+function _cols()   { return Array.from(document.querySelectorAll('.ops-col')); }
+
+function initLayout() {
+  _panels().forEach(function(p) {
+    if (p.id && _PANEL_LABELS[p.id]) p.setAttribute('data-panel-label', _PANEL_LABELS[p.id]);
+    p.addEventListener('dragstart', _onPanelDragStart);
+    p.addEventListener('dragend',   _onPanelDragEnd);
+  });
+  _cols().forEach(function(c) {
+    c.addEventListener('dragover', _onColDragOver);
+    c.addEventListener('dragleave', function(){ c.classList.remove('drop-active'); });
+    c.addEventListener('drop', _onColDrop);
+  });
+  // Load this user's saved layout (if any).
+  fetch('/api/auth/me', { credentials: 'same-origin' }).then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(data){ if (data && data.user && data.user.layout) applyLayout(data.user.layout); })
+    .catch(function(){});
+}
+
+function applyLayout(layout) {
+  if (!layout || !Array.isArray(layout.cols)) return;
+  const cols = _cols();
+  layout.cols.forEach(function(ids, i) {
+    const col = cols[i]; if (!col) return;
+    ids.forEach(function(id){ const p = document.getElementById(id); if (p) col.appendChild(p); });
+  });
+}
+
+function toggleLayoutEdit() {
+  _layoutEdit = !_layoutEdit;
+  document.body.classList.toggle('layout-edit', _layoutEdit);
+  const btn = g('btn-edit-layout');
+  if (btn) { btn.classList.toggle('is-editing', _layoutEdit); btn.textContent = _layoutEdit ? '✓ Done' : '✎ Edit Layout'; }
+  _panels().forEach(function(p){ p.draggable = _layoutEdit; });
+  if (!_layoutEdit) saveLayout();
+}
+
+function _onPanelDragStart(e) {
+  if (!_layoutEdit) return;
+  _dragEl = e.currentTarget; _dragEl.classList.add('dragging');
+  e.dataTransfer.effectAllowed = 'move';
+  try { e.dataTransfer.setData('text/plain', _dragEl.id || ''); } catch (err) {}
+}
+function _onPanelDragEnd() {
+  if (_dragEl) _dragEl.classList.remove('dragging');
+  _dragEl = null;
+  _cols().forEach(function(c){ c.classList.remove('drop-active'); });
+}
+function _onColDragOver(e) {
+  if (!_layoutEdit || !_dragEl) return;
+  e.preventDefault();
+  const col = e.currentTarget;
+  col.classList.add('drop-active');
+  const after = _dragAfter(col, e.clientY);
+  if (after == null) col.appendChild(_dragEl);
+  else col.insertBefore(_dragEl, after);
+}
+function _onColDrop(e) {
+  if (!_layoutEdit) return;
+  e.preventDefault();
+  e.currentTarget.classList.remove('drop-active');
+}
+// Find the panel that the dragged element should be inserted before, by Y midpoint.
+function _dragAfter(col, y) {
+  const items = Array.from(col.querySelectorAll('.ops-panel:not(.dragging)'));
+  let closest = null, closestOffset = -Infinity;
+  items.forEach(function(child){
+    const box = child.getBoundingClientRect();
+    const offset = y - box.top - box.height / 2;
+    if (offset < 0 && offset > closestOffset) { closestOffset = offset; closest = child; }
+  });
+  return closest;
+}
+
+function saveLayout() {
+  const cols = _cols().map(function(col){
+    return Array.from(col.querySelectorAll('.ops-panel')).map(function(p){ return p.id; }).filter(Boolean);
+  });
+  fetch('/api/users/me/layout', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ layout: { cols } })
+  }).catch(console.error);
+}
+
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initLayout);
+else initLayout();
 </script>
 </body>
 </html>

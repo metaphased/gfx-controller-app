@@ -1,0 +1,92 @@
+/* ============================================================================
+   MetaGFX — Shared design tokens
+   One source of truth for chrome surfaces (control / operator / caster / login).
+   Broadcast-tool look: dark neutrals, neutral accents, SHARP corners.
+   Neon/saturated colour is reserved for live + PVW/PGM/LIVE identifiers ONLY.
+
+   Iterate the palette here. Switch presets at runtime with:
+     <html data-theme="graphite | steel | bronze">
+   ============================================================================ */
+
+:root {
+  /* ── Background ramp (true-neutral charcoal, no teal tint) ───────────────── */
+  --bg:        #0b0c0e;   /* app background            */
+  --bg2:       #131519;   /* panels / sidebar / cards  */
+  --bg3:       #1b1e23;   /* inputs / insets           */
+  --bg-raise:  #23272e;   /* hover / raised surfaces   */
+
+  /* ── Borders ─────────────────────────────────────────────────────────────── */
+  --border:        rgba(255,255,255,0.10);
+  --border-strong: rgba(255,255,255,0.20);
+
+  /* ── Neutral accent (structure, hover, active nav) ───────────────────────── */
+  /* DEFAULT THEME = Graphite, accent hue 0 / sat 0% (pure neutral grey),       */
+  /* panel light 9% — locked from styleguide sign-off.                          */
+  --accent:      #b3b3b3;          /* pure neutral grey — the one accent       */
+  --accent-dim:  #8a8a8a;
+  --accent-rgb:  179,179,179;      /* triplet for rgba(var(--accent-rgb),a)    */
+
+  /* ── Text contrast ramp (raised floors — titles/names were too dark) ─────── */
+  --text-strong: #f5f7fa;          /* titles, names, headings (near white)     */
+  --text:        #d7dbe2;          /* body text                                */
+  --text-dim:    rgba(245,247,250,0.60);
+  --label:       rgba(245,247,250,0.78);  /* field/section labels (was ~0.5)   */
+
+  /* ── Status / broadcast signal colours (the ONLY saturated hues) ─────────── */
+  --danger:      #ff4d4d;
+  --danger-rgb:  255,77,77;
+  --live:        #ff3636;          /* on-air red                               */
+  --live-bdr:    #e03030;
+  --live-bg:     rgba(220,40,40,0.10);
+  --live-rgb:    220,40,40;
+  --pgm:         #ff3636;          /* program  (red)                           */
+  --pvw:         #2ec27a;          /* preview  (green)                         */
+  --ready:       #f0b429;          /* armed / standby (amber)                  */
+  --ok:          #2ecc71;          /* connected / success                      */
+
+  /* ── External brand colours (links out to 3rd-party sites) ───────────────── */
+  --opgg:        #5383e8;          /* op.gg brand blue — keep recognisable     */
+  --opgg-rgb:    83,131,232;
+
+  /* ── Geometry — sharp & intentional ──────────────────────────────────────── */
+  --radius:      2px;              /* cards / panels / buttons / inputs        */
+  --radius-sm:   1px;
+  --radius-pill: 999px;           /* pills, dots, avatars only                 */
+
+  /* ── Elevation (flat; shadows reserved for overlays/modals) ──────────────── */
+  --shadow-modal: 0 16px 48px rgba(0,0,0,0.7);
+  --shadow-pop:   0 8px 24px rgba(0,0,0,0.45);
+
+  /* ── Back-compat aliases ─────────────────────────────────────────────────── */
+  /* Legacy chrome referenced --primary as "the interactive accent" (cyan).
+     Point it at the neutral accent so existing var(--primary) usages shift
+     automatically; literal rgba(31,250,255,…) usages are cleaned per-surface. */
+  --primary:     var(--accent);
+  --primary-rgb: var(--accent-rgb);
+
+  --ui-font: 'Inter';
+}
+
+/* ── Preset: Steel — restrained desaturated blue accent ───────────────────── */
+[data-theme="steel"] {
+  --bg:        #0a0c0f;
+  --bg2:       #12161b;
+  --bg3:       #1a1f26;
+  --bg-raise:  #222933;
+  --accent:     #7d9cbf;
+  --accent-dim: #5b7390;
+  --accent-rgb: 125,156,191;
+}
+
+/* ── Preset: Bronze — warm neutral, nods to the old warm-grey heritage ────── */
+[data-theme="bronze"] {
+  --bg:        #0d0c0a;
+  --bg2:       #181611;
+  --bg3:       #211e17;
+  --bg-raise:  #2a261d;
+  --accent:     #c2a877;
+  --accent-dim: #8f7e58;
+  --accent-rgb: 194,168,119;
+  --border:        rgba(255,250,235,0.10);
+  --border-strong: rgba(255,250,235,0.20);
+}

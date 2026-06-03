@@ -116,7 +116,12 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/auth/me', (req, res) => {
   if (req.session && req.session.user) {
     const full = _users.find(u => u.id === req.session.user.id);
-    res.json({ user: { ...req.session.user, keybinds: (full && full.keybinds) || {} } });
+    res.json({ user: {
+      ...req.session.user,
+      keybinds: (full && full.keybinds) || {},
+      theme: (full && full.theme) || null,
+      layout: (full && full.layout) || null,
+    }, themeDefault: (state.settings && state.settings.uiTheme) || null });
   } else {
     res.status(401).json({ error: 'Not logged in' });
   }
@@ -132,6 +137,50 @@ app.post('/api/users/me/keybinds', requireAuth, (req, res) => {
   user.keybinds = keybinds;
   saveUsers(_users);
   res.json({ ok: true });
+});
+
+// ── Per-user UI theme (preset + accent/panel overrides) ────────────────────────
+const THEME_PRESETS = ['graphite', 'steel', 'bronze'];
+function sanitizeTheme(t) {
+  if (!t || typeof t !== 'object' || Array.isArray(t)) return null;
+  const clampNum = (v, lo, hi) => (v === null || v === undefined || v === '' ? null
+    : Math.min(hi, Math.max(lo, Number(v) || 0)));
+  return {
+    preset:     THEME_PRESETS.includes(t.preset) ? t.preset : 'graphite',
+    accentHue:  clampNum(t.accentHue, 0, 360),
+    accentSat:  clampNum(t.accentSat, 0, 60),
+    panelLight: clampNum(t.panelLight, 6, 22),
+  };
+}
+app.post('/api/users/me/theme', requireAuth, (req, res) => {
+  if (!req.session || !req.session.user) return res.status(403).json({ error: 'Session required' });
+  const theme = sanitizeTheme((req.body || {}).theme);
+  if (!theme) return res.status(400).json({ error: 'theme object required' });
+  const user = _users.find(u => u.id === req.session.user.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  user.theme = theme;
+  saveUsers(_users);
+  res.json({ ok: true, theme });
+});
+
+// ── Per-user operator panel layout (drag-reorder; { cols: [[ids],…] }) ──────────
+function sanitizeLayout(l) {
+  if (!l || typeof l !== 'object' || !Array.isArray(l.cols)) return null;
+  const cols = l.cols.slice(0, 6).map(function (col) {
+    if (!Array.isArray(col)) return [];
+    return col.filter(function (id) { return typeof id === 'string' && id.length < 80; }).slice(0, 40);
+  });
+  return { cols };
+}
+app.post('/api/users/me/layout', requireAuth, (req, res) => {
+  if (!req.session || !req.session.user) return res.status(403).json({ error: 'Session required' });
+  const layout = sanitizeLayout((req.body || {}).layout);
+  if (!layout) return res.status(400).json({ error: 'layout { cols:[[ids]] } required' });
+  const user = _users.find(u => u.id === req.session.user.id);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+  user.layout = layout;
+  saveUsers(_users);
+  res.json({ ok: true, layout });
 });
 
 // ── SSE endpoint — accepts session or graphics token ──────────────────────────
@@ -154,6 +203,7 @@ app.use('/graphics', express.static(path.join(__dirname, 'public', 'graphics')))
 app.use('/uploads',  express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
 app.use('/fonts',    express.static(path.join(__dirname, 'public', 'fonts')));
+app.use('/shared',   express.static(path.join(__dirname, 'public', 'shared')));  // design tokens — needed by login (pre-auth) too
 
 // ── Caster view — token-gated HTML, assets served freely ───────────────────────
 function requireToken(req, res, next) {
@@ -1106,7 +1156,10 @@ const RIOT_REGION_MAP = {
 
 app.post('/api/ranks/refresh', requireAdmin, async (req, res) => {
   const key = process.env.RIOT_API_KEY;
-  if (!key) return res.status(500).json({ error: 'RIOT_API_KEY not set in .env' });
+  if (!key) {
+    logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'ranks-refresh', 'FAILED: RIOT_API_KEY not set in .env');
+    return res.status(500).json({ error: 'RIOT_API_KEY not set in .env' });
+  }
 
   const updated = [], errors = [];
 
@@ -1150,6 +1203,8 @@ app.post('/api/ranks/refresh', requireAdmin, async (req, res) => {
       }
     }
   }
+
+  if (errors.length) logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'ranks-refresh', _logTrunc('FAILED ' + errors.length + ': ' + errors.join('; ')));
 
   broadcast();
   res.json({ ok: true, updated, errors });
@@ -1237,6 +1292,8 @@ app.post('/api/champpool/refresh', requireAdmin, async (req, res) => {
       }
     }
   }
+
+  if (errors.length) logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'champpool-refresh', _logTrunc('FAILED ' + errors.length + ': ' + errors.join('; ')));
 
   broadcast();
   res.json({ ok: true, updated, errors });
@@ -1948,6 +2005,7 @@ app.get('/api/tournament-stats', (req, res) => {
 // ── Broadcast settings ────────────────────────────────────────────────────────
 app.post('/api/settings', requireAdmin, (req, res) => {
   if (!state.settings) state.settings = {};
+  if (req.body && req.body.uiTheme) req.body.uiTheme = sanitizeTheme(req.body.uiTheme);  // panel-wide default
   deepMerge(state.settings, req.body);
   if (req.body.buses) initBusState();
   broadcast(); res.json({ ok: true });
@@ -2242,6 +2300,8 @@ function logAction(username, role, action, detail) {
   actionLog.unshift({ timestamp: Date.now(), user: username, role, action, detail: detail || '' });
   if (actionLog.length > 200) actionLog.length = 200;
 }
+// Cap noisy multi-error detail strings so one failure can't blow out a log row.
+function _logTrunc(str, max) { max = max || 240; return str.length > max ? str.slice(0, max - 1) + '…' : str; }
 
 // ── Action log API (admin only) ────────────────────────────────────────────────
 app.get('/api/action-log', requireAdmin, (req, res) => res.json(actionLog));
