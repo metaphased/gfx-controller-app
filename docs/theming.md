@@ -20,9 +20,9 @@ Every wiring keeps the original colour as a literal fallback, so the default pal
 
 ## Background
 
-Per-graphic background mode (Transparent / Solid / Image / Animated) plus the canvas animation type, base colour, speed and an optional fog layer.
+Graphic overlays are **always transparent** — composite them over your scene in OBS/vMix. For a coloured or animated backdrop, use the dedicated **BG Output** source (its own tab: background mode Transparent / Solid / Image / Animated, plus animation type, base colour, speed and an optional fog layer) as a separate layer underneath the overlays.
 
-> For performance, prefer **Transparent** overlays with the dedicated **BG Output** page as a separate OBS/vMix source underneath — an animated canvas *inside* a graphic source is much heavier than compositing two independent sources.
+> This is a deliberate performance choice: an animated canvas *inside* every graphic source is far heavier than compositing two independent sources. The BG Output canvas is capped at ~60fps. Player Intro keeps its own optional solid **Dark** backing (cheap — a solid colour, never an animated canvas).
 
 ## Animation
 

@@ -243,7 +243,7 @@ socket.on('connect', function() { _visible = false; });
 socket.on('state', function(state) {
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyAnimation(document.documentElement, state, 'groupStage');
-  GfxSettings.applyBackground(document.body, state);
+  GfxSettings.clearBackground(document.body);
 
   if (state.teams && state.teams.length) _teams = state.teams;
 

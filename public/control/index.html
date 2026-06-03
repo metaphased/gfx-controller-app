@@ -826,7 +826,6 @@
             <span class="gfx-ctrl-section-label">Background</span>
             <button id="pi-bg-transparent" class="btn btn-sm btn-active-gfx" onclick="setPiBackground('transparent')">Transparent</button>
             <button id="pi-bg-dark"        class="btn btn-sm btn-dim"        onclick="setPiBackground('dark')">Dark</button>
-            <button id="pi-bg-global"      class="btn btn-sm btn-dim"        onclick="setPiBackground('global')">Global Theme</button>
           </div>
           <div class="gfx-ctrl-group" id="pi-bar-opacity-group" style="display:none">
             <span class="gfx-ctrl-section-label">Bar Opacity</span>
@@ -1213,67 +1212,7 @@
           <!-- Background -->
           <div class="card" style="margin-bottom:16px">
             <div class="card-title">Graphic Background</div>
-            <div class="theme-pills" style="margin-bottom:14px">
-              <button class="theme-pill" id="ts-bg-transparent" onclick="setBgType('transparent')">Transparent</button>
-              <button class="theme-pill" id="ts-bg-color"       onclick="setBgType('color')">Solid Colour</button>
-              <button class="theme-pill" id="ts-bg-image"       onclick="setBgType('image')">Image</button>
-              <button class="theme-pill" id="ts-bg-animation"   onclick="setBgType('animation')">Animated</button>
-            </div>
-            <div id="ts-bg-color-row" style="display:none">
-              <div class="theme-palette-slot">
-                <span class="theme-fixed-label">Colour</span>
-                <input type="color" id="ts-bgcolor-swatch" class="theme-swatch"  oninput="syncBgColor(this.value)">
-                <input type="text"  id="ts-bgcolor-hex"    class="theme-hex-inp" maxlength="7" spellcheck="false" oninput="syncBgColorHex(this.value)">
-              </div>
-            </div>
-            <div id="ts-bg-image-row" style="display:none">
-              <div class="field-row"><label>Image URL</label>
-                <div class="upload-row">
-                  <input type="text" id="ts-bg-img-url" placeholder="/uploads/…" oninput="patchSettings({bgImage:this.value})">
-                  <button class="btn btn-sm" onclick="g('ts-bg-img-file').click()">Upload</button>
-                  <input type="file" id="ts-bg-img-file" accept="image/*" style="display:none" onchange="uploadThemeBg(this)">
-                </div>
-              </div>
-            </div>
-            <div id="ts-bg-animation-row" style="display:none">
-              <span class="theme-anim-label theme-anim-label--section">Animation Type</span>
-              <div class="theme-pills" style="flex-wrap:wrap;gap:6px;margin-bottom:12px">
-                <button class="theme-pill" id="ts-bganim-particles" onclick="setBgAnim('particles')">Particles</button>
-                <button class="theme-pill" id="ts-bganim-scanlines" onclick="setBgAnim('scanlines')">Scanlines</button>
-                <button class="theme-pill" id="ts-bganim-grid"      onclick="setBgAnim('grid')">Grid</button>
-                <button class="theme-pill" id="ts-bganim-hexgrid"   onclick="setBgAnim('hexgrid')">Hex Grid</button>
-                <button class="theme-pill" id="ts-bganim-diamonds"  onclick="setBgAnim('diamonds')">Diamonds</button>
-                <button class="theme-pill" id="ts-bganim-dotwave"   onclick="setBgAnim('dotwave')">Dot Wave</button>
-                <button class="theme-pill" id="ts-bganim-lines"     onclick="setBgAnim('lines')">Lines</button>
-                <button class="theme-pill" id="ts-bganim-rings"     onclick="setBgAnim('rings')">Rings</button>
-                <button class="theme-pill" id="ts-bganim-circuit"   onclick="setBgAnim('circuit')">Circuit</button>
-                <button class="theme-pill" id="ts-bganim-rain"      onclick="setBgAnim('rain')">Rain</button>
-                <button class="theme-pill" id="ts-bganim-fog"       onclick="setBgAnim('fog')">Fog</button>
-                <button class="theme-pill" id="ts-bganim-wave"      onclick="setBgAnim('wave')">Wave</button>
-              </div>
-              <div class="theme-palette-slot" style="margin-bottom:10px">
-                <span class="theme-fixed-label">Base Colour</span>
-                <input type="color" id="ts-animcolor-swatch" class="theme-swatch"  oninput="syncBgColor(this.value)">
-                <input type="text"  id="ts-animcolor-hex"    class="theme-hex-inp" maxlength="7" spellcheck="false" oninput="syncBgColorHex(this.value)">
-              </div>
-              <span class="theme-anim-label">Speed</span>
-              <div class="theme-pills" style="margin-top:4px;margin-bottom:12px">
-                <button class="theme-pill" id="ts-bgspeed-slow"   onclick="setBgSpeed('slow')">Slow</button>
-                <button class="theme-pill" id="ts-bgspeed-medium" onclick="setBgSpeed('medium')">Medium</button>
-                <button class="theme-pill" id="ts-bgspeed-fast"   onclick="setBgSpeed('fast')">Fast</button>
-              </div>
-              <div class="field-row" style="align-items:center;gap:10px">
-                <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
-                  <input type="checkbox" id="ts-fog-layer" onchange="patchSettings({bgFogLayer:this.checked})">
-                  <span>Fog overlay (bottom layer)</span>
-                </label>
-              </div>
-              <div class="field-row" id="ts-fog-intensity-row" style="display:none;margin-top:6px">
-                <label>Fog intensity</label>
-                <input type="range" id="ts-fog-intensity" min="10" max="100" value="50"
-                  oninput="patchSettings({bgFogIntensity:parseInt(this.value)})">
-              </div>
-            </div>
+            <p class="hint" style="margin:0">Graphic overlays are always <strong>transparent</strong> — composite them over your scene in OBS/vMix. For an animated or coloured backdrop, use the dedicated <a onclick="switchToTab('bgoutput')" style="color:var(--primary);cursor:pointer;text-decoration:underline">BG Output</a> source as its own layer underneath. This keeps each graphic source cheap (no canvas composited inside every overlay).</p>
           </div>
 
           <!-- Broadcast Logos -->

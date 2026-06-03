@@ -228,7 +228,7 @@ socket.on('state', function(state) {
 
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyAnimation(document.documentElement, state, 'preShow');
-  GfxSettings.applyBackground(root, state);
+  GfxSettings.clearBackground(root);
 
   if (!_initialised) {
     root.style.display = '';

@@ -535,7 +535,7 @@ socket.on('state', function(state) {
 
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyAnimation(document.documentElement, state, 'breakScreen');
-  GfxSettings.applyBackground(root, state);
+  GfxSettings.clearBackground(root);
 
   // Ticker label runs on every state push — independent of break screen visibility
   renderTickerLabel(state.ticker || {});

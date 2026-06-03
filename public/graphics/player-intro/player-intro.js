@@ -405,20 +405,18 @@ function renderAll(state) {
   else                         renderPanel(state);
 }
 
-// ── Background override ───────────────────────────────────────────────────────
-// Player Intro can override the global bg independently (useful as an overlay).
+// ── Background ────────────────────────────────────────────────────────────────
+// Player Intro can show a solid dark backing (useful when run full-screen rather
+// than as an overlay) or stay transparent. It never paints an animated canvas —
+// that lives only in the dedicated BG Output source.
 function getEffectiveBgState(state) {
-  var pi    = state.playerIntro || {};
-  var piBg  = pi.piBg || 'transparent';
-  if (piBg === 'global') return state;
-  var overrideSettings = Object.assign({}, state.settings || {});
-  if (piBg === 'dark') {
-    overrideSettings.bgType  = 'color';
-    overrideSettings.bgColor = '#07101a';
-  } else {
-    overrideSettings.bgType  = 'transparent';
-    overrideSettings.bgColor = '';
-  }
+  var pi   = state.playerIntro || {};
+  var dark = (pi.piBg === 'dark');
+  var overrideSettings = Object.assign({}, state.settings || {}, {
+    bgType:  dark ? 'color' : 'transparent',
+    bgColor: dark ? '#07101a' : '',
+    bgImage: '', bgAnimation: '', bgFogLayer: false, // never animate inside the overlay
+  });
   return Object.assign({}, state, { settings: overrideSettings });
 }
 
