@@ -397,6 +397,13 @@ const GFX_OUTPUTS = [
   { label: 'Lower Third',           path: 'graphics/lower-third/' },
 ];
 
+// Open the Caster view in a new tab with the current graphics token appended.
+function openCasterView() {
+  const token = (window._state && window._state.settings && window._state.settings.graphicsToken) || '';
+  if (!token) { (typeof showAlert === 'function' ? showAlert : alert)('Caster token not ready yet — try again in a moment.'); return; }
+  window.open('/caster/?token=' + encodeURIComponent(token), '_blank', 'noopener');
+}
+
 function syncGfxToken(settings) {
   const token   = (settings || {}).graphicsToken || '';
   const tokenEl = g('gfx-token-display');
@@ -2510,7 +2517,7 @@ function _intelChampsHtml(pool) {
   }).join('');
   return '<table class="intel-champ-table">' +
     '<thead class="intel-champ-thead"><tr>' +
-      '<th class="col-name icht-left">Champion Pool</th>' +
+      '<th class="col-name icht-left">Champions</th>' +
       '<th class="col-games icht-center">Games</th>' +
       '<th class="col-bar icht-center" colspan="2">Win Rate</th>' +
     '</tr></thead>' +
@@ -2634,10 +2641,19 @@ function renderIntelPanel(state) {
   grid.innerHTML = _intelTeamCol(match.team1 || {}, players.team1 || [], 'team1') + _intelTeamCol(match.team2 || {}, players.team2 || [], 'team2');
 }
 
+// Persisted result state on action buttons: 'ok' (green), 'err' (red), 'reset' (default).
+function _setActionState(btns, state) {
+  btns.forEach(function(b) {
+    b.classList.remove('btn-ok', 'btn-err');
+    if (state === 'ok') b.classList.add('btn-ok');
+    else if (state === 'err') b.classList.add('btn-err');
+  });
+}
+
 async function refreshChampPool() {
   const btns = Array.from(document.querySelectorAll('[onclick="refreshChampPool()"]'));
   const statEls = [g('ranks-status'), g('intel-status')].filter(Boolean);
-  btns.forEach(function(b) { b._origText = b.textContent; b.disabled = true; b.textContent = '↻ Fetching…'; });
+  btns.forEach(function(b) { b._origText = b._origText || b.textContent; b.disabled = true; b.textContent = '↻ Fetching…'; b.classList.remove('btn-ok','btn-err'); });
   statEls.forEach(function(el) { el.textContent = 'Contacting op.gg…'; });
   try {
     const r = await fetch('/api/champpool/refresh', {
@@ -2645,33 +2661,43 @@ async function refreshChampPool() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
     });
-    if (!r.ok) { statEls.forEach(function(el) { el.textContent = 'Server error ' + r.status + ' — try restarting the server.'; }); return; }
+    if (!r.ok) { statEls.forEach(function(el) { el.textContent = 'Server error ' + r.status + ' — try restarting the server.'; }); console.error('[champpool] refresh failed: HTTP ' + r.status); _setActionState(btns, 'err'); return; }
     const res = await r.json();
-    const msg = (res && res.ok)
-      ? (res.updated.length ? '✓ Champ pools: ' + res.updated.join(', ') + (res.errors.length ? ' — Errors: ' + res.errors.join(', ') : '') : (res.errors.length ? 'Errors: ' + res.errors.join(', ') : 'No players with Riot ID found.'))
-      : 'Error: ' + ((res && res.error) || JSON.stringify(res));
-    statEls.forEach(function(el) { el.textContent = msg; });
+    const ok = !!(res && res.ok), updated = (res && res.updated) || [], errors = (res && res.errors) || [];
+    statEls.forEach(function(el) { el.textContent = ok
+      ? (updated.length ? '✓ Champ pools: ' + updated.join(', ') + (errors.length ? ' — Errors: ' + errors.join(', ') : '') : (errors.length ? 'Errors: ' + errors.join(', ') : 'No players with Riot ID found.'))
+      : 'Error: ' + ((res && res.error) || JSON.stringify(res)); });
+    if (!ok || (errors.length && !updated.length)) { console.error('[champpool] refresh failed:', res); _setActionState(btns, 'err'); }
+    else if (updated.length) _setActionState(btns, 'ok');
+    else _setActionState(btns, 'reset');   // nothing to update — stay neutral
   } catch(e) {
     statEls.forEach(function(el) { el.textContent = 'Request failed: ' + e.message; });
+    console.error('[champpool] refresh error:', e); _setActionState(btns, 'err');
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '↻ Champ Pools'; });
   }
-  btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '↻ Champ Pools'; });
 }
 
 async function refreshRanks() {
   const btns = Array.from(document.querySelectorAll('[onclick="refreshRanks()"]'));
   const statEls = [g('ranks-status'), g('intel-status')].filter(Boolean);
-  btns.forEach(function(b) { b._origText = b.textContent; b.disabled = true; b.textContent = '↻ Fetching…'; });
+  btns.forEach(function(b) { b._origText = b._origText || b.textContent; b.disabled = true; b.textContent = '↻ Fetching…'; b.classList.remove('btn-ok','btn-err'); });
   statEls.forEach(function(el) { el.textContent = 'Contacting Riot API…'; });
   try {
     const res = await api('/api/ranks/refresh', {});
-    const msg = (res && res.ok)
-      ? (res.updated.length ? '✓ Ranks: ' + res.updated.join(', ') + (res.errors.length ? ' — Errors: ' + res.errors.join(', ') : '') : (res.errors.length ? 'Errors: ' + res.errors.join(', ') : 'No players with Riot ID found.'))
-      : 'Error: ' + ((res && res.error) || 'Unknown error');
-    statEls.forEach(function(el) { el.textContent = msg; });
+    const ok = !!(res && res.ok), updated = (res && res.updated) || [], errors = (res && res.errors) || [];
+    statEls.forEach(function(el) { el.textContent = ok
+      ? (updated.length ? '✓ Ranks: ' + updated.join(', ') + (errors.length ? ' — Errors: ' + errors.join(', ') : '') : (errors.length ? 'Errors: ' + errors.join(', ') : 'No players with Riot ID found.'))
+      : 'Error: ' + ((res && res.error) || 'Unknown error'); });
+    if (!ok || (errors.length && !updated.length)) { console.error('[ranks] refresh failed:', res); _setActionState(btns, 'err'); }
+    else if (updated.length) _setActionState(btns, 'ok');
+    else _setActionState(btns, 'reset');
   } catch(e) {
     statEls.forEach(function(el) { el.textContent = 'Request failed.'; });
+    console.error('[ranks] refresh error:', e); _setActionState(btns, 'err');
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '↻ Ranks'; });
   }
-  btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '↻ Ranks'; });
 }
 
 // ── Sponsors ───────────────────────────────────────────────────────────────────
@@ -3886,12 +3912,92 @@ fetch('/api/auth/me').then(r => r.json()).then(data => {
     _myRole = data.user.role;
     _myId = data.user.id;
     window._userKeybinds = data.user.keybinds || {};
+    window._userTheme    = data.user.theme || null;
+    window._themeDefault = data.themeDefault || null;
     const nameEl = document.getElementById('suc-name');
     const roleEl = document.getElementById('suc-role');
     if (nameEl) nameEl.textContent = data.user.username;
     if (roleEl) roleEl.textContent = data.user.role;
+    initThemeEditor();
   }
 }).catch(() => {});
+
+// ── Appearance / UI theme editor (per-user, superadmin sets default) ─────────────
+function _readThemeEditor() {
+  return {
+    preset:     (g('th-preset') || {}).value || 'graphite',
+    accentHue:  +(g('th-hue') || {}).value || 0,
+    accentSat:  +(g('th-sat') || {}).value || 0,
+    panelLight: +(g('th-pl')  || {}).value || 9,
+  };
+}
+function _previewTheme() {
+  const t = _readThemeEditor();
+  const hueEl = g('th-hue-o'), satEl = g('th-sat-o'), plEl = g('th-pl-o');
+  if (hueEl) hueEl.textContent = t.accentHue + '°';
+  if (satEl) satEl.textContent = t.accentSat + '%';
+  if (plEl)  plEl.textContent  = t.panelLight + '%';
+  if (window.MetaTheme) MetaTheme.apply(t);   // live preview on the panel itself
+}
+function _fillThemeEditor(t) {
+  t = t || { preset: 'graphite', accentHue: 0, accentSat: 0, panelLight: 9 };
+  if (g('th-preset')) g('th-preset').value = t.preset || 'graphite';
+  if (g('th-hue')) g('th-hue').value = t.accentHue != null ? t.accentHue : 0;
+  if (g('th-sat')) g('th-sat').value = t.accentSat != null ? t.accentSat : 0;
+  if (g('th-pl'))  g('th-pl').value  = t.panelLight != null ? t.panelLight : 9;
+  _previewTheme();
+}
+// Representative accent values per preset (so picking a preset seeds the sliders).
+const _PRESET_DEFAULTS = {
+  graphite: { accentHue: 0,   accentSat: 0,  panelLight: 9 },
+  steel:    { accentHue: 211, accentSat: 28, panelLight: 9 },
+  bronze:   { accentHue: 39,  accentSat: 30, panelLight: 9 },
+};
+function initThemeEditor() {
+  if (!g('th-preset')) return;
+  _fillThemeEditor(window._userTheme || window._themeDefault || null);
+  const preset = g('th-preset');
+  if (preset && !preset._themeWired) {
+    preset._themeWired = true;
+    preset.addEventListener('change', function(){
+      const d = _PRESET_DEFAULTS[preset.value] || _PRESET_DEFAULTS.graphite;
+      g('th-hue').value = d.accentHue; g('th-sat').value = d.accentSat; g('th-pl').value = d.panelLight;
+      _previewTheme();
+    });
+  }
+  ['th-hue','th-sat','th-pl'].forEach(function(id){
+    const el = g(id); if (el && !el._themeWired) { el._themeWired = true; el.addEventListener('input', _previewTheme); }
+  });
+  const defBtn = g('th-set-default-btn');
+  if (defBtn) defBtn.style.display = (_myRole === 'superadmin') ? '' : 'none';
+}
+function saveTheme() {
+  const t = _readThemeEditor();
+  fetch('/api/users/me/theme', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ theme: t }) })
+    .then(r => r.json()).then(function(res){
+      if (res && res.ok) {
+        window._userTheme = res.theme; if (window.MetaTheme) MetaTheme.cache(res.theme);
+        _themeMsg('Saved to your account.');
+      } else _themeMsg((res && res.error) || 'Save failed', true);
+    }).catch(() => _themeMsg('Save failed', true));
+}
+function resetThemeToDefault() {
+  _fillThemeEditor(window._themeDefault || { preset:'graphite', accentHue:0, accentSat:0, panelLight:9 });
+  _themeMsg('Reset to panel default — click Save to keep.');
+}
+function setPanelDefaultTheme() {
+  const t = _readThemeEditor();
+  fetch('/api/settings', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ uiTheme: t }) })
+    .then(r => r.json()).then(function(res){
+      if (res && res.ok) { window._themeDefault = t; _themeMsg('Set as the default theme for all panels.'); }
+      else _themeMsg((res && res.error) || 'Failed', true);
+    }).catch(() => _themeMsg('Failed', true));
+}
+function _themeMsg(txt, isErr) {
+  const el = g('th-msg'); if (!el) return;
+  el.textContent = txt; el.style.color = isErr ? 'var(--danger)' : 'var(--ok, #2ecc71)';
+  clearTimeout(el._t); el._t = setTimeout(function(){ el.textContent=''; }, 3500);
+}
 
 // ── Tournament Setup ───────────────────────────────────────────────────────────
 function patchTournamentInfo(data) { api('/api/tournament', data); }

@@ -4,17 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>MetaGFX — Login</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/shared/tokens.css">
 <style>
-:root {
-  --bg: #070f12; --bg2: #0a1b20; --bg3: #0d2028;
-  --border: rgba(167,163,142,0.15); --accent: #a7a38e;
-  --primary: #1ffaff; --danger: #ff4444; --text: #e8e6df;
-  --text-dim: rgba(232,230,223,0.5);
-}
+/* Colour/contrast/radius from /shared/tokens.css (matches the rest of the app). */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
-  font-family: 'Barlow', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   background: var(--bg);
   color: var(--text);
   height: 100vh;
@@ -25,8 +21,9 @@ body {
 .login-box {
   width: 360px;
   background: var(--bg2);
-  border: 1px solid rgba(31,250,255,0.2);
-  box-shadow: 0 0 60px rgba(31,250,255,0.06);
+  border: 1px solid var(--border-strong);
+  box-shadow: var(--shadow-modal);
+  border-radius: var(--radius);
   padding: 40px 36px;
 }
 .login-logo {
@@ -51,7 +48,7 @@ body {
   text-transform: uppercase;
   color: var(--text-dim);
   margin-bottom: 6px;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
 }
 .field input {
   width: 100%;
@@ -60,7 +57,7 @@ body {
   color: var(--text);
   padding: 10px 12px;
   font-size: 14px;
-  font-family: 'Barlow', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   outline: none;
   transition: border-color 0.15s;
 }
@@ -69,18 +66,18 @@ body {
   width: 100%;
   margin-top: 8px;
   padding: 12px;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--ui-font), sans-serif;
   font-size: 15px;
   font-weight: 800;
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  background: rgba(31,250,255,0.1);
+  background: rgba(var(--accent-rgb),0.1);
   border: 1px solid var(--primary);
   color: var(--primary);
   cursor: pointer;
   transition: background 0.15s;
 }
-.btn-login:hover { background: rgba(31,250,255,0.18); }
+.btn-login:hover { background: rgba(var(--accent-rgb),0.18); }
 .btn-login:disabled { opacity: 0.5; cursor: not-allowed; }
 .error-msg {
   margin-top: 14px;
