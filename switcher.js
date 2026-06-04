@@ -20,7 +20,7 @@ try { const m = require('obs-websocket-js'); OBSWebSocket = m.OBSWebSocket || m.
 catch (e) { /* dependency optional — OBS support simply disabled if missing */ }
 
 const RECONNECT_MS   = 5000;
-const OBS_RESYNC_MS  = 3000;
+const OBS_RESYNC_MS  = 1500;   // safety re-sync if an OBS event is ever missed (recomputes coalesce, so cheap)
 const VMIX_POLL_MS   = 1000;
 
 let cfg        = { type: 'none', enabled: false, showPreview: false, obs: {}, vmix: {} };
@@ -95,7 +95,21 @@ async function connectOBS(gen) {
   obs = o;
   let urlMap = {};               // input name -> browser source url
 
-  const recompute = () => { if (gen === generation) recomputeOBS(o, urlMap).catch(() => {}); };
+  // A single scene/source change makes OBS fire a burst of events, and each
+  // recompute is a chain of WebSocket round-trips. Running them concurrently
+  // saturates the socket and lets a stale recompute land last. Instead run at
+  // most one recompute at a time and collapse anything that arrives mid-flight
+  // into a single trailing re-run, so the latest correct snapshot wins fast.
+  let recomputing = false, recomputeQueued = false;
+  const recompute = () => {
+    if (gen !== generation) return;
+    if (recomputing) { recomputeQueued = true; return; }
+    recomputing = true;
+    recomputeOBS(o, urlMap).catch(() => {}).finally(() => {
+      recomputing = false;
+      if (recomputeQueued && gen === generation) { recomputeQueued = false; recompute(); }
+    });
+  };
 
   o.on('ConnectionClosed', () => { if (gen === generation) { setSnapshot(emptySnapshot('obs', false)); scheduleReconnect(gen); } });
   ['CurrentProgramSceneChanged', 'CurrentPreviewSceneChanged', 'SceneItemEnableStateChanged',
@@ -151,10 +165,20 @@ async function collectVisibleSources(o, sceneName, acc) {
 
 async function recomputeOBS(o, urlMap) {
   let streamLive = false, recording = false, studio = false, programScene = null, previewScene = null;
-  try { streamLive = (await o.call('GetStreamStatus')).outputActive; } catch (e) {}
-  try { recording  = (await o.call('GetRecordStatus')).outputActive; } catch (e) {}
-  try { studio     = (await o.call('GetStudioModeEnabled')).studioModeEnabled; } catch (e) {}
-  try { programScene = (await o.call('GetCurrentProgramScene')).sceneName || (await o.call('GetCurrentProgramScene')).currentProgramSceneName; } catch (e) {}
+  // These four are independent — fetch them in parallel rather than as a serial
+  // chain of round-trips so each recompute settles in roughly one round-trip.
+  const [strRes, recRes, stuRes, progRes] = await Promise.all([
+    o.call('GetStreamStatus').catch(() => null),
+    o.call('GetRecordStatus').catch(() => null),
+    o.call('GetStudioModeEnabled').catch(() => null),
+    o.call('GetCurrentProgramScene').catch(() => null),
+  ]);
+  if (strRes) streamLive = strRes.outputActive;
+  if (recRes) recording  = recRes.outputActive;
+  if (stuRes) studio     = stuRes.studioModeEnabled;
+  // OBS ≥5.1 returns sceneName; older builds use currentProgramSceneName — both
+  // live in the same response, so no second call is needed.
+  if (progRes) programScene = progRes.sceneName || progRes.currentProgramSceneName;
 
   const liveSet = new Set();
   await collectVisibleSources(o, programScene, liveSet);
@@ -162,7 +186,7 @@ async function recomputeOBS(o, urlMap) {
 
   let previewGraphics = [];
   if (cfg.showPreview && studio) {
-    try { previewScene = (await o.call('GetCurrentPreviewScene')).sceneName || (await o.call('GetCurrentPreviewScene')).currentPreviewSceneName; } catch (e) {}
+    try { const pv = await o.call('GetCurrentPreviewScene'); previewScene = pv.sceneName || pv.currentPreviewSceneName; } catch (e) {}
     const pvwSet = new Set();
     await collectVisibleSources(o, previewScene, pvwSet);
     previewGraphics = sourcesToGraphics(pvwSet, urlMap);
