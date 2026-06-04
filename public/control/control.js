@@ -3889,9 +3889,13 @@ document.addEventListener('DOMContentLoaded', function() {
     });
   });
 
+  // Collapsible sidebar sections — wire toggles + restore collapsed state
+  initNavSections();
+
   // Restore last active tab from previous session
   const savedTab = localStorage.getItem('gfx_ctrl_tab');
   if (savedTab) {
+    _expandNavSectionFor(savedTab);   // ensure the restored tab's section is visible
     const navEl = document.querySelector('.nav-item[data-tab="' + savedTab + '"]');
     if (navEl) {
       document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -4307,6 +4311,50 @@ function switchToTab(tabKey) {
     if (tabKey === 'theme')    loadLooksList();
     if (tabKey === 'home')     renderDashboard(window._state);
     localStorage.setItem('gfx_ctrl_tab', tabKey);
+    _expandNavSectionFor(tabKey);   // make sure the target's sidebar section is open
+  });
+}
+
+// ── Collapsible sidebar sections (accordion, per-browser via localStorage) ───────
+function _navSectionItems(label) {
+  const items = []; let el = label.nextElementSibling;
+  while (el && !el.classList.contains('nav-section-label')) { items.push(el); el = el.nextElementSibling; }
+  return items;
+}
+function _navLabelByKey(key) {
+  return Array.from(document.querySelectorAll('.sidebar-nav .nav-section-label')).find(l => l.dataset.section === key) || null;
+}
+function _navCollapsedSet() { try { return JSON.parse(localStorage.getItem('metagfx.navCollapsed') || '[]'); } catch (e) { return []; } }
+function _applyNavSection(key, collapsed) {
+  const label = _navLabelByKey(key); if (!label) return;
+  label.classList.toggle('collapsed', collapsed);
+  _navSectionItems(label).forEach(el => el.classList.toggle('nav-hidden', collapsed));
+}
+function toggleNavSection(key) {
+  const label = _navLabelByKey(key); if (!label) return;
+  const willCollapse = !label.classList.contains('collapsed');
+  _applyNavSection(key, willCollapse);
+  let set = _navCollapsedSet().filter(k => k !== key);
+  if (willCollapse) set.push(key);
+  try { localStorage.setItem('metagfx.navCollapsed', JSON.stringify(set)); } catch (e) {}
+}
+function _expandNavSectionFor(tabKey) {
+  const navEl = document.querySelector('.nav-item[data-tab="' + tabKey + '"]'); if (!navEl) return;
+  let el = navEl.previousElementSibling;
+  while (el && !el.classList.contains('nav-section-label')) el = el.previousElementSibling;
+  if (el && el.classList.contains('collapsed')) toggleNavSection(el.dataset.section);
+}
+function initNavSections() {
+  const labels = document.querySelectorAll('.sidebar-nav .nav-section-label');
+  const collapsed = _navCollapsedSet();
+  labels.forEach(label => {
+    if (label.dataset.section) return;          // already initialised
+    const key = label.textContent.trim();
+    label.dataset.section = key;
+    const ch = document.createElement('span'); ch.className = 'nav-section-chevron'; ch.textContent = '▾';
+    label.appendChild(ch);
+    label.addEventListener('click', () => toggleNavSection(key));
+    if (collapsed.includes(key)) _applyNavSection(key, true);
   });
 }
 

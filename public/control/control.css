@@ -123,6 +123,9 @@ body {
 .logo img { height: 50px; width: auto; display: block; }
 
 .nav-section-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.24em;
@@ -131,8 +134,15 @@ body {
   padding: 14px 18px 5px;
   margin-top: 2px;
   border-top: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.12s;
 }
 .nav-section-label:first-of-type { border-top: none; margin-top: 0; }
+.nav-section-label:hover { color: var(--label); }
+.nav-section-chevron { font-size: 8px; opacity: 0.6; transition: transform 0.18s; flex-shrink: 0; }
+.nav-section-label.collapsed .nav-section-chevron { transform: rotate(-90deg); }
+.nav-hidden { display: none !important; }
 
 .nav-item {
   display: block;
