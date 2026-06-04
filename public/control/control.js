@@ -5353,6 +5353,7 @@ function syncThemeTab(st) {
 
   // Animation — global default or per-graphic override (target-aware)
   syncAnimControls();
+  syncGraphicAnimCards();   // per-graphic Animation cards injected on each GFX page
 
   // Logo library
   renderThemeLogos((logoSet.logos || []));
@@ -5380,7 +5381,6 @@ const _ANIM_GRAPHICS = [
   ['bracket', 'Bracket'], ['groupStage', 'Group Stage'],
   ['tournamentStructure', 'Tournament Structure'], ['prizepool', 'Prizepool'],
 ];
-let _animTarget = 'global'; // 'global' or a graphic key — what the controls edit
 
 function _easingLabel(name) {
   if (name === 'linear') return 'Linear';
@@ -5396,91 +5396,186 @@ function _easingOptionsHtml(includeGlobal) {
   }).join('');
   return html;
 }
-let _animTargetReady = false;
-function populateAnimTarget() {
-  if (_animTargetReady) return;
-  const sel = g('ts-anim-target'); if (!sel) return;
-  sel.innerHTML = '<option value="global">All graphics (global default)</option>' +
-    '<optgroup label="Override one graphic">' +
-    _ANIM_GRAPHICS.map(([k, l]) => `<option value="${k}">${escHtml(l)}</option>`).join('') +
-    '</optgroup>';
-  _animTargetReady = true;
-}
-// Rebuild easing select options only when switching between global/graphic editing.
-let _easeOptsMode = null;
-function _refreshEaseOptions() {
-  const mode = _animTarget === 'global' ? 'global' : 'graphic';
-  if (mode === _easeOptsMode) return;
-  _easeOptsMode = mode;
-  const html = _easingOptionsHtml(mode === 'graphic');
-  ['ts-ease-enter', 'ts-ease-exit', 'ts-ease-move'].forEach(id => { const s = g(id); if (s) s.innerHTML = html; });
-}
 function _animSettings() { return (window._state && window._state.settings && window._state.settings.animation) || {}; }
 function _syncSpeedPills(activeVal) {
   const wrap = g('ts-anim-speed'); if (!wrap) return;
   wrap.querySelectorAll('.theme-pill').forEach(b => b.classList.toggle('is-active', b.dataset.speed === (activeVal || '')));
 }
-function setAnimTarget(v) { _animTarget = v || 'global'; syncAnimControls(); }
+// The Theme page edits the THEME-WIDE default only. Per-graphic overrides live
+// on each graphic's own page (see the injected Animation cards / syncGraphicAnimCards).
 function setAnimEase(field, val) {
-  if (_animTarget === 'global') patchSettings({ animation: { [field]: val } });
-  else patchSettings({ animation: { overrides: { [_animTarget]: { [field]: val } } } });
-  if (field === 'enterEase') playEasePreview();
+  patchSettings({ animation: { [field]: val } });
+  playEasePreview(field === 'enterEase' ? 'enter' : field === 'exitEase' ? 'exit' : 'move');
 }
 function setAnimSpeed(val) {
-  if (_animTarget === 'global') patchSettings({ animation: { speed: val } });
-  else patchSettings({ animation: { overrides: { [_animTarget]: { speed: val } } } });
+  patchSettings({ animation: { speed: val } });
   _syncSpeedPills(val);
   playEasePreview();
 }
-// "Reset to global" clears a graphic's override fields (empty = fall back to global).
-function resetAnimTarget() {
-  if (_animTarget === 'global') return;
-  patchSettings({ animation: { overrides: { [_animTarget]: { enterEase: '', exitEase: '', moveEase: '', speed: '' } } } });
-}
-// Reflect the current target's values into the controls + override note.
+let _animEaseOptsReady = false;
 function syncAnimControls() {
-  populateAnimTarget();
-  _refreshEaseOptions();
-  const isGraphic = _animTarget !== 'global';
+  if (!_animEaseOptsReady) {
+    const html = _easingOptionsHtml(false);  // theme default needs a concrete easing (no "use global")
+    ['ts-ease-enter', 'ts-ease-exit', 'ts-ease-move'].forEach(id => { const s = g(id); if (s) s.innerHTML = html; });
+    if (g('ts-ease-enter')) _animEaseOptsReady = true;
+  }
   const anim = _animSettings();
-  const m = isGraphic ? ((anim.overrides && anim.overrides[_animTarget]) || {}) : anim;
-  const enter = isGraphic ? (m.enterEase || '') : (m.enterEase || 'easeOutQuart');
-  const exit  = isGraphic ? (m.exitEase  || '') : (m.exitEase  || 'easeInQuart');
-  const move  = isGraphic ? (m.moveEase  || '') : (m.moveEase  || 'easeInOutQuad');
-  const speed = isGraphic ? (m.speed     || '') : (m.speed     || 'medium');
-  const se = g('ts-ease-enter'); if (se && document.activeElement !== se) se.value = enter;
-  const sx = g('ts-ease-exit');  if (sx && document.activeElement !== sx) sx.value = exit;
-  const sm = g('ts-ease-move');  if (sm && document.activeElement !== sm) sm.value = move;
-  _syncSpeedPills(speed);
-  const tgtSel = g('ts-anim-target'); if (tgtSel && document.activeElement !== tgtSel) tgtSel.value = _animTarget;
-  const gp = document.querySelector('#ts-anim-speed .ts-speed-global'); if (gp) gp.style.display = isGraphic ? '' : 'none';
-  const rb = g('ts-anim-reset'); if (rb) rb.style.display = isGraphic ? '' : 'none';
+  const se = g('ts-ease-enter'); if (se && document.activeElement !== se) se.value = anim.enterEase || 'easeOutQuart';
+  const sx = g('ts-ease-exit');  if (sx && document.activeElement !== sx) sx.value = anim.exitEase  || 'easeInQuart';
+  const sm = g('ts-ease-move');  if (sm && document.activeElement !== sm) sm.value = anim.moveEase  || 'easeInOutQuad';
+  _syncSpeedPills(anim.speed || 'medium');
   const note = g('ts-anim-override-note');
   if (note) {
     const custom = Object.keys(anim.overrides || {})
       .filter(k => { const o = anim.overrides[k]; return o && (o.enterEase || o.exitEase || o.moveEase || o.speed); })
       .map(k => (_ANIM_GRAPHICS.find(x => x[0] === k) || [k, k])[1]);
     note.textContent = custom.length
-      ? 'Custom overrides: ' + custom.join(', ')
-      : 'No per-graphic overrides — every graphic follows the global default.';
+      ? 'Customised on their own pages: ' + custom.join(', ')
+      : 'No per-graphic overrides — every graphic follows this theme default.';
   }
 }
-// Replay the preview dot using the current target's entrance easing + speed.
-function playEasePreview() {
-  const dot = g('ts-ease-preview'); if (!dot) return;
-  const anim = _animSettings();
-  const ov = _animTarget !== 'global' ? ((anim.overrides && anim.overrides[_animTarget]) || {}) : {};
-  const enterName = ov.enterEase || anim.enterEase || 'easeOutQuart';
-  const ease = (window.GfxSettings && GfxSettings.resolveEasing(enterName)) || 'ease';
-  const speed = ov.speed || anim.speed || 'medium';
+// Replay the preview dot(s) using the current target's easing + speed.
+// style: 'enter' | 'exit' | 'move' | undefined (all three). Exit travels right→left.
+const _EASE_PREVIEWS = {
+  enter: { id: 'ts-prev-enter', field: 'enterEase', def: 'easeOutQuart', dir: 1 },
+  exit:  { id: 'ts-prev-exit',  field: 'exitEase',  def: 'easeInQuart',  dir: -1 },
+  move:  { id: 'ts-prev-move',  field: 'moveEase',  def: 'easeInOutQuad', dir: 1 },
+};
+// Read the current value of a select / active speed pill straight from the DOM,
+// so a preview fired right after a change reflects the new pick (state round-trips async).
+function _selVal(id) { const s = g(id); return s ? s.value : ''; }
+function _activeSpeed(wrapId) {
+  const w = g(wrapId); if (!w) return '';
+  const b = w.querySelector('.theme-pill.is-active');
+  return b ? (b.dataset.speed != null ? b.dataset.speed : (b.dataset.sp || '')) : '';
+}
+function playEasePreview(style) {
+  const styles = style ? [style] : ['enter', 'exit', 'move'];
+  const anim = _animSettings();   // Theme page = global default only
+  const speed = _activeSpeed('ts-anim-speed') || anim.speed || 'medium';
   const mult = _SPEED_MULT_UI[speed] != null ? _SPEED_MULT_UI[speed] : 1;
-  const track = dot.parentElement;
-  const travel = Math.max(40, (track ? track.clientWidth : 240) - 30);
-  dot.style.transition = 'none';
-  dot.style.transform = 'translateX(0)';
-  void dot.offsetWidth; // force reflow so the reset takes before re-animating
-  dot.style.transition = `transform ${(0.6 * mult).toFixed(3)}s ${ease}`;
-  dot.style.transform = `translateX(${travel}px)`;
+  styles.forEach(s => {
+    const c = _EASE_PREVIEWS[s]; if (!c) return;
+    const dot = g(c.id); if (!dot) return;
+    const name = _selVal('ts-ease-' + s) || anim[c.field] || c.def;
+    const ease = (window.GfxSettings && GfxSettings.resolveEasing(name)) || 'ease';
+    const track = dot.parentElement;
+    const travel = Math.max(40, (track ? track.clientWidth : 240) - 28);
+    const start = c.dir > 0 ? 0 : travel;
+    const end   = c.dir > 0 ? travel : 0;
+    dot.style.transition = 'none';
+    dot.style.transform = `translateX(${start}px)`;
+    void dot.offsetWidth; // force reflow so the reset takes before re-animating
+    dot.style.transition = `transform ${(0.6 * mult).toFixed(3)}s ${ease}`;
+    dot.style.transform = `translateX(${end}px)`;
+  });
+}
+
+// ── Per-graphic Animation cards (one injected on each GFX page) ──────────────────
+// Edits the same settings.animation.overrides[key] the Theme page uses, so a
+// graphic's motion can be tuned theme-wide (Theme page) OR per-graphic (its page).
+const _GFX_ANIM_PAGES = {
+  'player-intro': ['playerIntro', 'Player Intro'], 'h2h': ['headToHead', 'Head to Head'],
+  'draft-gfx': ['draft', 'Draft'], 'win': ['winScreen', 'Win Screen'],
+  'break': ['breakScreen', 'Break Screen'], 'preshow': ['preShow', 'Pre-show'],
+  'bracket': ['bracket', 'Bracket'], 'groups-gfx': ['groupStage', 'Group Stage'],
+  'tournament-structure-gfx': ['tournamentStructure', 'Tournament Structure'], 'prizepool': ['prizepool', 'Prizepool'],
+};
+function _graphicAnimCardHtml(key) {
+  const sp = (v, t) => `<button class="theme-pill" data-sp="${v}" onclick="setGfxAnimSpeed('${key}','${v}')">${t}</button>`;
+  const prev = (s, lbl) => `<div class="ease-prev"><span class="ease-prev-label">${lbl}</span>` +
+    `<div class="theme-ease-track"><div class="theme-ease-dot" id="agp-${key}-${s}"></div></div>` +
+    `<button class="ease-prev-btn" onclick="playGfxPreview('${key}','${s}')" title="Replay">&#9654;</button></div>`;
+  return `<div class="card anim-card" id="anim-card-${key}">
+    <div class="card-title">Animation</div>
+    <p class="hint">Motion for this graphic. Follows the <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Theme</a> by default — switch to Custom to override just this one.</p>
+    <div class="anim-mode-row">
+      <button class="theme-pill anim-mode" data-mode="theme"  onclick="setGfxAnimMode('${key}','theme')">Theme default</button>
+      <button class="theme-pill anim-mode" data-mode="custom" onclick="setGfxAnimMode('${key}','custom')">Custom</button>
+    </div>
+    <div class="anim-custom">
+      <div class="theme-ease-grid">
+        <label class="theme-ease-field"><span>Entrance</span><select id="ag-${key}-enter" onchange="setGfxAnimEase('${key}','enterEase',this.value)"></select></label>
+        <label class="theme-ease-field"><span>Exit</span><select id="ag-${key}-exit" onchange="setGfxAnimEase('${key}','exitEase',this.value)"></select></label>
+        <label class="theme-ease-field"><span>Data change</span><select id="ag-${key}-move" onchange="setGfxAnimEase('${key}','moveEase',this.value)"></select></label>
+      </div>
+      <div class="theme-palette-slot" style="margin-top:12px">
+        <span class="theme-fixed-label">Speed</span>
+        <div class="theme-pills" id="ag-${key}-speed">${sp('', 'Theme')}${sp('instant', 'Instant')}${sp('fast', 'Fast')}${sp('medium', 'Medium')}${sp('slow', 'Slow')}</div>
+      </div>
+      <div class="theme-ease-previews">${prev('enter', 'Entrance')}${prev('exit', 'Exit')}${prev('move', 'Data change')}</div>
+    </div>
+  </div>`;
+}
+let _animCardsInjected = false;
+function injectGraphicAnimCards() {
+  if (_animCardsInjected) return;
+  Object.keys(_GFX_ANIM_PAGES).forEach(tabId => {
+    const key = _GFX_ANIM_PAGES[tabId][0];
+    const tab = g('tab-' + tabId); if (!tab || g('anim-card-' + key)) return;
+    const host = tab.querySelector('.ps-two-col') || tab;
+    const wrap = document.createElement('div');
+    wrap.innerHTML = _graphicAnimCardHtml(key);
+    host.appendChild(wrap.firstElementChild);
+  });
+  _animCardsInjected = true;
+}
+function _gfxOverride(key) { const a = _animSettings(); return (a.overrides && a.overrides[key]) || {}; }
+function _gfxHasCustom(key) { const o = _gfxOverride(key); return !!(o.enterEase || o.exitEase || o.moveEase || o.speed); }
+function setGfxAnimMode(key, mode) {
+  if (mode === 'theme') {
+    patchSettings({ animation: { overrides: { [key]: { enterEase: '', exitEase: '', moveEase: '', speed: '' } } } });
+  } else {
+    const a = _animSettings(); // seed with current theme values so the look is preserved, then user tweaks
+    patchSettings({ animation: { overrides: { [key]: {
+      enterEase: a.enterEase || 'easeOutQuart', exitEase: a.exitEase || 'easeInQuart',
+      moveEase: a.moveEase || 'easeInOutQuad', speed: a.speed || 'medium' } } } });
+  }
+}
+function setGfxAnimEase(key, field, val) {
+  patchSettings({ animation: { overrides: { [key]: { [field]: val } } } });
+  playGfxPreview(key, field === 'enterEase' ? 'enter' : field === 'exitEase' ? 'exit' : 'move');
+}
+function setGfxAnimSpeed(key, val) {
+  patchSettings({ animation: { overrides: { [key]: { speed: val } } } });
+  _syncGfxSpeedPills(key, val); playGfxPreview(key);
+}
+function _syncGfxSpeedPills(key, val) {
+  const w = g('ag-' + key + '-speed'); if (!w) return;
+  w.querySelectorAll('.theme-pill').forEach(b => b.classList.toggle('is-active', b.dataset.sp === (val || '')));
+}
+function playGfxPreview(key, style) {
+  const styles = style ? [style] : ['enter', 'exit', 'move'];
+  const a = _animSettings();
+  // Prefer the DOM (select / active pill) so a preview fired right after a change
+  // reflects the new pick; fall back to override then global theme default.
+  const speed = _activeSpeed('ag-' + key + '-speed') || a.speed || 'medium';
+  const mult = _SPEED_MULT_UI[speed] != null ? _SPEED_MULT_UI[speed] : 1;
+  styles.forEach(s => {
+    const c = _EASE_PREVIEWS[s]; const dot = g('agp-' + key + '-' + s); if (!c || !dot) return;
+    const name = _selVal('ag-' + key + '-' + s) || a[c.field] || c.def;
+    const ease = (window.GfxSettings && GfxSettings.resolveEasing(name)) || 'ease';
+    const track = dot.parentElement; const travel = Math.max(40, (track ? track.clientWidth : 240) - 28);
+    const start = c.dir > 0 ? 0 : travel, end = c.dir > 0 ? travel : 0;
+    dot.style.transition = 'none'; dot.style.transform = `translateX(${start}px)`;
+    void dot.offsetWidth;
+    dot.style.transition = `transform ${(0.6 * mult).toFixed(3)}s ${ease}`;
+    dot.style.transform = `translateX(${end}px)`;
+  });
+}
+function syncGraphicAnimCards() {
+  injectGraphicAnimCards();
+  Object.keys(_GFX_ANIM_PAGES).forEach(tabId => {
+    const key = _GFX_ANIM_PAGES[tabId][0];
+    const card = g('anim-card-' + key); if (!card) return;
+    ['enter', 'exit', 'move'].forEach(s => { const sel = g('ag-' + key + '-' + s); if (sel && !sel.options.length) sel.innerHTML = _easingOptionsHtml(true); });
+    const o = _gfxOverride(key), custom = _gfxHasCustom(key);
+    card.classList.toggle('is-custom', custom);
+    card.querySelectorAll('.anim-mode').forEach(b => b.classList.toggle('is-active', (b.dataset.mode === 'custom') === custom));
+    const setSel = (s, f) => { const sel = g('ag-' + key + '-' + s); if (sel && document.activeElement !== sel) sel.value = o[f] || ''; };
+    setSel('enter', 'enterEase'); setSel('exit', 'exitEase'); setSel('move', 'moveEase');
+    _syncGfxSpeedPills(key, o.speed || '');
+  });
 }
 
 // ── Looks (save / apply reusable visual identities) ──────────────────────────
