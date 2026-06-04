@@ -409,6 +409,10 @@ function openCasterView() {
 // ── Live switcher (OBS/vMix) indicators ──────────────────────────────────────────
 function applySwitcher(snap) {
   snap = snap || {};
+  // Called both from syncUI (every state broadcast) and the dedicated
+  // switcher:state event. The snapshot is identical across most broadcasts,
+  // so skip the topbar/status/ctrl-bar-tag sweep when nothing changed.
+  if (!_sfp('switcherSnap', snap)) return;
   const active = snap.type && snap.type !== 'none';
 
   // Topbar on-air pill
