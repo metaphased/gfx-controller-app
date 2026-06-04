@@ -17,7 +17,7 @@
   let _staged = {};       // editing copy
   let _dirty = false;
   let _listening = null;  // { actionId, btn }
-  let _openSection = null;
+  let _openSections = null;  // Set of expanded category names — sections open/close independently
   let _built = false;
 
   function comboFromEvent(e) {
@@ -102,7 +102,10 @@
       .mkb-sec { border:1px solid var(--border,rgba(255,255,255,.1)); border-radius:var(--radius,2px); margin-bottom:8px; overflow:hidden; }
       .mkb-sec-hd { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; cursor:pointer; background:var(--bg3,#1b1e23); font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--label,rgba(255,255,255,.78)); }
       .mkb-sec-hd:hover { color:var(--text-strong,#fff); }
+      .mkb-sec-meta { display:flex; align-items:center; gap:8px; }
       .mkb-sec-count { color:var(--accent,#b3b3b3); font-weight:700; }
+      .mkb-sec-chevron { font-size:11px; opacity:.6; transition:transform .18s; }
+      .mkb-sec.open .mkb-sec-chevron { transform:rotate(180deg); }
       .mkb-rows { display:none; }
       .mkb-sec.open .mkb-rows { display:block; }
       .mkb-row { display:flex; align-items:center; gap:10px; padding:6px 12px; border-top:1px solid var(--border,rgba(255,255,255,.08)); }
@@ -145,10 +148,10 @@
     const host = document.getElementById('mkb-sections'); if (!host) return;
     const cats = _groups();
     const names = Object.keys(cats);
-    if (!_openSection || !cats[_openSection]) _openSection = names[0];
+    if (!_openSections) _openSections = new Set();  // default: all collapsed; each expands independently (chevron indicates)
     host.innerHTML = names.map(cat => {
       const bound = cats[cat].filter(a => _staged[a.id]).length;
-      const open = cat === _openSection;
+      const open = _openSections.has(cat);
       const rows = cats[cat].map(a => {
         const combo = _staged[a.id] || '';
         const listening = _listening && _listening.actionId === a.id;
@@ -160,13 +163,14 @@
           '</div>';
       }).join('');
       return '<div class="mkb-sec' + (open ? ' open' : '') + '" data-cat="' + cat + '">' +
-        '<div class="mkb-sec-hd" data-sec="' + cat + '"><span>' + cat + '</span><span class="mkb-sec-count">' + bound + ' set</span></div>' +
+        '<div class="mkb-sec-hd" data-sec="' + cat + '"><span>' + cat + '</span><span class="mkb-sec-meta"><span class="mkb-sec-count">' + bound + ' set</span><span class="mkb-sec-chevron">▾</span></span></div>' +
         '<div class="mkb-rows">' + rows + '</div></div>';
     }).join('');
 
     host.querySelectorAll('.mkb-sec-hd').forEach(el => el.addEventListener('click', () => {
       cancelListening();
-      _openSection = (_openSection === el.dataset.sec) ? null : el.dataset.sec;
+      const sec = el.dataset.sec;
+      if (_openSections.has(sec)) _openSections.delete(sec); else _openSections.add(sec);
       renderTable();
     }));
     host.querySelectorAll('.mkb-combo[data-act]').forEach(el => el.addEventListener('click', () => startListening(el.dataset.act, el)));
