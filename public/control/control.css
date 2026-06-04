@@ -362,17 +362,33 @@ body {
   background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
   color: var(--text); font-family: var(--ui-font), sans-serif; font-size: 12px; padding: 5px 6px; width: 100%;
 }
-.theme-ease-preview { display: flex; align-items: center; gap: 12px; margin-top: 16px; }
+.theme-ease-previews { display: flex; flex-direction: column; gap: 7px; margin-top: 16px; }
+.ease-prev { display: flex; align-items: center; gap: 10px; }
+.ease-prev-label {
+  width: 84px; flex-shrink: 0; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-dim);
+}
+.ease-prev-btn {
+  flex-shrink: 0; width: 26px; height: 22px; border-radius: var(--radius);
+  background: var(--bg3); border: 1px solid var(--border-strong); color: var(--text);
+  cursor: pointer; font-size: 10px; line-height: 1; transition: all 0.12s;
+}
+.ease-prev-btn:hover { border-color: var(--accent); color: var(--text-strong); }
 .theme-ease-track {
-  position: relative; flex: 1; height: 28px; border-radius: var(--radius);
+  position: relative; flex: 1; height: 22px; border-radius: var(--radius);
   background: var(--bg3); border: 1px solid var(--border); overflow: hidden;
 }
 .theme-ease-dot {
-  position: absolute; top: 50%; left: 6px; width: 18px; height: 18px; margin-top: -9px;
-  border-radius: 50%; background: var(--primary); box-shadow: none;
+  position: absolute; top: 50%; left: 6px; width: 16px; height: 16px; margin-top: -8px;
+  border-radius: 50%; background: var(--accent); box-shadow: none;
   transform: translateX(0);
 }
 @media (max-width: 720px) { .theme-ease-grid { grid-template-columns: 1fr; } }
+
+/* Per-graphic Animation card (injected on each GFX page) */
+.anim-mode-row { display: flex; gap: 6px; margin: 6px 0 4px; }
+.anim-card .anim-custom { display: none; margin-top: 12px; }
+.anim-card.is-custom .anim-custom { display: block; }
 
 /* ── Looks ────────────────────────────────────────────── */
 /* The Looks card spans the page width — cap it so it reads as a tidy panel
