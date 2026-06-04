@@ -5,6 +5,7 @@
 :root {
   /* Layout-only tokens (colour/contrast/radius come from /shared/tokens.css). */
   --sidebar-w: 220px;
+  --content-max: 2300px;   /* cap for multi-column content on ultra-wide screens */
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -374,6 +375,9 @@ body {
 @media (max-width: 720px) { .theme-ease-grid { grid-template-columns: 1fr; } }
 
 /* ── Looks ────────────────────────────────────────────── */
+/* The Looks card spans the page width — cap it so it reads as a tidy panel
+   rather than stretching across an ultra-wide screen. */
+#tab-theme > .card { max-width: 1100px; }
 .look-save-row { display: flex; gap: 8px; margin-bottom: 12px; }
 .look-save-row input {
   flex: 1; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
@@ -843,7 +847,7 @@ input[type=checkbox]:checked::after {
 .gfx-ctrl-bar {
   display: flex;
   flex-direction: column;
-  max-width: 900px;
+  max-width: var(--content-max, 1800px);
   background: var(--bg);
   border: 1px solid rgba(255,255,255,0.08);
   border-radius: var(--radius);
@@ -1429,6 +1433,8 @@ input[type=search]::-webkit-search-decoration { display: none; }
 .it-wr-low  { color: #f07070; }
 
 /* ── Dashboard ──────────────────────────────────────── */
+/* Dashboard is a landing page — kept as a fixed 2-up grid, not auto-columned.
+   (Backlog: revisit how the dashboard presents on ultra-wide screens.) */
 .dash-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
