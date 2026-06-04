@@ -5379,6 +5379,10 @@ function syncThemeTab(st) {
   // Reliable one-time Looks load after the socket delivers state (the
   // DOMContentLoaded restore can race the fetch on a cold first load).
   if (!_looksAutoLoaded) { _looksAutoLoaded = true; loadLooksList(); }
+  // Skip the palette/accents/logos/anim rebuilds when nothing the Theme tab
+  // renders has changed — these otherwise ran on every state broadcast.
+  if (!_sfp('themeTab', { p: st.palette, b: st.blueAccent, r: st.redAccent,
+        l: (st.logoSet || {}).logos, a: st.animation })) return;
   const { palette = [], blueAccent = '#1e6fff', redAccent = '#ff3b3b', logoSet = {} } = st;
 
   // Palette
