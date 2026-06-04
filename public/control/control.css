@@ -270,8 +270,12 @@ body {
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
-.profile-modal-title { display: flex; align-items: center; gap: 10px; }
-.pm-username { font-size: 15px; font-weight: 700; letter-spacing: 0.05em; color: var(--text); text-transform: uppercase; }
+.profile-modal-title { display: flex; flex-direction: column; gap: 5px; }
+.pm-eyebrow { font-size: 9px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent-dim); line-height: 1; }
+.pm-id-row { display: flex; align-items: center; gap: 9px; line-height: 1; }
+.pm-id-row .suc-icon { font-size: 13px; }
+.pm-username { font-size: 15px; font-weight: 700; letter-spacing: 0.05em; color: var(--text-strong); text-transform: uppercase; line-height: 1; }
+.profile-modal-title .pm-role-badge { line-height: 1; }
 .pm-role-badge {
   font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
   color: var(--primary); background: rgba(var(--accent-rgb),0.08);
@@ -282,6 +286,12 @@ body {
   font-size: 18px; line-height: 1; padding: 2px 6px; transition: color 0.15s;
 }
 .profile-modal-close:hover { color: var(--text); }
+.pm-section { padding: 4px 0; }
+.pm-section-title {
+  font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--label); margin-bottom: 10px;
+}
+.pm-divider { height: 1px; background: var(--border); margin: 16px 0; }
 .profile-modal-body { overflow-y: auto; padding: 16px 22px; flex: 1; min-height: 0; }
 .profile-modal-footer {
   display: flex; align-items: center; justify-content: space-between;

@@ -112,16 +112,48 @@
     <div class="profile-modal">
       <div class="profile-modal-header">
         <div class="profile-modal-title">
-          <span class="pm-username" id="pm-username"></span>
-          <span class="pm-role-badge" id="pm-role-badge"></span>
+          <span class="pm-eyebrow">User Profile</span>
+          <span class="pm-id-row"><span class="suc-icon">◈</span><span class="pm-username" id="pm-username"></span><span class="pm-role-badge" id="pm-role-badge"></span></span>
         </div>
         <button class="profile-modal-close" onclick="closeProfileModal()">✕</button>
       </div>
-      <div class="profile-modal-body" id="profile-modal-body"></div>
+      <div class="profile-modal-body" id="profile-modal-body">
+
+        <div class="pm-section">
+          <div class="pm-section-title">Keyboard Shortcuts</div>
+          <p class="hint" style="margin:0 0 8px">Your personal shortcuts for graphics &amp; match actions — they fire when no text field is focused.</p>
+          <div id="pm-keybinds"></div>
+          <div style="margin-top:10px"><button class="btn btn-sm" onclick="resetMyKeybinds()">Reset all shortcuts…</button></div>
+        </div>
+
+        <div class="pm-divider"></div>
+
+        <div class="pm-section">
+          <div class="pm-section-title">Account</div>
+          <div class="field-row" style="max-width:340px"><label>New Password</label><input type="password" id="pm-pw-new" autocomplete="new-password" placeholder="At least 6 characters"></div>
+          <div class="field-row" style="max-width:340px"><label>Confirm Password</label><input type="password" id="pm-pw-confirm" autocomplete="new-password"></div>
+          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-sm" onclick="changeMyPassword()">Update Password</button>
+            <span class="users-msg" id="pm-pw-msg"></span>
+          </div>
+          <div style="margin-top:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+            <span class="hint" style="margin:0">Panel appearance theme (preset + accent &amp; panel sliders)</span>
+            <button class="btn btn-sm" onclick="gotoAppearance()">Appearance settings →</button>
+          </div>
+        </div>
+
+        <div class="pm-divider"></div>
+
+        <div class="pm-section">
+          <div class="pm-section-title">Integrations</div>
+          <p class="hint" style="margin:0 0 8px">Download a Bitfocus Companion / Stream Deck profile wired to these shortcuts.</p>
+          <button class="btn btn-sm" id="pm-companion-btn" onclick="downloadCompanionProfile()" title="Download Bitfocus Companion profile">⬡ Download Companion profile</button>
+        </div>
+
+      </div>
       <div class="profile-modal-footer">
         <a class="btn btn-danger btn-sm" href="/api/auth/logout">Log Out</a>
         <div class="pm-footer-right">
-          <button class="btn btn-sm" id="pm-companion-btn" onclick="downloadCompanionProfile()" title="Download Bitfocus Companion profile">⬡ Companion</button>
           <button class="btn btn-primary btn-sm" id="pm-save-btn" onclick="saveKeybinds()" style="display:none">Save Keybinds</button>
         </div>
       </div>
@@ -137,6 +169,7 @@
     <span class="mtb-match-context" id="lbar-game-context"></span>
     <span class="onair-pill" id="mtb-onair" style="display:none"><span class="onair-dot"></span><span id="mtb-onair-label">OFF AIR</span></span>
     <div class="mtb-links">
+      <button class="mtb-link" onclick="openProfileModal()" title="Your profile — keyboard shortcuts, password, Companion, log out">◈ Profile</button>
       <a class="mtb-link" href="/operator/" target="_blank" rel="noopener" title="Open the Operator view in a new tab">Operator ↗</a>
       <button class="mtb-link" onclick="openCasterView()" title="Open the Caster view (with access token) in a new tab">Caster ↗</button>
     </div>
