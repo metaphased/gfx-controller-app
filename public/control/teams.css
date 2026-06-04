@@ -351,14 +351,15 @@
 }
 
 /* ── Broadcast Theme tab ──────────────────────────────────────────────────────── */
+/* Responsive multi-column card flow (matches .ps-two-col). The two wrapper
+   divs dissolve so the cards balance across as many columns as fit. */
 .theme-two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  max-width: 900px;
+  columns: 440px;   /* match .ps-two-col — keep card internals at their design width */
+  column-gap: 16px;
+  max-width: var(--content-max, 2300px);
 }
-/* Prevent grid children from overflowing their tracks */
-.theme-two-col > div { min-width: 0; }
+.theme-two-col > div { display: contents; }
+.theme-two-col .card { break-inside: avoid; width: 100%; }
 
 .theme-palette-header {
   display: flex;
@@ -479,15 +480,22 @@ input.theme-hex-inp:focus { border-color: var(--primary); }
   border: 1px solid var(--border);
 }
 
-/* Pre-show 2-column layout */
+/* Responsive multi-column card flow (was a fixed 2-col grid capped at 900px).
+   Cards keep their vertical-stack reading order but flow into as many columns
+   as the viewport fits — narrow screens stay 2-col, wide screens fill out,
+   capped at --content-max. .ps-col dissolves so individual cards are the items. */
 .ps-two-col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 16px;
-  align-items: start;
-  max-width: 900px;
+  columns: 440px;   /* min column width = cards' original design width, so internals never cramp */
+  column-gap: 16px;
+  max-width: var(--content-max, 2300px);
 }
-.ps-col { min-width: 0; }
+.ps-col { display: contents; }
+.ps-two-col > .ps-col > .card,
+.ps-two-col > .card {
+  break-inside: avoid;
+  margin: 0 0 16px 0;     /* column-gap handles horizontal; this handles vertical */
+  width: 100%;
+}
 
 /* Animation & Motion rows */
 .theme-anim-row {
