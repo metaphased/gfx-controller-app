@@ -6242,11 +6242,45 @@ document.addEventListener('keydown', function (e) {
 function openProfileModal() {
   _kbStaged = Object.assign({}, window._userKeybinds);
   _kbDirty  = false;
+  _kbOpenSection = null;   // open with all shortcut sections collapsed
   document.getElementById('pm-username').textContent  = _myUsername || '—';
   document.getElementById('pm-role-badge').textContent = _myRole    || '—';
   document.getElementById('pm-save-btn').style.display = 'none';
+  // reset the change-password fields
+  ['pm-pw-new', 'pm-pw-confirm'].forEach(id => { const el = g(id); if (el) el.value = ''; });
+  const pwMsg = g('pm-pw-msg'); if (pwMsg) pwMsg.textContent = '';
   renderKeybindTable();
   document.getElementById('profile-modal-overlay').classList.add('active');
+}
+
+// Clear all of this user's keyboard shortcuts (with confirmation).
+function resetMyKeybinds() {
+  showConfirm('Reset all your keyboard shortcuts? This clears every binding.', function () {
+    _kbStaged = {};
+    renderKeybindTable();
+    saveKeybinds();
+  }, { danger: true, okLabel: 'Reset' });
+}
+// Jump from the profile modal to the per-user Appearance theme controls (Settings).
+function gotoAppearance() {
+  closeProfileModal();
+  switchToTab('users');
+  setTimeout(function () { const el = g('th-preset'); if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 80);
+}
+// Change your own password from the profile modal.
+function changeMyPassword() {
+  const pw = (g('pm-pw-new') || {}).value || '';
+  const confirm = (g('pm-pw-confirm') || {}).value || '';
+  const msg = (t, err) => { const el = g('pm-pw-msg'); if (!el) return; el.textContent = t; el.style.color = err ? 'var(--danger)' : 'var(--ok,#2ecc71)'; };
+  if (pw.length < 6) return msg('Password must be at least 6 characters', true);
+  if (pw !== confirm) return msg('Passwords do not match', true);
+  fetch('/api/users/change-password', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: _myId, newPassword: pw }),
+  }).then(r => r.json()).then(res => {
+    if (res && res.ok) { msg('Password updated.'); const a = g('pm-pw-new'), b = g('pm-pw-confirm'); if (a) a.value = ''; if (b) b.value = ''; }
+    else msg((res && res.error) || 'Update failed', true);
+  }).catch(() => msg('Update failed', true));
 }
 
 function closeProfileModal() {
@@ -6260,14 +6294,14 @@ function profileModalBackdropClick(e) {
 }
 
 function renderKeybindTable() {
-  const body = document.getElementById('profile-modal-body');
+  const body = document.getElementById('pm-keybinds');
   if (!body || !window.ActionRegistry) return;
   const actions = ActionRegistry.getAll();
   const cats = {};
   actions.forEach(a => { if (!cats[a.category]) cats[a.category] = []; cats[a.category].push(a); });
   const catNames = Object.keys(cats);
-  // Default the first section open; keep the user's choice across re-renders.
-  if (!_kbOpenSection || !cats[_kbOpenSection]) _kbOpenSection = catNames[0];
+  // Sections start collapsed (null); the user's expand choice persists across re-renders.
+  if (_kbOpenSection && !cats[_kbOpenSection]) _kbOpenSection = null;
   body.innerHTML = catNames.map(cat => {
     const bound  = cats[cat].filter(a => _kbStaged[a.id]).length;
     const isOpen = cat === _kbOpenSection;
