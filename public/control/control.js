@@ -485,6 +485,11 @@ function syncGfxToken(settings) {
   if (tokenEl) tokenEl.value = token;
 
   const listEl  = g('gfx-url-list'); if (!listEl) return;
+  // The URL list only changes when the token, the bus set or the Local/External
+  // mode changes — skip the innerHTML rebuild on every unrelated state push.
+  const _gtBuses = (window._state && window._state.settings && window._state.settings.buses) || [];
+  if (!_sfp('gfxTokenList', { token, mode: _gfxUrlMode, ext: _externalUrl,
+        buses: _gtBuses.map(function(b){ return [b.id, b.name]; }) })) return;
   const base    = (_gfxUrlMode === 'external' && _externalUrl ? _externalUrl : window.location.origin) + '/';
 
   // Toggle bar — only shown when an external URL is configured
@@ -523,6 +528,10 @@ function syncBusConfig(s) {
   const base    = (_gfxUrlMode === 'external' && _externalUrl ? _externalUrl : window.location.origin) + '/';
   const emptyEl = g('bus-config-empty');
   if (emptyEl) emptyEl.style.display = buses.length ? 'none' : '';
+
+  // Bus config (names, graphic assignments, URLs) is static during a show —
+  // only rebuild when the buses, token or Local/External mode actually change.
+  if (!_sfp('busConfigList', { buses, token, mode: _gfxUrlMode, ext: _externalUrl })) return;
 
   list.innerHTML = buses.map(function(bus, i) {
     const assignChecks = GRAPHIC_MAP.map(function(gfx) {
