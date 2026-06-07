@@ -2119,10 +2119,21 @@ function syncWinTab(ws, match) {
 
   // Animation style radios — migrate legacy 'surge' → 'burst'
   const style = (ws.style === 'surge' ? 'burst' : ws.style) || 'blade';
-  ['blade','burst','slam','split','spotlight','wipe','shutter','flood','slab'].forEach(v => {
+  ['blade','burst','slam','split','spotlight','wipe','shutter','flood','slab','comp'].forEach(v => {
     const r = document.querySelector('input[name="win-style"][value="' + v + '"]');
     if (r) r.checked = style === v;
   });
+
+  // Winning draft picks — toggle, position, and "what will appear" preview
+  const showPicks = !!ws.showPicks;
+  const spChk = g('win-showpicks'); if (spChk) spChk.checked = showPicks;
+  const posRow = g('win-picks-pos-row'); if (posRow) posRow.style.display = showPicks ? 'flex' : 'none';
+  const picksPos = ws.picksPosition === 'bottom' ? 'bottom' : 'below';
+  ['below','bottom'].forEach(v => {
+    const r = document.querySelector('input[name="win-picks-pos"][value="' + v + '"]');
+    if (r) r.checked = picksPos === v;
+  });
+  renderWinPicksPreview(ws, match);
 
   // Auto-status hint
   const statusEl = g('win-auto-status');
@@ -2133,6 +2144,53 @@ function syncWinTab(ws, match) {
       ? winner + ' · ' + ws.message + (score ? ' (' + score + ')' : '') + ' — auto-populated from game result'
       : 'Auto-populated from last game result.';
   }
+}
+
+// Most recent game the winning team actually WON (mirrors win.js winningCompGame).
+function _winCompGame(ws, match) {
+  const winner = (ws && ws.team) || 'team1';
+  const games = (match && match.seriesGames) || [];
+  for (let i = games.length - 1; i >= 0; i--) {
+    if (games[i] && games[i].winner === winner && !games[i].isBye) return games[i];
+  }
+  return null;
+}
+const _WIN_ROLE_ORDER = ['top', 'jungle', 'mid', 'bot', 'support'];
+function _winNormRole(r) { r = (r || '').toLowerCase().trim(); return r === 'adc' ? 'bot' : r; }
+
+// Show the operator exactly which champions + players the win screen will draw,
+// and from which game — so a wrong/missing comp is caught before going on air.
+function renderWinPicksPreview(ws, match) {
+  const el = g('win-picks-preview'); if (!el) return;
+  const winner   = (ws && ws.team) || 'team1';
+  const t        = (match && match[winner]) || {};
+  const winLabel = t.tag || t.name || (winner === 'team1' ? 'Team 1' : 'Team 2');
+  const game     = _winCompGame(ws, match);
+  const picks    = (game && game[winner + 'RolePicks']) || [];
+  const players  = (game && game.players && game.players[winner]) || [];
+  const hasPicks = picks.some(function (p) { return !!p; });
+
+  if (!_sfp('winPicksPreview', { w: winner, l: winLabel, g: game && game.gameNum, p: picks, st: ws && ws.style, sp: !!(ws && ws.showPicks) })) return;
+
+  if (!game || !hasPicks) {
+    el.innerHTML = '<div class="wpp-warn">No recorded winning draft for <strong>' + escHtml(winLabel) +
+      '</strong> yet — picks will be hidden. Record a game result (with a draft) first.</div>';
+    return;
+  }
+  let tiles = '';
+  for (let i = 0; i < 5; i++) {
+    const url = picks[i] || '';
+    const byRole = players.find(function (p) { return _winNormRole(p.role) === _WIN_ROLE_ORDER[i]; });
+    const handle = (byRole && byRole.handle) || (players[i] && players[i].handle) || '';
+    tiles += '<div class="wpp-pick">' +
+      (url ? '<div class="wpp-img" style="background-image:url(' + escHtml(url) + ')"></div>'
+           : '<div class="wpp-img wpp-empty"></div>') +
+      '<div class="wpp-handle">' + escHtml(handle || '—') + '</div></div>';
+  }
+  el.innerHTML =
+    '<div class="wpp-head">Game ' + escHtml(String(game.gameNum || '?')) + ' · ' + escHtml(winLabel) +
+    ' — these champions will appear</div>' +
+    '<div class="wpp-row">' + tiles + '</div>';
 }
 
 // ── Group Stage GFX ────────────────────────────────────────────────────────────

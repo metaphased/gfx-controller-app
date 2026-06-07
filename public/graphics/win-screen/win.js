@@ -22,13 +22,89 @@ const ANIM_MS = {
   shutter:   { in: 1000, out: 700  },
   flood:     { in: 1000, out: 700  },
   slab:      { in: 1000, out: 700  },
+  // COMP — winning team's champion picks as the hero (staggered portraits).
+  comp:      { in: 1400, out: 700  },
 };
+
+// Styles whose card is centred with room below — the only ones the showPicks
+// toggle can layer the compact champ row onto. (COMP shows the comp natively.)
+const CENTERED_STYLES = ['burst', 'slam', 'spotlight', 'shutter', 'flood', 'slab'];
 
 // Current animation-speed multiplier the overlay CSS uses (set by
 // GfxSettings.applyAnimation). 0 = instant / reduced-motion. NaN-safe → 1.
 function _durScale() {
   const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gfx-dur-scale'));
   return isNaN(v) ? 1 : v;
+}
+
+// ── Winning-team champion picks ──────────────────────────────────────────────
+// Strip path + extension + Riot _N suffix → champion name (mirrors h2h.js).
+function champNameFromUrl(url) {
+  if (!url) return '';
+  return url.split('/').pop().replace(/\.[^.]+$/, '').replace(/_\d+$/, '');
+}
+function champSplash(name) { return name ? '/graphics/head2head/champions/' + name + '_0.jpg' : ''; }
+const _COMP_ROLE_ORDER = ['top', 'jungle', 'mid', 'bot', 'support'];
+function _normRole(r) { r = (r || '').toLowerCase().trim(); return r === 'adc' ? 'bot' : r; }
+
+// The most recent game the win-screen's team actually WON (skips byes), so the
+// comp shown is always a game they won — not a side-swapped or lost game. The
+// server wipes state.draft after each game, so picks must come from seriesGames.
+function winningCompGame(ws, match) {
+  const winner = ws.team || 'team1';
+  const games = (match && match.seriesGames) || [];
+  for (let i = games.length - 1; i >= 0; i--) {
+    if (games[i] && games[i].winner === winner && !games[i].isBye) return games[i];
+  }
+  return null;
+}
+
+// Whether the champ row should be present for the current style + settings.
+function _wantCompRow(ws) {
+  return _style === 'comp' || (!!ws.showPicks && CENTERED_STYLES.indexOf(_style) !== -1);
+}
+
+// Toggle the root classes that show / position the compact champ-pick layer on
+// the eligible centred styles (COMP shows it via its own .style-comp rule).
+function applyPicksClasses(root, ws) {
+  const layerOn = !!ws.showPicks && CENTERED_STYLES.indexOf(_style) !== -1;
+  root.classList.toggle('picks-on', layerOn);
+  const bottom = layerOn && ws.picksPosition === 'bottom';
+  root.classList.toggle('picks-pos-bottom', bottom);
+  root.classList.toggle('picks-pos-below', layerOn && !bottom);
+}
+
+let _compFp = '';
+function buildCompRow(ws, match) {
+  const row = document.getElementById('ws-comp-row');
+  if (!row) return;
+  if (!_wantCompRow(ws)) { if (_compFp !== '') { _compFp = ''; row.innerHTML = ''; } return; }
+
+  const winner  = ws.team || 'team1';
+  const game    = winningCompGame(ws, match);
+  const picks   = (game && game[winner + 'RolePicks']) || [];
+  const players  = (game && game.players && game.players[winner]) || [];
+
+  // Only rebuild when the comp actually changes — otherwise the champion
+  // images re-fetch and flicker on every state broadcast.
+  const fp = JSON.stringify({ w: winner, st: _style, p: picks });
+  if (fp === _compFp) return;
+  _compFp = fp;
+
+  let html = '';
+  for (let i = 0; i < 5; i++) {
+    const url = picks[i]; if (!url) continue;
+    const splash = champSplash(champNameFromUrl(url));
+    const byRole = players.find(p => _normRole(p.role) === _COMP_ROLE_ORDER[i]);
+    const handle = (byRole && byRole.handle) || (players[i] && players[i].handle) || '';
+    html += '<div class="ws-comp-pick">' +
+      '<div class="ws-comp-portrait">' +
+        (splash ? '<img src="' + splash + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+      '</div>' +
+      (handle ? '<div class="ws-comp-player">' + esc(handle) + '</div>' : '') +
+      '</div>';
+  }
+  row.innerHTML = html;
 }
 
 socket.on('connect', () => {
@@ -56,6 +132,7 @@ socket.on('state', state => {
     root.classList.add('style-' + style);
     _style = style;
   }
+  applyPicksClasses(root, ws);
 
   if (visible && !_visible) {
     populateContent(ws, match);
@@ -121,6 +198,8 @@ function populateContent(ws, match) {
       scoreRow.style.display = 'none';
     }
   }
+
+  buildCompRow(ws, match);
 }
 
 function setWinColor(hex) {

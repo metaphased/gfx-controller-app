@@ -1502,6 +1502,50 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   background: rgba(6,12,18,0.97); box-shadow: inset 0 2px 0 var(--primary);
 }
 
+/* Comp preview: header bar + a row of 5 champion swatches */
+.win-preview-comp { background: rgba(6,12,18,0.95); overflow: hidden; }
+.win-preview-comp-head {
+  position: absolute; top: 16%; left: 12%; width: 52%; height: 12%;
+  background: rgba(var(--accent-rgb),0.55);
+}
+.win-preview-comp-row {
+  position: absolute; left: 8%; right: 8%; bottom: 16%;
+  display: flex; gap: 3px; justify-content: center;
+}
+.win-preview-comp-row span {
+  flex: 1; height: 15px;
+  background: rgba(var(--accent-rgb),0.30);
+  border: 1px solid rgba(var(--accent-rgb),0.5);
+}
+
+/* "What will appear" preview under the Winning Draft Picks toggle */
+.win-picks-preview { margin-top: 10px; }
+.win-picks-preview:empty { display: none; }
+.wpp-head {
+  font-size: 11px; color: var(--text-dim); margin-bottom: 6px;
+  font-family: var(--ui-font), sans-serif; letter-spacing: 0.02em;
+}
+.wpp-row { display: flex; gap: 6px; }
+.wpp-pick { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.wpp-img {
+  width: 100%; aspect-ratio: 1 / 1;
+  background-size: cover; background-position: center;
+  background-color: var(--bg3);
+  border: 1px solid var(--border); border-radius: 2px;
+}
+.wpp-img.wpp-empty { border-style: dashed; opacity: 0.5; }
+.wpp-handle {
+  font-size: 9px; color: var(--text); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.03em;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--ui-font), sans-serif;
+}
+.wpp-warn {
+  font-size: 11px; color: var(--warn, #e6b800);
+  background: rgba(230,184,0,0.08); border: 1px solid rgba(230,184,0,0.25);
+  border-radius: 3px; padding: 8px 10px; line-height: 1.4;
+}
+
 .win-style-name {
   font-family: var(--ui-font), sans-serif;
   font-size: 13px; font-weight: 800; letter-spacing: 0.1em;

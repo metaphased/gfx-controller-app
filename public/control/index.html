@@ -1893,6 +1893,21 @@
               </div>
             </div>
           </div>
+
+          <div class="card">
+            <div class="card-title">Winning Draft Picks <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· LoL</span></div>
+            <p class="hint" style="margin-bottom:8px">Shows the winning team's champion picks from the game they won. The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="win-showpicks" onchange="patchWin({showPicks:this.checked})">
+              <span>Show winning draft picks on full-screen styles</span>
+            </label>
+            <div id="win-picks-pos-row" style="display:none;align-items:center;gap:4px;margin-top:8px">
+              <span class="hint" style="margin:0 4px 0 0">Position</span>
+              <label class="ctrl-radio-label"><input type="radio" name="win-picks-pos" value="below" onchange="patchWin({picksPosition:'below'})"> Below card</label>
+              <label class="ctrl-radio-label"><input type="radio" name="win-picks-pos" value="bottom" onchange="patchWin({picksPosition:'bottom'})"> Bottom strip</label>
+            </div>
+            <div id="win-picks-preview" class="win-picks-preview"></div>
+          </div>
         </div>
 
         <!-- Right column: animation style -->
@@ -2005,6 +2020,22 @@
               <div>
                 <div class="win-style-name">PUSH SLAB</div>
                 <div class="win-style-desc">A full-screen opaque slab pushes up from the bottom, holds, then keeps pushing up and off.</div>
+              </div>
+            </label>
+
+            <div class="win-style-group-label">League of Legends</div>
+
+            <label class="win-style-option" id="win-style-comp">
+              <input type="radio" name="win-style" value="comp" onchange="patchWin({style:'comp'})">
+              <div class="win-style-preview win-preview-comp">
+                <div class="win-preview-comp-head"></div>
+                <div class="win-preview-comp-row">
+                  <span></span><span></span><span></span><span></span><span></span>
+                </div>
+              </div>
+              <div>
+                <div class="win-style-name">COMP</div>
+                <div class="win-style-desc">Full-screen showcase of the winning team's champion picks + players. Needs a recorded game.</div>
               </div>
             </label>
           </div>
