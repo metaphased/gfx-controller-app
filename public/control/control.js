@@ -2128,6 +2128,9 @@ function syncWinTab(ws, match) {
   const showPicks = !!ws.showPicks;
   const spChk = g('win-showpicks'); if (spChk) spChk.checked = showPicks;
   const posRow = g('win-picks-pos-row'); if (posRow) posRow.style.display = showPicks ? 'flex' : 'none';
+  // Image shape applies to the picks whenever they show — COMP (always) or any
+  // style with showPicks on — so it lives here, not gated behind loading COMP.
+  const shapeRow = g('win-shape-row'); if (shapeRow) shapeRow.style.display = (showPicks || style === 'comp') ? 'flex' : 'none';
   const picksPos = ws.picksPosition === 'bottom' ? 'bottom' : 'below';
   ['below','bottom'].forEach(v => {
     const r = document.querySelector('input[name="win-picks-pos"][value="' + v + '"]');

@@ -22,8 +22,9 @@ const ANIM_MS = {
   shutter:   { in: 1000, out: 700  },
   flood:     { in: 1000, out: 700  },
   slab:      { in: 1000, out: 700  },
-  // COMP — winning team's champion picks as the hero (staggered portraits).
-  comp:      { in: 1400, out: 700  },
+  // COMP — winning team's champion picks as the hero (shutter cover in → bg
+  // cross-fade → header from top → champions rise from bottom; split exit).
+  comp:      { in: 1650, out: 850  },
 };
 
 // Styles whose card is centred with room below — the only ones the showPicks
@@ -83,10 +84,11 @@ let _compBgKey = '';
 function applyCompBackground(ws, state) {
   const el = document.getElementById('ws-comp-bg');
   if (!el) return;
-  if (_style !== 'comp' || !_visible) {
+  if (_style !== 'comp') {   // switched to another style — tear down now
     if (_compBgKey !== '') { GfxSettings.clearBackground(el); el.classList.remove('comp-bg-bespoke'); el.style.background = ''; _compBgKey = ''; }
     return;
   }
+  if (!_visible) return;     // hiding — keep the bg so the collapse-exit can animate; torn down when the exit finishes
   const bg  = ws.compBg || 'bespoke';
   const key = bg + '|' + _accentHex;   // re-apply when the choice or accent changes
   if (key === _compBgKey) return;
@@ -101,6 +103,7 @@ function applyCompBackground(ws, state) {
     el.style.background = 'var(--gfx-c4, #05080d)';
   } else {
     el.classList.remove('comp-bg-bespoke');
+    el.style.position = 'absolute';   // keep the engine from forcing position:relative (collapses the box)
     const anim = (state.settings && state.settings.animation) || {};
     GfxSettings.applyBackground(el, { settings: {
       bgType: 'animation', bgAnimation: bg,
@@ -395,17 +398,58 @@ function fitSplitName() {
 
 function animateIn() {
   const root = document.getElementById('win-root');
-  root.style.display = 'block';
+  // Before revealing, make sure any comp splash images are decoded. On a cold load
+  // they otherwise decode on the main thread DURING the entrance and jank the last
+  // champions ("skips the last part"). Warm loads already have decoded images, so
+  // the wait resolves instantly. A 400ms cap stops a slow/broken image holding the
+  // win screen back. While we wait the root is still display:none (nothing shown).
+  const imgs = Array.prototype.slice.call(document.querySelectorAll('#ws-comp-row img'));
+  if (imgs.length && imgs.some(im => !im.complete)) {
+    let started = false;
+    const start = () => { if (!started) { started = true; revealEntrance(root); } };
+    Promise.all(imgs.map(im => (im.decode ? im.decode().catch(() => {}) : Promise.resolve()))).then(start);
+    setTimeout(start, 400);
+    return;
+  }
+  revealEntrance(root);
+}
+
+function revealEntrance(root) {
+  // Commit `is-entering` (which pins every element's hidden start-state) while the
+  // root is STILL display:none, then reveal. That way the first painted frame
+  // already has the pin — the entrance never flashes the resting/centred state
+  // first (which it would if we revealed before adding the class, then let a
+  // forced reflow present that resting frame ahead of the animation engaging).
   root.classList.remove('is-exiting', 'is-visible');
-  void root.offsetWidth;
   root.classList.add('is-entering');
+  root.style.display = 'block';
+  void root.offsetWidth;
   if (_style === 'spotlight') startSpotParticles();
   if (_style === 'split') { startSplitParticles(); requestAnimationFrame(fitSplitName); }
-  const dur = (ANIM_MS[_style] || ANIM_MS.blade).in * _durScale();
-  setTimeout(() => {
+
+  // Flip is-entering → is-visible only once the entrance has TRULY finished.
+  // A fixed timer is just a guess at the end time; under load the champ animations
+  // start late (5 filtered/masked portraits compositing), so the timer can fire a
+  // few frames before the last champion lands — yanking is-entering mid-animation
+  // and clipping its final frames into a few-px snap. For COMP we instead settle on
+  // the LAST pick's animationend (can't clip), with a padded timer only as a
+  // fallback. Other styles keep the plain timer.
+  let settled = false;
+  const settle = () => {
+    if (settled || !root.classList.contains('is-entering')) return;
+    settled = true;
     root.classList.remove('is-entering');
     root.classList.add('is-visible');
-  }, dur);
+  };
+  const dur = (ANIM_MS[_style] || ANIM_MS.blade).in * _durScale();
+  if (_style === 'comp') {
+    const picks = root.querySelectorAll('.ws-comp-pick');
+    const last = picks[picks.length - 1];
+    if (last) last.addEventListener('animationend', settle, { once: true });
+    setTimeout(settle, dur + 350);   // fallback if animationend never fires
+  } else {
+    setTimeout(settle, dur);
+  }
 }
 
 function animateOut() {
@@ -418,6 +462,9 @@ function animateOut() {
   _outTimer = setTimeout(() => {
     root.classList.remove('is-exiting');
     root.style.display = 'none';
+    // Tear down the COMP background only now that the collapse-exit has finished.
+    const cb = document.getElementById('ws-comp-bg');
+    if (cb && _compBgKey !== '') { GfxSettings.clearBackground(cb); cb.classList.remove('comp-bg-bespoke'); cb.style.background = ''; _compBgKey = ''; }
     _outTimer = null;
   }, dur);
 }

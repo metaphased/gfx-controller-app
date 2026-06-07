@@ -13,7 +13,9 @@
   <!-- Solid base — shown for full-screen styles so OBS sees an opaque source -->
   <div class="ws-fullscreen-bg"></div>
 
-  <!-- COMP living background (bespoke CSS animation or a premade BG canvas) -->
+  <!-- COMP living background (bespoke CSS animation or a premade BG canvas).
+       The shutter in/out is a MASK on this element, so the animation runs the
+       whole time and is only revealed/hidden — never cross-faded over a colour. -->
   <div class="ws-comp-bg" id="ws-comp-bg"></div>
 
   <!-- BLADE: parallelogram band that sweeps across -->

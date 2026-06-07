@@ -1906,20 +1906,18 @@
               <label class="ctrl-radio-label"><input type="radio" name="win-picks-pos" value="below" onchange="patchWin({picksPosition:'below'})"> Below card</label>
               <label class="ctrl-radio-label"><input type="radio" name="win-picks-pos" value="bottom" onchange="patchWin({picksPosition:'bottom'})"> Bottom strip</label>
             </div>
+            <div id="win-shape-row" style="display:none;align-items:center;gap:6px;margin-top:8px">
+              <span class="hint" style="margin:0 4px 0 0">Image shape</span>
+              <button class="btn btn-sm" id="win-shape-rect" onclick="patchWin({compShape:'rect'})">Rectangular</button>
+              <button class="btn btn-sm" id="win-shape-angled" onclick="patchWin({compShape:'angled'})">Angled ⫽</button>
+            </div>
             <div id="win-picks-preview" class="win-picks-preview"></div>
           </div>
 
           <div class="card" id="win-comp-options" style="display:none">
             <div class="card-title">COMP Style Options</div>
-            <p class="hint" style="margin-bottom:8px">Only applies to the <strong>COMP</strong> win style.</p>
+            <p class="hint" style="margin-bottom:8px">Only applies to the <strong>COMP</strong> win style. (Image shape is on the Winning Draft Picks panel above.)</p>
             <div class="comp-opt-row">
-              <span class="comp-opt-label">Image shape</span>
-              <div class="gfx-ctrl-group" style="gap:6px">
-                <button class="btn btn-sm" id="win-shape-rect" onclick="patchWin({compShape:'rect'})">Rectangular</button>
-                <button class="btn btn-sm" id="win-shape-angled" onclick="patchWin({compShape:'angled'})">Angled ⫽</button>
-              </div>
-            </div>
-            <div class="comp-opt-row" style="margin-top:10px">
               <span class="comp-opt-label">Background</span>
               <select id="win-compbg" onchange="patchWin({compBg:this.value})">
                 <option value="bespoke">Energy (bespoke)</option>
