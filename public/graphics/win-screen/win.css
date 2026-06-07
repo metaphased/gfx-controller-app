@@ -496,6 +496,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .style-spotlight.is-entering .ws-spotlight-beam     { animation: ws-spotlight-beam-in     calc(0.75s * var(--gfx-dur-scale, 1)) ease-out calc(0.28s * var(--gfx-dur-scale, 1)) both; transform-origin: 50% 0%; }
 .style-spotlight.is-entering .ws-card               { animation: ws-spotlight-card-in     calc(0.65s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.34,1.56,0.64,1)) calc(0.52s * var(--gfx-dur-scale, 1)) both; }
 .style-spotlight.is-exiting  .ws-card               { animation: ws-spotlight-card-out    calc(0.22s * var(--gfx-dur-scale, 1)) ease both; }
+.style-spotlight.is-exiting  .ws-spotlight-beam     { animation: ws-spotlight-overlay-out calc(0.4s * var(--gfx-dur-scale, 1)) ease both; }
 .style-spotlight.is-exiting  .ws-spotlight-overlay  { animation: ws-spotlight-overlay-out calc(0.5s * var(--gfx-dur-scale, 1)) ease calc(0.18s * var(--gfx-dur-scale, 1)) both; }
 .style-spotlight.is-exiting  .ws-fullscreen-bg      { animation: ws-fullscreen-bg-out     calc(0.75s * var(--gfx-dur-scale, 1)) ease both; }
 
@@ -523,6 +524,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   top: 26vh; bottom: 26vh;
   width: 9vw;
   pointer-events: none;
+  opacity: 0;   /* purely an entrance effect — rests invisible so it never leaves a static bar */
   background: linear-gradient(to right,
     transparent,
     var(--win-col-a12)  25%,
@@ -546,7 +548,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 @keyframes ws-wipe-bar-in-b    { from { transform: translateY(100%);  } to { transform: translateY(0); } }
 @keyframes ws-wipe-bar-out-t   { from { transform: translateY(0);     } to { transform: translateY(-100%); } }
 @keyframes ws-wipe-bar-out-b   { from { transform: translateY(0);     } to { transform: translateY(100%);  } }
-@keyframes ws-wipe-streak-anim { from { left: -9vw; opacity: 1; } to { left: 109vw; opacity: 0.3; } }
+@keyframes ws-wipe-streak-anim { from { left: -9vw; opacity: 1; } to { left: 109vw; opacity: 0; } }
 @keyframes ws-wipe-card-in {
   from { opacity: 0; transform: translateY(-50%) translateX(6vw); }
   to   { opacity: 1; transform: translateY(-50%) translateX(0);   }
