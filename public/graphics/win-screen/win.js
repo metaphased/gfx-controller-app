@@ -6,14 +6,26 @@ let _style   = 'blade';
 let _outTimer = null;
 let _accentHex = '#1ffaff'; // win accent = palette Primary (real hex; setWinColor derives rgba)
 
+// Base hold times (ms) at the default animation speed (--gfx-dur-scale = 1).
+// Each `in` must be ≥ the longest CSS entrance animation for that style, or
+// removing `is-entering` interrupts an in-flight animation and the element
+// snaps back to its base state. These are scaled by the live dur-scale below
+// so the animation-speed setting keeps JS and CSS in sync.
 const ANIM_MS = {
   blade:     { in: 900,  out: 700  },
-  burst:     { in: 1100, out: 650  },
+  burst:     { in: 1350, out: 700  },  // outer ring ends at 0.62s+0.7s = 1320ms
   slam:      { in: 1000, out: 750  },
   split:     { in: 1150, out: 900  },
   spotlight: { in: 1350, out: 750  },
-  wipe:      { in: 1050, out: 650  },
+  wipe:      { in: 1200, out: 650  },  // streak ends at 0.42s+0.75s = 1170ms
 };
+
+// Current animation-speed multiplier the overlay CSS uses (set by
+// GfxSettings.applyAnimation). 0 = instant / reduced-motion. NaN-safe → 1.
+function _durScale() {
+  const v = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--gfx-dur-scale'));
+  return isNaN(v) ? 1 : v;
+}
 
 socket.on('connect', () => {
   _visible = false;
@@ -267,7 +279,7 @@ function animateIn() {
   root.classList.add('is-entering');
   if (_style === 'spotlight') startSpotParticles();
   if (_style === 'split') { startSplitParticles(); requestAnimationFrame(fitSplitName); }
-  const dur = (ANIM_MS[_style] || ANIM_MS.blade).in;
+  const dur = (ANIM_MS[_style] || ANIM_MS.blade).in * _durScale();
   setTimeout(() => {
     root.classList.remove('is-entering');
     root.classList.add('is-visible');
@@ -280,7 +292,7 @@ function animateOut() {
   root.classList.add('is-exiting');
   stopSpotParticles();
   stopSplitParticles();
-  const dur = (ANIM_MS[_style] || ANIM_MS.blade).out;
+  const dur = (ANIM_MS[_style] || ANIM_MS.blade).out * _durScale();
   _outTimer = setTimeout(() => {
     root.classList.remove('is-exiting');
     root.style.display = 'none';
