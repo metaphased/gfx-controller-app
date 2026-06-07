@@ -1528,12 +1528,12 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 .wpp-row { display: flex; gap: 6px; }
 .wpp-pick { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .wpp-img {
-  width: 100%; aspect-ratio: 1 / 1;
-  background-size: cover; background-position: center;
+  width: 100%; aspect-ratio: 4 / 5;
+  background-size: cover; background-position: center 22%;
   background-color: var(--bg3);
-  border: 1px solid var(--border); border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
 }
-.wpp-img.wpp-empty { border-style: dashed; opacity: 0.5; }
+.wpp-img.wpp-empty { box-shadow: inset 0 0 0 1px var(--border); opacity: 0.5; }
 .wpp-handle {
   font-size: 9px; color: var(--text); font-weight: 700;
   text-transform: uppercase; letter-spacing: 0.03em;
@@ -1545,6 +1545,15 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   background: rgba(230,184,0,0.08); border: 1px solid rgba(230,184,0,0.25);
   border-radius: 3px; padding: 8px 10px; line-height: 1.4;
 }
+
+/* COMP style options (shape + background) */
+.comp-opt-row { display: flex; align-items: center; gap: 10px; }
+.comp-opt-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim); width: 96px; flex-shrink: 0;
+  font-family: var(--ui-font), sans-serif;
+}
+#win-compbg { flex: 1; min-width: 0; }
 
 .win-style-name {
   font-family: var(--ui-font), sans-serif;

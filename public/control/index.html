@@ -1908,6 +1908,39 @@
             </div>
             <div id="win-picks-preview" class="win-picks-preview"></div>
           </div>
+
+          <div class="card" id="win-comp-options" style="display:none">
+            <div class="card-title">COMP Style Options</div>
+            <p class="hint" style="margin-bottom:8px">Only applies to the <strong>COMP</strong> win style.</p>
+            <div class="comp-opt-row">
+              <span class="comp-opt-label">Image shape</span>
+              <div class="gfx-ctrl-group" style="gap:6px">
+                <button class="btn btn-sm" id="win-shape-rect" onclick="patchWin({compShape:'rect'})">Rectangular</button>
+                <button class="btn btn-sm" id="win-shape-angled" onclick="patchWin({compShape:'angled'})">Angled ⫽</button>
+              </div>
+            </div>
+            <div class="comp-opt-row" style="margin-top:10px">
+              <span class="comp-opt-label">Background</span>
+              <select id="win-compbg" onchange="patchWin({compBg:this.value})">
+                <option value="bespoke">Energy (bespoke)</option>
+                <option value="solid">Solid colour</option>
+                <optgroup label="Premade animations">
+                  <option value="particles">Particles</option>
+                  <option value="scanlines">Scanlines</option>
+                  <option value="grid">Grid</option>
+                  <option value="hexgrid">Hex grid</option>
+                  <option value="diamonds">Diamonds</option>
+                  <option value="dotwave">Dot wave</option>
+                  <option value="lines">Lines</option>
+                  <option value="rings">Rings</option>
+                  <option value="circuit">Circuit</option>
+                  <option value="rain">Rain</option>
+                  <option value="fog">Fog</option>
+                  <option value="wave">Wave</option>
+                </optgroup>
+              </select>
+            </div>
+          </div>
         </div>
 
         <!-- Right column: animation style -->

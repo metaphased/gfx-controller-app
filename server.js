@@ -368,7 +368,7 @@ const makeDefault = () => ({
   bracket:     { visible: false, title: 'TOURNAMENT BRACKET', type: 'single', logoUrl: '', logoScale: 7, logoPosition: 'left', showLogo: false, rounds: [] },
   groupStage:  { visible: false, mode: 'live', logoUrl: '', logoScale: 7, logoPosition: 'left', showLogo: false },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
-  winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below' },
+  winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
   prizepool: { visible: false, showLogo: false, logoScale: 7, logoPosition: 'left', entries: [] },
   bgOutput: {
     bgType: 'animation', bgAnimation: 'particles',

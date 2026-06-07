@@ -65,13 +65,50 @@ function _wantCompRow(ws) {
 }
 
 // Toggle the root classes that show / position the compact champ-pick layer on
-// the eligible centred styles (COMP shows it via its own .style-comp rule).
+// the eligible centred styles (COMP shows it via its own .style-comp rule), plus
+// the angled-mask shape toggle.
 function applyPicksClasses(root, ws) {
   const layerOn = !!ws.showPicks && CENTERED_STYLES.indexOf(_style) !== -1;
   root.classList.toggle('picks-on', layerOn);
   const bottom = layerOn && ws.picksPosition === 'bottom';
   root.classList.toggle('picks-pos-bottom', bottom);
   root.classList.toggle('picks-pos-below', layerOn && !bottom);
+  root.classList.toggle('shape-angled', ws.compShape === 'angled');
+}
+
+// COMP built-in background. Bespoke = a CSS accent-energy animation; otherwise
+// reuse the shared BG engine to render a premade style into the comp bg element.
+// Only runs while the COMP win screen is on screen.
+let _compBgKey = '';
+function applyCompBackground(ws, state) {
+  const el = document.getElementById('ws-comp-bg');
+  if (!el) return;
+  if (_style !== 'comp' || !_visible) {
+    if (_compBgKey !== '') { GfxSettings.clearBackground(el); el.classList.remove('comp-bg-bespoke'); el.style.background = ''; _compBgKey = ''; }
+    return;
+  }
+  const bg  = ws.compBg || 'bespoke';
+  const key = bg + '|' + _accentHex;   // re-apply when the choice or accent changes
+  if (key === _compBgKey) return;
+  _compBgKey = key;
+  if (bg === 'bespoke') {
+    GfxSettings.clearBackground(el);   // tear down any premade canvas
+    el.style.background = '';           // let the CSS base (--gfx-c4) show
+    el.classList.add('comp-bg-bespoke');
+  } else if (bg === 'solid') {
+    GfxSettings.clearBackground(el);
+    el.classList.remove('comp-bg-bespoke');
+    el.style.background = 'var(--gfx-c4, #05080d)';
+  } else {
+    el.classList.remove('comp-bg-bespoke');
+    const anim = (state.settings && state.settings.animation) || {};
+    GfxSettings.applyBackground(el, { settings: {
+      bgType: 'animation', bgAnimation: bg,
+      bgColor: GfxSettings.palette(state, 3) || '#05080d',
+      animation: { bgSpeed: anim.bgSpeed || 'medium' },
+      palette: (state.settings && state.settings.palette) || [],
+    } });
+  }
 }
 
 let _compFp = '';
@@ -146,6 +183,7 @@ socket.on('state', state => {
   } else if (visible) {
     populateContent(ws, match);
   }
+  applyCompBackground(ws, state);
 });
 
 // Win accent source: 'side' = winning team's draft side (blue/red), 'custom' = a

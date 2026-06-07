@@ -700,60 +700,96 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .ws-comp-row { display: none; }
 
 .ws-comp-pick {
-  display: flex; flex-direction: column; align-items: center; gap: 0.9vh;
+  display: flex; flex-direction: column; align-items: center; gap: 1vh;
   flex: 0 0 auto;
 }
+/* Crisp accent frame — the accent background + thin padding reads as a clean
+   outline (and follows the angled clip-path). A downward shadow gives depth
+   without the generic neon glow. */
 .ws-comp-portrait {
   position: relative; overflow: hidden;
-  border: 1px solid var(--win-col-a70);
-  background: var(--win-col-a06);
-  box-shadow: 0 0 1.4vw var(--win-col-a30), inset 0 0 2vw var(--win-col-a06);
+  background: var(--win-color);
+  padding: 0.3vh;
+  box-shadow: 0 0.8vh 1.8vh rgba(0,0,0,0.55);
 }
 .ws-comp-portrait img {
   width: 100%; height: 100%;
-  object-fit: cover; object-position: center 22%;
+  object-fit: cover; object-position: center 18%;
   display: block;
+  background: var(--gfx-c4, #05080d);
 }
 .ws-comp-player {
   font-family: 'Barlow Condensed', sans-serif;
-  font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase;
+  font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--gfx-c3, #ffffff);
   text-align: center; line-height: 1; white-space: nowrap;
   max-width: 100%; overflow: hidden; text-overflow: ellipsis;
 }
 
+/* Angled mask — parallelogram portraits ( / / / / ) as a per-graphic toggle. */
+#win-root.shape-angled .ws-comp-portrait { clip-path: polygon(16% 0, 100% 0, 84% 100%, 0 100%); }
+
 @keyframes ws-comp-pick-in  { from { opacity: 0; transform: translateY(3.5vh); } to { opacity: 1; transform: translateY(0); } }
 @keyframes ws-comp-pick-out { from { opacity: 1; } to { opacity: 0; } }
+/* Hero entrance — bigger, punchier: rise + overshoot scale. */
+@keyframes ws-comp-hero-in  { 0% { opacity: 0; transform: translateY(9vh) scale(0.78); } 55% { opacity: 1; } 100% { opacity: 1; transform: translateY(0) scale(1); } }
+
+/* ── COMP living background ──────────────────────────────────────────────────
+   This is a single full-screen source — the background can't be composited
+   behind it in OBS/vMix, so it's built in. Bespoke = animated accent energy;
+   or swap in a premade BG style (canvas injected by applyBackground). */
+.ws-comp-bg { display: none; position: absolute; inset: 0; overflow: hidden; background: var(--gfx-c4, #05080d); }
+.style-comp .ws-comp-bg { display: block; }
+.ws-comp-bg.comp-bg-bespoke { box-shadow: inset 0 0 34vh rgba(0,0,0,0.72); }
+.ws-comp-bg.comp-bg-bespoke::before {
+  content: ''; position: absolute; inset: -25%;
+  background:
+    radial-gradient(38% 48% at 28% 32%, var(--win-col-a30), transparent 62%),
+    radial-gradient(44% 54% at 76% 70%, var(--win-col-a12), transparent 66%);
+  animation: ws-comp-bg-drift calc(15s * var(--gfx-dur-scale, 1)) ease-in-out infinite alternate;
+}
+.ws-comp-bg.comp-bg-bespoke::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(122deg, transparent 0 64px, var(--win-col-a06) 64px 65px);
+  -webkit-mask-image: radial-gradient(82% 82% at 50% 46%, #000 38%, transparent 100%);
+          mask-image: radial-gradient(82% 82% at 50% 46%, #000 38%, transparent 100%);
+  animation: ws-comp-bg-streak calc(9s * var(--gfx-dur-scale, 1)) linear infinite;
+}
+@keyframes ws-comp-bg-drift  { from { transform: translate(-3%, -2%) scale(1.05); } to { transform: translate(4%, 3%) scale(1.13); } }
+@keyframes ws-comp-bg-streak { from { background-position: 0 0; } to { background-position: 260px 0; } }
+@keyframes ws-comp-bg-in     { from { opacity: 0; } to { opacity: 1; } }
 
 /* ── COMP — dedicated full-screen comp showcase ─────────────────────────────── */
 .style-comp .ws-fullscreen-bg { display: block; }
 
 .style-comp .ws-card {
-  top: 15vh; left: 50%;
+  top: 13vh; left: 50%;
   transform: translateX(-50%);
   flex-direction: row; align-items: center; gap: 2vw;
   text-align: left;
 }
-.style-comp .ws-logo { width: 13vh; height: 13vh; flex-shrink: 0; filter: drop-shadow(0 0 2vw var(--win-col-a70)); }
-.style-comp .ws-name      { font-size: 6vh; }
-.style-comp .ws-message   { font-size: 1.7vh; }
+.style-comp .ws-logo { width: 13vh; height: 13vh; flex-shrink: 0; }
+.style-comp .ws-name      { font-size: 6.4vh; }
+.style-comp .ws-message   { font-size: 1.8vh; }
 .style-comp .ws-score-row { margin-top: 1vh; }
 
 .style-comp .ws-comp-row {
   display: flex; justify-content: center; align-items: flex-start;
-  position: absolute; top: 41vh; left: 50%;
+  position: absolute; top: 38vh; left: 50%;
   transform: translateX(-50%);
-  gap: 1.7vw;
+  gap: 1.6vw;
 }
-.style-comp .ws-comp-pick    { width: 15vh; }
-.style-comp .ws-comp-portrait { width: 15vh; height: 27vh; }
-.style-comp .ws-comp-player  { font-size: 2.1vh; }
+.style-comp .ws-comp-pick     { width: 17vh; }
+.style-comp .ws-comp-portrait { width: 17vh; height: 33vh; }
+.style-comp .ws-comp-player   { font-size: 2.4vh; margin-top: 0.4vh; }
 
 @keyframes ws-comp-header-in  { from { opacity: 0; transform: translateX(-50%) translateY(-2vh); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
 @keyframes ws-comp-header-out { from { opacity: 1; } to { opacity: 0; } }
 
+.style-comp.is-entering .ws-comp-bg   { animation: ws-comp-bg-in calc(0.6s * var(--gfx-dur-scale, 1)) ease both; }
 .style-comp.is-entering .ws-card      { animation: ws-comp-header-in calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) calc(0.12s * var(--gfx-dur-scale, 1)) both; }
 .style-comp.is-exiting  .ws-card      { animation: ws-comp-header-out calc(0.2s * var(--gfx-dur-scale, 1)) ease both; }
+.style-comp.is-exiting  .ws-comp-bg,
 .style-comp.is-exiting  .ws-fullscreen-bg { animation: ws-fullscreen-bg-out calc(0.7s * var(--gfx-dur-scale, 1)) ease both; }
 
 .style-comp .ws-blade-bg, .style-comp .ws-blade-line,
@@ -780,7 +816,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 /* Entrance / exit stagger (comp hero gets a longer, more luxurious stagger;
    the toggle layer is tighter so it always finishes inside the host style's
    shorter is-entering hold). nth-child delays scale with --gfx-dur-scale. */
-.style-comp.is-entering .ws-comp-pick,
+.style-comp.is-entering .ws-comp-pick { animation: ws-comp-hero-in calc(0.46s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.34,1.5,0.55,1)) both; }
 #win-root.picks-on.is-entering .ws-comp-pick { animation: ws-comp-pick-in calc(0.34s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.34,1.4,0.64,1)) both; }
 .style-comp.is-exiting .ws-comp-pick,
 #win-root.picks-on.is-exiting  .ws-comp-pick { animation: ws-comp-pick-out calc(0.18s * var(--gfx-dur-scale, 1)) ease both; }

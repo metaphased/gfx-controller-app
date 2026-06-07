@@ -2135,6 +2135,16 @@ function syncWinTab(ws, match) {
   });
   renderWinPicksPreview(ws, match);
 
+  // COMP-only options (champion image shape + built-in background)
+  const compOpts = g('win-comp-options');
+  if (compOpts) compOpts.style.display = style === 'comp' ? 'block' : 'none';
+  const compShape = ws.compShape === 'angled' ? 'angled' : 'rect';
+  const rectBtn = g('win-shape-rect'), angBtn = g('win-shape-angled');
+  if (rectBtn) rectBtn.classList.toggle('btn-active', compShape === 'rect');
+  if (angBtn)  angBtn.classList.toggle('btn-active', compShape === 'angled');
+  const compBgSel = g('win-compbg');
+  if (compBgSel && document.activeElement !== compBgSel) compBgSel.value = ws.compBg || 'bespoke';
+
   // Auto-status hint
   const statusEl = g('win-auto-status');
   if (statusEl) {
