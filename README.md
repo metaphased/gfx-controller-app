@@ -100,7 +100,7 @@ Each URL requires a `?token=XXXX` parameter. The full URLs with your active toke
 | Player Intro | `/graphics/player-intro/` | 3 layouts: Panel, Stack, Champion Showcase |
 | Head to Head | `/graphics/head2head/` | Spotlight + lineup modes, champion stats strip |
 | Draft Overlay | `/graphics/draft/` | Pick/ban board with timer |
-| Win Screen | `/graphics/win-screen/` | |
+| Win Screen | `/graphics/win-screen/` | 10 styles incl. 3 full-screen stingers + **COMP** (winning team's champion picks, full-screen); optional winning-draft-picks row on the other full-screen styles |
 | Break Screen | `/graphics/break-screen/` | PIP mode supported |
 | Pre-show | `/graphics/pre-show/` | |
 | Lower Third | `/graphics/lower-third/` | |

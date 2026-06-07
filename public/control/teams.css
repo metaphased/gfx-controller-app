@@ -1467,6 +1467,94 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   background: rgba(3,7,12,0.97);
 }
 
+/* ── Stinger group separator ──────────────────────────────────────────────── */
+.win-style-group-label {
+  font-family: var(--ui-font), sans-serif;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 14px 0 8px; padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+
+/* Shutter preview: opaque panels meet at centre with an accent seam */
+.win-preview-shutter { background: rgba(10,18,26,0.5); overflow: hidden; }
+.win-preview-shutter-top {
+  position: absolute; top: 0; left: 0; right: 0; height: 50%;
+  background: rgba(6,12,18,0.97); box-shadow: inset 0 -2px 0 rgba(var(--accent-rgb),0.7);
+}
+.win-preview-shutter-bot {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 50%;
+  background: rgba(6,12,18,0.97); box-shadow: inset 0 2px 0 rgba(var(--accent-rgb),0.7);
+}
+
+/* Flood preview: angled colour wash across the frame */
+.win-preview-flood { background: rgba(6,12,18,0.95); overflow: hidden; }
+.win-preview-flood-fill {
+  position: absolute; top: 0; bottom: 0; left: -20%; width: 150%;
+  transform: skewX(-12deg);
+  background: linear-gradient(118deg, var(--primary) 0%, rgba(var(--accent-rgb),0.7) 18%, rgba(6,12,18,0.97) 52%);
+}
+
+/* Push Slab preview: opaque slab with a bright accent top edge */
+.win-preview-slab { background: rgba(10,18,26,0.5); overflow: hidden; }
+.win-preview-slab-fill {
+  position: absolute; left: 0; right: 0; bottom: 0; top: 16%;
+  background: rgba(6,12,18,0.97); box-shadow: inset 0 2px 0 var(--primary);
+}
+
+/* Comp preview: header bar + a row of 5 champion swatches */
+.win-preview-comp { background: rgba(6,12,18,0.95); overflow: hidden; }
+.win-preview-comp-head {
+  position: absolute; top: 16%; left: 12%; width: 52%; height: 12%;
+  background: rgba(var(--accent-rgb),0.55);
+}
+.win-preview-comp-row {
+  position: absolute; left: 8%; right: 8%; bottom: 16%;
+  display: flex; gap: 3px; justify-content: center;
+}
+.win-preview-comp-row span {
+  flex: 1; height: 15px;
+  background: rgba(var(--accent-rgb),0.30);
+  border: 1px solid rgba(var(--accent-rgb),0.5);
+}
+
+/* "What will appear" preview under the Winning Draft Picks toggle */
+.win-picks-preview { margin-top: 10px; }
+.win-picks-preview:empty { display: none; }
+.wpp-head {
+  font-size: 11px; color: var(--text-dim); margin-bottom: 6px;
+  font-family: var(--ui-font), sans-serif; letter-spacing: 0.02em;
+}
+.wpp-row { display: flex; gap: 6px; }
+.wpp-pick { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.wpp-img {
+  width: 100%; aspect-ratio: 4 / 5;
+  background-size: cover; background-position: center 22%;
+  background-color: var(--bg3);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.10);
+}
+.wpp-img.wpp-empty { box-shadow: inset 0 0 0 1px var(--border); opacity: 0.5; }
+.wpp-handle {
+  font-size: 9px; color: var(--text); font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.03em;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  font-family: var(--ui-font), sans-serif;
+}
+.wpp-warn {
+  font-size: 11px; color: var(--warn, #e6b800);
+  background: rgba(230,184,0,0.08); border: 1px solid rgba(230,184,0,0.25);
+  border-radius: 3px; padding: 8px 10px; line-height: 1.4;
+}
+
+/* COMP style options (shape + background) */
+.comp-opt-row { display: flex; align-items: center; gap: 10px; }
+.comp-opt-label {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-dim); width: 96px; flex-shrink: 0;
+  font-family: var(--ui-font), sans-serif;
+}
+#win-compbg { flex: 1; min-width: 0; }
+
 .win-style-name {
   font-family: var(--ui-font), sans-serif;
   font-size: 13px; font-weight: 800; letter-spacing: 0.1em;

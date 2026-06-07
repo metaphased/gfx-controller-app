@@ -571,3 +571,344 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .style-wipe .ws-slam-overlay,
 .style-wipe .ws-split-overlay, .style-wipe .ws-split-panel-l, .style-wipe .ws-split-divider,
 .style-wipe .ws-spotlight-overlay, .style-wipe .ws-spotlight-beam, .style-wipe .ws-spotlight-particles { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   STINGER STYLES — full-screen, fully opaque at rest so the scene behind can
+   be switched unseen. Show animates the cover IN, hide animates it OUT (two
+   separate operator actions — never a one-press auto in+out).
+   New stinger elements default to display:none and are shown only for their
+   own style, so the original six styles need no edits to hide them.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Shared centred card for all three stinger styles */
+.style-shutter .ws-card, .style-flood .ws-card, .style-slab .ws-card {
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 58vw;
+  max-width: 900px;
+}
+.style-shutter .ws-logo, .style-flood .ws-logo, .style-slab .ws-logo {
+  width: 20vh; height: 20vh;
+  margin-bottom: 2vh;
+  filter: drop-shadow(0 0 3vw var(--win-col-a70));
+}
+.style-shutter .ws-name,    .style-flood .ws-name,    .style-slab .ws-name    { font-size: 8vh; text-align: center; }
+.style-shutter .ws-message, .style-flood .ws-message, .style-slab .ws-message { text-align: center; }
+.style-shutter .ws-score-row, .style-flood .ws-score-row, .style-slab .ws-score-row { justify-content: center; }
+.style-shutter .ws-text,    .style-flood .ws-text,    .style-slab .ws-text    { align-items: center; }
+
+/* ── SHUTTER — opaque panels drive in from top + bottom, meet at centre ──────── */
+.ws-shutter-top, .ws-shutter-bot {
+  position: absolute; left: 0; right: 0;
+  height: 50.6vh;                 /* slight overlap kills any sub-pixel seam gap */
+  background: var(--win-dark);
+  display: none;
+}
+.ws-shutter-top { top: 0;    box-shadow: inset 0 -2px 0 var(--win-col-a70); }
+.ws-shutter-bot { bottom: 0; box-shadow: inset 0  2px 0 var(--win-col-a70); }
+.style-shutter .ws-shutter-top, .style-shutter .ws-shutter-bot { display: block; }
+
+@keyframes ws-shutter-top-in  { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes ws-shutter-bot-in  { from { transform: translateY(100%);  } to { transform: translateY(0); } }
+@keyframes ws-shutter-top-out { from { transform: translateY(0); }     to { transform: translateY(-100%); } }
+@keyframes ws-shutter-bot-out { from { transform: translateY(0); }     to { transform: translateY(100%);  } }
+@keyframes ws-shutter-card-in  { from { opacity: 0; transform: translate(-50%,-50%) scale(0.9); } to { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
+@keyframes ws-shutter-card-out { from { opacity: 1; } to { opacity: 0; } }
+
+.style-shutter.is-entering .ws-shutter-top { animation: ws-shutter-top-in  calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both; }
+.style-shutter.is-entering .ws-shutter-bot { animation: ws-shutter-bot-in  calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both; }
+.style-shutter.is-entering .ws-card        { animation: ws-shutter-card-in calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.34,1.4,0.64,1)) calc(0.42s * var(--gfx-dur-scale, 1)) both; }
+.style-shutter.is-exiting  .ws-card        { animation: ws-shutter-card-out calc(0.2s * var(--gfx-dur-scale, 1)) ease both; }
+.style-shutter.is-exiting  .ws-shutter-top { animation: ws-shutter-top-out calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) calc(0.12s * var(--gfx-dur-scale, 1)) both; }
+.style-shutter.is-exiting  .ws-shutter-bot { animation: ws-shutter-bot-out calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) calc(0.12s * var(--gfx-dur-scale, 1)) both; }
+
+.style-shutter .ws-blade-bg, .style-shutter .ws-blade-line,
+.style-shutter .ws-burst-bg, .style-shutter .ws-burst-flash, .style-shutter .ws-burst-ring,
+.style-shutter .ws-slam-overlay,
+.style-shutter .ws-split-overlay, .style-shutter .ws-split-panel-l, .style-shutter .ws-split-divider, .style-shutter .ws-split-particles,
+.style-shutter .ws-spotlight-overlay, .style-shutter .ws-spotlight-beam, .style-shutter .ws-spotlight-particles,
+.style-shutter .ws-wipe-bar-top, .style-shutter .ws-wipe-bar-bot, .style-shutter .ws-wipe-streak { display: none; }
+
+/* ── FLOOD — solid colour floods across the frame on an angled wipe ──────────── */
+.ws-flood-fill {
+  position: absolute; top: 0; bottom: 0;
+  left: -30%; width: 160%;        /* oversized so the skewed slab covers every corner */
+  transform: skewX(-12deg);       /* resting (covered) state — entrance brings it in */
+  background: linear-gradient(118deg,
+    var(--win-color)   0%,
+    var(--win-col-a70) 16%,
+    var(--win-dark)    46%,
+    var(--win-dark)    100%
+  );
+  display: none;
+}
+.style-flood .ws-flood-fill { display: block; }
+
+@keyframes ws-flood-in  { from { transform: skewX(-12deg) translateX(-160%); } to { transform: skewX(-12deg) translateX(0); } }
+@keyframes ws-flood-out { from { transform: skewX(-12deg) translateX(0); }     to { transform: skewX(-12deg) translateX(160%); } }
+@keyframes ws-flood-card-in  { from { opacity: 0; transform: translate(-50%,-50%) scale(0.92); } to { opacity: 1; transform: translate(-50%,-50%) scale(1); } }
+@keyframes ws-flood-card-out { from { opacity: 1; } to { opacity: 0; } }
+
+.style-flood.is-entering .ws-flood-fill { animation: ws-flood-in   calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both; }
+.style-flood.is-entering .ws-card       { animation: ws-flood-card-in  calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.34,1.4,0.64,1)) calc(0.4s * var(--gfx-dur-scale, 1)) both; }
+.style-flood.is-exiting  .ws-card       { animation: ws-flood-card-out calc(0.2s * var(--gfx-dur-scale, 1)) ease both; }
+.style-flood.is-exiting  .ws-flood-fill { animation: ws-flood-out  calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) calc(0.1s * var(--gfx-dur-scale, 1)) both; }
+
+.style-flood .ws-blade-bg, .style-flood .ws-blade-line,
+.style-flood .ws-burst-bg, .style-flood .ws-burst-flash, .style-flood .ws-burst-ring,
+.style-flood .ws-slam-overlay,
+.style-flood .ws-split-overlay, .style-flood .ws-split-panel-l, .style-flood .ws-split-divider, .style-flood .ws-split-particles,
+.style-flood .ws-spotlight-overlay, .style-flood .ws-spotlight-beam, .style-flood .ws-spotlight-particles,
+.style-flood .ws-wipe-bar-top, .style-flood .ws-wipe-bar-bot, .style-flood .ws-wipe-streak { display: none; }
+
+/* ── PUSH SLAB — full-screen opaque slab pushes up from the bottom ───────────── */
+.ws-slab {
+  position: absolute; inset: 0;
+  background: var(--win-dark);
+  box-shadow: inset 0 3px 0 var(--win-color);   /* bright accent edge leads the push */
+  display: none;
+}
+.style-slab .ws-slab { display: block; }
+
+@keyframes ws-slab-in  { from { transform: translateY(100%);  } to { transform: translateY(0); } }
+@keyframes ws-slab-out { from { transform: translateY(0); }     to { transform: translateY(-100%); } }
+@keyframes ws-slab-card-in  { from { opacity: 0; transform: translate(-50%, calc(-50% + 55vh)); } to { opacity: 1; transform: translate(-50%, -50%); } }
+@keyframes ws-slab-card-out { from { opacity: 1; transform: translate(-50%, -50%); } to { opacity: 0; transform: translate(-50%, calc(-50% - 100vh)); } }
+
+.style-slab.is-entering .ws-slab { animation: ws-slab-in   calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both; }
+.style-slab.is-entering .ws-card { animation: ws-slab-card-in  calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) calc(0.32s * var(--gfx-dur-scale, 1)) both; }
+.style-slab.is-exiting  .ws-card { animation: ws-slab-card-out calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) calc(0.08s * var(--gfx-dur-scale, 1)) both; }
+.style-slab.is-exiting  .ws-slab { animation: ws-slab-out  calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) calc(0.08s * var(--gfx-dur-scale, 1)) both; }
+
+.style-slab .ws-blade-bg, .style-slab .ws-blade-line,
+.style-slab .ws-burst-bg, .style-slab .ws-burst-flash, .style-slab .ws-burst-ring,
+.style-slab .ws-slam-overlay,
+.style-slab .ws-split-overlay, .style-slab .ws-split-panel-l, .style-slab .ws-split-divider, .style-slab .ws-split-particles,
+.style-slab .ws-spotlight-overlay, .style-slab .ws-spotlight-beam, .style-slab .ws-spotlight-particles,
+.style-slab .ws-wipe-bar-top, .style-slab .ws-wipe-bar-bot, .style-slab .ws-wipe-streak { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WINNING-TEAM CHAMPION PICKS
+   - .ws-comp-row hosts 5 champion portraits + player handles.
+   - Hero size for the dedicated COMP style; compact when layered onto a
+     centred full-screen style via the showPicks toggle (#win-root.picks-on).
+   - Defaults to display:none so the other styles need no edits to hide it.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.ws-comp-row { display: none; }
+
+.ws-comp-pick {
+  display: flex; flex-direction: column; align-items: center; gap: 1vh;
+  flex: 0 0 auto;
+  /* Stay on a GPU layer for the whole show. While the rise-in transform animates,
+     the pick is composited at a sub-pixel x (flex centring rarely lands on a whole
+     pixel); without this the layer is demoted at animation end and snaps to the
+     pixel grid — a few-px jump, worst on the last/rightmost champ. Keeping it
+     promoted means the resting render matches the animated one: no snap. */
+  will-change: transform;
+}
+/* No frame — just the bare splash and a downward drop shadow for depth.
+   The shadow is a drop-shadow FILTER on the wrapper (not box-shadow on the img)
+   so it follows the img's actual silhouette: a rectangle in rect mode, a
+   parallelogram in angled mode (where the img is reshaped by an anti-aliased SVG
+   mask). box-shadow can't do that — it always traces the rectangular box. */
+.ws-comp-portrait {
+  position: relative;
+  filter: drop-shadow(0 0.8vh 1.8vh rgba(0,0,0,0.55));
+}
+.ws-comp-portrait img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center 18%;
+  display: block;
+  background: var(--gfx-c4, #05080d);
+}
+.ws-comp-player {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--gfx-c3, #ffffff);
+  text-align: center; line-height: 1; white-space: nowrap;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Angled mode — lean the FRAME into a parallelogram ( / / / / ) while the art
+   stays perfectly UPRIGHT. Cut the shape with an anti-aliased SVG MASK — NOT
+   clip-path, NOT overflow:hidden, NOT skew. Chromium/CEF anti-aliases mask alpha,
+   so the slanted edges are smooth; clip-path polygons, overflow-clipped boxes,
+   and (if we wanted upright art) counter-skew containers all rasterize jagged.
+   preserveAspectRatio='none' stretches the polygon to the box, so the lean stays
+   proportional at any size. The wrapper's drop-shadow filter follows this shape. */
+#win-root.shape-angled .ws-comp-portrait img {
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='16,0 100,0 84,100 0,100' fill='%23fff'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
+          mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100' preserveAspectRatio='none'%3E%3Cpolygon points='16,0 100,0 84,100 0,100' fill='%23fff'/%3E%3C/svg%3E") no-repeat 0 0 / 100% 100%;
+}
+/* The mask's BOTTOM edge is shifted left (spans 0→84% of the width, centre 42%)
+   while the name sits at the bounding-box centre (50%). Nudge it left by that 8%
+   so it reads as centred under the bottom of the slanted portrait, not the top. */
+#win-root.shape-angled .ws-comp-player { transform: translateX(calc(var(--comp-pw, 20vh) * -0.08)); }
+
+@keyframes ws-comp-pick-in  { from { opacity: 0; transform: translateY(3.5vh); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ws-comp-pick-out { from { opacity: 1; } to { opacity: 0; } }
+/* Hero — rise from the bottom on entry (daisychained left→right); drop down on exit. */
+@keyframes ws-comp-hero-in  { from { opacity: 0; transform: translateY(6vh); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ws-comp-hero-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(7vh); } }
+
+/* ── COMP living background ──────────────────────────────────────────────────
+   This is a single full-screen source — the background can't be composited
+   behind it in OBS/vMix, so it's built in. Bespoke = animated accent energy;
+   or swap in a premade BG style (canvas injected by applyBackground). */
+/* width/height 100% (not just inset:0) so the box keeps full size even when the
+   BG engine forces position:relative on it while injecting its canvas. */
+.ws-comp-bg { display: none; position: absolute; inset: 0; width: 100%; height: 100%; overflow: hidden; background: var(--gfx-c4, #05080d); }
+.style-comp .ws-comp-bg { display: block; }
+.ws-comp-bg.comp-bg-bespoke { box-shadow: inset 0 0 34vh rgba(0,0,0,0.72); }
+.ws-comp-bg.comp-bg-bespoke::before {
+  content: ''; position: absolute; inset: -25%;
+  background:
+    radial-gradient(38% 48% at 28% 32%, var(--win-col-a30), transparent 62%),
+    radial-gradient(44% 54% at 76% 70%, var(--win-col-a12), transparent 66%);
+  animation: ws-comp-bg-drift calc(15s * var(--gfx-dur-scale, 1)) ease-in-out infinite alternate;
+}
+.ws-comp-bg.comp-bg-bespoke::after {
+  content: ''; position: absolute; inset: 0;
+  background: repeating-linear-gradient(120deg, transparent 0 59px, var(--win-col-a06) 59px 60px);
+  -webkit-mask-image: radial-gradient(82% 82% at 50% 46%, #000 38%, transparent 100%);
+          mask-image: radial-gradient(82% 82% at 50% 46%, #000 38%, transparent 100%);
+  animation: ws-comp-bg-streak calc(9s * var(--gfx-dur-scale, 1)) linear infinite;
+}
+@keyframes ws-comp-bg-drift  { from { transform: translate(-3%, -2%) scale(1.05); } to { transform: translate(4%, 3%) scale(1.13); } }
+/* Shift by exactly one 60px gradient period along the 120deg normal so the
+   diagonal lines loop seamlessly (no skip). */
+@keyframes ws-comp-bg-streak { from { background-position: 0 0; } to { background-position: 51.96px 30px; } }
+/* Shutter mask — two bands slide in from the top + bottom to reveal the living
+   background (entrance) and split back apart to hide it (exit). Only the mask
+   moves; the background itself never fades. */
+@keyframes ws-comp-mask-in {
+  from { -webkit-mask-position: 0 -50.5vh, 0 calc(100% + 50.5vh); mask-position: 0 -50.5vh, 0 calc(100% + 50.5vh); }
+  to   { -webkit-mask-position: 0 0, 0 100%;                      mask-position: 0 0, 0 100%; }
+}
+@keyframes ws-comp-mask-out {
+  from { -webkit-mask-position: 0 0, 0 100%;                      mask-position: 0 0, 0 100%; }
+  to   { -webkit-mask-position: 0 -50.5vh, 0 calc(100% + 50.5vh); mask-position: 0 -50.5vh, 0 calc(100% + 50.5vh); }
+}
+
+/* ── COMP — dedicated full-screen comp showcase ─────────────────────────────── */
+.style-comp .ws-fullscreen-bg { display: block; }
+
+/* Celebratory centred header — big logo + accent VICTORY + large team name.
+   No score (the space goes to the team identity). */
+/* Centred via a full-width box + align-items, NOT left:50%/translateX(-50%):
+   width-dependent centering would shift if the text width changes (e.g. the
+   Barlow web font swapping in mid-entrance on a cold/hard load, while the card
+   is on a composited layer with a stale translateX). Full-width + flex centering
+   is immune to that — the entrance only needs translateY. */
+.style-comp .ws-card {
+  top: 8vh; left: 0; right: 0;
+  flex-direction: column; align-items: center; gap: 0.3vh;
+  text-align: center;
+}
+.style-comp .ws-logo    { width: 13vh; height: 13vh; flex-shrink: 0; margin-bottom: 0.8vh; }
+.style-comp .ws-tag     { font-size: 2.2vh; letter-spacing: 0.5em; color: var(--win-color); }
+.style-comp .ws-name    { font-size: 8.2vh; line-height: 0.9; }
+.style-comp .ws-message { font-size: 2vh; letter-spacing: 0.3em; margin-top: 0.6vh; color: rgba(255,255,255,0.72); }
+.style-comp .ws-score-row { display: none !important; }
+
+.style-comp .ws-comp-row {
+  display: flex; justify-content: center; align-items: flex-start;
+  position: absolute; top: 38vh; left: 0; right: 0;
+  gap: 0.8vw;
+}
+.style-comp .ws-comp-pick     { --comp-pw: 20vh; width: var(--comp-pw); }
+.style-comp .ws-comp-portrait { width: var(--comp-pw); height: 39vh; }
+.style-comp .ws-comp-player   { font-size: 2.5vh; margin-top: 0.8vh; }
+/* Angled portraits sit tighter so the slants read as one continuous run. */
+.style-comp.shape-angled .ws-comp-row { gap: 0.3vw; }
+
+/* Choreography — the bg mask shutters in to reveal the living background, the
+   header drops from the top, and the champions rise from the bottom
+   (daisychained). Exit splits: header up, champions down, then the bg mask
+   slides apart to hide the background. */
+@keyframes ws-comp-header-in  { from { opacity: 0; transform: translateY(-8vh); } to { opacity: 1; transform: translateY(0); } }
+@keyframes ws-comp-header-out { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-6vh); } }
+
+/* The shutter mask is applied ONLY while entering/exiting (no band seam while
+   held open). Both the living background AND the opaque base are masked the same
+   way, so the centre is transparent throughout the shutter — IN and OUT — and
+   only fills solid once it's fully held open. White bands reveal under both
+   alpha and luminance mask modes. */
+.style-comp.is-entering .ws-comp-bg, .style-comp.is-entering .ws-fullscreen-bg,
+.style-comp.is-exiting  .ws-comp-bg, .style-comp.is-exiting  .ws-fullscreen-bg {
+  -webkit-mask-image: linear-gradient(#fff, #fff), linear-gradient(#fff, #fff);
+          mask-image: linear-gradient(#fff, #fff), linear-gradient(#fff, #fff);
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+  -webkit-mask-size: 100% 50.5vh, 100% 50.5vh;
+          mask-size: 100% 50.5vh, 100% 50.5vh;
+}
+
+/* Entrance: background + base shutter-MASK in from the edges (centre transparent
+   until the bands meet) → header drops from the top → champions rise. */
+/* The `from`-states below are also pinned as the base style so the very first
+   painted frame is already the hidden start-state — never the resting style —
+   even if the compositor paints a frame before the delayed animation engages
+   (a cold-start FOUC race that otherwise flashes the header at its resting spot). */
+.style-comp.is-entering .ws-comp-bg, .style-comp.is-entering .ws-fullscreen-bg {
+  -webkit-mask-position: 0 -50.5vh, 0 calc(100% + 50.5vh);
+          mask-position: 0 -50.5vh, 0 calc(100% + 50.5vh);
+  animation: ws-comp-mask-in calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both;
+}
+.style-comp.is-entering .ws-card {
+  opacity: 0; transform: translateY(-8vh);
+  animation: ws-comp-header-in calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) calc(0.5s * var(--gfx-dur-scale, 1)) both;
+}
+
+/* Exit: header up / champions down + fade, then background + base shutter-MASK
+   out (split apart) → centre opens to transparency. */
+.style-comp.is-exiting .ws-card { animation: ws-comp-header-out calc(0.28s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) both; }
+/* Pin the held-open mask as the base so the exit's delay can't flash a default
+   (half-covered) mask position before ws-comp-mask-out's backwards-fill engages. */
+.style-comp.is-exiting .ws-comp-bg, .style-comp.is-exiting .ws-fullscreen-bg {
+  -webkit-mask-position: 0 0, 0 100%;
+          mask-position: 0 0, 0 100%;
+  animation: ws-comp-mask-out calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) calc(0.22s * var(--gfx-dur-scale, 1)) both;
+}
+
+.style-comp .ws-blade-bg, .style-comp .ws-blade-line,
+.style-comp .ws-burst-bg, .style-comp .ws-burst-flash, .style-comp .ws-burst-ring,
+.style-comp .ws-slam-overlay,
+.style-comp .ws-split-overlay, .style-comp .ws-split-panel-l, .style-comp .ws-split-divider, .style-comp .ws-split-particles,
+.style-comp .ws-spotlight-overlay, .style-comp .ws-spotlight-beam, .style-comp .ws-spotlight-particles,
+.style-comp .ws-wipe-bar-top, .style-comp .ws-wipe-bar-bot, .style-comp .ws-wipe-streak,
+.style-comp .ws-shutter-top, .style-comp .ws-shutter-bot, .style-comp .ws-flood-fill, .style-comp .ws-slab { display: none; }
+
+/* ── Toggle layer — compact champ row on the centred full-screen styles ─────── */
+#win-root.picks-on .ws-comp-row {
+  display: flex; justify-content: center; align-items: flex-start;
+  position: absolute; left: 0; right: 0;
+  gap: 1vw;
+}
+#win-root.picks-pos-below  .ws-comp-row { top: 63vh; }
+#win-root.picks-pos-bottom .ws-comp-row { top: auto; bottom: 6vh; }
+#win-root.picks-on .ws-comp-pick     { --comp-pw: 9vh; width: var(--comp-pw); }
+#win-root.picks-on .ws-comp-portrait { width: var(--comp-pw); height: 15vh; }
+#win-root.picks-on .ws-comp-player   { font-size: 1.5vh; }
+
+/* Entrance / exit stagger (comp hero gets a longer, more luxurious stagger;
+   the toggle layer is tighter so it always finishes inside the host style's
+   shorter is-entering hold). nth-child delays scale with --gfx-dur-scale. */
+.style-comp.is-entering .ws-comp-pick { opacity: 0; transform: translateY(6vh); animation: ws-comp-hero-in calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both; }
+#win-root.picks-on.is-entering .ws-comp-pick { opacity: 0; transform: translateY(3.5vh); animation: ws-comp-pick-in calc(0.34s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.34,1.4,0.64,1)) both; }
+.style-comp.is-exiting .ws-comp-pick { animation: ws-comp-hero-out calc(0.3s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) both; }
+#win-root.picks-on.is-exiting  .ws-comp-pick { animation: ws-comp-pick-out calc(0.18s * var(--gfx-dur-scale, 1)) ease both; }
+
+.style-comp.is-entering .ws-comp-pick:nth-child(1) { animation-delay: calc(0.72s * var(--gfx-dur-scale, 1)); }
+.style-comp.is-entering .ws-comp-pick:nth-child(2) { animation-delay: calc(0.80s * var(--gfx-dur-scale, 1)); }
+.style-comp.is-entering .ws-comp-pick:nth-child(3) { animation-delay: calc(0.88s * var(--gfx-dur-scale, 1)); }
+.style-comp.is-entering .ws-comp-pick:nth-child(4) { animation-delay: calc(0.96s * var(--gfx-dur-scale, 1)); }
+.style-comp.is-entering .ws-comp-pick:nth-child(5) { animation-delay: calc(1.04s * var(--gfx-dur-scale, 1)); }
+
+#win-root.picks-on.is-entering .ws-comp-pick:nth-child(1) { animation-delay: calc(0.36s * var(--gfx-dur-scale, 1)); }
+#win-root.picks-on.is-entering .ws-comp-pick:nth-child(2) { animation-delay: calc(0.41s * var(--gfx-dur-scale, 1)); }
+#win-root.picks-on.is-entering .ws-comp-pick:nth-child(3) { animation-delay: calc(0.46s * var(--gfx-dur-scale, 1)); }
+#win-root.picks-on.is-entering .ws-comp-pick:nth-child(4) { animation-delay: calc(0.51s * var(--gfx-dur-scale, 1)); }
+#win-root.picks-on.is-entering .ws-comp-pick:nth-child(5) { animation-delay: calc(0.56s * var(--gfx-dur-scale, 1)); }

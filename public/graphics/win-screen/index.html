@@ -13,6 +13,11 @@
   <!-- Solid base — shown for full-screen styles so OBS sees an opaque source -->
   <div class="ws-fullscreen-bg"></div>
 
+  <!-- COMP living background (bespoke CSS animation or a premade BG canvas).
+       The shutter in/out is a MASK on this element, so the animation runs the
+       whole time and is only revealed/hidden — never cross-faded over a colour. -->
+  <div class="ws-comp-bg" id="ws-comp-bg"></div>
+
   <!-- BLADE: parallelogram band that sweeps across -->
   <div class="ws-blade-bg"></div>
   <div class="ws-blade-line ws-blade-line-top"></div>
@@ -43,6 +48,19 @@
   <div class="ws-wipe-bar-top"></div>
   <div class="ws-wipe-bar-bot"></div>
   <div class="ws-wipe-streak"></div>
+
+  <!-- SHUTTER (stinger): opaque panels drive in from top + bottom to full cover -->
+  <div class="ws-shutter-top"></div>
+  <div class="ws-shutter-bot"></div>
+
+  <!-- FLOOD (stinger): solid colour floods across the whole frame on an angled wipe -->
+  <div class="ws-flood-fill"></div>
+
+  <!-- PUSH SLAB (stinger): full-screen opaque slab pushes up from the bottom -->
+  <div class="ws-slab"></div>
+
+  <!-- COMP / draft-picks row (hero for the COMP style; compact layer when showPicks is on) -->
+  <div class="ws-comp-row" id="ws-comp-row"></div>
 
   <!-- Shared content card (positioned differently per style via CSS) -->
   <div class="ws-card" id="ws-card">
