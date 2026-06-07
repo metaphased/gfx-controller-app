@@ -2119,7 +2119,7 @@ function syncWinTab(ws, match) {
 
   // Animation style radios — migrate legacy 'surge' → 'burst'
   const style = (ws.style === 'surge' ? 'burst' : ws.style) || 'blade';
-  ['blade','burst','slam','split','spotlight','wipe'].forEach(v => {
+  ['blade','burst','slam','split','spotlight','wipe','shutter','flood','slab'].forEach(v => {
     const r = document.querySelector('input[name="win-style"][value="' + v + '"]');
     if (r) r.checked = style === v;
   });

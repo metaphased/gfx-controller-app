@@ -1971,6 +1971,42 @@
                 <div class="win-style-desc">Cinematic letterbox bars close in, team name slices through with a light streak.</div>
               </div>
             </label>
+
+            <div class="win-style-group-label">Stingers — full-screen cover for scene transitions</div>
+
+            <label class="win-style-option" id="win-style-shutter">
+              <input type="radio" name="win-style" value="shutter" onchange="patchWin({style:'shutter'})">
+              <div class="win-style-preview win-preview-shutter">
+                <div class="win-preview-shutter-top"></div>
+                <div class="win-preview-shutter-bot"></div>
+              </div>
+              <div>
+                <div class="win-style-name">SHUTTER</div>
+                <div class="win-style-desc">Opaque panels drive in from top and bottom to fully cover, winner snaps in on the seam.</div>
+              </div>
+            </label>
+
+            <label class="win-style-option" id="win-style-flood">
+              <input type="radio" name="win-style" value="flood" onchange="patchWin({style:'flood'})">
+              <div class="win-style-preview win-preview-flood">
+                <div class="win-preview-flood-fill"></div>
+              </div>
+              <div>
+                <div class="win-style-name">FLOOD</div>
+                <div class="win-style-desc">A solid colour floods across the whole frame on an angled wipe. Full opaque cover.</div>
+              </div>
+            </label>
+
+            <label class="win-style-option" id="win-style-slab">
+              <input type="radio" name="win-style" value="slab" onchange="patchWin({style:'slab'})">
+              <div class="win-style-preview win-preview-slab">
+                <div class="win-preview-slab-fill"></div>
+              </div>
+              <div>
+                <div class="win-style-name">PUSH SLAB</div>
+                <div class="win-style-desc">A full-screen opaque slab pushes up from the bottom, holds, then keeps pushing up and off.</div>
+              </div>
+            </label>
           </div>
         </div>
 

@@ -18,6 +18,10 @@ const ANIM_MS = {
   split:     { in: 1150, out: 900  },
   spotlight: { in: 1350, out: 750  },
   wipe:      { in: 1200, out: 650  },  // streak ends at 0.42s+0.75s = 1170ms
+  // Full-screen "stinger" styles — opaque cover, manual show/hide.
+  shutter:   { in: 1000, out: 700  },
+  flood:     { in: 1000, out: 700  },
+  slab:      { in: 1000, out: 700  },
 };
 
 // Current animation-speed multiplier the overlay CSS uses (set by
