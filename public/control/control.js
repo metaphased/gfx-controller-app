@@ -2163,11 +2163,12 @@ function _winNormRole(r) { r = (r || '').toLowerCase().trim(); return r === 'adc
 function renderWinPicksPreview(ws, match) {
   const el = g('win-picks-preview'); if (!el) return;
   const winner   = (ws && ws.team) || 'team1';
+  const tk       = winner === 'team2' ? 't2' : 't1';   // seriesGames stores picks as t1/t2RolePicks
   const t        = (match && match[winner]) || {};
   const winLabel = t.tag || t.name || (winner === 'team1' ? 'Team 1' : 'Team 2');
   const game     = _winCompGame(ws, match);
-  const picks    = (game && game[winner + 'RolePicks']) || [];
-  const players  = (game && game.players && game.players[winner]) || [];
+  const picks    = (game && game[tk + 'RolePicks']) || [];
+  const players  = (game && game.players && game.players[winner]) || [];   // players keyed team1/team2
   const hasPicks = picks.some(function (p) { return !!p; });
 
   if (!_sfp('winPicksPreview', { w: winner, l: winLabel, g: game && game.gameNum, p: picks, st: ws && ws.style, sp: !!(ws && ws.showPicks) })) return;

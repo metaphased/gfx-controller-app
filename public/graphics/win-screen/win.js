@@ -81,9 +81,10 @@ function buildCompRow(ws, match) {
   if (!_wantCompRow(ws)) { if (_compFp !== '') { _compFp = ''; row.innerHTML = ''; } return; }
 
   const winner  = ws.team || 'team1';
+  const tk      = winner === 'team2' ? 't2' : 't1';   // seriesGames stores picks as t1/t2RolePicks
   const game    = winningCompGame(ws, match);
-  const picks   = (game && game[winner + 'RolePicks']) || [];
-  const players  = (game && game.players && game.players[winner]) || [];
+  const picks   = (game && game[tk + 'RolePicks']) || [];
+  const players  = (game && game.players && game.players[winner]) || [];   // players keyed team1/team2
 
   // Only rebuild when the comp actually changes — otherwise the champion
   // images re-fetch and flicker on every state broadcast.
