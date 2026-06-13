@@ -2,7 +2,7 @@
 
 A breakdown of the prize distribution — placements and amounts, with optional sponsor credit. Output at `/graphics/prizepool/`.
 
-![Prizepool breakdown](img/prizepool.png)
+![Prizepool breakdown](img/prizepool.jpg)
 
 > **Scope:** the prize/sponsor tools are for crediting sponsors who contribute to a community/grassroots event's **prize pool** — not for selling commercial ad space. See the note in the [README](../README.md).
 
@@ -12,6 +12,8 @@ A breakdown of the prize distribution — placements and amounts, with optional 
 2. In the **Prizepool graphics tab**, add entries — each has a **label** (e.g. "1st", "3rd–4th"), a **value** (e.g. "$2,000"), an optional **highlight**, and optional **sponsor name/logo** or a prize image.
 
 ## Display options
+
+![Prizepool control tab](img/tool-prizepool.jpg)
 
 From the Prizepool ctrl-bar:
 

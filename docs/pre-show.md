@@ -2,9 +2,11 @@
 
 The "stream starting soon" screen — a countdown to broadcast, the day's matchup, sponsors and a scrolling ticker. Driven from **Graphics → Pre-show**, output at `/graphics/pre-show/`.
 
-![Pre-show — countdown + matchup + ticker](img/pre-show.png)
+![Pre-show — countdown + matchup + ticker](img/pre-show.jpg)
 
 ## Controls
+
+![Pre-show control tab](img/tool-pre-show.jpg)
 
 From the Pre-show ctrl-bar:
 

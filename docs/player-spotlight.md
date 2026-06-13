@@ -8,13 +8,15 @@ All controls live on the **Player Spotlight** tab in the control panel. Output U
 
 **Fullscreen, Both view** — a face-off with the centre head-to-head stat comparison:
 
-![Player Spotlight — fullscreen Both view](img/player-spotlight-full.png)
+![Player Spotlight — fullscreen Both view](img/player-spotlight-full.jpg)
 
 **Lower-third** — a single player over the live feed:
 
-![Player Spotlight — lower-third](img/player-spotlight-l3.png)
+![Player Spotlight — lower-third](img/player-spotlight-l3.jpg)
 
 ## Picking the players
+
+![Player Spotlight control tab](img/tool-player-spotlight.jpg)
 
 Each side has a **team** selector and a **player** dropdown:
 

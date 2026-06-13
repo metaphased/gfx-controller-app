@@ -2,9 +2,11 @@
 
 A compact name/title strip for casters, players or guests. Driven from **Graphics → Lower Third**, output at `/graphics/lower-third/`.
 
-![Lower Third](img/lower-third.png)
+![Lower Third](img/lower-third.jpg)
 
 ## Controls
+
+![Lower Third control tab](img/tool-lower-third.jpg)
 
 From the Lower Third ctrl-bar:
 

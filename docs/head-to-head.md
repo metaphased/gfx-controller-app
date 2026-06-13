@@ -10,15 +10,17 @@ It pairs players by role (Top, Jungle, Mid, Bot, Support) and shows each one's c
 
 The full five-role comparison — both teams down the screen, role icons in the centre column.
 
-![Head to Head — Lineup mode](img/head-to-head-lineup.png)
+![Head to Head — Lineup mode](img/head-to-head-lineup.jpg)
 
 ### Spotlight
 
 Focuses a single role (e.g. the mid-lane matchup), enlarging that pairing and surfacing the stat pills while dimming the rest. Great for a "key matchup" beat.
 
-![Head to Head — Spotlight on Mid](img/head-to-head-spotlight.png)
+![Head to Head — Spotlight on Mid](img/head-to-head-spotlight.jpg)
 
 ## Controls
+
+![Head to Head control tab](img/tool-head-to-head.jpg)
 
 From the Head to Head ctrl-bar:
 

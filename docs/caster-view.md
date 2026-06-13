@@ -4,6 +4,12 @@ A read-only dashboard for casters and analysts — rosters, the live draft, seri
 
 Open at **`/caster?token=XXXX`** (grab the full link from **Settings → Output URLs**).
 
+![Caster view — Roster tab](img/caster-roster.jpg)
+
+Click any player to expand full prep detail — Riot ID, this-game draft pick with KDA/CS/KP stats, and their champion pool:
+
+![Caster view — expanded player](img/caster-roster-expanded.jpg)
+
 ## Tabs
 
 | Tab | What's there |
@@ -14,6 +20,24 @@ Open at **`/caster?token=XXXX`** (grab the full link from **Settings → Output 
 | **Standings** | Group-stage standings. |
 | **Bracket** | The playoff bracket. |
 | **Schedule** | The broadcast schedule. |
+
+### Live draft
+
+The **Draft** tab mirrors the pick/ban board in real time, with the fearless pool and series history below — ideal for casters following the draft live:
+
+![Caster view — live Draft tab](img/caster-draft.jpg)
+
+### Series, standings, bracket & schedule
+
+The remaining tabs give the casters the full tournament context without leaving the page:
+
+![Caster view — Series tab](img/caster-series.jpg)
+
+![Caster view — Standings tab](img/caster-standings.jpg)
+
+![Caster view — Bracket tab](img/caster-bracket.jpg)
+
+![Caster view — Schedule tab](img/caster-schedule.jpg)
 
 ## How to use it
 

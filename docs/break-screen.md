@@ -4,15 +4,17 @@ A "back soon" holding card for between matches or during downtime — message, c
 
 ### Standard
 
-![Break Screen — standard](img/break-screen.png)
+![Break Screen — standard](img/break-screen.jpg)
 
 ### Picture-in-picture
 
 Reserves a large area for a camera/gameplay feed composited behind the source, with the break info pinned to the side.
 
-![Break Screen — PIP mode](img/break-screen-pip.png)
+![Break Screen — PIP mode](img/break-screen-pip.jpg)
 
 ## Controls
+
+![Break Screen control tab](img/tool-break-screen.jpg)
 
 From the Break Screen ctrl-bar:
 

@@ -2,9 +2,11 @@
 
 Celebrate a game or series result with a winner reveal. Ten styles — from quick on-scene reveals to full-screen **stingers** that double as scene transitions, plus a League-specific **COMP** screen showing the winning draft. Driven from **Graphics → Win Screen**, output at `/graphics/win-screen/`.
 
-![Win Screen — COMP style](img/win-screen-comp.png)
+![Win Screen — COMP style](img/win-screen-comp.jpg)
 
 ## Choosing the winner
+
+![Win Screen control tab](img/tool-win-screen.jpg)
 
 In the control tab pick the **winning team**, set the **message** (e.g. "WINS THE MATCH") and the **series score**. The accent colour follows the team side by default, or set a custom/primary accent.
 

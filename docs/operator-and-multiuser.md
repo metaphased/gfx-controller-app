@@ -17,6 +17,8 @@ Create and manage accounts in **Settings → Accounts**. (Change the default `ad
 
 Open at **`/operator`** (operator or admin login). It's a focused, live-production layout rather than the full setup panel:
 
+![Operator view](img/operator-view.jpg)
+
 - **Graphic toggles + ctrl-bars** — show/hide every graphic and adjust its key live options, the same controls as the admin panel's ctrl-bars.
 - **Score / series tracker** — drive the match score and series.
 - **Lower-third builder** — fire lower thirds for players and casters.
@@ -34,6 +36,8 @@ When more than one person is connected, MetaGFX coordinates them in real time:
 - **Soft page-claiming** — when you start working on a graphic's page, it's *claimed*; others see a badge showing who's editing it, so two people don't fight over the same overlay. It's advisory (a soft lock), not a hard block.
 - **Last-action attribution** — each graphic records who last showed/hid/changed it, so it's clear who did what.
 - **System log** — **System → Log** is a running record of actions (shows/hides/edits) with the user and time, for after-the-fact review.
+
+![System Log](img/tool-log.jpg)
 
 All graphic and state changes broadcast over WebSockets, so every panel, operator view and output stays in sync instantly.
 

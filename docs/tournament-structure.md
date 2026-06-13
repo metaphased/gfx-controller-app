@@ -2,7 +2,7 @@
 
 A one-screen overview of the whole event's format — group stage and playoff shape, series formats, roster size, dates and key info. Output at `/graphics/tournament-structure/`.
 
-![Tournament Structure overview](img/tournament-structure.png)
+![Tournament Structure overview](img/tournament-structure.jpg)
 
 ## What it shows
 
@@ -13,6 +13,8 @@ Everything is drawn from **[Tournament Setup](tournament-setup.md)** — change 
 - **Header info** — total teams, roster size (players + subs), dates, region and patch, from [Broadcast Info](tournament-setup.md#broadcast-info).
 
 ## Display options
+
+![Tournament Structure control tab](img/tool-tournament-structure.jpg)
 
 From the Tournament Structure graphics tab / ctrl-bar:
 

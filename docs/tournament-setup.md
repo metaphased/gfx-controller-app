@@ -4,6 +4,8 @@ Everything that describes the *event itself* — its name, the teams competing, 
 
 This page also covers the **[Teams Database](#teams-database)** (your reusable team store) and **[Profiles](#profiles)** (saving/swapping whole events).
 
+![Tournament Setup tab](img/tool-tournament-setup.jpg)
+
 ## Tournament Info
 
 The first card. Sets the broad identity used across overlays:
@@ -75,6 +77,8 @@ Per-stage default series formats (e.g. groups = Bo1, playoffs = Bo3, finals = Bo
 ## Teams Database
 
 **Tournament → Teams Database** is your reusable, cross-tournament store of teams and their rosters. The [Competing Teams](#competing-teams) pool pulls from here; editing a team here doesn't disturb other events.
+
+![Teams Database — import tools (Google Sheets / CSV / JSON)](img/tool-teams-database.jpg)
 
 ### Creating / editing a team
 

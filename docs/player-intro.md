@@ -12,21 +12,23 @@ Pick a layout in the control tab. All three show the same data; choose the one t
 
 Both rosters side-by-side around a centre logo — the most complete read.
 
-![Player Intro — Panel layout](img/player-intro-panel.png)
+![Player Intro — Panel layout](img/player-intro-panel.jpg)
 
 ### Stack
 
 A cleaner two-column stack of each team's five players.
 
-![Player Intro — Stack layout](img/player-intro-stack.png)
+![Player Intro — Stack layout](img/player-intro-stack.jpg)
 
 ### Bar
 
 A compact lower bar — useful when you want the rosters without covering the scene.
 
-![Player Intro — Bar layout](img/player-intro-bar.png)
+![Player Intro — Bar layout](img/player-intro-bar.jpg)
 
 ## Controls
+
+![Player Intro control tab](img/tool-player-intro.jpg)
 
 From the Player Intro ctrl-bar:
 

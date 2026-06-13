@@ -4,6 +4,8 @@
 
 Teams come from the [Competing Teams pool](tournament-setup.md#competing-teams), so build that first.
 
+![Schedule tab — broadcast days and matches](img/tool-schedule.jpg)
+
 ## Edit mode
 
 The Schedule tab is read-only until you click **Edit Schedule** (top right). In edit mode you can add days, add/edit/reorder/delete games, and clear results. Toggle it off when you're done so you don't fat-finger anything live.

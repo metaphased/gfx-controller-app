@@ -8,6 +8,8 @@ The live match state these tabs produce is what every team/draft/win graphic rea
 
 **Game → Game Setup** is where you put a match on air and track its series.
 
+![Game Setup tab](img/tool-game-setup.jpg)
+
 ### Loading a scheduled match
 
 1. **Load from Schedule** card → pick a **Broadcast Day** (it auto-selects today's date if a day matches).
@@ -41,6 +43,8 @@ The tracker lists each game in the series with its result and draft snapshot. Se
 
 **Game → Players / Rosters** shows the two loaded rosters side by side for last-minute edits, and is where you pull live data.
 
+![Players / Rosters tab](img/tool-players.jpg)
+
 ### Ranks and champion pools
 
 Two refresh buttons sit at the top:
@@ -59,6 +63,8 @@ Ranks and pools feed graphics like [Player Intro](player-intro.md), [Player Spot
 ## Draft
 
 **Game → Draft** runs the live League of Legends pick/ban draft that drives the [Draft Overlay](draft.md) graphic. (This section covers *operating* the draft; the overlay's look/animation options live in the [Draft graphic guide](draft.md).)
+
+![Draft tab — side assignment, timer and the pick/ban board](img/tool-draft.jpg)
 
 ### Set up the draft
 

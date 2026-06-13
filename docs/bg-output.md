@@ -2,13 +2,15 @@
 
 A standalone animated background layer. Because every other overlay is **transparent**, BG Output is the source you put *underneath* them to give the broadcast a coloured or animated backdrop — without baking a canvas into every graphic (which would make each source expensive). Output at `/graphics/bg-output/`.
 
-![BG Output — animated dot field](img/bg-output.png)
+![BG Output — animated dot field](img/bg-output.jpg)
 
 ## Why it's separate
 
 Graphic overlays composite over your scene transparently. For a designed backdrop behind your panels, add **one** BG Output browser source as its own layer at the bottom of your stack, and lay the other graphics on top. This keeps each overlay source cheap and lets you change the whole look in one place.
 
 ## Controls
+
+![BG Output control tab](img/tool-bg-output.jpg)
 
 From **Graphics → BG Output**:
 

@@ -2,16 +2,21 @@
 
 The playoff bracket — single or double elimination — as a broadcast overlay. Output at `/graphics/bracket/`.
 
-![Bracket — single elimination](img/bracket.png)
+![Bracket — single elimination](img/bracket.jpg)
 
 ## Building the bracket
 
 The bracket **structure and results** are managed in **[Tournament → Playoffs](tournament-setup.md#generating-the-bracket)**, not on the graphics tab:
 
 - Generate the round/match slots from **Tournament Setup → Tournament Structure** (single/double elim, 3rd-place option), then assign teams to slots in **Playoffs → Bracket Rounds**.
+
+![Playoffs / bracket editor](img/tool-playoffs.jpg)
+
 - If you link [schedule](schedule.md#bracket-linking) games to bracket matches, results flow in automatically — teams forward-fill as they qualify and scores push back when a series completes.
 
 ## Display options
+
+![Bracket graphic control tab](img/tool-bracket-gfx.jpg)
 
 From the Bracket graphics tab / ctrl-bar:
 

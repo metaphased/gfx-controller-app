@@ -2,6 +2,8 @@
 
 Everything visual is configured under **Broadcast Theme** in the control panel and applies live to every graphic overlay. Theme settings are saved per tournament profile; reusable **Looks** let you carry a visual identity across profiles.
 
+![Broadcast Theme control tab](img/tool-broadcast-theme.jpg)
+
 ## Colour palette & accents
 
 Four palette slots are wired across **every** overlay (exposed as CSS variables `--gfx-c1`–`--gfx-c4`, plus RGB-triplet variants `--gfx-cN-rgb` for translucent surfaces). Each has a role:

@@ -15,6 +15,8 @@ Without buses you'd add ~14 browser sources to OBS (one per overlay), each runni
 
 ## Setting it up
 
+![Routing tab — buses and graphic assignments](img/tool-routing.jpg)
+
 1. **System → Routing** — add the number of buses you want and assign graphics to each.
 2. In OBS/vMix, add one Browser Source per bus pointing at its `/bus/<id>?token=XXXX` URL (grab them from **Settings → Output URLs**, which lists the bus URLs alongside the graphics).
 3. Arrange the bus sources in your scene; from then on, just Show/Hide graphics as normal.

@@ -2,7 +2,7 @@
 
 Round-robin group standings as a broadcast overlay — one card per group, teams ranked by record. Output at `/graphics/group-stage/`.
 
-![Group Stage — standings](img/group-stage.png)
+![Group Stage — standings](img/group-stage.jpg)
 
 ## Setting up groups
 
@@ -11,9 +11,14 @@ Groups are configured in **[Tournament Setup → Tournament Structure](tournamen
 1. Tick **This tournament has a Group Stage**, set the number of groups and teams advancing, then **Generate Groups**.
 2. Assign teams to each group in **[Tournament → Groups](tournament-setup.md)**.
 
+![Groups editor](img/tool-groups.jpg)
+
+
 **Standings update automatically** as group-stage matches complete — wins/losses are tallied from results, so you don't maintain the table by hand.
 
 ## Display options
+
+![Group Stage graphic control tab](img/tool-group-stage.jpg)
 
 From the Group Stage graphics tab / ctrl-bar:
 
