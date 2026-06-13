@@ -78,7 +78,7 @@ Per-stage default series formats (e.g. groups = Bo1, playoffs = Bo3, finals = Bo
 
 **Tournament → Teams Database** is your reusable, cross-tournament store of teams and their rosters. The [Competing Teams](#competing-teams) pool pulls from here; editing a team here doesn't disturb other events.
 
-![Teams Database — import tools (Google Sheets / CSV / JSON)](img/tool-teams-database.jpg)
+![Teams Database — the New Team editor (name, tag, logo, lineup, subs)](img/tool-teams-database.jpg)
 
 ### Creating / editing a team
 
