@@ -9,6 +9,8 @@ var _scoresHash  = '';   // fingerprint: completed game results only
 var _teams       = [];
 var _outTimer    = null;
 var _inTimer     = null;
+var _schedule    = [];   // delivered via a separate 'schedule' socket event (stripped from state)
+var _lastState   = null;
 
 
 function $(id) { return document.getElementById(id); }
@@ -240,10 +242,24 @@ function animateOut() {
 // ── Socket ─────────────────────────────────────────────────────────────────────
 socket.on('connect', function() { _visible = false; });
 
+// Schedule arrives on its own event (results drive the standings). Cache it and,
+// if we already have state, re-run a score update so the W/L tallies appear.
+socket.on('schedule', function(schedule) {
+  _schedule = schedule || [];
+  if (!_lastState) return;
+  if (_lastState.tournament) _lastState.tournament.schedule = _schedule;
+  if (_visible) { _scoresHash = scoresHash(_lastState); updateScores(_lastState); }
+});
+
 socket.on('state', function(state) {
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyAnimation(document.documentElement, state, 'groupStage');
   GfxSettings.clearBackground(document.body);
+
+  // The schedule (source of standings results) is broadcast separately and stripped
+  // from `state` — re-attach the cached copy so standings compute correctly.
+  if (state.tournament) state.tournament.schedule = _schedule;
+  _lastState = state;
 
   if (state.teams && state.teams.length) _teams = state.teams;
 

@@ -98,6 +98,7 @@ socket.on('schedule', (schedule) => {
   if (!_state.tournament) _state.tournament = {};
   _state.tournament.schedule = schedule;
   renderSchedule();
+  renderStandings(); // standings tally from schedule results too
 });
 
 refreshTournamentStats();
