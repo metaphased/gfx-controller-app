@@ -53,7 +53,10 @@ EXTERNAL_URL=http://YOUR_STATIC_IP:3000
 
 ### Champion asset sync (standalone)
 
-Downloads champion tiles, centered images, and role icons from the [DDragon GitHub repo](https://github.com/noxelisdev/LoL_DDragon). Only missing files are fetched on each run. Handles champion renames between DDragon versions (case-insensitive comparison on Windows).
+> [!NOTE]
+> **The champion images (tiles, centered, splash) are not checked into git** — they're downloaded on demand to keep the repo small. After cloning, run the sync (below) or use **Settings → Champion Assets** to populate them. (The small role icons under `graphics/*/roles` do ship with the app.)
+
+Downloads champion tiles, centered images, splash art, and role icons from the [DDragon GitHub repo](https://github.com/noxelisdev/LoL_DDragon). Only missing files are fetched on each run. Handles champion renames between DDragon versions (case-insensitive comparison on Windows).
 
 ```bash
 node scripts/sync-assets.js            # download all missing files
@@ -108,6 +111,7 @@ Each URL requires a `?token=XXXX` parameter. The full URLs with your active toke
 | Group Stage | `/graphics/group-stage/` | |
 | Tournament Structure | `/graphics/tournament-structure/` | |
 | Prizepool | `/graphics/prizepool/` | |
+| Player Spotlight | `/graphics/player-spotlight/` | One or two players (left/right stage); Fullscreen + Lower Third; 4 designs; champion art + stats (op.gg / tournament sources, per-stat overrides), caption; see [docs](docs/player-spotlight.md) |
 | BG Output | `/graphics/bg-output/` | Background animations only |
 
 ### GFX Bus outputs
@@ -126,7 +130,7 @@ Configure buses and assign graphics to them under **Routing** in the control pan
 
 **Game:** Game Setup, Players / Rosters, Draft, Match Intel
 
-**Graphics:** Broadcast Theme, BG Output, Lower Third, Head to Head, Pre-show, Ticker, Draft, Bracket, Group Stage, Tournament Structure, Prizepool, Break Screen, Win Screen, Scoreboard, Player Intro
+**Graphics:** Broadcast Theme, BG Output, Lower Third, Head to Head, Pre-show, Ticker, Draft, Bracket, Group Stage, Tournament Structure, Prizepool, Break Screen, Win Screen, Scoreboard, Player Intro, Player Spotlight
 
 **System:** Profiles, Routing (GFX bus config), Settings (users, token, output URLs, logos, **Appearance** theme, **Live Switcher**), Log (action history)
 
@@ -176,6 +180,7 @@ The seeded `admin` account is `superadmin` by default. Create additional users i
 - **Champion asset sync** — download/update champion tiles, centered images, and role icons from DDragon; real-time progress in the admin UI or via `node scripts/sync-assets.js`
 - **GFX Bus system** — shared OBS/vMix browser sources that route automatically to whichever assigned graphic is currently visible; create named buses, assign any graphics to each, and switch live from the operator routing matrix; ctrl-bar bus tags turn orange when a graphic is live on a bus; graphics preload in hidden iframes so switching is instant with no blank frames; out-animations play in full before the iframe hides
 - **Head to Head improvements** — champion stats strip collapses to zero height when inactive (prevents player name overflow in lineup mode); header bars are fully opaque for clean scene masking
+- **Player Spotlight graphic** — one- or two-player highlight built around each player's signature champion (left/right stage with directional slides and a Both face-off + head-to-head stat comparison); Fullscreen or Lower Third; 4 designs (Showcase, Angled, Full-bleed, Framed); per-player champion/caption/stat overrides with op.gg or this-event tournament stat sources; see [docs/player-spotlight.md](docs/player-spotlight.md)
 
 ## Data directory
 

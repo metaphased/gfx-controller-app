@@ -200,7 +200,14 @@ app.get('/api/events', (req, res) => {
 
 // ── Static — public (no auth) ──────────────────────────────────────────────────
 app.use('/login',    express.static(path.join(__dirname, 'public', 'login')));
-app.use('/graphics', express.static(path.join(__dirname, 'public', 'graphics')));
+// Graphics overlays: don't let browsers (esp. OBS/vMix CEF) serve stale HTML/CSS/JS —
+// force revalidation so a source refresh always picks up the current build. Champion
+// art and other assets keep normal caching.
+app.use('/graphics', express.static(path.join(__dirname, 'public', 'graphics'), {
+  setHeaders: (res, filePath) => {
+    if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  },
+}));
 app.use('/uploads',  express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
 app.use('/fonts',    express.static(path.join(__dirname, 'public', 'fonts')));
@@ -218,9 +225,15 @@ app.get(['/caster', '/caster/'], requireToken, (req, res) => {
 });
 app.use('/caster', express.static(path.join(__dirname, 'public', 'caster')));
 
-// Bus output pages — static assets served first, then catch-all for bus IDs
-app.use('/bus', express.static(path.join(__dirname, 'public', 'bus')));
+// Bus output pages — static assets served first, then catch-all for bus IDs.
+// Same no-cache as /graphics so OBS/vMix CEF picks up updated bus HTML/CSS/JS on refresh.
+app.use('/bus', express.static(path.join(__dirname, 'public', 'bus'), {
+  setHeaders: (res, filePath) => {
+    if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  },
+}));
 app.get('/bus/:id', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, must-revalidate');
   res.sendFile(path.join(__dirname, 'public', 'bus', 'index.html'));
 });
 
@@ -369,6 +382,19 @@ const makeDefault = () => ({
   groupStage:  { visible: false, mode: 'live', logoUrl: '', logoScale: 7, logoPosition: 'left', showLogo: false },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
+  // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
+  // design: angled|bleed|framed, mode: single|duo|compare. players[0]=A (team1 side),
+  // players[1]=C (team2 side); champ='' = auto (most-played); statOverrides keyed by stat.
+  playerSpotlight: {
+    // stage: which player(s) are on the left/right stage — 'a' (left only),
+    // 'b' (right only), 'both'. showVs toggles the centre VS badge in the Both view.
+    visible: false, format: 'full', design: 'showcase', stage: 'a', showVs: true,
+    statSource: 'both', accentSource: 'side', accentCustom: '#1ffaff',
+    players: [
+      { team: 'team1', handle: '', champ: '', caption: '', statTokens: [], statOverrides: {} },
+      { team: 'team2', handle: '', champ: '', caption: '', statTokens: [], statOverrides: {} },
+    ],
+  },
   prizepool: { visible: false, showLogo: false, logoScale: 7, logoPosition: 'left', entries: [] },
   bgOutput: {
     bgType: 'animation', bgAnimation: 'particles',
@@ -549,13 +575,14 @@ const GRAPHIC_PATHS = {
   preShow: 'graphics/pre-show', draft: 'graphics/draft', bracket: 'graphics/bracket',
   groupStage: 'graphics/group-stage', tournamentStructure: 'graphics/tournament-structure',
   prizepool: 'graphics/prizepool', winScreen: 'graphics/win-screen', breakScreen: 'graphics/break-screen',
+  playerSpotlight: 'graphics/player-spotlight',
   bgOutput: 'graphics/bg-output',
 };
 const GRAPHIC_LABELS = {
   lowerThird: 'lower third', headToHead: 'head to head', playerIntro: 'player intro',
   preShow: 'pre-show', draft: 'draft', bracket: 'bracket', groupStage: 'group stage',
   tournamentStructure: 'tournament structure', prizepool: 'prize', winScreen: 'win screen',
-  breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker',
+  breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker', playerSpotlight: 'player spotlight',
 };
 function _switcherByUrl(url) {
   if (!url) return null;
@@ -624,7 +651,7 @@ function broadcast() {
 
 // ── SSE (Server-Sent Events) for Companion / external integrations ─────────────
 const _sseClients = new Set();
-const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','prizepool','ticker'];
+const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker'];
 function buildSSEPayload() {
   const visibilities = {};
   SSE_GRAPHIC_KEYS.forEach(k => { if (state[k]) visibilities[k] = !!state[k].visible; });
@@ -887,7 +914,7 @@ const GRAPHIC_PAGE_KEYS = {
   draft: 'draft-gfx', bracket: 'bracket', breakScreen: 'break-screen',
   winScreen: 'win-screen', preShow: 'pre-show',
   tournamentStructure: 'tournament-structure', groupStage: 'standings',
-  prizepool: 'prizepool', ticker: 'ticker'
+  prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight'
 };
 
 function findBusForGraphic(graphicName) {
@@ -1020,7 +1047,7 @@ app.get('/api/companion/profile', (req, res) => {
   const GRAPHIC_LABELS = {
     lowerThird:'Lower Third', headToHead:'Head to Head', playerIntro:'Player Intro',
     draft:'Draft', bracket:'Bracket', groupStage:'Group Stage',
-    breakScreen:'Break Screen', winScreen:'Win Screen', prizepool:'Prizepool', ticker:'Ticker',
+    breakScreen:'Break Screen', winScreen:'Win Screen', playerSpotlight:'Player Spotlight', prizepool:'Prizepool', ticker:'Ticker',
   };
   const GRAPHICS = Object.keys(GRAPHIC_LABELS);
 
@@ -1144,6 +1171,7 @@ app.post('/api/draft', (req, res) => {
 app.post('/api/bgOutput', requireAdmin, (req, res) => { deepMerge(state.bgOutput, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/breakScreen', (req, res) => { Object.assign(state.breakScreen, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/winScreen',   (req, res) => { Object.assign(state.winScreen,   req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/playerSpotlight', (req, res) => { Object.assign(state.playerSpotlight, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/headToHead',  (req, res) => { Object.assign(state.headToHead,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/playerIntro', (req, res) => { Object.assign(state.playerIntro, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/preShow',     (req, res) => { Object.assign(state.preShow,     req.body); broadcast(); res.json({ok:true}); });

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Player Spotlight</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<script src="/graphics/gfx-settings.js"></script>
+<link rel="stylesheet" href="spotlight.css">
+</head>
+<body>
+<!-- LEFT/RIGHT STAGE. Player A is locked to the left (#ps-slot-0), Player B to the
+     right (#ps-slot-1). spotlight.js toggles on #ps-root: format-* (full|l3),
+     design-* (angled|bleed|framed|showcase), stage-* (a = A only / b = B only /
+     both), and show-vs. Switching stage slides each player in from their own side;
+     the Both view meets on a diagonal slash with an optional VS badge. -->
+<div id="ps-root" class="format-full design-showcase stage-a show-vs" style="display:none">
+
+  <!-- Centre VS badge — painted only in the Both view when show-vs is on. -->
+  <div class="ps-vs-badge" aria-hidden="true">VS</div>
+
+  <!-- Head-to-head stat comparison — Both view only: each player's stats meet in the
+       centre below the VS (A value · label · B value), populated by spotlight.js. -->
+  <div class="ps-compare" id="ps-compare" aria-hidden="true"></div>
+
+  <!-- Slot A (0) — locked to the LEFT -->
+  <div class="ps-slot ps-slot-a" id="ps-slot-0">
+    <div class="ps-hero">
+      <img class="ps-hero-img" id="ps-hero-img-0" alt="">
+    </div>
+    <div class="ps-info">
+      <div class="ps-team" id="ps-team-0"></div>
+      <div class="ps-handle" id="ps-handle-0"></div>
+      <div class="ps-meta">
+        <span class="ps-role" id="ps-role-0"><img class="ps-role-icon" id="ps-role-icon-0" alt=""><span class="ps-role-label" id="ps-role-label-0"></span></span>
+        <span class="ps-rank" id="ps-rank-0"></span>
+      </div>
+      <div class="ps-champ-line" id="ps-champ-line-0"><span class="ps-champ-tag">SIGNATURE CHAMPION</span><span class="ps-champ-name" id="ps-champ-name-0"></span></div>
+      <div class="ps-stats" id="ps-stats-0"></div>
+      <div class="ps-caption" id="ps-caption-0"></div>
+    </div>
+  </div>
+
+  <!-- Slot B (1) — locked to the RIGHT -->
+  <div class="ps-slot ps-slot-b" id="ps-slot-1">
+    <div class="ps-hero">
+      <img class="ps-hero-img" id="ps-hero-img-1" alt="">
+    </div>
+    <div class="ps-info">
+      <div class="ps-team" id="ps-team-1"></div>
+      <div class="ps-handle" id="ps-handle-1"></div>
+      <div class="ps-meta">
+        <span class="ps-role" id="ps-role-1"><img class="ps-role-icon" id="ps-role-icon-1" alt=""><span class="ps-role-label" id="ps-role-label-1"></span></span>
+        <span class="ps-rank" id="ps-rank-1"></span>
+      </div>
+      <div class="ps-champ-line" id="ps-champ-line-1"><span class="ps-champ-tag">SIGNATURE CHAMPION</span><span class="ps-champ-name" id="ps-champ-name-1"></span></div>
+      <div class="ps-stats" id="ps-stats-1"></div>
+      <div class="ps-caption" id="ps-caption-1"></div>
+    </div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="spotlight.js"></script>
+</body>
+</html>

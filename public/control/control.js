@@ -206,6 +206,7 @@ const GFX_TAB_CLAIM_KEY = {
   'win':'win-screen', 'break':'break-screen', 'preshow':'pre-show',
   'tournament-structure-gfx':'tournament-structure', 'groups-gfx':'standings',
   'bracket':'bracket', 'h2h':'h2h', 'ticker':'ticker', 'prizepool':'prizepool',
+  'player-spotlight':'player-spotlight',
 };
 let _currentClaimTab = null; // tabKey currently claimed
 
@@ -296,6 +297,7 @@ const GFX_PAGES = [
   ['BG Output',  'graphics/bg-output/'],
   ['Break Screen',          'graphics/break-screen/'],
   ['Win Screen',    'graphics/win-screen/'],
+  ['Player Spotlight', 'graphics/player-spotlight/'],
   ['Lower Third',   'graphics/lower-third/'],
 ];
 const urlList = g('url-list');
@@ -396,6 +398,7 @@ const GFX_OUTPUTS = [
   { label: 'BG Output',             path: 'graphics/bg-output/' },
   { label: 'Break Screen',          path: 'graphics/break-screen/' },
   { label: 'Win Screen',            path: 'graphics/win-screen/' },
+  { label: 'Player Spotlight',      path: 'graphics/player-spotlight/' },
   { label: 'Lower Third',           path: 'graphics/lower-third/' },
 ];
 
@@ -884,6 +887,7 @@ function syncUI(s) {
   if (bTickerGrp) bTickerGrp.classList.toggle('is-live', tickerActive);
   syncTickerUI(s.ticker || {}, s);
   syncWinTab(s.winScreen || {}, s.match || {});
+  syncPlayerSpotlightTab(s);
   syncBgoTab(s.bgOutput || {});
 
   if (_sfp('sponsors', m.sponsorLogos)) renderSponsors(m.sponsorLogos || []);
@@ -2086,6 +2090,144 @@ function syncTickerUI(ticker, state) {
   }
 }
 function patchWin(data) { api('/api/winScreen', data); }
+
+// ── Player Spotlight ───────────────────────────────────────────────────────────
+function patchPlayerSpotlight(data) { api('/api/playerSpotlight', data); }
+// Patch one player slot (0=A, 1=B). Sends the whole players array (server Object.assigns it).
+function patchPsSlot(idx, data) {
+  const ps = (window._state && window._state.playerSpotlight) || {};
+  const players = JSON.parse(JSON.stringify(ps.players || [{ team: 'team1' }, { team: 'team2' }]));
+  while (players.length < 2) players.push({ team: players.length === 0 ? 'team1' : 'team2' });
+  players[idx] = Object.assign({}, players[idx], data);
+  api('/api/playerSpotlight', { players });
+}
+
+// Per-slot override helpers. statTokens empty = all shown; toggling materialises the full
+// list first so the user removes from "all" rather than building up from nothing.
+const PS_STAT_TOKENS = [{ key: 'winRate', label: 'Win Rate' }, { key: 'games', label: 'Games' }, { key: 'record', label: 'Record' }];
+function _psSlot(idx) { const ps = (window._state && window._state.playerSpotlight) || {}; return (ps.players && ps.players[idx]) || {}; }
+function setPsCaption(idx, val) { patchPsSlot(idx, { caption: val }); }
+function setPsStatToken(idx, key, enabled) {
+  const slot = _psSlot(idx);
+  const all = PS_STAT_TOKENS.map(function (t) { return t.key; });
+  const current = (slot.statTokens && slot.statTokens.length) ? slot.statTokens.slice() : all.slice();
+  const next = enabled ? all.filter(function (k) { return current.indexOf(k) !== -1 || k === key; })
+                       : current.filter(function (k) { return k !== key; });
+  patchPsSlot(idx, { statTokens: next });
+}
+function setPsStatOverride(idx, key, val) {
+  const ov = Object.assign({}, _psSlot(idx).statOverrides);
+  if (val && val.trim()) ov[key] = val.trim(); else delete ov[key];
+  patchPsSlot(idx, { statOverrides: ov });
+}
+
+// Build the champion / caption / stat-token override block for both players (once), then
+// keep its values in sync. Kept out of index.html to avoid duplicating six stat rows.
+function syncPsOverrides(s) {
+  const ps = s.playerSpotlight || {};
+  const host = g('ps-overrides');
+  if (!host) return;
+  if (!host.dataset.built) {
+    host.dataset.built = '1';
+    host.innerHTML = [0, 1].map(function (idx) {
+      const rows = PS_STAT_TOKENS.map(function (tok) {
+        return '<div style="display:grid;grid-template-columns:96px 1fr;gap:8px;align-items:center;margin-top:5px">' +
+          '<label class="ctrl-radio-label" style="white-space:nowrap"><input type="checkbox" id="ps-stat-' + idx + '-' + tok.key +
+            '" onchange="setPsStatToken(' + idx + ',\'' + tok.key + '\',this.checked)"> ' + tok.label + '</label>' +
+          '<input type="text" id="ps-statov-' + idx + '-' + tok.key + '" placeholder="auto" oninput="setPsStatOverride(' + idx + ',\'' + tok.key + '\',this.value)">' +
+          '</div>';
+      }).join('');
+      return '<div style="' + (idx === 1 ? 'margin-top:14px;padding-top:14px;border-top:1px solid var(--border)' : '') + '">' +
+        '<div class="gfx-ctrl-section-label" style="margin-bottom:6px">Player ' + (idx === 0 ? 'A' : 'B') + '</div>' +
+        '<label class="hint" style="display:block;margin-bottom:3px">Featured champion</label>' +
+        '<select id="ps-champ-' + idx + '" onchange="patchPsSlot(' + idx + ',{champ:this.value})" style="margin-bottom:8px"><option value="">Auto (most-played)</option></select>' +
+        '<label class="hint" style="display:block;margin-bottom:3px">Caption</label>' +
+        '<input type="text" id="ps-caption-' + idx + '" placeholder="optional caption…" oninput="setPsCaption(' + idx + ',this.value)" style="margin-bottom:8px">' +
+        '<label class="hint" style="display:block">Stats</label>' + rows + '</div>';
+    }).join('');
+  }
+
+  [0, 1].forEach(function (idx) {
+    const slot = (ps.players && ps.players[idx]) || {};
+    const team = slot.team || (idx === 0 ? 'team1' : 'team2');
+    const player = ((s.players && s.players[team]) || []).find(function (p) { return p && p.handle === slot.handle; })
+                 || ((s.players && s.players[team]) || [])[0] || {};
+    // Champion dropdown from the resolved player's pool (Auto = most-played).
+    const sel = g('ps-champ-' + idx);
+    if (sel) {
+      const pool = (player.champPool || []).filter(function (c) { return c && c.name; });
+      const html = ['<option value="">Auto (most-played)</option>'].concat(pool.map(function (c) {
+        return '<option value="' + escHtml(c.name) + '">' + escHtml(c.name) + (c.games ? (' (' + c.games + 'g)') : '') + '</option>';
+      })).join('');
+      if (sel._psHtml !== html) { sel.innerHTML = html; sel._psHtml = html; }
+      if (document.activeElement !== sel) sel.value = slot.champ || '';
+    }
+    const cap = g('ps-caption-' + idx);
+    if (cap && document.activeElement !== cap) cap.value = slot.caption || '';
+    // Stat tokens (empty = all on) + per-stat override text.
+    const tokens = (slot.statTokens && slot.statTokens.length) ? slot.statTokens : PS_STAT_TOKENS.map(function (t) { return t.key; });
+    const ov = slot.statOverrides || {};
+    PS_STAT_TOKENS.forEach(function (tok) {
+      const cb = g('ps-stat-' + idx + '-' + tok.key); if (cb) cb.checked = tokens.indexOf(tok.key) !== -1;
+      const ti = g('ps-statov-' + idx + '-' + tok.key); if (ti && document.activeElement !== ti) ti.value = ov[tok.key] || '';
+    });
+  });
+}
+
+function syncPlayerSpotlightTab(s) {
+  const ps    = s.playerSpotlight || {};
+  const match = s.match || {};
+  const t1name = (match.team1 && (match.team1.name || match.team1.tag)) || 'Team 1';
+  const t2name = (match.team2 && (match.team2.name || match.team2.tag)) || 'Team 2';
+  [['ps-t1-label', t1name], ['ps-t2-label', t2name], ['ps-t1-label-b', t1name], ['ps-t2-label-b', t2name]]
+    .forEach(function (p) { const e = g(p[0]); if (e) e.textContent = p[1]; });
+
+  // Format + design pickers (active button highlight)
+  const fmt = ps.format || 'full';
+  ['full', 'l3'].forEach(function (v) { const b = g('ps-format-' + v); if (b) b.classList.toggle('btn-active', fmt === v); });
+  const design = ps.design || 'showcase';
+  ['angled', 'bleed', 'framed', 'showcase'].forEach(function (v) {
+    const b = g('ps-design-' + v); if (b) b.classList.toggle('btn-active', design === v);
+  });
+
+  // Player A (slot 0, left) + Player B (slot 1, right): team radio + roster dropdown each.
+  [0, 1].forEach(function (idx) {
+    const slot = (ps.players && ps.players[idx]) || {};
+    const team = slot.team || (idx === 0 ? 'team1' : 'team2');
+    ['team1', 'team2'].forEach(function (v) {
+      const r = document.querySelector('input[name="ps-team-' + idx + '"][value="' + v + '"]'); if (r) r.checked = team === v;
+    });
+    const sel = g('ps-player-' + idx);
+    if (sel) {
+      const roster = (s.players && s.players[team]) || [];
+      const html = ['<option value="">— select player —</option>'].concat(
+        roster.filter(function (p) { return p && p.handle; }).map(function (p) {
+          return '<option value="' + escHtml(p.handle) + '">' + escHtml(p.handle) + (p.role ? (' (' + p.role + ')') : '') + '</option>';
+        })).join('');
+      if (sel._psHtml !== html) { sel.innerHTML = html; sel._psHtml = html; }
+      if (document.activeElement !== sel) sel.value = slot.handle || '';
+    }
+  });
+
+  // On-stage A / B / Both (active highlight)
+  const stage = ps.stage || 'a';
+  ['a', 'b', 'both'].forEach(function (v) { const b = g('ps-stage-' + v); if (b) b.classList.toggle('btn-active', stage === v); });
+  const vs = g('ps-showvs'); if (vs) vs.checked = ps.showVs !== false;
+
+  const acc = ps.accentSource || 'side';
+  ['side', 'primary', 'custom'].forEach(function (v) { const r = document.querySelector('input[name="ps-accent"][value="' + v + '"]'); if (r) r.checked = acc === v; });
+  const customRow = g('ps-accent-custom-row'); if (customRow) customRow.style.display = acc === 'custom' ? 'block' : 'none';
+  if (acc === 'custom' && ps.accentCustom) {
+    const c = g('ps-accent-color'), ct = g('ps-accent-color-text');
+    if (c && document.activeElement !== c) c.value = ps.accentCustom;
+    if (ct && document.activeElement !== ct) ct.value = ps.accentCustom;
+  }
+
+  // Stat source toggle + per-player champion/caption/stat overrides.
+  const src = ps.statSource || 'both';
+  ['both', 'opgg', 'tournament'].forEach(function (v) { const b = g('ps-statsrc-' + v); if (b) b.classList.toggle('btn-active', src === v); });
+  syncPsOverrides(s);
+}
 
 function syncWinTab(ws, match) {
   // Team name labels
@@ -3300,6 +3442,7 @@ const GRAPHIC_MAP = [
   { key: 'breakScreen',         tab: 'break',                    label: 'Break Screen'         },
   { key: 'ticker',      tab: 'ticker',      label: 'Ticker'      },
   { key: 'winScreen',   tab: 'win',         label: 'Win Screen'  },
+  { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
 ];
 
 // ── Draft GFX tab ─────────────────────────────────────────────────────────────
@@ -5617,6 +5760,7 @@ const _GFX_ANIM_PAGES = {
   'break': ['breakScreen', 'Break Screen'], 'preshow': ['preShow', 'Pre-show'],
   'bracket': ['bracket', 'Bracket'], 'groups-gfx': ['groupStage', 'Group Stage'],
   'tournament-structure-gfx': ['tournamentStructure', 'Tournament Structure'], 'prizepool': ['prizepool', 'Prizepool'],
+  'player-spotlight': ['playerSpotlight', 'Player Spotlight'],
 };
 function _graphicAnimCardHtml(key) {
   const sp = (v, t) => `<button class="theme-pill" data-sp="${v}" onclick="setGfxAnimSpeed('${key}','${v}')">${t}</button>`;

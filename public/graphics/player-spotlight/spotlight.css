@@ -1,0 +1,315 @@
+/* ═══════════════════════════════════════════════════════════════
+   PLAYER SPOTLIGHT — left/right player stage
+   format-full | format-l3 · design-angled | bleed | framed | showcase
+   · stage-a (A only, left) | stage-b (B only, right) | stage-both · show-vs
+   Player A is locked to the LEFT half (#ps-slot-0), Player B to the RIGHT
+   (#ps-slot-1). The geometry of each player is the SAME whether shown alone
+   or together, so switching the stage is a pure directional slide (A from the
+   left, B from the right) that can't break. The two portraits meet on a
+   DIAGONAL slash (skew-parallelogram per side — anti-aliased, no corner artifact;
+   clip-path/overflow-on-transformed-box rasterises jagged in CEF). Drop shadows
+   are wrapper filters so they follow the angled silhouette.
+   ═══════════════════════════════════════════════════════════════ */
+
+#ps-root {
+  position: fixed; inset: 0;
+  font-family: 'Barlow Condensed', sans-serif;
+  color: var(--gfx-c3, #ffffff);
+  overflow: hidden;
+  /* default accent ramp (per-slot accents overwrite these on each .ps-slot) */
+  --ps-accent:  #1ffaff;
+  --ps-acc-a70: rgba(31,250,255,0.70);
+  --ps-acc-a30: rgba(31,250,255,0.30);
+  --ps-acc-a12: rgba(31,250,255,0.12);
+  --ps-acc-a00: rgba(31,250,255,0);
+}
+
+.ps-slot { position: absolute; inset: 0; }
+
+/* ── Stage visibility — A only / B only / both. A leaving/entering slot is kept
+   visible during its slide by the .ps-keep override (JS removes it after). ──────── */
+#ps-root.stage-a #ps-slot-1 { display: none; }
+#ps-root.stage-b #ps-slot-0 { display: none; }
+#ps-root .ps-slot.ps-keep   { display: block !important; }
+
+/* ── Champion splash hero ──────────────────────────────────────────────────── */
+.ps-hero { position: absolute; }
+.ps-hero-img {
+  width: 100%; height: 100%;
+  object-fit: cover; object-position: center center;
+  display: block;
+  background: var(--gfx-c4, #05080d);
+}
+
+/* ── Info column ───────────────────────────────────────────────────────────── */
+.ps-info { position: absolute; display: flex; flex-direction: column; z-index: 2; }
+.ps-team {
+  font-size: 2.6vh; font-weight: 800; letter-spacing: 0.42em; text-transform: uppercase;
+  color: var(--ps-accent); margin-bottom: 0.6vh;
+}
+.ps-handle {
+  font-size: 9.4vh; font-weight: 900; line-height: 0.88; text-transform: uppercase;
+  letter-spacing: 0.01em; color: var(--gfx-c3, #ffffff);
+  text-shadow: 0 0.4vh 3vh rgba(0,0,0,0.6);
+}
+.ps-meta {
+  display: flex; align-items: center; gap: 1.2vw; margin-top: 1.4vh;
+  font-size: 2.4vh; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase;
+}
+.ps-role { display: inline-flex; align-items: center; gap: 0.5vw; color: rgba(255,255,255,0.86); }
+.ps-role-icon { height: 3vh; width: 3vh; object-fit: contain; }
+.ps-role-icon:not([src]), .ps-role-icon[src=""] { display: none; }
+.ps-rank { color: rgba(255,255,255,0.62); }
+.ps-rank:empty { display: none; }
+.ps-champ-line { display: flex; align-items: baseline; gap: 0.8vw; margin-top: 2.2vh; }
+.ps-champ-tag { font-size: 1.5vh; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--ps-acc-a70); }
+.ps-champ-name { font-size: 3.4vh; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: var(--gfx-c3, #ffffff); }
+.ps-stats { display: flex; gap: 0.8vw; margin-top: 2vh; flex-wrap: wrap; overflow: hidden; max-height: 16vh;
+  transition: max-height 0.45s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)), opacity 0.3s ease, margin-top 0.45s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)); }
+.ps-stat { display: flex; flex-direction: column; gap: 0.3vh; padding: 1vh 1.2vw; background: rgba(255,255,255,0.05); border-left: 2px solid var(--ps-accent); }
+.ps-stat-val { font-size: 3vh; font-weight: 900; line-height: 1; color: var(--gfx-c3, #fff); }
+.ps-stat-label { font-size: 1.3vh; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(255,255,255,0.55); }
+.ps-caption { margin-top: 1.8vh; font-size: 2vh; font-weight: 600; letter-spacing: 0.06em; font-style: italic; color: rgba(255,255,255,0.78);
+  overflow: hidden; max-height: 12vh;
+  transition: max-height 0.45s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)), opacity 0.3s ease, margin-top 0.45s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)); }
+.ps-caption:empty { display: none; }
+/* Player B's info mirrors to the right edge. */
+#ps-slot-1 .ps-info { align-items: flex-end; text-align: right; }
+#ps-slot-1 .ps-stats { justify-content: flex-end; }
+#ps-slot-1 .ps-stat { border-left: none; border-right: 2px solid var(--ps-accent); }
+
+/* ═══════════════════════════════════════════════════════════════
+   FULL — portrait geometry. Each player fills their half; the INNER edge
+   (toward centre) is a skewed soft fade so the two meet on a diagonal slash.
+   The image counter-skews to stay upright and scales up to cover the gap the
+   counter-skew opens. Geometry is identical in stage-a / stage-b / stage-both.
+   ═══════════════════════════════════════════════════════════════ */
+/* Shared skew base (angled / bleed / showcase). framed overrides below.
+   scale(1.0) = no upscale (champion is NOT zoomed in); the skew gaps it would expose
+   fall in the off-screen outer edge + the faded inner mask, so they don't show. The
+   hero transform also animates (solo↔duo reposition); the SLIDE is on the slot, so the
+   hero transform is free for the skew + the solo "make room" shift. */
+.format-full .ps-hero { transition: transform 0.5s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)), top 0.5s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)), bottom 0.5s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)); }
+.format-full:not(.design-framed) #ps-slot-0 .ps-hero {
+  left: -4vw; right: auto; top: 8vh; bottom: 8vh; width: 54vw; overflow: hidden;
+  transform: skewX(-8deg);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 52%, transparent 80%);
+          mask-image: linear-gradient(to right, #000 0%, #000 52%, transparent 80%);
+}
+.format-full:not(.design-framed) #ps-slot-0 .ps-hero-img { -webkit-mask-image: none; mask-image: none; transform: skewX(8deg) scale(1.0); }
+.format-full:not(.design-framed) #ps-slot-1 .ps-hero {
+  right: -4vw; left: auto; top: 8vh; bottom: 8vh; width: 54vw; overflow: hidden;
+  transform: skewX(8deg);
+  -webkit-mask-image: linear-gradient(to left, #000 0%, #000 52%, transparent 80%);
+          mask-image: linear-gradient(to left, #000 0%, #000 52%, transparent 80%);
+}
+.format-full:not(.design-framed) #ps-slot-1 .ps-hero-img { -webkit-mask-image: none; mask-image: none; transform: skewX(-8deg) scale(1.0); }
+
+/* Bottom scrim under each portrait so the (side-locked) info always reads over the art. */
+.format-full:not(.design-framed):not(.design-bleed) .ps-hero::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.42) 26%, transparent 50%);
+}
+
+/* DESIGN: ANGLED — portrait reaches closer to centre (less empty middle) and is zoomed
+   in LESS than the shared base (champion was over-scaled). Drop shadow on the parallelogram. */
+.design-angled.format-full #ps-slot-0 .ps-hero,
+.design-angled.format-full #ps-slot-1 .ps-hero { top: 6vh; bottom: 6vh; width: 61vw; filter: drop-shadow(0 1.2vh 3vh rgba(0,0,0,0.5)); }
+.design-angled.format-full #ps-slot-0 .ps-hero { -webkit-mask-image: linear-gradient(to right, #000 0%, #000 64%, transparent 90%); mask-image: linear-gradient(to right, #000 0%, #000 64%, transparent 90%); }
+.design-angled.format-full #ps-slot-1 .ps-hero { -webkit-mask-image: linear-gradient(to left,  #000 0%, #000 64%, transparent 90%); mask-image: linear-gradient(to left,  #000 0%, #000 64%, transparent 90%); }
+.design-angled.format-full #ps-slot-0 .ps-hero-img { transform: skewX(8deg)  scale(1.0); object-position: center 34%; }
+.design-angled.format-full #ps-slot-1 .ps-hero-img { transform: skewX(-8deg) scale(1.0); object-position: center 34%; }
+
+/* DESIGN: SHOWCASE — champion crisper (less upscale), with top/bottom cutoff lines
+   framing the strip. The reference "showcase but one each side" look. */
+.design-showcase.format-full #ps-slot-0 .ps-hero,
+.design-showcase.format-full #ps-slot-1 .ps-hero { top: 14vh; bottom: 14vh; }
+.design-showcase.format-full #ps-slot-0 .ps-hero-img { transform: skewX(8deg) scale(1.0); object-position: center 28%; }
+.design-showcase.format-full #ps-slot-1 .ps-hero-img { transform: skewX(-8deg) scale(1.0); object-position: center 28%; }
+.design-showcase.format-full .ps-slot::before,
+.design-showcase.format-full .ps-slot::after {
+  content: ''; position: absolute; left: 0; right: 0; height: 2px; z-index: 3;
+  background: linear-gradient(90deg, transparent 0%, var(--ps-acc-a70) 8%, var(--ps-accent) 40%, var(--ps-acc-a70) 70%, transparent 92%);
+}
+.design-showcase.format-full #ps-slot-1::before,
+.design-showcase.format-full #ps-slot-1::after { background: linear-gradient(270deg, transparent 0%, var(--ps-acc-a70) 8%, var(--ps-accent) 40%, var(--ps-acc-a70) 70%, transparent 92%); }
+.design-showcase.format-full .ps-slot::before { top: 14vh; }
+.design-showcase.format-full .ps-slot::after  { bottom: 14vh; }
+/* BOTH view: both accent lines stay FULL-WIDTH (no hard 50% butt-join — that left a ~1px
+   sub-pixel seam at centre and an abrupt colour switch). Instead each line owns its own
+   half solid and CROSS-FADES through the centre: slot A (blue) fades out just past centre,
+   slot B (red, painted on top) fades in just before it → a smooth blue→red blend, no seam. */
+.design-showcase.format-full.stage-both #ps-slot-0::before,
+.design-showcase.format-full.stage-both #ps-slot-0::after {
+  background: linear-gradient(90deg, transparent 0%, var(--ps-acc-a70) 6%, var(--ps-accent) 30%, var(--ps-accent) 42%, transparent 58%);
+}
+.design-showcase.format-full.stage-both #ps-slot-1::before,
+.design-showcase.format-full.stage-both #ps-slot-1::after {
+  background: linear-gradient(270deg, transparent 0%, var(--ps-acc-a70) 6%, var(--ps-accent) 30%, var(--ps-accent) 42%, transparent 58%);
+}
+
+/* DESIGN: BLEED — full uncentred splash (JS feeds the splash art) reaching across the
+   half; heavier scrim so info reads over the scene. */
+/* bleed = cinematic full-height splash (overrides the shorter shared box). */
+.design-bleed.format-full #ps-slot-0 .ps-hero,
+.design-bleed.format-full #ps-slot-1 .ps-hero { top: 0; bottom: 0; width: 62vw; }
+.design-bleed.format-full .ps-hero-img { object-position: center 24%; }
+.design-bleed.format-full .ps-hero::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(0deg, rgba(0,0,0,0.86) 0%, rgba(0,0,0,0.4) 30%, transparent 56%);
+}
+
+/* DESIGN: FRAMED — straight bordered box per side (no skew; rectangles anti-alias fine). */
+.design-framed.format-full #ps-slot-0 .ps-hero { left: 6vw; right: auto; top: 16vh; bottom: 16vh; width: 28vw; overflow: visible; filter: drop-shadow(0 1.2vh 3vh rgba(0,0,0,0.5)); }
+.design-framed.format-full #ps-slot-1 .ps-hero { right: 6vw; left: auto; top: 16vh; bottom: 16vh; width: 28vw; overflow: visible; filter: drop-shadow(0 1.2vh 3vh rgba(0,0,0,0.5)); }
+.design-framed.format-full .ps-hero-img { border: 0.4vh solid var(--ps-accent); box-sizing: border-box; object-position: center center; }
+
+/* ── FULL — info placement. SIDE-LOCKED to each player's own lower corner, identical
+   whether solo or in Both. Because it never depends on the stage, a player keeps its
+   info in place through every switch (no jump to 0,0, no reflow when going to Both). */
+.format-full #ps-slot-0 .ps-info { left: 4vw;  right: auto; width: 44vw; bottom: 8vh; top: auto; align-items: flex-start; transition: transform 0.45s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)), bottom 0.45s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)); }
+.format-full #ps-slot-1 .ps-info { right: 4vw; left: auto;  width: 44vw; bottom: 8vh; top: auto; align-items: flex-end;   transition: transform 0.45s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)), bottom 0.45s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)); }
+/* SHOWCASE: push the stats (and caption) DOWN with transform only, so the identity — name /
+   role / champion — stays put above the cutoff line while the stats clear fully BELOW the
+   line (14vh). Transform doesn't affect the identity's layout, so it never moves. */
+.design-showcase.format-full .ps-stats { transform: translateY(6vh); }
+/* The caption rides the same 2vh nudge as the stats — the stats are shifted by transform
+   (not layout), so the caption (which flows under the stats' un-shifted box) would otherwise
+   collide with the lowered stats. Matching the transform keeps the gap and stops the overlap. */
+.design-showcase.format-full .ps-caption { transform: translateY(6vh); }
+
+/* ── Centre VS badge (Both view, show-vs on) ───────────────────────────────────── */
+.ps-vs-badge {
+  display: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 5;
+  align-items: center; justify-content: center; width: 7.2vh; height: 7.2vh; border-radius: 50%;
+  font-size: 3vh; font-weight: 900; letter-spacing: 0.04em; color: var(--gfx-c3, #fff);
+  background: rgba(5,8,13,0.82); border: 0.3vh solid var(--ps-accent);
+  box-shadow: 0 0 2.6vh rgba(0,0,0,0.65);
+}
+#ps-root.stage-both.show-vs .ps-vs-badge { display: flex; }
+
+/* ── Head-to-head stat comparison (Both view) — the two players' stats meet in the
+   centre below the VS for direct A-vs-B reading (sports stat-sheet style). Each row:
+   A value · LABEL · B value. Replaces the per-player corner stats in Both. ──────────── */
+.ps-compare {
+  display: flex; position: absolute; left: 50%; top: 57%;
+  transform: translateX(-50%) translateY(2.2vh); opacity: 0;
+  z-index: 4; width: 40vw; flex-direction: column; gap: 2.2vh; pointer-events: none;
+  transition: opacity 0.4s ease 0.15s, transform 0.45s var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) 0.15s;
+}
+/* fade + rise in when entering Both (and back out when leaving) — the 0.15s delay lets the
+   corner stats start collapsing first, so it reads as the stats converging to the centre. */
+#ps-root.format-full.stage-both .ps-compare { opacity: 1; transform: translateX(-50%) translateY(0); }
+/* Explicit fade-out when the graphic is hidden while live (the stage stays 'both', so the
+   class-based opacity wouldn't change). JS adds .ps-cmp-leaving in animateOut. */
+.ps-compare.ps-cmp-leaving { opacity: 0 !important; transform: translateX(-50%) translateY(1.6vh) !important;
+  transition: opacity 0.28s ease, transform 0.32s var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) !important; }
+/* Fullscreen Both: the corner stats COLLAPSE (height→0 + fade) rather than display:none,
+   so going solo→Both the stats smoothly drop out and the info above steps down as the
+   height shrinks (no hard cut), while the centre comparison fades in. L3 keeps its
+   per-player corner stats. */
+#ps-root.format-full.stage-both .ps-stats { max-height: 0; opacity: 0; margin-top: 0; }
+/* The caption STAYS in Both (per-player flavour reads in the duo view too). It only drops
+   its solo translateY nudge — that nudge exists to clear the lowered stats in solo, but in
+   Both the stats collapse to the centre, so without it the caption sits at its natural flow
+   position just below the champion line and clearly ABOVE the cutoff line (not orphaned). */
+#ps-root.format-full.stage-both .ps-caption { transform: none; }
+/* SHOWCASE Both: with the stats collapsed, the bottom-anchored info would drop ~9vh and the
+   identity (champ-line) + caption would fall onto / below the cutoff line. Raise the anchor
+   so the identity sits at the SAME height as solo (champ-line just above the line) and the
+   caption lands cleanly above the line. Animated via the bottom transition above. */
+.design-showcase.format-full.stage-both #ps-slot-0 .ps-info,
+.design-showcase.format-full.stage-both #ps-slot-1 .ps-info { bottom: 17vh; }
+.ps-cmp-row { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; column-gap: 2.6vw; }
+.ps-cmp-a, .ps-cmp-b { font-size: 4vh; font-weight: 900; line-height: 1; color: var(--gfx-c3, #fff); text-shadow: 0 0.3vh 1.6vh rgba(0,0,0,0.6); }
+.ps-cmp-a { text-align: right; }
+.ps-cmp-b { text-align: left; }
+.ps-cmp-label {
+  font-size: 1.5vh; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
+  color: rgba(255,255,255,0.5); white-space: nowrap; min-width: 11vw; text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   L3 — lower-third band. ONE continuous full-width band (a single root-level
+   gradient — NOT per-player, so there are no side boxes and no empty centre). The
+   slots are transparent and just hold each player's portrait (outer edge) + info
+   (inner side); the stage hides the absent player, the band stays put. Switching a
+   player never moves or stacks a background.
+   ═══════════════════════════════════════════════════════════════ */
+.format-l3 .ps-slot { inset: 0; }
+/* Shorter band (true lower-third height) sat at the very bottom. The champion fades on its
+   VERTICAL (left + right) edges and stays SOLID top + bottom — the fade runs horizontally
+   so each portrait dissolves sideways into the feed with no boxy vertical edge. The hard
+   top is handled by the accent line drawn over it (below). */
+.format-l3 .ps-hero { top: auto; bottom: 0; height: 34vh; width: 42vw; z-index: 1; overflow: hidden; }
+.format-l3 #ps-slot-0 .ps-hero { left: 0; right: auto; }
+.format-l3 #ps-slot-1 .ps-hero { right: 0; left: auto; }
+/* Champion focus pushed OUTWARD (scale + translate toward its own screen edge) and the
+   horizontal fade reaches 0 well before centre — so each portrait is solid/anchored at the
+   outer edge and fully gone by ~60% of the box, leaving the inner area clear for readable
+   text (no hard inner edge). Nudged down so the face sits in the shorter band. */
+.format-l3 #ps-slot-0 .ps-hero-img {
+  object-position: center 30%; transform: scale(1.34) translate(-13%, 5%);
+  -webkit-mask-image: linear-gradient(to right, #000 0%, #000 34%, transparent 66%);
+          mask-image: linear-gradient(to right, #000 0%, #000 34%, transparent 66%);
+}
+.format-l3 #ps-slot-1 .ps-hero-img {
+  object-position: center 30%; transform: scale(1.34) translate(13%, 5%);
+  -webkit-mask-image: linear-gradient(to left, #000 0%, #000 34%, transparent 66%);
+          mask-image: linear-gradient(to left, #000 0%, #000 34%, transparent 66%);
+}
+/* bleed L3 → wider splash. */
+.format-l3.design-bleed .ps-hero { width: 48vw; }
+/* Accent line across the TOP of the band = an artistic break between the L3 and the feed
+   behind it. Blue from the left, red from the right, each fading to 0 about 3/4 of the way
+   to centre, leaving a clean gap in the middle (no join). Per-slot so each takes its own
+   team colour; sits at the band's top edge. */
+.format-l3 .ps-slot::before {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 34vh; height: 2px; z-index: 3; pointer-events: none;
+}
+.format-l3 #ps-slot-0::before { background: linear-gradient(90deg,  var(--ps-accent) 0%, var(--ps-accent) 24%, var(--ps-acc-a70) 32%, transparent 40%); }
+.format-l3 #ps-slot-1::before { background: linear-gradient(270deg, var(--ps-accent) 0%, var(--ps-accent) 24%, var(--ps-acc-a70) 32%, transparent 40%); }
+/* Info anchored to the inner side of each portrait (screen-relative). Content is anchored
+   outward (A left-aligned, B right-aligned), so the same rule reads correctly solo OR in
+   Both — no stage gating, no jump. */
+.format-l3 #ps-slot-0 .ps-info { left: 23vw; width: 33vw; right: auto; top: auto; bottom: 0; height: 34vh; justify-content: center; align-items: flex-start; z-index: 2; }
+.format-l3 #ps-slot-1 .ps-info { right: 23vw; width: 33vw; left: auto; top: auto; bottom: 0; height: 34vh; justify-content: center; align-items: flex-end; z-index: 2; }
+/* Compact band type */
+.format-l3 .ps-team { font-size: 1.8vh; margin-bottom: 0.3vh; }
+.format-l3 .ps-handle { font-size: 6.2vh; }
+.format-l3 .ps-meta { margin-top: 0.8vh; font-size: 1.9vh; }
+.format-l3 .ps-role-icon { height: 2.2vh; width: 2.2vh; }
+.format-l3 .ps-champ-line { margin-top: 1.2vh; }
+.format-l3 .ps-champ-tag { font-size: 1.2vh; }
+.format-l3 .ps-champ-name { font-size: 2.4vh; }
+.format-l3 .ps-stats { margin-top: 1.2vh; gap: 0.6vw; }
+.format-l3 .ps-stat { padding: 0.6vh 1vw; }
+.format-l3 .ps-stat-val { font-size: 2.2vh; }
+.format-l3 .ps-caption { margin-top: 1vh; font-size: 1.6vh; }
+.format-l3 .ps-vs-badge { width: 5.4vh; height: 5.4vh; font-size: 2.2vh; top: auto; bottom: 17vh; }
+
+/* ═══════════════════════════════════════════════════════════════
+   TRANSITIONS — directional. Each player slides in from / out to their OWN side
+   (A left, B right) so a switch sends one off-left while the other arrives from the
+   right. Used for the entrance, the exit, and every stage change. The slide is on
+   the SLOT (transform), leaving the hero's skew untouched. Durations scale with
+   --gfx-dur-scale.
+   ═══════════════════════════════════════════════════════════════ */
+@keyframes ps-in-left  { from { opacity: 0; transform: translateX(-7vw); } to { opacity: 1; transform: translateX(0); } }
+@keyframes ps-in-right { from { opacity: 0; transform: translateX(7vw);  } to { opacity: 1; transform: translateX(0); } }
+@keyframes ps-out-left { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-7vw); } }
+@keyframes ps-out-right{ from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(7vw);  } }
+
+.ps-slot.ps-anim-in-left  { animation: ps-in-left  calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both; }
+.ps-slot.ps-anim-in-right { animation: ps-in-right calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) both; }
+.ps-slot.ps-anim-out-left { animation: ps-out-left calc(0.34s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) both; }
+.ps-slot.ps-anim-out-right{ animation: ps-out-right calc(0.34s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) both; }
+
+/* The VS badge fades with the Both view rather than popping. */
+@keyframes ps-vs-in { from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
+#ps-root.stage-both.show-vs .ps-vs-badge { animation: ps-vs-in calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.16,1,0.3,1)) calc(0.2s * var(--gfx-dur-scale, 1)) both; }
+/* Animate-OUT — JS adds .ps-vs-leaving when the badge leaves the Both stage (Both→one)
+   or the graphic hides. !important + display:flex keep it on screen for the out anim,
+   overriding the stage-gated display:none / the in-anim, until JS removes the class. */
+@keyframes ps-vs-out { from { opacity: 1; transform: translate(-50%, -50%) scale(1); } to { opacity: 0; transform: translate(-50%, -50%) scale(0.78); } }
+.ps-vs-badge.ps-vs-leaving { display: flex !important; animation: ps-vs-out calc(0.3s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.7,0,1,0.4)) both !important; }

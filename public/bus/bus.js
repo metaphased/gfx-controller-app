@@ -13,6 +13,7 @@ const GRAPHIC_PATHS = {
   prizepool:           '/graphics/prizepool/',
   bgOutput:            '/graphics/bg-output/',
   champSelect:         '/graphics/champ-select/',
+  playerSpotlight:     '/graphics/player-spotlight/',
 };
 
 const busId  = location.pathname.split('/').filter(Boolean).pop();

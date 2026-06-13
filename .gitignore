@@ -7,6 +7,12 @@ public/uploads/
 code/
 .claude/
 
+# Champion art — downloaded by users via Settings → Champion Assets / scripts/sync-assets.js
+# (kept out of git; small role icons under graphics/*/roles DO ship with the app)
+public/champions/
+public/graphics/head2head/champions/
+public/graphics/head2head/champions-splash/
+
 # Logs
 *.log
 npm-debug.log*

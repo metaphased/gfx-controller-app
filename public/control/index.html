@@ -86,6 +86,10 @@
         <span id="nav-dot-win" class="nav-status-dot"></span>
         Win Screen
       </a>
+      <a class="nav-item" data-tab="player-spotlight">
+        <span id="nav-dot-player-spotlight" class="nav-status-dot"></span>
+        Player Spotlight
+      </a>
 
       <div class="nav-section-label">SYSTEM</div>
       <a class="nav-item" data-tab="profiles" id="nav-item-profiles">Profiles</a>
@@ -2076,6 +2080,118 @@
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════
+         PLAYER SPOTLIGHT
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-player-spotlight">
+      <div class="tab-header"><h1>Player Spotlight</h1></div>
+      <div class="gfx-ctrl-bar">
+        <div class="gfx-ctrl-title">Player Spotlight Controls</div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group" id="ctrlgrp-playerSpotlight">
+            <span class="gfx-ctrl-section-label">Output</span>
+            <button class="lbar-toggle" id="ctrlbtn-playerSpotlight" onclick="toggleGraphic('playerSpotlight')">
+              <span class="lbar-dot" id="ctrl-dot-playerSpotlight"></span>SPOTLIGHT
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="ps-two-col">
+
+        <!-- Left column -->
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Players</div>
+            <p class="hint" style="margin-bottom:8px">Pick each player's team then name; their most-played champion and stats are pulled automatically. Player A sits screen-left, Player B screen-right.</p>
+
+            <!-- Player A -->
+            <div class="gfx-ctrl-group" style="margin-bottom:6px">
+              <span class="gfx-ctrl-section-label" style="min-width:62px">Player A</span>
+              <label class="ctrl-radio-label"><input type="radio" name="ps-team-0" value="team1" onchange="patchPsSlot(0,{team:'team1',handle:''})"> <span id="ps-t1-label">Team 1</span></label>
+              <label class="ctrl-radio-label"><input type="radio" name="ps-team-0" value="team2" onchange="patchPsSlot(0,{team:'team2',handle:''})"> <span id="ps-t2-label">Team 2</span></label>
+            </div>
+            <select id="ps-player-0" onchange="patchPsSlot(0,{handle:this.value})" style="margin-bottom:14px"><option value="">— select player —</option></select>
+
+            <!-- Player B (locked to the right of the stage) -->
+            <div class="gfx-ctrl-group" style="margin-bottom:6px">
+              <span class="gfx-ctrl-section-label" style="min-width:62px">Player B</span>
+              <label class="ctrl-radio-label"><input type="radio" name="ps-team-1" value="team1" onchange="patchPsSlot(1,{team:'team1',handle:''})"> <span id="ps-t1-label-b">Team 1</span></label>
+              <label class="ctrl-radio-label"><input type="radio" name="ps-team-1" value="team2" onchange="patchPsSlot(1,{team:'team2',handle:''})"> <span id="ps-t2-label-b">Team 2</span></label>
+            </div>
+            <select id="ps-player-1" onchange="patchPsSlot(1,{handle:this.value})"><option value="">— select player —</option></select>
+
+            <!-- On-stage control: A (left) → B (right, slides in opposite side) → Both -->
+            <div class="comp-opt-row" id="ps-stage-row" style="margin-top:14px">
+              <span class="comp-opt-label">On stage</span>
+              <div class="gfx-ctrl-group" style="gap:6px">
+                <button class="btn btn-sm" id="ps-stage-a"    onclick="patchPlayerSpotlight({stage:'a'})">◀ Player A</button>
+                <button class="btn btn-sm" id="ps-stage-b"    onclick="patchPlayerSpotlight({stage:'b'})">Player B ▶</button>
+                <button class="btn btn-sm" id="ps-stage-both" onclick="patchPlayerSpotlight({stage:'both'})">Both</button>
+              </div>
+            </div>
+            <p class="hint" style="margin:6px 0 0">Player A sits screen-left, Player B screen-right. Switch live to slide the next player in from their side; <strong>Both</strong> shows the face-off.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-title">Look</div>
+            <div class="comp-opt-row">
+              <span class="comp-opt-label">Format</span>
+              <div class="gfx-ctrl-group" style="gap:6px">
+                <button class="btn btn-sm" id="ps-format-full" onclick="patchPlayerSpotlight({format:'full'})">Fullscreen</button>
+                <button class="btn btn-sm" id="ps-format-l3" onclick="patchPlayerSpotlight({format:'l3'})">Lower Third</button>
+              </div>
+            </div>
+            <div class="comp-opt-row" style="margin-top:10px">
+              <span class="comp-opt-label">Design</span>
+              <div class="gfx-ctrl-group" style="gap:6px;flex-wrap:wrap;flex:1 1 auto;min-width:0">
+                <button class="btn btn-sm" id="ps-design-showcase" onclick="patchPlayerSpotlight({design:'showcase'})">Showcase</button>
+                <button class="btn btn-sm" id="ps-design-angled" onclick="patchPlayerSpotlight({design:'angled'})">Angled ⫽</button>
+                <button class="btn btn-sm" id="ps-design-bleed" onclick="patchPlayerSpotlight({design:'bleed'})">Full-bleed</button>
+                <button class="btn btn-sm" id="ps-design-framed" onclick="patchPlayerSpotlight({design:'framed'})">Framed</button>
+              </div>
+            </div>
+            <div class="comp-opt-row" style="margin-top:10px">
+              <span class="comp-opt-label">VS badge</span>
+              <label class="ctrl-radio-label" style="cursor:pointer"><input type="checkbox" id="ps-showvs" onchange="patchPlayerSpotlight({showVs:this.checked})"> Show the centre “VS” in the Both view</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column -->
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Accent Colour</div>
+            <p class="hint" style="margin-bottom:8px">Where the spotlight accent comes from. The player's draft-side colour usually reads best.</p>
+            <div class="gfx-ctrl-group">
+              <label class="ctrl-radio-label"><input type="radio" name="ps-accent" value="side"    onchange="patchPlayerSpotlight({accentSource:'side'})"> Player's side (blue / red)</label>
+              <label class="ctrl-radio-label"><input type="radio" name="ps-accent" value="primary" onchange="patchPlayerSpotlight({accentSource:'primary'})"> Broadcast Primary</label>
+              <label class="ctrl-radio-label"><input type="radio" name="ps-accent" value="custom"  onchange="patchPlayerSpotlight({accentSource:'custom'})"> Custom</label>
+            </div>
+            <div id="ps-accent-custom-row" style="display:none;margin-top:8px">
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="color" id="ps-accent-color" value="#1ffaff" style="width:48px;height:32px;padding:2px;background:none;border:1px solid var(--border);cursor:pointer" onchange="document.getElementById('ps-accent-color-text').value=this.value;patchPlayerSpotlight({accentCustom:this.value})">
+                <input type="text" id="ps-accent-color-text" placeholder="#1ffaff" value="#1ffaff" oninput="if(/^#[0-9a-fA-F]{6}$/.test(this.value)){document.getElementById('ps-accent-color').value=this.value;patchPlayerSpotlight({accentCustom:this.value})}">
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title">Champion, Caption &amp; Stats</div>
+            <div class="comp-opt-row">
+              <span class="comp-opt-label">Stat source</span>
+              <div class="gfx-ctrl-group" style="gap:6px">
+                <button class="btn btn-sm" id="ps-statsrc-both"       onclick="patchPlayerSpotlight({statSource:'both'})">Auto mix</button>
+                <button class="btn btn-sm" id="ps-statsrc-opgg"       onclick="patchPlayerSpotlight({statSource:'opgg'})">op.gg</button>
+                <button class="btn btn-sm" id="ps-statsrc-tournament" onclick="patchPlayerSpotlight({statSource:'tournament'})">Tournament</button>
+              </div>
+            </div>
+            <p class="hint" style="margin:6px 0 12px">Auto mix uses this event's record when available, otherwise op.gg. Override the featured champion, add a caption, and tick which stats to show — leave a stat's box blank to keep its automatic value, or type to override it.</p>
+            <div id="ps-overrides"></div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
          ROUTING
     ══════════════════════════════════════════════════════════════════════════ -->
     <section class="tab" id="tab-routing">
@@ -2363,6 +2479,7 @@
     <!-- Win screen + team selector -->
     <div class="lbar-group" id="lbar-group-winScreen">
       <button class="lbar-toggle" id="lbar-toggle-winScreen" onclick="toggleGraphic('winScreen')"><span class="lbar-dot" id="lbar-dot-winScreen"></span>WIN</button>
+      <button class="lbar-toggle" id="lbar-toggle-playerSpotlight" onclick="toggleGraphic('playerSpotlight')"><span class="lbar-dot" id="lbar-dot-playerSpotlight"></span>SPOTLIGHT</button>
       <div class="lbar-inner-divider"></div>
       <button class="lbar-timer-btn lbar-win-t1-btn" id="lbar-win-t1" onclick="lbarSetWinTeam('team1')">—</button>
       <button class="lbar-timer-btn lbar-win-t2-btn" id="lbar-win-t2" onclick="lbarSetWinTeam('team2')">—</button>

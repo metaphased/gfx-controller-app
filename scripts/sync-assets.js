@@ -45,6 +45,16 @@ const TARGETS = [
     alwaysUpdate: false,
   },
   {
+    key:    'splash',
+    label:  'Champion splash — full uncentered art (player spotlight)',
+    remote: 'img/champion/splash',
+    local:  path.join(ROOT, 'public', 'graphics', 'head2head', 'champions-splash'),
+    filter: f => f.type === 'file' && f.name.endsWith('_0.jpg'),
+    rename: null,
+    extra:  null,
+    alwaysUpdate: false,
+  },
+  {
     key:    'roles',
     label:  'Role / lane icons',
     remote: 'extras/lanes',
@@ -57,11 +67,49 @@ const TARGETS = [
   },
 ];
 
+const GH_HEADERS = { 'User-Agent': 'MetaGFX/asset-sync' };
+
+// Cache the repo's default branch (for building raw download URLs).
+let _branch = null;
+async function defaultBranch() {
+  if (_branch) return _branch;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}`, { headers: GH_HEADERS });
+    if (r.ok) { const j = await r.json(); _branch = j.default_branch; }
+  } catch (_) { /* fall through */ }
+  return (_branch = _branch || 'master');
+}
+
+// List a remote directory via the Git Trees API rather than the Contents API.
+// The Contents API caps directory listings at 1,000 entries — and img/champion/splash
+// holds every skin (Champ_0, _1, _2 …), well over 1,000, so a Contents listing was
+// silently truncated (~champs A→M only). The Trees API returns the whole subtree.
+// Returns objects shaped like Contents entries: { name, type, download_url }.
 async function listRemote(remotePath) {
-  const url = `${API_BASE}/${remotePath}`;
-  const res = await fetch(url, { headers: { 'User-Agent': 'MetaGFX/asset-sync' } });
-  if (!res.ok) throw new Error(`GitHub API ${res.status} for ${remotePath}`);
-  return res.json();
+  const branch = await defaultBranch();
+  const slash  = remotePath.lastIndexOf('/');
+  const parent = slash >= 0 ? remotePath.slice(0, slash) : '';
+  const name   = slash >= 0 ? remotePath.slice(slash + 1) : remotePath;
+
+  // 1) find the directory's tree SHA from its (small) parent listing
+  const pres = await fetch(`${API_BASE}${parent ? '/' + parent : ''}`, { headers: GH_HEADERS });
+  if (!pres.ok) throw new Error(`GitHub API ${pres.status} for ${parent || '/'}`);
+  const parentEntries = await pres.json();
+  const dir = Array.isArray(parentEntries) && parentEntries.find(e => e.name === name && e.type === 'dir');
+  if (!dir) throw new Error(`remote dir not found: ${remotePath}`);
+
+  // 2) list the subtree (flat — immediate children only)
+  const tres = await fetch(`https://api.github.com/repos/${REPO}/git/trees/${dir.sha}`, { headers: GH_HEADERS });
+  if (!tres.ok) throw new Error(`GitHub Trees API ${tres.status} for ${remotePath}`);
+  const tjson = await tres.json();
+  if (tjson.truncated) console.warn(`  ⚠ tree listing truncated for ${remotePath}`);
+  return (tjson.tree || [])
+    .filter(t => t.type === 'blob')
+    .map(t => ({
+      name: t.path,
+      type: 'file',
+      download_url: `https://raw.githubusercontent.com/${REPO}/${branch}/${remotePath}/${t.path}`,
+    }));
 }
 
 async function downloadFile(url, dest) {
