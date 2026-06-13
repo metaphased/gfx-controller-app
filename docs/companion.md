@@ -7,7 +7,7 @@ MetaGFX supports two ways to trigger graphics and match actions without touching
 - **Bitfocus Companion** — physical control surfaces (Stream Deck, X-Keys, etc.) via downloadable Companion profile
 - **Keyboard shortcuts** — per-user keybinds recorded directly in the control panel
 
-Both use the same underlying action API, so any action triggerable from a button is also triggerable from a keybind.
+Both use the same underlying action API, so any action triggerable from a button is also triggerable from a keybind. Both are set up from your [User profile](user-profile.md) modal (sidebar user chip / **◈ Profile**).
 
 ---
 

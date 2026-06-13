@@ -41,6 +41,7 @@ Every graphic is a browser source for OBS/vMix at 1920×1080. Each page below co
 |---|---|
 | [GFX Bus](gfx-bus.md) | Route many graphics through a few shared browser sources. |
 | [Operator & multi-user](operator-and-multiuser.md) | Operator view, roles, presence, page claiming, the log. |
+| [User profile](user-profile.md) | Per-user keybinds, password, appearance, Companion download, log out. |
 | [Caster view](caster-view.md) | Read-only, token-authed caster dashboard. |
 | [Champion assets](champion-assets.md) | Syncing champion tiles/centered/splash art. |
 | [Live Switcher](live-switcher.md) | OBS/vMix on-air (PGM/PVW) detection. |

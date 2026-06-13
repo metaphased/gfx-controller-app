@@ -11,7 +11,7 @@ MetaGFX is built for a crew. The **operator view** is a streamlined live-product
 | `operator` | The simplified operator view only (toggles, score, lower third). |
 | Graphics token | Read-only access to graphics outputs + the [caster view](caster-view.md) — no account. |
 
-Create and manage accounts in **Settings → Accounts**. (Change the default `admin` / `admin` password first — see [Getting started](getting-started.md#-before-you-go-live--required-reading).)
+Create and manage accounts in **Settings → Accounts**. (Change the default `admin` / `admin` password first — see [Getting started](getting-started.md#-before-you-go-live--required-reading).) Each user also has a personal **[User profile](user-profile.md)** (keybinds, own password, appearance, Companion download).
 
 ## Operator view
 
