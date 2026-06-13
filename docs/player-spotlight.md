@@ -6,6 +6,14 @@ Champion art is the hero of the graphic — there are no player photos — so a 
 
 All controls live on the **Player Spotlight** tab in the control panel. Output URL: `/graphics/player-spotlight/?token=XXXX` (1920×1080, as with every graphic).
 
+**Fullscreen, Both view** — a face-off with the centre head-to-head stat comparison:
+
+![Player Spotlight — fullscreen Both view](img/player-spotlight-full.png)
+
+**Lower-third** — a single player over the live feed:
+
+![Player Spotlight — lower-third](img/player-spotlight-l3.png)
+
 ## Picking the players
 
 Each side has a **team** selector and a **player** dropdown:
