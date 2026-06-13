@@ -144,15 +144,22 @@ All graphics are browser sources for OBS/vMix at **1920×1080**, each needing `?
 
 ## Documentation
 
-Deep-dive guides live in [`docs/`](docs/):
+The full guide lives in [`docs/`](docs/README.md) — start there for the complete index.
 
+**Setup & workflow**
+- [Getting started](docs/getting-started.md)
+- [Tournament setup](docs/tournament-setup.md) (incl. Teams Database)
+- [Schedule](docs/schedule.md) (incl. bracket linking)
+- [Match &amp; draft control](docs/match-and-draft.md)
+
+**Systems & integrations**
 - [Player Spotlight](docs/player-spotlight.md)
 - [Live Switcher (OBS/vMix on-air detection)](docs/live-switcher.md)
 - [Bitfocus Companion / Stream Deck](docs/companion.md)
 - [Theming &amp; Looks](docs/theming.md)
 - [Control-surface theming](docs/ui-theming.md)
 
-*(More feature guides are being added — this is an actively growing wiki.)*
+*(Per-graphic guides are being added — this is an actively growing wiki.)*
 
 ## Control panel sections
 
