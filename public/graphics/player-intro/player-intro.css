@@ -62,7 +62,9 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   background: rgba(0, 0, 0,0.25);
   border-bottom: 3px solid var(--team-color, var(--gfx-c1));
 }
-.pi-panel-t2-hdr { flex-direction: row-reverse; }
+/* Mirror the right team: name fills toward the centre, right-aligned, with the
+   logo on the OUTER (right) edge. DOM order is [name][logo] (normal row). */
+.pi-panel-t2-hdr .pi-panel-team-name { text-align: right; }
 
 .pi-panel-logo {
   width: 6vh; height: 6vh;

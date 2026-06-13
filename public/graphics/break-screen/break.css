@@ -80,6 +80,9 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 /* Series/next/timer fade is handled entirely by JS (position:fixed + inline opacity transition)
    so no CSS pip-mode opacity rules are needed here */
+/* In PIP mode the bottom bar carries its own countdown, so hide the centred timer
+   (runTimer() shows #break-timer unconditionally) — otherwise the timer appears twice. */
+#break-root.pip-mode #break-timer { display: none !important; }
 
 /* ── Tournament logo + name ────────────────────────────────────────────── */
 .break-tourn-logo {
