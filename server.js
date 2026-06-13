@@ -305,6 +305,22 @@ function makeDefaultPlayers() {
 function makeDefaultSubs() {
   return [1,2,3].map(i => ({ name: '', handle: 'Sub ' + i, role: '', country: '', active: false }));
 }
+// ── TEAM IDENTITY NAMING (read before touching team-keyed data) ───────────────
+// "Team 1 / Team 2" is keyed THREE ways depending on the object — mixing them up is a
+// recurring bug source, so:
+//   • Live / top-level state → FULL `team1`/`team2`:
+//       match.team1, players.team1 / team1subs, draft.team1RolePicks,
+//       draft.committedT1Picks (note the capital T), schedule game team1Id / team1Override.
+//       Also as string VALUES: draft.blueSideTeam / sideChooser, winScreen.team,
+//       playerSpotlight slot.team = 'team1' | 'team2'.
+//   • Per-game SNAPSHOT objects (match.seriesGames[], schedule result.games[]) →
+//       ABBREVIATED keys `t1*`/`t2*`: t1Side, t1Picks, t1Bans, t1RolePicks, t1Players.
+//       BUT the same snapshot ALSO has `winner: 'team1'` and nested `players.team1` (full).
+//   • POST /api/match/record-game body uses the t1*/t2* keys.
+//   • Local variables in render code use t1/t2 freely — cosmetic, no cross-file contract.
+// CONVENTION FOR NEW CODE: use full `team1`/`team2`. Do NOT rename the existing persisted
+// t1* keys without a state.json + saved-profiles migration (they're stored on disk).
+// ──────────────────────────────────────────────────────────────────────────────
 const makeDefault = () => ({
   tournament: {
     hasGroupStage:      false,
