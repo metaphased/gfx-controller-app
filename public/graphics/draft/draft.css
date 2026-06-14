@@ -174,7 +174,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: 100%;
 }
 .fearless-label {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.4vh; font-weight: 700; letter-spacing: 0.22em;
   text-transform: uppercase; color: rgba(255, 255, 255,0.65);
   text-align: center; margin-bottom: 0.5vh;
@@ -207,7 +207,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-items: center;
   gap: 0.55vw;
   height: 1.7vw; /* matches icon row height */
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.4vh; font-weight: 800; letter-spacing: 0.2em;
   text-transform: uppercase;
   color: rgba(255, 255, 255,0.55); /* fallback if side unknown */
@@ -351,7 +351,7 @@ body.phase-bold .fearless-label {
 
 /* Side-choice and pick-order labels — same weight/size as GAME X/X */
 .series-choice-tag {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.6vh; font-weight: 800; letter-spacing: 0.16em;
   text-transform: uppercase; white-space: nowrap;
   flex-shrink: 0; flex: 1;
@@ -377,14 +377,14 @@ body.phase-bold .fearless-label {
 
 /* Series info — two separate rows */
 .clock-series-game {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.6vh; font-weight: 800; letter-spacing: 0.16em;
   text-transform: uppercase; color: rgba(255, 255, 255,0.9);
   white-space: nowrap; text-align: center;
 }
 
 .clock-series-phase {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.3vh; font-weight: 700; letter-spacing: 0.14em;
   text-transform: uppercase; color: rgba(255, 255, 255,0.65);
   white-space: nowrap; text-align: center;

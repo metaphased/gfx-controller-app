@@ -55,7 +55,7 @@ html, body {
   border: 1px solid rgba(255, 255, 255,0.12);
   border-radius: 3px;
 }
-.ts-pill-lbl {
+.ts-pill-lbl { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.2vh; font-weight: 700;
   letter-spacing: 0.22em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.35);
@@ -142,7 +142,7 @@ html, body {
   letter-spacing: 0.03em; text-transform: uppercase;
   color: var(--gfx-c3, #fff); line-height: 1;
 }
-.ts-stage-sub {
+.ts-stage-sub { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.8vh; font-weight: 700;
   letter-spacing: 0.14em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.35); line-height: 1;
@@ -157,7 +157,7 @@ html, body {
 .ts-detail-row {
   display: flex; justify-content: space-between; align-items: baseline; gap: 1vw;
 }
-.ts-detail-lbl {
+.ts-detail-lbl { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.6vh; font-weight: 700;
   letter-spacing: 0.16em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.4); flex-shrink: 0;

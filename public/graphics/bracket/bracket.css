@@ -87,7 +87,7 @@ html, body {
 .bkt-section.bkt-upper { grid-column: 1; grid-row: 1; }
 .bkt-section.bkt-lower { grid-column: 1; grid-row: 2; }
 
-.bkt-section-label {
+.bkt-section-label { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.5vh;
   font-weight: 800;
   letter-spacing: 0.28em;
@@ -111,7 +111,7 @@ html, body {
 }
 
 /* Row 1: round labels — auto-placed by grid-auto-flow: column */
-.bkt-round-header {
+.bkt-round-header { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   text-align: center;
   font-size: 1.2vh;
   font-weight: 700;
@@ -181,7 +181,7 @@ html, body {
   flex-direction: column;
 }
 
-.bkt-round-label {
+.bkt-round-label { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   height: 3.5vh;
   display: flex;
   align-items: flex-end;
@@ -269,7 +269,7 @@ html, body {
   align-items: stretch;
 }
 
-.bkt-3p-label {
+.bkt-3p-label { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   padding-bottom: 0.7vh;
   font-size: 1.35vh;
   font-weight: 700;
@@ -409,7 +409,7 @@ html, body {
 }
 
 /* Match badge — shown when both team slots are pending refs */
-.bkt-match-badge {
+.bkt-match-badge { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   padding: 0.3vh 0.6vw;
   font-size: 0.9vh;
   font-weight: 800;

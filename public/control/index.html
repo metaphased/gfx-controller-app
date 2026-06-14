@@ -1251,14 +1251,18 @@
           <!-- Typography -->
           <div class="card" style="margin-bottom:16px">
             <div class="card-title">Typography</div>
-            <p class="hint">The broadcast font used across <strong>every overlay</strong>. Default is Barlow&nbsp;Condensed. Saved with <strong>Looks</strong> too.</p>
+            <p class="hint">The broadcast fonts used across <strong>every overlay</strong>. <strong>Primary</strong> drives display text — team/player names, titles, big numbers. <strong>Secondary</strong> drives labels &amp; meta — stage/format labels, captions, sub-text. Leave Secondary on <em>Same as primary</em> for a single-font look. Default is Barlow&nbsp;Condensed; saved with <strong>Looks</strong>.</p>
             <div class="theme-palette-slot">
-              <span class="theme-fixed-label">Overlay font</span>
+              <span class="theme-fixed-label">Primary <span style="opacity:0.6;text-transform:none;letter-spacing:0">display</span></span>
               <select id="ts-overlay-font" onchange="setOverlayFont(this.value)" style="flex:1;min-width:0"></select>
             </div>
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Secondary <span style="opacity:0.6;text-transform:none;letter-spacing:0">labels</span></span>
+              <select id="ts-overlay-font-2" onchange="setOverlayFont2(this.value)" style="flex:1;min-width:0"></select>
+            </div>
             <div id="ts-font-preview" style="margin-top:12px;padding:14px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
-              <div style="font-size:30px;font-weight:800;line-height:1.1;color:var(--text-strong);text-transform:uppercase;letter-spacing:0.02em">Aurora Vanguard</div>
-              <div style="font-size:14px;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin-top:4px">Grand Final · Bo5 · 0123456789</div>
+              <div id="ts-font-preview-1" style="font-size:30px;font-weight:800;line-height:1.1;color:var(--text-strong);text-transform:uppercase;letter-spacing:0.02em">Aurora Vanguard</div>
+              <div id="ts-font-preview-2" style="font-size:14px;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin-top:4px">Grand Final · Bo5 · 0123456789</div>
             </div>
 
             <!-- Custom fonts (advanced) -->

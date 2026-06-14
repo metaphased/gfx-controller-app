@@ -5703,35 +5703,48 @@ function _injectControlCustomFonts() {
   if (el.textContent !== css) el.textContent = css;
 }
 
+function _populateFontSelect(sel, current, defaultLabel) {
+  if (!sel) return;
+  const custom = _customFonts().map(f => f.name);
+  const sig = defaultLabel + '##' + OVERLAY_FONTS.join('|') + '##' + custom.join('|');
+  if (sel._sig !== sig) {
+    sel._sig = sig;
+    let html = '<option value="">' + escHtml(defaultLabel) + '</option>';
+    html += '<optgroup label="Bundled">' + OVERLAY_FONTS.map(f => `<option value="${escHtml(f)}">${escHtml(f)}</option>`).join('') + '</optgroup>';
+    if (custom.length) html += '<optgroup label="Custom">' + custom.map(f => `<option value="${escHtml(f)}">${escHtml(f)}</option>`).join('') + '</optgroup>';
+    sel.innerHTML = html;
+  }
+  sel.value = current;
+  if (sel.value !== current) sel.value = ''; // selected font no longer exists → default
+}
+
 function syncFontControls(st) {
   _injectControlCustomFonts();
-  const current = st.overlayFont || '';
-  const sel = g('ts-overlay-font');
-  if (sel) {
-    const custom = _customFonts().map(f => f.name);
-    const sig = OVERLAY_FONTS.join('|') + '##' + custom.join('|');
-    if (sel._sig !== sig) {
-      sel._sig = sig;
-      let html = '<option value="">Barlow Condensed (default)</option>';
-      html += '<optgroup label="Bundled">' + OVERLAY_FONTS.map(f => `<option value="${escHtml(f)}">${escHtml(f)}</option>`).join('') + '</optgroup>';
-      if (custom.length) html += '<optgroup label="Custom">' + custom.map(f => `<option value="${escHtml(f)}">${escHtml(f)}</option>`).join('') + '</optgroup>';
-      sel.innerHTML = html;
-    }
-    sel.value = current;
-    if (sel.value !== current) sel.value = ''; // selected font no longer exists → default
-  }
-  _updateFontPreview(current);
+  const primary = st.overlayFont || '', secondary = st.overlayFont2 || '';
+  _populateFontSelect(g('ts-overlay-font'),   primary,   'Barlow Condensed (default)');
+  _populateFontSelect(g('ts-overlay-font-2'), secondary, 'Same as primary');
+  _updateFontPreview(primary, secondary);
   renderCustomFontsList();
 }
 
-function _updateFontPreview(fontName) {
-  const prev = g('ts-font-preview');
-  if (prev) prev.style.fontFamily = fontName ? ("'" + _cssFontName(fontName) + "', 'Barlow Condensed', sans-serif") : "'Barlow Condensed', sans-serif";
+// Secondary preview falls back to the primary font, then to the literal default —
+// mirroring the overlay CSS `var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed'))`.
+function _fontStack(name, fallback) { return name ? ("'" + _cssFontName(name) + "', " + fallback) : fallback; }
+function _updateFontPreview(primary, secondary) {
+  if (primary === undefined)   primary   = (window._state && window._state.settings && window._state.settings.overlayFont)  || '';
+  if (secondary === undefined) secondary = (window._state && window._state.settings && window._state.settings.overlayFont2) || '';
+  const primaryStack = _fontStack(primary, "'Barlow Condensed', sans-serif");
+  const p1 = g('ts-font-preview-1'); if (p1) p1.style.fontFamily = primaryStack;
+  const p2 = g('ts-font-preview-2'); if (p2) p2.style.fontFamily = _fontStack(secondary, primaryStack);
 }
 
 function setOverlayFont(val) {
   patchSettings({ overlayFont: val || '' });
-  _updateFontPreview(val);
+  _updateFontPreview(val, undefined);
+}
+function setOverlayFont2(val) {
+  patchSettings({ overlayFont2: val || '' });
+  _updateFontPreview(undefined, val);
 }
 
 function renderCustomFontsList() {

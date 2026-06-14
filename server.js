@@ -496,7 +496,8 @@ const makeDefault = () => ({
     bgImage:     '',
     bgAnimation: 'none',
     draftLayout: 'arena',      // 'arena' | 'classic'
-    overlayFont: '',           // broadcast font for all overlays ('' = Barlow Condensed); a bundled family or a customFonts name
+    overlayFont: '',           // PRIMARY (display) overlay font ('' = Barlow Condensed); a bundled family or a customFonts name
+    overlayFont2: '',          // SECONDARY (labels/meta) overlay font ('' = inherit the primary font)
     customFonts: [],           // user-uploaded fonts: [{ id, name, url, format }]
     graphicsToken: require('crypto').randomBytes(16).toString('hex'),
     animation: {
@@ -595,7 +596,7 @@ function saveProfiles(p) { try { fs.writeFileSync(PROFILES_FILE, JSON.stringify(
 // ── Looks (reusable visual identities: palette + accents + background + animation) ──
 // A Look is theme-only and additive; it can be applied over any tournament profile
 // without touching teams/schedule. Logo library is intentionally excluded.
-const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation','overlayFont'];
+const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation','overlayFont','overlayFont2'];
 function loadLooks() { try { if (fs.existsSync(LOOKS_FILE)) return JSON.parse(fs.readFileSync(LOOKS_FILE, 'utf8')); } catch(e) {} return null; }
 function saveLooks(l) { try { fs.writeFileSync(LOOKS_FILE, JSON.stringify(l, null, 2)); } catch(e) { console.error(e); } }
 function _seedLooks() {

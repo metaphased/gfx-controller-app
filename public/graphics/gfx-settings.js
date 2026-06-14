@@ -58,12 +58,17 @@ window.GfxSettings = (function () {
     if (redTrip)  el.style.setProperty('--gfx-red-rgb',  redTrip);
     el.style.setProperty('--gfx-bg',   st.bgColor    || 'transparent');
 
-    // Overlay typography — a single broadcast font, themeable like the palette.
-    // Empty = leave unset so each overlay's literal `'Barlow Condensed'` fallback wins.
+    // Overlay typography — Primary (display) + Secondary (labels) broadcast fonts,
+    // themeable like the palette. Empty = leave unset so the CSS fallback chain wins:
+    // secondary elements use `var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed'))`,
+    // so an unset secondary falls back to the primary, then to the literal default.
     _applyCustomFonts(st.customFonts);
     var font = _cssFontName(st.overlayFont);
     if (font) el.style.setProperty('--gfx-font', "'" + font + "'");
     else      el.style.removeProperty('--gfx-font');
+    var font2 = _cssFontName(st.overlayFont2);
+    if (font2) el.style.setProperty('--gfx-font-2', "'" + font2 + "'");
+    else       el.style.removeProperty('--gfx-font-2');
   }
 
   function applyBackground(el, s) {

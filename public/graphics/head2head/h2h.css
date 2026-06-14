@@ -176,7 +176,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   transition: font-size 0.6s var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1));
 }
 .h2h-champ-name {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.9vh; font-weight: 700;
   letter-spacing: 0.2em; text-transform: uppercase;
   color: var(--gfx-c1);
@@ -222,7 +222,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .h2h-role-label {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.3vh; font-weight: 700;
   letter-spacing: 0.22em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.35);
@@ -268,7 +268,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   min-width: 0;
 }
 .h2h-stat-pill-label {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.2vh; font-weight: 700;
   letter-spacing: 0.14em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.45);
@@ -282,7 +282,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   line-height: 1;
 }
 .h2h-stat-no-data {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.3vh; font-weight: 600;
   color: rgba(255, 255, 255,0.25);
   letter-spacing: 0.06em;

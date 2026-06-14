@@ -54,7 +54,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   justify-content: center;
 }
 
-.ws-tag {
+.ws-tag { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.1vh;
   font-weight: 700;
   letter-spacing: 0.4em;
@@ -73,7 +73,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   text-shadow: 0 0 5vw var(--win-col-a70);
 }
 
-.ws-message {
+.ws-message { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 2vh;
   font-weight: 700;
   letter-spacing: 0.25em;

@@ -66,7 +66,7 @@ html, body {
 }
 
 /* ── Group header ───────────────────────────────────────────────────────────── */
-.gs-group-header {
+.gs-group-header { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   padding: 1.4vh 1.2vw;
   font-size: 2.2vh;
   font-weight: 900;
@@ -173,7 +173,7 @@ html, body {
   transition: opacity 0.45s ease, height 0.45s ease;
 }
 
-.gs-cutoff-label {
+.gs-cutoff-label { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 0.95vh;
   font-weight: 800;
   letter-spacing: 0.3em;

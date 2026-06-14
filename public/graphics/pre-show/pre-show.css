@@ -80,7 +80,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .ps-timer-label {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.8vh; font-weight: 600;
   letter-spacing: 0.4em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.38);
@@ -182,7 +182,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .ps-card-vs-text {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.6vh; font-weight: 700;
   letter-spacing: 0.22em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.2);
@@ -199,7 +199,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .ps-card-format {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.3vh; font-weight: 700;
   letter-spacing: 0.28em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.3);
@@ -207,7 +207,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .ps-card.is-current .ps-card-format { color: var(--gfx-c2, #a7a38e); opacity: 0.9; }
 
 .ps-card-stage {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.1vh; font-weight: 600;
   letter-spacing: 0.18em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.2);
@@ -364,7 +364,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .ps-card-format-side { display: none; }
 
 #ps-root.layout-side .ps-card-format-side {
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.2vh; font-weight: 700;
   letter-spacing: 0.25em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.25);
@@ -393,7 +393,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .ps-ticker-label {
   flex-shrink: 0;
   padding: 0 1.4vw;
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.3vh; font-weight: 800; letter-spacing: 0.22em;
   text-transform: uppercase; color: var(--ps-c1);
   border-right: 1px solid rgba(255, 255, 255,0.12);
@@ -417,7 +417,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 .ps-ticker-item {
   display: inline-block;
-  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.9vh; font-weight: 600; letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(255, 255, 255,0.82);

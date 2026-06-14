@@ -22,7 +22,12 @@ Every wiring keeps the original colour as a literal fallback, so the default pal
 
 ## Typography
 
-The **Typography** card sets the **broadcast font** used across *every* overlay. The default is **Barlow Condensed**; pick any bundled family from the dropdown and all graphics restyle live. A preview line shows the chosen font. The font choice is saved per profile and travels with [Looks](#looks).
+The **Typography** card sets the **broadcast fonts** used across *every* overlay. There are two:
+
+- **Primary (display)** — the big display text: team/player names, titles, big numbers/scores.
+- **Secondary (labels)** — the supporting text: stage/format labels, ranks, captions, sub-text, stat labels, ticker copy.
+
+Pick any bundled family for each from its dropdown and all graphics restyle live; a two-line preview shows both. Pairing a condensed display face with a rounder label face (or vice-versa) gives the broadcast typographic contrast. Leave **Secondary** on **Same as primary** for a single-font look — that's the default (both **Barlow Condensed**). Both choices are saved per profile and travel with [Looks](#looks).
 
 Bundled families ship self-hosted (no external font CDN) with display weights (400–900), so headings and names stay crisp rather than faux-bold.
 
@@ -34,7 +39,7 @@ Upload your own typeface to use across the overlays:
 - Give it a **display name**; it then appears in the Overlay font list (under **Custom**) and in the live preview.
 - **Custom fonts are global** — shared across all profiles, not tied to one. Removing a font reverts any overlay using it to the default.
 
-Under the hood, the chosen family is injected as the `--gfx-font` CSS variable; overlay CSS uses `font-family: var(--gfx-font, 'Barlow Condensed')` so an unset value always falls back to the default. Uploaded fonts are registered as `@font-face` rules built from `settings.customFonts` and served from `/uploads/fonts`.
+Under the hood, the chosen families are injected as the `--gfx-font` (primary) and `--gfx-font-2` (secondary) CSS variables. Display text uses `var(--gfx-font, 'Barlow Condensed')`; label/meta text uses `var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed'))` — so an unset secondary falls back to the primary, and an unset primary to the default. Uploaded fonts are registered as `@font-face` rules built from `settings.customFonts` and served from `/uploads/fonts`.
 
 ## Background
 
