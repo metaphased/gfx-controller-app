@@ -1181,75 +1181,130 @@ app.get('/api/companion/profile', (req, res) => {
   const tokenSuffix = graphicsToken ? `?token=${encodeURIComponent(graphicsToken)}` : '';
   const connId = genId();
 
+  // Keep in sync with GRAPHIC_PAGE_KEYS above and public/shared/action-registry.js GRAPHICS.
   const GRAPHIC_LABELS = {
     lowerThird:'Lower Third', headToHead:'Head to Head', playerIntro:'Player Intro',
-    draft:'Draft', bracket:'Bracket', groupStage:'Group Stage',
-    breakScreen:'Break Screen', winScreen:'Win Screen', playerSpotlight:'Player Spotlight', prizepool:'Prizepool', ticker:'Ticker',
+    playerSpotlight:'Player Spotlight', draft:'Draft', bracket:'Bracket',
+    tournamentStructure:'Tournament Structure', groupStage:'Group Stage', preShow:'Pre-Show',
+    breakScreen:'Break Screen', winScreen:'Win Screen', prizepool:'Prizepool', ticker:'Ticker',
   };
   const GRAPHICS = Object.keys(GRAPHIC_LABELS);
 
-  const PAGE_ACTIONS = {
-    1: GRAPHICS.flatMap(id => [
-      { label: `Show\n${GRAPHIC_LABELS[id]}`,   path: `/api/graphic/${id}/show` },
-      { label: `Hide\n${GRAPHIC_LABELS[id]}`,   path: `/api/graphic/${id}/hide` },
-    ]),
-    2: GRAPHICS.map(id => ({ label: `Toggle\n${GRAPHIC_LABELS[id]}`, path: `/api/graphic/${id}/toggle` })),
-    3: [
-      { label: 'T1 Score\n+1',    path: '/api/match/score/team1/increment' },
-      { label: 'T1 Score\n-1',    path: '/api/match/score/team1/decrement' },
-      { label: 'T2 Score\n+1',    path: '/api/match/score/team2/increment' },
-      { label: 'T2 Score\n-1',    path: '/api/match/score/team2/decrement' },
-      { label: 'Next\nGame',      path: '/api/match/next-game' },
-      { label: 'Prev\nGame',      path: '/api/match/prev-game' },
-      { label: 'Draft\nTimer',    path: '/api/draft/timer/toggle' },
-      { label: 'Reset\nDraft',    path: '/api/draft', body: '{"phase":"notstarted","currentStep":0}' },
-      { label: 'Replay\nIntro',   path: '/api/draft', body: '{"replayIntro":true}' },
-    ],
-    4: (state.settings.buses || []).map(b => ({ label: `${b.name || b.id}\nNext`, path: `/api/bus/${b.id}/next` })),
-  };
-  const PAGE_NAMES = { 1: 'GFX Show/Hide', 2: 'GFX Toggle', 3: 'Match & Draft', 4: 'Bus' };
+  // Page numbers double as the keys of the `pages` object AND the targets for the
+  // internal set_page nav action (Companion resolves `page` by 1-based ordinal).
+  const PAGE = { HOME: 1, SHOWHIDE: 2, TOGGLE: 3, OPTIONS: 4, MATCH: 5, BUS: 6 };
+  const NAV_BG  = 1323855;   // 0x14314f — deep blue, distinguishes nav from action buttons
+  const HOME_BG = 1326382;   // 0x143f2e — deep green, the Home hub category buttons
 
-  const pages = {};
-  for (const [pageNum, pageName] of Object.entries(PAGE_NAMES)) {
-    const acts = PAGE_ACTIONS[pageNum] || [];
-    const controls = {};
-    acts.forEach((a, idx) => {
-      const row = Math.floor(idx / 8), col = idx % 8;
-      if (!controls[row]) controls[row] = {};
-      controls[row][col] = {
-        type: 'button',
-        style: { text: a.label, textExpression: false, size: 'auto', png64: null,
-                 alignment: 'center:center', pngalignment: 'center:center',
-                 color: 16777215, bgcolor: 0, show_topbar: 'default' },
-        options: { stepProgression: 'auto', stepExpression: '', rotaryActions: false },
-        feedbacks: [],
-        steps: { '0': {
-          action_sets: {
-            down: [{ id: genId(), type: 'action', connectionId: connId,
-                     definitionId: 'post',
-                     options: {
-                       url:                    { value: `${baseUrl}${a.path}${tokenSuffix}`, isExpression: false },
-                       body:                   { value: a.body || '',                         isExpression: false },
-                       contenttype:            { value: 'application/json',                  isExpression: false },
-                       // Must be wrapped like the other options — Companion unwraps {value} at
-                       // runtime; a bare '' resolves to undefined → String(undefined)='undefined'
-                       // → the module logs "set variable $(custom:undefined)" on every press.
-                       statusCodeVariable:     { value: '', isExpression: false },
-                       jsonResultDataVariable: { value: '', isExpression: false },
-                     },
-                     upgradeIndex: 1 }],
-            up: [],
-          },
-          options: { runWhileHeld: [] },
-        }},
-        localVariables: [],
-      };
-    });
-    pages[pageNum] = {
-      id: genId(), name: pageName, controls,
-      gridSize: { minColumn: 0, maxColumn: 7, minRow: 0, maxRow: Math.max(3, acts.length > 0 ? Math.floor((acts.length - 1) / 8) : 0) },
+  // ── Button factories ─────────────────────────────────────────────────────────
+  function makeButton(label, downActions, bgcolor) {
+    return {
+      type: 'button',
+      style: { text: label, textExpression: false, size: 'auto', png64: null,
+               alignment: 'center:center', pngalignment: 'center:center',
+               color: 16777215, bgcolor: (bgcolor != null ? bgcolor : 0), show_topbar: 'default' },
+      options: { stepProgression: 'auto', stepExpression: '', rotaryActions: false },
+      feedbacks: [],
+      steps: { '0': { action_sets: { down: downActions, up: [] }, options: { runWhileHeld: [] } } },
+      localVariables: [],
     };
   }
+  function httpAction(path, body) {
+    return { id: genId(), type: 'action', connectionId: connId, definitionId: 'post',
+      options: {
+        url:                    { value: `${baseUrl}${path}${tokenSuffix}`, isExpression: false },
+        body:                   { value: body || '',                       isExpression: false },
+        contenttype:            { value: 'application/json',               isExpression: false },
+        // Must be wrapped like the other options — Companion unwraps {value} at
+        // runtime; a bare '' resolves to undefined → String(undefined)='undefined'
+        // → the module logs "set variable $(custom:undefined)" on every press.
+        statusCodeVariable:     { value: '', isExpression: false },
+        jsonResultDataVariable: { value: '', isExpression: false },
+      },
+      upgradeIndex: 1 };
+  }
+  // Built-in internal connection: jump the pressing surface to another page.
+  function navAction(targetPage) {
+    return { id: genId(), type: 'action', connectionId: 'internal', definitionId: 'set_page',
+      options: {
+        surfaceId: { value: 'self',      isExpression: false },
+        page:      { value: targetPage,  isExpression: false },
+      },
+      upgradeIndex: 0 };
+  }
+  const httpButton = (label, path, body) => makeButton(label, [httpAction(path, body)]);
+  const navButton  = (label, targetPage, bg) => makeButton(label, [navAction(targetPage)], bg);
+
+  // ── Per-page action button lists ──────────────────────────────────────────────
+  const showHideBtns = GRAPHICS.flatMap(id => [
+    httpButton(`Show\n${GRAPHIC_LABELS[id]}`, `/api/graphic/${id}/show`),
+    httpButton(`Hide\n${GRAPHIC_LABELS[id]}`, `/api/graphic/${id}/hide`),
+  ]);
+  const toggleBtns = GRAPHICS.map(id => httpButton(`Toggle\n${GRAPHIC_LABELS[id]}`, `/api/graphic/${id}/toggle`));
+  const optionBtns = [
+    httpButton('Spotlight\nPlayer A', '/api/playerSpotlight', '{"stage":"a"}'),
+    httpButton('Spotlight\nPlayer B', '/api/playerSpotlight', '{"stage":"b"}'),
+    httpButton('Spotlight\nBoth',     '/api/playerSpotlight', '{"stage":"both"}'),
+    httpButton('Spotlight\nVS On',    '/api/playerSpotlight', '{"showVs":true}'),
+    httpButton('Spotlight\nVS Off',   '/api/playerSpotlight', '{"showVs":false}'),
+    httpButton('Standings\nGroups',   '/api/groupStage', '{"mode":"live"}'),
+    httpButton('Standings\nFinal',    '/api/groupStage', '{"mode":"final"}'),
+  ];
+  const matchBtns = [
+    httpButton('T1 Score\n+1',  '/api/match/score/team1/increment'),
+    httpButton('T1 Score\n-1',  '/api/match/score/team1/decrement'),
+    httpButton('T2 Score\n+1',  '/api/match/score/team2/increment'),
+    httpButton('T2 Score\n-1',  '/api/match/score/team2/decrement'),
+    httpButton('Next\nGame',    '/api/match/next-game'),
+    httpButton('Prev\nGame',    '/api/match/prev-game'),
+    httpButton('Draft\nTimer',  '/api/draft/timer/toggle'),
+    httpButton('Reset\nDraft',  '/api/draft', '{"phase":"notstarted","currentStep":0}'),
+    httpButton('Replay\nIntro', '/api/draft', '{"replayIntro":true}'),
+  ];
+  const busBtns = (state.settings.buses || []).map(b => httpButton(`${b.name || b.id}\nNext`, `/api/bus/${b.id}/next`));
+
+  // Home hub — one button per category page, so the profile is click-navigable.
+  const homeBtns = [
+    navButton('GFX\nShow / Hide', PAGE.SHOWHIDE, HOME_BG),
+    navButton('GFX\nToggle',      PAGE.TOGGLE,   HOME_BG),
+    navButton('GFX\nOptions',     PAGE.OPTIONS,  HOME_BG),
+    navButton('Match\n& Draft',   PAGE.MATCH,    HOME_BG),
+    navButton('Bus',              PAGE.BUS,      HOME_BG),
+  ];
+
+  // ── Page assembly ─────────────────────────────────────────────────────────────
+  // Each category page reserves row0/col0 for a "⌂ Home" button; actions flow after.
+  function buildControls(navBtn, actionBtns) {
+    const controls = {};
+    const place = (idx, btn) => {
+      const row = Math.floor(idx / 8), col = idx % 8;
+      (controls[row] = controls[row] || {})[col] = btn;
+    };
+    let i = 0;
+    if (navBtn) { place(0, navBtn); i = 1; }
+    actionBtns.forEach(b => place(i++, b));
+    const maxRow = Math.max(3, i > 0 ? Math.floor((i - 1) / 8) : 0);
+    return { controls, maxRow };
+  }
+
+  const homeNav = () => navButton('⌂ Home', PAGE.HOME, NAV_BG);
+  const pageDefs = [
+    { num: PAGE.HOME,     name: 'Home',          nav: null,       actions: homeBtns },
+    { num: PAGE.SHOWHIDE, name: 'GFX Show/Hide', nav: homeNav(),  actions: showHideBtns },
+    { num: PAGE.TOGGLE,   name: 'GFX Toggle',    nav: homeNav(),  actions: toggleBtns },
+    { num: PAGE.OPTIONS,  name: 'GFX Options',   nav: homeNav(),  actions: optionBtns },
+    { num: PAGE.MATCH,    name: 'Match & Draft', nav: homeNav(),  actions: matchBtns },
+    { num: PAGE.BUS,      name: 'Bus',           nav: homeNav(),  actions: busBtns },
+  ];
+
+  const pages = {};
+  pageDefs.forEach(def => {
+    const { controls, maxRow } = buildControls(def.nav, def.actions);
+    pages[def.num] = {
+      id: genId(), name: def.name, controls,
+      gridSize: { minColumn: 0, maxColumn: 7, minRow: 0, maxRow },
+    };
+  });
 
   const profile = {
     version: 12,

@@ -9,17 +9,22 @@
     return fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   }
 
+  // Full graphic set — must stay in sync with server.js GRAPHIC_PAGE_KEYS and the
+  // Companion generator's GRAPHIC_LABELS. Each entry auto-gets show/hide/toggle.
   const GRAPHICS = [
-    { id: 'lowerThird',        label: 'Lower Third' },
-    { id: 'headToHead',        label: 'Head to Head' },
-    { id: 'playerIntro',       label: 'Player Intro' },
-    { id: 'draft',             label: 'Draft' },
-    { id: 'bracket',           label: 'Bracket' },
-    { id: 'groupStage',        label: 'Group Stage' },
-    { id: 'breakScreen',       label: 'Break Screen' },
-    { id: 'winScreen',         label: 'Win Screen' },
-    { id: 'prizepool',         label: 'Prizepool' },
-    { id: 'ticker',            label: 'Ticker' },
+    { id: 'lowerThird',          label: 'Lower Third' },
+    { id: 'headToHead',          label: 'Head to Head' },
+    { id: 'playerIntro',         label: 'Player Intro' },
+    { id: 'playerSpotlight',     label: 'Player Spotlight' },
+    { id: 'draft',               label: 'Draft' },
+    { id: 'bracket',             label: 'Bracket' },
+    { id: 'tournamentStructure', label: 'Tournament Structure' },
+    { id: 'groupStage',          label: 'Group Stage' },
+    { id: 'preShow',             label: 'Pre-Show' },
+    { id: 'breakScreen',         label: 'Break Screen' },
+    { id: 'winScreen',           label: 'Win Screen' },
+    { id: 'prizepool',           label: 'Prizepool' },
+    { id: 'ticker',              label: 'Ticker' },
   ];
 
   const _static = [];
@@ -40,6 +45,18 @@
     { id: 'draft.timer.toggle',          label: 'Toggle Draft Timer',  category: 'Draft', handler: () => post('/api/draft/timer/toggle') },
     { id: 'draft.reset',                 label: 'Reset Draft',         category: 'Draft', handler: () => postBody('/api/draft', { phase: 'notstarted', currentStep: 0, picks: Array(20).fill('') }) },
     { id: 'draft.replay-intro',          label: 'Replay Draft Intro',  category: 'Draft', handler: () => postBody('/api/draft', { replayIntro: true }) },
+  );
+
+  // Option actions — set specific graphic options (parallel to the Companion
+  // generic-http POSTs, so each is a fixed body, not a client-side toggle).
+  _static.push(
+    { id: 'playerSpotlight.stage.a',    label: 'Spotlight: Player A (left)',  category: 'Player Spotlight', handler: () => postBody('/api/playerSpotlight', { stage: 'a' }) },
+    { id: 'playerSpotlight.stage.b',    label: 'Spotlight: Player B (right)', category: 'Player Spotlight', handler: () => postBody('/api/playerSpotlight', { stage: 'b' }) },
+    { id: 'playerSpotlight.stage.both', label: 'Spotlight: Both Players',     category: 'Player Spotlight', handler: () => postBody('/api/playerSpotlight', { stage: 'both' }) },
+    { id: 'playerSpotlight.vs.show',    label: 'Spotlight: Show VS Badge',    category: 'Player Spotlight', handler: () => postBody('/api/playerSpotlight', { showVs: true }) },
+    { id: 'playerSpotlight.vs.hide',    label: 'Spotlight: Hide VS Badge',    category: 'Player Spotlight', handler: () => postBody('/api/playerSpotlight', { showVs: false }) },
+    { id: 'groupStage.mode.live',       label: 'Standings: Group Stage View', category: 'Group Stage', handler: () => postBody('/api/groupStage', { mode: 'live' }) },
+    { id: 'groupStage.mode.final',      label: 'Standings: Final Standings',  category: 'Group Stage', handler: () => postBody('/api/groupStage', { mode: 'final' }) },
   );
 
   window.ActionRegistry = {
