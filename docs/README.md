@@ -1,6 +1,6 @@
 # MetaGFX documentation
 
-The full guide to running a broadcast with MetaGFX. These pages are the single source of truth — GitHub renders them as the wiki, and the in-app help reads the same files, so they never drift from the version you're running.
+The full guide to running a broadcast with MetaGFX, with rundowns and extra information for all available features.
 
 New here? Start with **[Getting started](getting-started.md)**, then work down the Setup & workflow list — it mirrors the order you'll actually do things on show day.
 
