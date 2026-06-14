@@ -3076,40 +3076,76 @@ async function importCsv() {
 }
 
 // Build or update teams in the Teams Database from imported rows.
-// Expected columns: team, handle (player IGN), role
+// Per-PLAYER columns (team-grouped): team, handle/ign, role/position, riotId ("Name#TAG"),
+//   region (op.gg, e.g. euw/na/oce/kr), name (real name), country, sub/substitute (truthy
+//   → bench). Per-TEAM columns (taken from any row of that team): tag/acronym, logo (URL).
+// Column headers are case-insensitive and tolerant of spaces/underscores. Only `team`
+// + one player field are required; everything else is optional and falls back gracefully.
 async function importBuildTeams(rows) {
   if (!Array.isArray(rows) || !rows.length) return { created: 0, updated: 0 };
 
-  // Group players by team name
+  // The three import paths key rows differently (CSV/JSON keep header casing, Sheets
+  // lowercases) — normalise each row to lowercased/spaceless keys so lookups are uniform.
+  function norm(row) {
+    const o = {};
+    Object.keys(row || {}).forEach(function(k) {
+      o[String(k).trim().toLowerCase().replace(/[\s_]+/g, '')] = String(row[k] == null ? '' : row[k]).trim();
+    });
+    return o;
+  }
+  const pick = (o, keys) => { for (let i = 0; i < keys.length; i++) if (o[keys[i]]) return o[keys[i]]; return ''; };
+  const truthy = v => /^(y|yes|true|1|sub|substitute|bench)$/i.test(v || '');
+
+  // Group rows by team, splitting starters / subs and capturing team-level tag + logo.
   const teamMap = {};
-  rows.forEach(function(row) {
-    const teamName = (row.team || '').trim();
+  rows.forEach(function(rawRow) {
+    const row = norm(rawRow);
+    const teamName = pick(row, ['team', 'teamname']);
     if (!teamName) return;
-    if (!teamMap[teamName]) teamMap[teamName] = [];
-    const handle = (row.handle || row.ign || '').trim();
-    const role   = (row.role   || '').trim();
-    if (handle) teamMap[teamName].push({ handle, role });
+    const handle = pick(row, ['handle', 'ign', 'player', 'summoner']);
+    if (!handle) return;
+    const key = teamName.toLowerCase(); // group case-insensitively; keep first-seen display name
+    if (!teamMap[key]) teamMap[key] = { name: teamName, players: [], subs: [], tag: '', logo: '' };
+    const entry = teamMap[key];
+    const roleRaw = pick(row, ['role', 'position', 'lane']);
+    const player = {
+      handle: handle,
+      name:   pick(row, ['name', 'realname', 'fullname']),
+      role:   roleRaw,
+      opggRegion: pick(row, ['region', 'opggregion']).toLowerCase(),
+      riotId: pick(row, ['riotid', 'riot']),
+      country: pick(row, ['country', 'nationality']),
+    };
+    if (truthy(pick(row, ['sub', 'substitute', 'bench'])) || /^(sub|substitute)$/i.test(roleRaw)) entry.subs.push(player);
+    else entry.players.push(player);
+    if (!entry.tag)  entry.tag  = pick(row, ['tag', 'acronym']);
+    if (!entry.logo) entry.logo = pick(row, ['logo', 'logourl']);
   });
 
-  const teamNames = Object.keys(teamMap);
-  if (!teamNames.length) return { created: 0, updated: 0 };
+  const teamKeys = Object.keys(teamMap);
+  if (!teamKeys.length) return { created: 0, updated: 0 };
 
   // Fetch existing teams so we can merge rather than duplicate
   const existing = (await fetch('/api/teams').then(function(r) { return r.json(); }).catch(function() { return { teams: [] }; })).teams || [];
 
   let created = 0, updated = 0;
-  for (let t = 0; t < teamNames.length; t++) {
-    const teamName = teamNames[t];
-    const players  = teamMap[teamName].slice(0, 5).map(function(p, i) {
-      return { handle: p.handle, name: '', role: p.role || DEFAULT_ROLES[i] || '' };
+  for (let t = 0; t < teamKeys.length; t++) {
+    const entry = teamMap[teamKeys[t]];
+    const teamName = entry.name;
+    // Up to 5 starters; any overflow joins the imported subs.
+    const starters = entry.players.slice(0, 5).map(function(p, i) {
+      return { handle: p.handle, name: p.name || '', role: p.role || DEFAULT_ROLES[i] || '', opggRegion: p.opggRegion, riotId: p.riotId, country: p.country };
+    });
+    const subs = entry.players.slice(5).concat(entry.subs).map(function(p) {
+      return { handle: p.handle, name: p.name || '', role: p.role || '', opggRegion: p.opggRegion, riotId: p.riotId, country: p.country };
     });
     const match = existing.find(function(x) { return x.name.toLowerCase() === teamName.toLowerCase(); });
     const teamData = {
       name:    teamName,
-      tag:     match ? (match.tag   || '') : '',
-      logo:    match ? (match.logo  || '') : '',
-      players: players,
-      subs:    match ? (match.subs  || []) : [],
+      tag:     entry.tag  || (match ? (match.tag  || '') : ''),
+      logo:    entry.logo || (match ? (match.logo || '') : ''),
+      players: starters,
+      subs:    subs.length ? subs : (match ? (match.subs || []) : []),
     };
     if (match) { teamData.id = match.id; updated++; } else { created++; }
     await api('/api/teams/save', teamData);

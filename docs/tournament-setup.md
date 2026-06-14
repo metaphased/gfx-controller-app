@@ -89,10 +89,36 @@ Per-stage default series formats (e.g. groups = Bo1, playoffs = Bo3, finals = Bo
 
 ### Importing teams
 
-Two import paths sit at the bottom of the Teams tab. Both **create or update** teams (matched by name) and expect columns **`team, handle, role`** — add logos and tags afterwards in the editor.
+Two import paths sit at the bottom of the Teams tab. Both **create or update** teams (matched by name), one **row per player**.
 
 - **Google Sheets** — the sheet must be publicly readable; supply **Sheet ID**, **API Key** and **Range** (default `Sheet1`).
 - **JSON / CSV file** — choose a file and **Import**.
+
+**Columns** (headers are case-insensitive; spaces/underscores ignored):
+
+| Column | Required | Notes |
+|---|---|---|
+| `team` | ✓ | Team name — rows are grouped by it. |
+| `handle` | ✓ | Player IGN. (`ign`, `player`, `summoner` also accepted.) |
+| `role` | – | Top / Jungle / Mid / Bot / Support (`position`, `lane` accepted). Defaults by row order if blank. |
+| `riotId` | – | Riot ID as `Name#TAG` — powers [rank lookups](match-and-draft.md#ranks-and-champion-pools) and op.gg links. |
+| `region` | – | op.gg region (e.g. `euw`, `na`, `oce`, `kr`). |
+| `name` | – | Player's real name. |
+| `country` | – | Country / nationality. |
+| `tag` | – | Team acronym (team-level — taken from any of the team's rows). |
+| `logo` | – | Team logo URL (team-level). |
+| `sub` | – | Truthy (`yes`/`true`/`1`) marks the row as a **substitute**. (A 6th+ starter also rolls into subs.) |
+
+Only `team` + `handle` are required; everything else is optional. A simple `team, handle, role` sheet still works exactly as before — the new columns just let you bring in Riot IDs, regions and team branding in one go instead of typing them in the [editor](#creating--editing-a-team) afterwards.
+
+**Example CSV:**
+
+```csv
+team,tag,logo,handle,role,riotId,region
+Aurora Vanguard,AUR,https://example.com/aur.png,Ardent,Top,Ardent#EUW,euw
+Aurora Vanguard,AUR,,Quill,Jungle,Quill#EUW,euw
+Crimson Talons,CRT,,Granite,Top,Granite#NA1,na
+```
 
 ---
 

@@ -634,7 +634,7 @@
         <div class="grid2">
           <div class="card">
             <div class="card-title">Google Sheets</div>
-            <p class="hint">Sheet must be publicly readable. Columns: <code>team, handle, role</code><br>Creates or updates teams in the Teams Database. Add logos and acronyms there afterwards.</p>
+            <p class="hint">Sheet must be publicly readable. Required: <code>team</code>, <code>handle</code>. Optional: <code>role</code>, <code>riotId</code>, <code>region</code>, <code>name</code>, <code>country</code>, <code>tag</code>, <code>logo</code>, <code>sub</code>.<br>Headers are case-insensitive. Creates or updates teams by name.</p>
             <div class="field-row"><label>Sheet ID</label><input type="text" id="gsheets-id" placeholder="Sheet ID"></div>
             <div class="field-row"><label>API Key</label><input type="text" id="gsheets-key" placeholder="AIza..."></div>
             <div class="field-row"><label>Range</label><input type="text" id="gsheets-range" value="Sheet1"></div>
@@ -643,7 +643,7 @@
           </div>
           <div class="card">
             <div class="card-title">JSON / CSV Import</div>
-            <p class="hint">CSV/JSON columns: <code>team, handle, role</code><br>Creates or updates teams in the Teams Database.</p>
+            <p class="hint">Required: <code>team</code>, <code>handle</code>. Optional: <code>role</code>, <code>riotId</code>, <code>region</code>, <code>name</code>, <code>country</code>, <code>tag</code>, <code>logo</code>, <code>sub</code>.<br>One row per player; headers are case-insensitive.</p>
             <div class="field-row">
               <label>JSON File</label>
               <div class="upload-row">
