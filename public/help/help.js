@@ -157,22 +157,9 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
-  // ── Back link — point at the surface the user came from ──────────────────────
-  function setBackLink() {
-    var back = document.getElementById('help-back');
-    fetch('/api/auth/me', { credentials: 'same-origin' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (data) {
-        if (!data || !data.user) { back.style.display = 'none'; return; }
-        var admin = ['admin', 'superadmin'].indexOf(data.user.role) !== -1;
-        back.setAttribute('href', admin ? '/control/' : '/operator/');
-        back.textContent = admin ? '← Back to control' : '← Back to operator';
-      })
-      .catch(function () { back.style.display = 'none'; });
-  }
-
   // ── Init ─────────────────────────────────────────────────────────────────────
-  setBackLink();
+  // No "back" link: help opens in its own tab, so a return button just spawns
+  // redundant tabs — users close this tab to go back.
   searchEl.addEventListener('input', function () { filterNav(searchEl.value); });
   window.addEventListener('hashchange', route);
   fetch(withTok('/api/help/manifest'), { credentials: 'same-origin' })
