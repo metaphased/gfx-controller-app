@@ -29,7 +29,7 @@ MetaGFX is a self-hosted control room for community esports productions. You man
 - 12+ overlays: Player Intro, Player Spotlight, Head-to-Head, Draft board, Win Screen (10 styles incl. full-screen stingers), Break Screen (PIP), Pre-show, Lower Third, Bracket (single/double elim), Group Stage, Tournament Structure, Prizepool, animated backgrounds.
 - **Everything stays in sync** — change a score or a pick once and every overlay reflects it instantly via WebSockets.
 - **GFX Bus system** — route many graphics through 3–4 shared browser sources instead of one per graphic (big RAM/VRAM saving); switch live from the operator routing matrix.
-- **Theming & Looks** — palette, accents, background and animation easing/speed, saved as reusable named "Looks" applied over any event.
+- **Theming & Looks** — palette, accents, background, animation easing/speed, and **broadcast typography** (primary display + secondary label fonts, 13 bundled families plus your own custom font uploads), saved as reusable named "Looks" applied over any event.
 
 **🎛️ Control & operation**
 - Full **control panel** for setup + live control, and a streamlined **operator view** with drag-reorderable panels.
@@ -41,7 +41,7 @@ MetaGFX is a self-hosted control room for community esports productions. You man
 - **Caster view** — a read-only, token-authed dashboard with roster intel, live draft board, series history and fearless pool.
 
 **🔌 Integrations**
-- **Bitfocus Companion / Stream Deck** profile generator + action API.
+- **Bitfocus Companion / Stream Deck** — generates a ready-to-import, page-navigable Companion profile covering every graphic, plus a per-user keybind action API.
 - **Live on-air detection** (OBS/vMix) — LIVE/OFF-AIR + per-graphic PGM/PVW tags.
 - **op.gg / Riot API** — solo-queue ranks, champion pools, draft stats.
 
@@ -195,3 +195,13 @@ The `data/` directory is created on first run and is not in git:
 | `teams.json` | Teams database |
 | `profiles.json` | Saved tournament profiles |
 | `session-secret.txt` | Auto-generated session signing key |
+
+---
+
+## License
+
+MetaGFX is released under the **[PolyForm Noncommercial License 1.0.0](LICENSE)** — free to use, modify and share **for any non-commercial purpose**, including by individuals, community/grassroots organisers, charities, schools and other non-profits.
+
+In keeping with the project's intent (see the note near the top of this README), **commercial use is not granted** — for example, paid or commercial broadcast productions, or selling commercial ad space. If you'd like to use MetaGFX commercially, get in touch via [@metaphasetv](https://x.com/metaphasetv) to discuss a separate licence.
+
+See the full terms at [polyformproject.org/licenses/noncommercial/1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0).

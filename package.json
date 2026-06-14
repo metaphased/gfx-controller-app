@@ -2,6 +2,7 @@
   "name": "esports-broadcast-gfx",
   "version": "1.0.0",
   "description": "Local broadcast graphics controller for esports productions",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
