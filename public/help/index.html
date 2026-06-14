@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="graphite">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MetaGFX — Help</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<link rel="stylesheet" href="/shared/tokens.css">
+<link rel="stylesheet" href="help.css">
+<script src="/shared/theme.js"></script>
+</head>
+<body>
+  <header class="help-top">
+    <a class="help-brand" href="#" title="Documentation home">
+      <img src="/fonts/metagfx-logo.png" alt="MetaGFX">
+      <span class="help-brand-sub">Help &amp; Documentation</span>
+    </a>
+    <div class="help-search-wrap">
+      <input id="help-search" type="search" placeholder="Search topics…" autocomplete="off" spellcheck="false">
+    </div>
+    <a id="help-back" class="help-back" href="/control/">← Back to control</a>
+  </header>
+
+  <div class="help-body">
+    <nav id="help-nav" class="help-nav" aria-label="Documentation topics"></nav>
+
+    <main class="help-main">
+      <article id="help-doc" class="help-doc markdown-body">
+        <div class="help-loading">Loading…</div>
+      </article>
+    </main>
+
+    <aside id="help-toc" class="help-toc" aria-label="On this page"></aside>
+  </div>
+
+  <script src="/help/vendor/marked.min.js"></script>
+  <script src="help.js"></script>
+</body>
+</html>

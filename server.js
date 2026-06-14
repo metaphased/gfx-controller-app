@@ -237,6 +237,50 @@ app.get('/bus/:id', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'bus', 'index.html'));
 });
 
+// ── In-app help (renders docs/*.md) — session OR graphics-token gated ──────────
+// The same docs/*.md that GitHub renders as the wiki are served here, so the
+// in-app help never drifts from the running version. requireAuth accepts a logged
+// -in session or ?token=<graphicsToken>.
+const DOCS_DIR = path.join(__dirname, 'docs');
+
+// Parse docs/README.md (the wiki index) into a grouped nav manifest so the index
+// stays the single source of truth for topic titles/order/descriptions.
+function parseHelpManifest(md) {
+  const groups = [];
+  let group = null, sawGroup = false;
+  for (const raw of md.split(/\r?\n/)) {
+    const line = raw.trim();
+    if (line === '---') break;                       // stop at the footer rule
+    const h = line.match(/^##\s+(.+)$/);
+    if (h) { group = { title: h[1].trim(), items: [] }; groups.push(group); sawGroup = true; continue; }
+    if (!sawGroup || !group) continue;
+    // Table row: | [Title](file.md#anchor) | description |
+    const row = line.match(/^\|\s*\[([^\]]+)\]\(([a-z0-9-]+)\.md(#[a-z0-9-]+)?\)\s*\|\s*(.*?)\s*\|\s*$/i);
+    if (row) group.items.push({ title: row[1].trim(), file: row[2], anchor: (row[3] || '').replace(/^#/, ''), desc: row[4].trim() });
+  }
+  return { groups: groups.filter(g => g.items.length) };
+}
+
+// Markdown source + images for the renderer (e.g. /help/_src/bracket.md, /help/_src/img/x.jpg).
+// Gated (session cookie, or the help page appends ?token= to these fetches).
+app.use('/help/_src', requireAuth, express.static(DOCS_DIR, {
+  setHeaders: (res, fp) => {
+    if (/\.md$/i.test(fp)) res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  },
+}));
+app.get('/api/help/manifest', requireAuth, (req, res) => {
+  try { res.json(parseHelpManifest(fs.readFileSync(path.join(DOCS_DIR, 'README.md'), 'utf8'))); }
+  catch (e) { res.status(500).json({ error: 'Help manifest unavailable' }); }
+});
+// Like the caster view: only the HTML entry is auth-gated; the page's own CSS/JS
+// assets are served freely so they load even under ?token= auth (the browser does
+// not attach the token to sub-resource requests).
+app.get(['/help', '/help/'], requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'help', 'index.html'));
+});
+app.use('/help', express.static(path.join(__dirname, 'public', 'help')));
+
 // Root redirect
 app.get('/', (req, res) => {
   if (!req.session || !req.session.user) return res.redirect('/login/');
