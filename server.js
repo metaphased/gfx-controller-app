@@ -1224,13 +1224,15 @@ app.get('/api/companion/profile', (req, res) => {
       upgradeIndex: 1 };
   }
   // Built-in internal connection: jump the pressing surface to another page.
+  // Shape matches how Companion 4.x serialises a native internal action (verified
+  // against a real round-tripped export): no upgradeIndex, with an empty children map.
   function navAction(targetPage) {
     return { id: genId(), type: 'action', connectionId: 'internal', definitionId: 'set_page',
       options: {
         surfaceId: { value: 'self',      isExpression: false },
         page:      { value: targetPage,  isExpression: false },
       },
-      upgradeIndex: 0 };
+      children: {} };
   }
   const httpButton = (label, path, body) => makeButton(label, [httpAction(path, body)]);
   const navButton  = (label, targetPage, bg) => makeButton(label, [navAction(targetPage)], bg);
