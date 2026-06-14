@@ -27,9 +27,21 @@ The **Typography** card sets the **broadcast fonts** used across *every* overlay
 - **Primary (display)** — the big display text: team/player names, titles, big numbers/scores.
 - **Secondary (labels)** — the supporting text: stage/format labels, ranks, captions, sub-text, stat labels, ticker copy.
 
+![Typography card on the Broadcast Theme tab](img/tool-typography.jpg)
+
 Pick any bundled family for each from its dropdown and all graphics restyle live; a two-line preview shows both. Pairing a condensed display face with a rounder label face (or vice-versa) gives the broadcast typographic contrast. Leave **Secondary** on **Same as primary** for a single-font look — that's the default (both **Barlow Condensed**). Both choices are saved per profile and travel with [Looks](#looks).
 
 Bundled families ship self-hosted (no external font CDN) with display weights (400–900), so headings and names stay crisp rather than faux-bold.
+
+Changing the **primary** font restyles all display text — here the Win Screen with the default Barlow Condensed, then with Poppins:
+
+![Win Screen — default Barlow Condensed](img/typography-default.jpg)
+
+![Win Screen — primary font set to Poppins](img/typography-primary.jpg)
+
+Setting a different **secondary** font adds hierarchy — display text stays on the primary while labels/meta switch. Here the Player Spotlight keeps condensed names but renders its labels (team, stat labels, role, "signature champion") in a rounder secondary face:
+
+![Player Spotlight — primary display vs secondary label font](img/typography-secondary.jpg)
 
 ### Custom fonts (advanced)
 
