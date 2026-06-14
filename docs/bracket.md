@@ -2,7 +2,9 @@
 
 The playoff bracket — single or double elimination — as a broadcast overlay. Output at `/graphics/bracket/`.
 
-![Bracket — single elimination](img/bracket.jpg)
+![Bracket — double elimination](img/bracket.jpg)
+
+*Double elimination: an upper and lower bracket feeding the grand final. Single elimination shows one progression of rounds instead.*
 
 ## Building the bracket
 

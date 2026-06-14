@@ -18,7 +18,7 @@ Source: the [DDragon mirror](https://github.com/noxelisdev/LoL_DDragon). Only **
 
 **Settings → Champion Assets**:
 
-![Settings tab — Champion Assets and other admin settings](img/tool-settings.jpg)
+![Champion Assets card on the Settings tab](img/tool-champion-assets.jpg)
 
 - **Sync Missing** — download everything that's absent, with a live progress bar.
 - **Sync + Force Roles** — also re-download the role icons (use after a resolution upgrade).
