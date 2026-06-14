@@ -173,6 +173,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 100%;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 .ps-card-vs {
@@ -344,10 +345,12 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 #ps-root.layout-side .ps-card-name {
   font-size: 2.8vh;
   text-align: left;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 #ps-root.layout-side .ps-card-team:last-child .ps-card-name {
   text-align: right;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 #ps-root.layout-side .ps-card-footer {
@@ -422,6 +425,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   text-transform: uppercase;
   color: rgba(255, 255, 255,0.82);
   white-space: nowrap;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 .ps-ticker-result-win  { color: var(--ps-c1); font-weight: 800; }

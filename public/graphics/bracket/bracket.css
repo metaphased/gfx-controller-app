@@ -164,7 +164,8 @@ html, body {
   height: 4.5vh;
 }
 
-.bkt-final-section .bkt-team-name  { font-size: 2.3vh; }
+.bkt-final-section .bkt-team-name  { font-size: 2.3vh;   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 .bkt-final-section .bkt-team-score { font-size: 2.5vh; font-weight: 900; }
 
 .bkt-final-section .bkt-match {
@@ -244,7 +245,8 @@ html, body {
   height: 4.5vh;
 }
 
-#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-team-name  { font-size: 2.3vh; }
+#bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-team-name  { font-size: 2.3vh;   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 #bracket-rounds-gfx.layout-single .bkt-round.bkt-final-round .bkt-team-score { font-size: 2.5vh; font-weight: 900; }
 
 /* ── Final area wrapper (GF + 3rd place stacked) ───────────────────────────────── */
@@ -288,7 +290,8 @@ html, body {
 .bkt-3p-section .bkt-team-logo,
 .bkt-3p-section .bkt-team-logo-ph { width: 3.5vh; height: 3.5vh; }
 
-.bkt-3p-section .bkt-team-name  { font-size: 1.9vh; }
+.bkt-3p-section .bkt-team-name  { font-size: 1.9vh;   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 .bkt-3p-section .bkt-team-score { font-size: 2vh; font-weight: 800; }
 
 .bkt-matches {
@@ -358,9 +361,11 @@ html, body {
   overflow: hidden;
   text-overflow: ellipsis;
   min-width: 0;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
-.bkt-section.bkt-lower .bkt-team-name { font-size: 1.45vh; }
+.bkt-section.bkt-lower .bkt-team-name { font-size: 1.45vh;   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 
 .bkt-team-score {
   font-size: 1.8vh;
@@ -384,7 +389,8 @@ html, body {
   background: var(--bkt-accent, var(--gfx-c1, #1ffaff));
 }
 
-.bkt-team.bkt-winner .bkt-team-name  { color: var(--gfx-c3, #fff); }
+.bkt-team.bkt-winner .bkt-team-name  { color: var(--gfx-c3, #fff);   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 .bkt-team.bkt-winner .bkt-team-score { color: var(--bkt-accent, var(--gfx-c1, #1ffaff)); }
 
 /* Loser */
@@ -394,6 +400,7 @@ html, body {
 .bkt-team.bkt-tbd .bkt-team-name {
   color: rgba(255, 255, 255, 0.22);
   font-style: italic;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 /* Pending bracket reference ("Winner of SF M1") */
@@ -402,6 +409,7 @@ html, body {
   color: rgba(255, 255, 255, 0.28);
   font-style: italic;
   letter-spacing: 0.01em;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 .bkt-team.bkt-pending-ref .bkt-team-logo-ph {

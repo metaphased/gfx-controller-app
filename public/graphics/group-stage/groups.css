@@ -141,9 +141,11 @@ html, body {
   text-overflow: ellipsis;
   min-width: 0;
   transition: color 0.45s ease;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
-.gs-team.qualifying .gs-team-name { color: var(--gfx-c3, #fff); }
+.gs-team.qualifying .gs-team-name { color: var(--gfx-c3, #fff);   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 
 /* ── W-L record ─────────────────────────────────────────────────────────────── */
 .gs-record {
@@ -156,9 +158,11 @@ html, body {
   min-width: 4.5ch;
   text-align: right;
   transition: color 0.45s ease;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
-.gs-team.qualifying .gs-record { color: var(--gfx-c1, #1ffaff); }
+.gs-team.qualifying .gs-record { color: var(--gfx-c1, #1ffaff);   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 
 /* ── Qualifier cutoff ───────────────────────────────────────────────────────── */
 .gs-cutoff {
@@ -195,8 +199,10 @@ html, body {
 #groups-root.mode-live .gs-team.eliminated     { opacity: 1; }
 #groups-root.mode-live .gs-team.qualifying     { background-color: transparent; }
 #groups-root.mode-live .gs-team.qualifying::before { opacity: 0; }
-#groups-root.mode-live .gs-team.qualifying .gs-team-name { color: rgba(255, 255, 255, 0.8); }
-#groups-root.mode-live .gs-team.qualifying .gs-record    { color: rgba(255, 255, 255, 0.4); }
+#groups-root.mode-live .gs-team.qualifying .gs-team-name { color: rgba(255, 255, 255, 0.8);   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
+#groups-root.mode-live .gs-team.qualifying .gs-record    { color: rgba(255, 255, 255, 0.4);   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 #groups-root.mode-live .gs-cutoff             { opacity: 0; pointer-events: none; height: 0; }
 
 /* ── Logo entry animation ───────────────────────────────────────────────────── */

@@ -227,6 +227,7 @@
 .ps-cmp-label { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.5vh; font-weight: 700; letter-spacing: 0.2em; text-transform: uppercase;
   color: rgba(255,255,255,0.5); white-space: nowrap; min-width: 11vw; text-align: center;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 /* ═══════════════════════════════════════════════════════════════

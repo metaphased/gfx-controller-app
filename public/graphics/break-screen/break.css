@@ -77,6 +77,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 #break-root.pip-mode .break-main-msg {
   font-size: 4.8vh;
   white-space: nowrap;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 /* Series/next/timer fade is handled entirely by JS (position:fixed + inline opacity transition)
    so no CSS pip-mode opacity rules are needed here */
@@ -111,6 +112,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-size: 8.5vh; font-weight: 900; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--gfx-c3, #fff);
   text-align: center; line-height: 1;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 .break-subtext {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
@@ -152,6 +154,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-size: 3.5vh; font-weight: 800; letter-spacing: 0.05em;
   text-transform: uppercase; color: var(--gfx-c3, #fff);
   white-space: nowrap;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 .break-team-score {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
@@ -207,6 +210,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-size: 1.3vh; font-weight: 700; letter-spacing: 0.3em;
   text-transform: uppercase; color: var(--gfx-c1);
   white-space: nowrap;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 .break-next-text {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
@@ -271,6 +275,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   text-transform: uppercase;
   color: rgba(255, 255, 255,0.82);
   white-space: nowrap;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 .ticker-result-win {
   color: var(--gfx-c1);
@@ -467,6 +472,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-size: 3.5vh; font-weight: 800; letter-spacing: 0.05em;
   text-transform: uppercase; color: var(--gfx-c3, #fff);
   white-space: nowrap;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 .break-pip-score {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
@@ -496,6 +502,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-size: 2vh;
   letter-spacing: 0.22em;
   line-height: 1;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 .break-pip-upcoming-text {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;

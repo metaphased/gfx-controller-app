@@ -385,6 +385,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   white-space: nowrap;
   line-height: 0.9;
   text-shadow: 0 0 0.25vw var(--win-color);
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 /* ── Split animations ──────────────────────────────────────── */
@@ -730,6 +731,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: var(--gfx-c3, #ffffff);
   text-align: center; line-height: 1; white-space: nowrap;
   max-width: 100%; overflow: hidden; text-overflow: ellipsis;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 /* Angled mode — lean the FRAME into a parallelogram ( / / / / ) while the art
@@ -746,7 +748,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 /* The mask's BOTTOM edge is shifted left (spans 0→84% of the width, centre 42%)
    while the name sits at the bounding-box centre (50%). Nudge it left by that 8%
    so it reads as centred under the bottom of the slanted portrait, not the top. */
-#win-root.shape-angled .ws-comp-player { transform: translateX(calc(var(--comp-pw, 20vh) * -0.08)); }
+#win-root.shape-angled .ws-comp-player { transform: translateX(calc(var(--comp-pw, 20vh) * -0.08));   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 
 @keyframes ws-comp-pick-in  { from { opacity: 0; transform: translateY(3.5vh); } to { opacity: 1; transform: translateY(0); } }
 @keyframes ws-comp-pick-out { from { opacity: 1; } to { opacity: 0; } }
@@ -821,7 +824,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 .style-comp .ws-comp-pick     { --comp-pw: 20vh; width: var(--comp-pw); }
 .style-comp .ws-comp-portrait { width: var(--comp-pw); height: 39vh; }
-.style-comp .ws-comp-player   { font-size: 2.5vh; margin-top: 0.8vh; }
+.style-comp .ws-comp-player   { font-size: 2.5vh; margin-top: 0.8vh;   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 /* Angled portraits sit tighter so the slants read as one continuous run. */
 .style-comp.shape-angled .ws-comp-row { gap: 0.3vw; }
 
@@ -891,7 +895,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 #win-root.picks-pos-bottom .ws-comp-row { top: auto; bottom: 6vh; }
 #win-root.picks-on .ws-comp-pick     { --comp-pw: 9vh; width: var(--comp-pw); }
 #win-root.picks-on .ws-comp-portrait { width: var(--comp-pw); height: 15vh; }
-#win-root.picks-on .ws-comp-player   { font-size: 1.5vh; }
+#win-root.picks-on .ws-comp-player   { font-size: 1.5vh;   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 
 /* Entrance / exit stagger (comp hero gets a longer, more luxurious stagger;
    the toggle layer is tighter so it always finishes inside the host style's

@@ -273,6 +273,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   letter-spacing: 0.14em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.45);
   white-space: nowrap;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 .h2h-stat-pill-value {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;

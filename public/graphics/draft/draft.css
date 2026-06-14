@@ -72,9 +72,11 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-size: 2.7vh; font-weight: 800; letter-spacing: 0.07em;
   text-transform: uppercase; color: var(--gfx-c3, #fff);
   flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 /* Red side name reads right-to-left, anchored toward its logo on the outer edge */
-.side-red .team-name { text-align: right; }
+.side-red .team-name { text-align: right;   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 .team-score {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 2.7vh; font-weight: 800;
@@ -316,6 +318,7 @@ body.phase-bold .fearless-label {
   text-transform: uppercase; color: var(--gfx-c3, #fff);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 100%; text-align: center;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 /* Clock center — in the middle of the player bar */
@@ -356,6 +359,7 @@ body.phase-bold .fearless-label {
   text-transform: uppercase; white-space: nowrap;
   flex-shrink: 0; flex: 1;
   opacity: 0; /* anim-fade-in handles reveal — no CSS transition */
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 #side-choice-tag { text-align: left; }
 .series-pick-tag { text-align: right; }
@@ -381,6 +385,7 @@ body.phase-bold .fearless-label {
   font-size: 1.6vh; font-weight: 800; letter-spacing: 0.16em;
   text-transform: uppercase; color: rgba(255, 255, 255,0.9);
   white-space: nowrap; text-align: center;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 .clock-series-phase {
@@ -388,10 +393,12 @@ body.phase-bold .fearless-label {
   font-size: 1.3vh; font-weight: 700; letter-spacing: 0.14em;
   text-transform: uppercase; color: rgba(255, 255, 255,0.65);
   white-space: nowrap; text-align: center;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 body.phase-bold .clock-series-phase {
   color: rgba(255, 255, 255,0.95);
   text-shadow: 0 1px 5px rgba(0, 0, 0,0.9), 0 0 10px rgba(0, 0, 0,0.7);
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 /* Logo + timer ring merged into one element */

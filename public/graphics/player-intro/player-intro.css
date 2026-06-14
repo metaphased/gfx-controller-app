@@ -64,7 +64,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 /* Mirror the right team: name fills toward the centre, right-aligned, with the
    logo on the OUTER (right) edge. DOM order is [name][logo] (normal row). */
-.pi-panel-t2-hdr .pi-panel-team-name { text-align: right; }
+.pi-panel-t2-hdr .pi-panel-team-name { text-align: right;   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 
 .pi-panel-logo {
   width: 6vh; height: 6vh;
@@ -84,6 +85,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   min-width: 0;
   white-space: nowrap;
   overflow: hidden;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 .pi-panel-centre-zone {
@@ -160,6 +162,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 .pi-pnl-rank {
@@ -276,6 +279,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: var(--gfx-c3, #fff);
   line-height: 1;
   white-space: nowrap;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 .pi-stk-rank {
@@ -388,7 +392,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* T2: flip column order so it reads role←handle←champ from right to left */
 .pi-bar-t2 .pi-bar-players { direction: rtl; }
-.pi-bar-t2 .pi-bar-handle  { direction: ltr; }
+.pi-bar-t2 .pi-bar-handle  { direction: ltr;   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
 
 .pi-bar-text {
   display: flex;
@@ -413,6 +418,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: var(--gfx-c3, #fff);
   line-height: 1;
   white-space: nowrap;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 .pi-bar-rank {
@@ -450,6 +456,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: rgba(255, 255, 255,0.82);
   line-height: 1;
   white-space: nowrap;
+  padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
 .pi-bar-centre {
