@@ -328,6 +328,60 @@ const upload = multer({
 const fontUploadDir = path.join(uploadDir, 'fonts');
 if (!fs.existsSync(fontUploadDir)) fs.mkdirSync(fontUploadDir, { recursive: true });
 const BUNDLED_FONT_NAMES = ['barlow condensed','barlow','sora','space grotesk','outfit','poppins','figtree','hubot sans','nacelle','darker grotesque','switzer','oxygen','inter'];
+
+// Read the family name baked into a font file's `name` table so uploads default to
+// the real font name, not the (often messy) filename. Handles SFNT (ttf/otf) and
+// WOFF natively; WOFF2 (brotli+transforms) returns null → caller falls back.
+function _decodeUTF16BE(buf, off, len) {
+  let s = ''; for (let i = 0; i + 1 < len; i += 2) s += String.fromCharCode((buf[off + i] << 8) | buf[off + i + 1]); return s;
+}
+function _parseFontNameTable(buf, off, len) {
+  if (off + 6 > buf.length) return null;
+  const count = buf.readUInt16BE(off + 2), strBase = off + buf.readUInt16BE(off + 4);
+  let best = null, bestScore = -1;
+  for (let i = 0; i < count; i++) {
+    const r = off + 6 + i * 12;
+    if (r + 12 > buf.length) break;
+    const platformID = buf.readUInt16BE(r), nameID = buf.readUInt16BE(r + 6);
+    const length = buf.readUInt16BE(r + 8), sOff = buf.readUInt16BE(r + 10);
+    if (nameID !== 1 && nameID !== 16) continue; // family (1) / typographic family (16)
+    const s = strBase + sOff;
+    if (s + length > buf.length) continue;
+    let str = (platformID === 3 || platformID === 0) ? _decodeUTF16BE(buf, s, length) : buf.toString('latin1', s, s + length);
+    str = (str || '').replace(/\0/g, '').trim();
+    if (!str) continue;
+    const score = (nameID === 16 ? 2 : 0) + (platformID === 3 ? 1 : 0); // prefer typographic + Windows
+    if (score > bestScore) { bestScore = score; best = str; }
+  }
+  return best;
+}
+function readFontFamilyName(filePath) {
+  let buf; try { buf = fs.readFileSync(filePath); } catch (e) { return null; }
+  if (buf.length < 12) return null;
+  const tag = buf.toString('latin1', 0, 4);
+  if (tag === 'wOF2') return null; // WOFF2 needs a brotli+transform decoder — skip
+  if (tag === 'wOFF') {
+    const numTables = buf.readUInt16BE(12);
+    for (let i = 0; i < numTables; i++) {
+      const o = 44 + i * 20;
+      if (o + 20 > buf.length) break;
+      if (buf.toString('latin1', o, o + 4) === 'name') {
+        const off = buf.readUInt32BE(o + 4), compLen = buf.readUInt32BE(o + 8), origLen = buf.readUInt32BE(o + 12);
+        let data = buf.subarray(off, off + compLen);
+        if (compLen < origLen) { try { data = require('zlib').inflateSync(data); } catch (e) { return null; } }
+        return _parseFontNameTable(data, 0, data.length);
+      }
+    }
+    return null;
+  }
+  const numTables = buf.readUInt16BE(4);
+  for (let i = 0; i < numTables; i++) {
+    const o = 12 + i * 16;
+    if (o + 16 > buf.length) break;
+    if (buf.toString('latin1', o, o + 4) === 'name') return _parseFontNameTable(buf, buf.readUInt32BE(o + 8), buf.readUInt32BE(o + 12));
+  }
+  return null;
+}
 const uploadFont = multer({
   storage: multer.diskStorage({
     destination: (req, file, cb) => cb(null, fontUploadDir),
@@ -1622,8 +1676,11 @@ app.post('/api/upload', requireAdmin, singleUpload(upload.single('file')), (req,
 app.post('/api/fonts/upload', requireAdmin, singleUpload(uploadFont.single('file')), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
   const remove = () => { try { fs.unlink(path.join(fontUploadDir, req.file.filename), () => {}); } catch (e) {} };
-  // Display name: user-provided, else derived from the filename.
-  let name = String((req.body && req.body.name) || '').replace(/[<>"'\\;{}]/g, '').trim();
+  // Display name: user-provided, else the font's embedded family name, else the
+  // filename (cleaned). The embedded name avoids messy upload filenames.
+  const clean = s => String(s || '').replace(/[<>"'\\;{}]/g, '').trim();
+  let name = clean((req.body && req.body.name));
+  if (!name) name = clean(readFontFamilyName(req.file.path));
   if (!name) name = path.basename(req.file.originalname || 'Custom Font').replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
   name = name.slice(0, 40).trim() || 'Custom Font';
   if (!state.settings.customFonts) state.settings.customFonts = [];

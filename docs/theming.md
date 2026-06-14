@@ -48,7 +48,7 @@ Setting a different **secondary** font adds hierarchy — display text stays on 
 Upload your own typeface to use across the overlays:
 
 - Supported formats: **woff2, woff, ttf, otf** (max 4 MB).
-- Give it a **display name**; it then appears in the Overlay font list (under **Custom**) and in the live preview.
+- The **name is read from the font file itself** (its built-in family name), so you don't have to retype a tidy name — leave the name box blank unless you want to override it. (WOFF2 is compressed, so those fall back to the filename.) It then appears in the Overlay font list (under **Custom**) and in the live preview.
 - **Custom fonts are global** — shared across all profiles, not tied to one. Removing a font reverts any overlay using it to the default.
 
 Under the hood, the chosen families are injected as the `--gfx-font` (primary) and `--gfx-font-2` (secondary) CSS variables. Display text uses `var(--gfx-font, 'Barlow Condensed')`; label/meta text uses `var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed'))` — so an unset secondary falls back to the primary, and an unset primary to the default. Uploaded fonts are registered as `@font-face` rules built from `settings.customFonts` and served from `/uploads/fonts`.

@@ -1268,10 +1268,10 @@
             <!-- Custom fonts (advanced) -->
             <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
               <span class="theme-anim-label">Custom fonts <span style="font-size:10px;letter-spacing:0.12em;color:var(--text-dim);border:1px solid var(--border);padding:1px 6px;border-radius:var(--radius-pill);margin-left:6px;vertical-align:middle">ADVANCED</span></span>
-              <p class="hint" style="margin:4px 0 8px">Upload your own font (<strong>woff2, woff, ttf, otf</strong>) to use across the overlays. It then appears in the font list above. Custom fonts are shared across all profiles.</p>
+              <p class="hint" style="margin:4px 0 8px">Upload your own font (<strong>woff2, woff, ttf, otf</strong>) to use across the overlays. It then appears in the font list above. The name is read from the font itself — leave the box blank unless you want to override it. Custom fonts are shared across all profiles.</p>
               <div id="ts-custom-fonts-list"></div>
               <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
-                <input type="text" id="ts-font-upload-name" placeholder="Display name (e.g. Acme Sans)" maxlength="40" style="flex:1;min-width:150px">
+                <input type="text" id="ts-font-upload-name" placeholder="Name (optional — read from the font)" maxlength="40" style="flex:1;min-width:150px">
                 <input type="file" id="ts-font-upload-file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" style="font-size:12px;max-width:230px">
                 <button class="btn btn-sm btn-primary" onclick="uploadCustomFont()">Upload</button>
               </div>
