@@ -2459,8 +2459,11 @@
     <div class="lbar-group" id="lbar-group-headToHead">
       <button class="lbar-toggle" id="lbar-toggle-headToHead" onclick="toggleGraphic('headToHead')"><span class="lbar-dot" id="lbar-dot-headToHead"></span>H2H</button>
     </div>
+    <div class="lbar-group" id="lbar-group-playerSpotlight">
+      <button class="lbar-toggle" id="lbar-toggle-playerSpotlight" onclick="toggleGraphic('playerSpotlight')"><span class="lbar-dot" id="lbar-dot-playerSpotlight"></span>SPOTLIGHT</button>
+    </div>
     <div class="lbar-group" id="lbar-group-playerIntro">
-      <button class="lbar-toggle" id="lbar-toggle-playerIntro" onclick="toggleGraphic('playerIntro')"><span class="lbar-dot" id="lbar-dot-playerIntro"></span>INTRO</button>
+      <button class="lbar-toggle" id="lbar-toggle-playerIntro" onclick="toggleGraphic('playerIntro')"><span class="lbar-dot" id="lbar-dot-playerIntro"></span>PLAYERS</button>
     </div>
     <div class="lbar-group" id="lbar-group-draft">
       <button class="lbar-toggle" id="lbar-toggle-draft" onclick="toggleGraphic('draft')"><span class="lbar-dot" id="lbar-dot-draft"></span>DRAFT</button>
@@ -2508,11 +2511,9 @@
 
     <div class="lbar-divider"></div>
 
-    <!-- Win screen + team selector -->
+    <!-- Win screen + winner selector -->
     <div class="lbar-group" id="lbar-group-winScreen">
       <button class="lbar-toggle" id="lbar-toggle-winScreen" onclick="toggleGraphic('winScreen')"><span class="lbar-dot" id="lbar-dot-winScreen"></span>WIN</button>
-      <button class="lbar-toggle" id="lbar-toggle-playerSpotlight" onclick="toggleGraphic('playerSpotlight')"><span class="lbar-dot" id="lbar-dot-playerSpotlight"></span>SPOTLIGHT</button>
-      <div class="lbar-inner-divider"></div>
       <button class="lbar-timer-btn lbar-win-t1-btn" id="lbar-win-t1" onclick="lbarSetWinTeam('team1')">—</button>
       <button class="lbar-timer-btn lbar-win-t2-btn" id="lbar-win-t2" onclick="lbarSetWinTeam('team2')">—</button>
     </div>
