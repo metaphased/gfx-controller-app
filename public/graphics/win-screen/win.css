@@ -13,7 +13,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 #win-root {
   position: fixed; inset: 0;
   pointer-events: none;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
 }
 
 /* Solid backdrop for full-screen styles — makes OBS source fully opaque (no alpha bleed-through).
@@ -725,7 +725,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   background: var(--gfx-c4, #05080d);
 }
 .ws-comp-player {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase;
   color: var(--gfx-c3, #ffffff);
   text-align: center; line-height: 1; white-space: nowrap;

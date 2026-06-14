@@ -13,7 +13,7 @@
 
 #ps-root {
   position: fixed; inset: 0;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   color: var(--gfx-c3, #ffffff);
   overflow: hidden;
   /* default accent ramp (per-slot accents overwrite these on each .ps-slot) */

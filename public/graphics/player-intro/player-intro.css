@@ -75,7 +75,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .pi-panel-team-name {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 4.2vh; font-weight: 900;
   letter-spacing: 0.08em; text-transform: uppercase;
   color: var(--gfx-c3, #fff);
@@ -98,7 +98,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-panel-centre-zone img { max-height: 6vh; max-width: 9vw; object-fit: contain; }
 
 .pi-panel-vs {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 2.6vh; font-weight: 900;
   letter-spacing: 0.28em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.28);
@@ -152,7 +152,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-pnl-row-right .pi-pnl-text { align-items: flex-end; }
 
 .pi-pnl-handle {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 4vh; font-weight: 800;
   letter-spacing: 0.03em; text-transform: uppercase;
   color: var(--gfx-c3, #fff);
@@ -163,7 +163,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .pi-pnl-rank {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 1.35vh; font-weight: 700;
   letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--team-color, var(--gfx-c1));
@@ -181,7 +181,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-pnl-champ .pi-champ-icon { width: 2.6vh; height: 2.6vh; }
 
 .pi-pnl-champ-label {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 1.2vh; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.45);
@@ -233,7 +233,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .pi-stack-name {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 6.5vh; font-weight: 900;
   letter-spacing: 0.05em; text-transform: uppercase;
   color: var(--gfx-c3, #fff);
@@ -270,7 +270,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .pi-stk-handle {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 5.8vh; font-weight: 900;
   letter-spacing: 0.02em; text-transform: uppercase;
   color: var(--gfx-c3, #fff);
@@ -279,7 +279,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .pi-stk-rank {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 1.5vh; font-weight: 700;
   letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--team-color, var(--gfx-c1));
@@ -298,7 +298,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-stk-champ .pi-champ-icon { width: 3.5vh; height: 3.5vh; }
 
 .pi-stk-champ-label {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 1.3vh; font-weight: 600;
   letter-spacing: 0.06em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.4);
@@ -328,7 +328,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-stack-divider-centre img { max-height: 7vh; max-width: 7vw; object-fit: contain; }
 
 .pi-stack-vs {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 2vh; font-weight: 900;
   letter-spacing: 0.12em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.22);
@@ -407,7 +407,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .pi-bar-handle {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 2.5vh; font-weight: 800;
   letter-spacing: 0.04em; text-transform: uppercase;
   color: var(--gfx-c3, #fff);
@@ -416,7 +416,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .pi-bar-rank {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 1.1vh; font-weight: 700;
   letter-spacing: 0.1em; text-transform: uppercase;
   color: var(--team-color, var(--gfx-c1));
@@ -444,7 +444,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-bar-t2-name { justify-content: flex-start; } /* left-aligned, pushing against centre */
 
 .pi-bar-team-name span {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 5vh; font-weight: 900;
   letter-spacing: 0.04em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.82);
@@ -464,7 +464,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-bar-centre img { max-height: 6vh; max-width: 7vw; object-fit: contain; }
 
 .pi-bar-vs {
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 2.6vh; font-weight: 900;
   letter-spacing: 0.22em; text-transform: uppercase;
   color: rgba(255, 255, 255,0.28);

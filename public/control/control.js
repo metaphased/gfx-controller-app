@@ -5646,7 +5646,7 @@ function syncThemeTab(st) {
   // Skip the palette/accents/logos/anim rebuilds when nothing the Theme tab
   // renders has changed — these otherwise ran on every state broadcast.
   if (!_sfp('themeTab', { p: st.palette, b: st.blueAccent, r: st.redAccent,
-        l: (st.logoSet || {}).logos, a: st.animation })) return;
+        l: (st.logoSet || {}).logos, a: st.animation, f: st.overlayFont, cf: st.customFonts })) return;
   const { palette = [], blueAccent = '#1e6fff', redAccent = '#ff3b3b', logoSet = {} } = st;
 
   // Palette
@@ -5671,8 +5671,103 @@ function syncThemeTab(st) {
   syncAnimControls();
   syncGraphicAnimCards();   // per-graphic Animation cards injected on each GFX page
 
+  // Typography — overlay broadcast font + custom-font library
+  syncFontControls(st);
+
   // Logo library
   renderThemeLogos((logoSet.logos || []));
+}
+
+// ── Overlay typography (broadcast font picker + custom uploads) ──────────────
+// Bundled families offered for the overlay broadcast font (all self-hosted via
+// /fonts/fonts.css with display weights). Order = roughly broadcast-suitability.
+const OVERLAY_FONTS = [
+  'Barlow Condensed', 'Barlow', 'Sora', 'Space Grotesk', 'Outfit', 'Poppins',
+  'Figtree', 'Hubot Sans', 'Nacelle', 'Darker Grotesque', 'Switzer', 'Oxygen', 'Inter',
+];
+function _customFonts() { return ((window._state && window._state.settings && window._state.settings.customFonts) || []); }
+function _cssFontName(n) { return String(n == null ? '' : n).replace(/['"\\<>;{}]/g, '').trim(); }
+
+// Inject @font-face for uploaded custom fonts on the CONTROL page so the picker +
+// preview render them (overlays get the same via gfx-settings.js). Idempotent.
+function _injectControlCustomFonts() {
+  const css = _customFonts().map(f => {
+    const name = _cssFontName(f && f.name), url = f && f.url;
+    if (!name || !url) return '';
+    const fmt = /\.woff2(\?|$)/i.test(url) ? 'woff2' : /\.woff(\?|$)/i.test(url) ? 'woff'
+              : /\.otf(\?|$)/i.test(url) ? 'opentype' : 'truetype';
+    return "@font-face{font-family:'" + name + "';font-display:swap;src:url('" + url + "') format('" + fmt + "');}";
+  }).join('\n');
+  let el = document.getElementById('_ctrl-custom-fonts');
+  if (!el) { el = document.createElement('style'); el.id = '_ctrl-custom-fonts'; document.head.appendChild(el); }
+  if (el.textContent !== css) el.textContent = css;
+}
+
+function syncFontControls(st) {
+  _injectControlCustomFonts();
+  const current = st.overlayFont || '';
+  const sel = g('ts-overlay-font');
+  if (sel) {
+    const custom = _customFonts().map(f => f.name);
+    const sig = OVERLAY_FONTS.join('|') + '##' + custom.join('|');
+    if (sel._sig !== sig) {
+      sel._sig = sig;
+      let html = '<option value="">Barlow Condensed (default)</option>';
+      html += '<optgroup label="Bundled">' + OVERLAY_FONTS.map(f => `<option value="${escHtml(f)}">${escHtml(f)}</option>`).join('') + '</optgroup>';
+      if (custom.length) html += '<optgroup label="Custom">' + custom.map(f => `<option value="${escHtml(f)}">${escHtml(f)}</option>`).join('') + '</optgroup>';
+      sel.innerHTML = html;
+    }
+    sel.value = current;
+    if (sel.value !== current) sel.value = ''; // selected font no longer exists → default
+  }
+  _updateFontPreview(current);
+  renderCustomFontsList();
+}
+
+function _updateFontPreview(fontName) {
+  const prev = g('ts-font-preview');
+  if (prev) prev.style.fontFamily = fontName ? ("'" + _cssFontName(fontName) + "', 'Barlow Condensed', sans-serif") : "'Barlow Condensed', sans-serif";
+}
+
+function setOverlayFont(val) {
+  patchSettings({ overlayFont: val || '' });
+  _updateFontPreview(val);
+}
+
+function renderCustomFontsList() {
+  const wrap = g('ts-custom-fonts-list');
+  if (!wrap) return;
+  const list = _customFonts();
+  if (!list.length) { wrap.innerHTML = '<p class="hint" style="margin:0 0 2px;opacity:0.7">No custom fonts uploaded yet.</p>'; return; }
+  wrap.innerHTML = list.map(f =>
+    '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:6px">' +
+      '<span style="font-family:\'' + _cssFontName(f.name) + '\',\'Barlow Condensed\',sans-serif;font-size:16px;color:var(--text-strong)">' + escHtml(f.name) + '</span>' +
+      '<button class="btn btn-sm" style="color:var(--danger);border-color:rgba(var(--danger-rgb),0.4)" onclick="deleteCustomFont(\'' + escHtml(f.id) + '\')">Remove</button>' +
+    '</div>').join('');
+}
+
+function uploadCustomFont() {
+  const nameEl = g('ts-font-upload-name'), fileEl = g('ts-font-upload-file'), statusEl = g('ts-font-upload-status');
+  const file = fileEl && fileEl.files && fileEl.files[0];
+  if (!file) { if (statusEl) statusEl.textContent = 'Choose a font file first.'; return; }
+  const fd = new FormData();
+  fd.append('file', file);
+  if (nameEl && nameEl.value.trim()) fd.append('name', nameEl.value.trim());
+  if (statusEl) statusEl.textContent = 'Uploading…';
+  fetch('/api/fonts/upload', { method: 'POST', body: fd })
+    .then(r => r.json().then(d => ({ ok: r.ok, d })))
+    .then(({ ok, d }) => {
+      if (!ok) { if (statusEl) statusEl.textContent = (d && d.error) || 'Upload failed'; return; }
+      if (statusEl) statusEl.textContent = 'Added "' + d.font.name + '" — pick it in the list above.';
+      if (nameEl) nameEl.value = ''; if (fileEl) fileEl.value = '';
+      // The state broadcast refreshes the list + dropdown.
+    })
+    .catch(() => { if (statusEl) statusEl.textContent = 'Upload failed'; });
+}
+
+function deleteCustomFont(id) {
+  if (!confirm('Remove this custom font? Any overlay or Look using it falls back to the default.')) return;
+  fetch('/api/fonts/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => {});
 }
 
 // ── Animation controls ──────────────────────────────────────────────────────

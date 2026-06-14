@@ -5,7 +5,7 @@ html, body {
   height: 100vh;
   overflow: hidden;
   background: transparent;
-  font-family: 'Barlow Condensed', sans-serif;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
 }
 
 /* ── Root ──────────────────────────────────────────────────────────────────── */

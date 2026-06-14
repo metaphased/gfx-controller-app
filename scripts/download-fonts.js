@@ -15,17 +15,20 @@ const FONTS_DIR = path.join(__dirname, '..', 'public', 'fonts');
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
 
 // Fonts to pull from Google Fonts
+// Weight ranges cover the heavy display weights overlays use (names/titles run
+// 700–900). The overlay broadcast-font picker offers these families, so each needs
+// a proper weight range — not just 400/500 — to avoid faux-bold synthesis.
 const GOOGLE_FONTS = [
-  { family: 'Barlow',           dir: 'barlow',           query: 'Barlow:wght@400;500' },
-  { family: 'Barlow Condensed', dir: 'barlow-condensed', query: 'Barlow+Condensed:wght@400;600;700;800' },
-  { family: 'Inter',            dir: 'inter',            query: 'Inter:wght@400;500' },
-  { family: 'Hubot Sans',       dir: 'hubot-sans',       query: 'Hubot+Sans:wght@400;500' },
-  { family: 'Space Grotesk',    dir: 'space-grotesk',    query: 'Space+Grotesk:wght@400;500' },
-  { family: 'Figtree',          dir: 'figtree',          query: 'Figtree:wght@400;500' },
-  { family: 'Poppins',          dir: 'poppins',          query: 'Poppins:wght@400;500' },
-  { family: 'Outfit',           dir: 'outfit',           query: 'Outfit:wght@400;500' },
-  { family: 'Darker Grotesque', dir: 'darker-grotesque', query: 'Darker+Grotesque:wght@400;500;700' },
-  { family: 'Sora',             dir: 'sora',             query: 'Sora:wght@400;500' },
+  { family: 'Barlow',           dir: 'barlow',           query: 'Barlow:wght@400;500;600;700;800' },
+  { family: 'Barlow Condensed', dir: 'barlow-condensed', query: 'Barlow+Condensed:wght@300;400;500;600;700;800;900' },
+  { family: 'Inter',            dir: 'inter',            query: 'Inter:wght@400;500;600;700' },
+  { family: 'Hubot Sans',       dir: 'hubot-sans',       query: 'Hubot+Sans:wght@400;500;600;700;800;900' },
+  { family: 'Space Grotesk',    dir: 'space-grotesk',    query: 'Space+Grotesk:wght@400;500;600;700' },
+  { family: 'Figtree',          dir: 'figtree',          query: 'Figtree:wght@400;500;600;700;800;900' },
+  { family: 'Poppins',          dir: 'poppins',          query: 'Poppins:wght@400;500;600;700;800' },
+  { family: 'Outfit',           dir: 'outfit',           query: 'Outfit:wght@400;500;600;700;800;900' },
+  { family: 'Darker Grotesque', dir: 'darker-grotesque', query: 'Darker+Grotesque:wght@400;500;600;700;800;900' },
+  { family: 'Sora',             dir: 'sora',             query: 'Sora:wght@400;500;600;700;800' },
   { family: 'Oxygen',           dir: 'oxygen',           query: 'Oxygen:wght@400;700' },
 ];
 
@@ -160,7 +163,7 @@ async function processGoogleFont(font) {
 // ── Switzer via Fontshare ─────────────────────────────────────────────────────
 
 async function processSwitzer() {
-  const cssUrl = 'https://api.fontshare.com/v2/css?f[]=switzer@400,500&display=swap';
+  const cssUrl = 'https://api.fontshare.com/v2/css?f[]=switzer@400,500,600,700,800,900&display=swap';
   process.stdout.write('  Switzer (Fontshare)... ');
 
   const css = await fetchText(cssUrl, { 'User-Agent': UA });

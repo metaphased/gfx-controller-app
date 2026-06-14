@@ -322,6 +322,23 @@ const upload = multer({
     cb(new Error('Only PNG, JPEG, GIF, or WebP images are allowed'));
   }
 });
+// Separate uploader for custom broadcast fonts — woff2/woff/ttf/otf only, 4 MB cap,
+// stored under /uploads/fonts. Font files aren't script-executable, so serving them
+// unauthenticated from /uploads is safe (unlike SVG/HTML).
+const fontUploadDir = path.join(uploadDir, 'fonts');
+if (!fs.existsSync(fontUploadDir)) fs.mkdirSync(fontUploadDir, { recursive: true });
+const BUNDLED_FONT_NAMES = ['barlow condensed','barlow','sora','space grotesk','outfit','poppins','figtree','hubot sans','nacelle','darker grotesque','switzer','oxygen','inter'];
+const uploadFont = multer({
+  storage: multer.diskStorage({
+    destination: (req, file, cb) => cb(null, fontUploadDir),
+    filename:    (req, file, cb) => cb(null, Date.now() + '-' + safeFilename(file.originalname)),
+  }),
+  limits: { fileSize: 4 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (/\.(woff2|woff|ttf|otf)$/i.test(file.originalname || '')) return cb(null, true);
+    cb(new Error('Only .woff2, .woff, .ttf or .otf font files are allowed'));
+  }
+});
 // Separate uploader for data imports (CSV / JSON) — filtered by extension, 5 MB cap.
 const uploadData = multer({
   storage,
@@ -479,6 +496,8 @@ const makeDefault = () => ({
     bgImage:     '',
     bgAnimation: 'none',
     draftLayout: 'arena',      // 'arena' | 'classic'
+    overlayFont: '',           // broadcast font for all overlays ('' = Barlow Condensed); a bundled family or a customFonts name
+    customFonts: [],           // user-uploaded fonts: [{ id, name, url, format }]
     graphicsToken: require('crypto').randomBytes(16).toString('hex'),
     animation: {
       speed:           'medium',        // 'instant' | 'fast' | 'medium' | 'slow' (duration multiplier)
@@ -576,7 +595,7 @@ function saveProfiles(p) { try { fs.writeFileSync(PROFILES_FILE, JSON.stringify(
 // ── Looks (reusable visual identities: palette + accents + background + animation) ──
 // A Look is theme-only and additive; it can be applied over any tournament profile
 // without touching teams/schedule. Logo library is intentionally excluded.
-const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation'];
+const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation','overlayFont'];
 function loadLooks() { try { if (fs.existsSync(LOOKS_FILE)) return JSON.parse(fs.readFileSync(LOOKS_FILE, 'utf8')); } catch(e) {} return null; }
 function saveLooks(l) { try { fs.writeFileSync(LOOKS_FILE, JSON.stringify(l, null, 2)); } catch(e) { console.error(e); } }
 function _seedLooks() {
@@ -598,9 +617,12 @@ function getLooks() {
 }
 
 function snapshotForProfile() {
-  // Settings snapshot — exclude graphicsToken so each install keeps its own auth token
+  // Settings snapshot — exclude graphicsToken so each install keeps its own auth token,
+  // and customFonts so the uploaded-font library stays global (profiles only carry the
+  // overlayFont *selection*, not the font files).
   const settingsSnap = JSON.parse(JSON.stringify(state.settings || {}));
   delete settingsSnap.graphicsToken;
+  delete settingsSnap.customFonts;
   const pp = state.prizepool || {};
   return {
     tournament: JSON.parse(JSON.stringify(state.tournament)),
@@ -1593,6 +1615,40 @@ app.get('/api/champions', (req, res) => {
 app.post('/api/upload', requireAdmin, singleUpload(upload.single('file')), (req, res) => {
   if (!req.file) return res.status(400).json({error:'No file'});
   res.json({ ok: true, url: '/uploads/' + req.file.filename });
+});
+
+// ── Custom overlay fonts ───────────────────────────────────────────────────────
+app.post('/api/fonts/upload', requireAdmin, singleUpload(uploadFont.single('file')), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  const remove = () => { try { fs.unlink(path.join(fontUploadDir, req.file.filename), () => {}); } catch (e) {} };
+  // Display name: user-provided, else derived from the filename.
+  let name = String((req.body && req.body.name) || '').replace(/[<>"'\\;{}]/g, '').trim();
+  if (!name) name = path.basename(req.file.originalname || 'Custom Font').replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ').trim();
+  name = name.slice(0, 40).trim() || 'Custom Font';
+  if (!state.settings.customFonts) state.settings.customFonts = [];
+  const taken = BUNDLED_FONT_NAMES.concat(state.settings.customFonts.map(f => String(f.name).toLowerCase()));
+  if (taken.indexOf(name.toLowerCase()) !== -1) { remove(); return res.status(400).json({ error: 'A font named "' + name + '" already exists — choose another name' }); }
+  const ext = ((req.file.filename.match(/\.([a-z0-9]+)$/i) || [])[1] || '').toLowerCase();
+  const font = { id: 'font_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), name, url: '/uploads/fonts/' + req.file.filename, format: ext };
+  state.settings.customFonts.push(font);
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'upload-font', name);
+  broadcast();
+  res.json({ ok: true, font });
+});
+
+app.post('/api/fonts/delete', requireAdmin, (req, res) => {
+  const { id } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'id required' });
+  const list = state.settings.customFonts || [];
+  const font = list.find(f => f.id === id);
+  if (!font) return res.status(404).json({ error: 'Font not found' });
+  state.settings.customFonts = list.filter(f => f.id !== id);
+  // If the deleted font was the active overlay font, revert overlays to default.
+  if (state.settings.overlayFont && state.settings.overlayFont === font.name) state.settings.overlayFont = '';
+  try { if (/^\/uploads\/fonts\/[A-Za-z0-9._-]+$/.test(font.url)) fs.unlink(path.join(__dirname, 'public', font.url), () => {}); } catch (e) {}
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'delete-font', font.name);
+  broadcast();
+  res.json({ ok: true });
 });
 app.post('/api/import/csv', requireAdmin, singleUpload(uploadData.single('file')), (req, res) => {
   if (!req.file) return res.status(400).json({error:'No file'});

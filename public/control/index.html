@@ -1248,6 +1248,33 @@
             </div>
           </div>
 
+          <!-- Typography -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Typography</div>
+            <p class="hint">The broadcast font used across <strong>every overlay</strong>. Default is Barlow&nbsp;Condensed. Saved with <strong>Looks</strong> too.</p>
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Overlay font</span>
+              <select id="ts-overlay-font" onchange="setOverlayFont(this.value)" style="flex:1;min-width:0"></select>
+            </div>
+            <div id="ts-font-preview" style="margin-top:12px;padding:14px 16px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">
+              <div style="font-size:30px;font-weight:800;line-height:1.1;color:var(--text-strong);text-transform:uppercase;letter-spacing:0.02em">Aurora Vanguard</div>
+              <div style="font-size:14px;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin-top:4px">Grand Final · Bo5 · 0123456789</div>
+            </div>
+
+            <!-- Custom fonts (advanced) -->
+            <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+              <span class="theme-anim-label">Custom fonts <span style="font-size:10px;letter-spacing:0.12em;color:var(--text-dim);border:1px solid var(--border);padding:1px 6px;border-radius:var(--radius-pill);margin-left:6px;vertical-align:middle">ADVANCED</span></span>
+              <p class="hint" style="margin:4px 0 8px">Upload your own font (<strong>woff2, woff, ttf, otf</strong>) to use across the overlays. It then appears in the font list above. Custom fonts are shared across all profiles.</p>
+              <div id="ts-custom-fonts-list"></div>
+              <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+                <input type="text" id="ts-font-upload-name" placeholder="Display name (e.g. Acme Sans)" maxlength="40" style="flex:1;min-width:150px">
+                <input type="file" id="ts-font-upload-file" accept=".woff2,.woff,.ttf,.otf,font/woff2,font/woff,font/ttf,font/otf" style="font-size:12px;max-width:230px">
+                <button class="btn btn-sm btn-primary" onclick="uploadCustomFont()">Upload</button>
+              </div>
+              <div id="ts-font-upload-status" class="hint" style="margin-top:6px"></div>
+            </div>
+          </div>
+
         </div><!-- /left col -->
 
         <!-- ── Right column ── -->

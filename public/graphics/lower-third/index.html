@@ -4,12 +4,13 @@
 <meta charset="UTF-8">
 <title>Lower Third</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@400;500&display=swap">
+<link rel="stylesheet" href="/fonts/fonts.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
     width: 1920px; height: 1080px;
     background: transparent;
-    font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+    font-family: var(--gfx-font, 'Barlow Condensed'), 'Arial Narrow', sans-serif;
     overflow: hidden;
     position: relative;
   }
@@ -61,7 +62,7 @@
   }
 
   .lt-super {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
     font-size: 13px;
     font-weight: 600;
     letter-spacing: 0.2em;
@@ -70,7 +71,7 @@
     margin-bottom: 4px;
   }
   .lt-name {
-    font-family: 'Barlow Condensed', sans-serif;
+    font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
     font-size: 36px;
     font-weight: 800;
     color: var(--gfx-c3, #ffffff);
@@ -79,7 +80,7 @@
     line-height: 1;
   }
   .lt-sub {
-    font-family: 'Barlow', sans-serif;
+    font-family: var(--gfx-font, 'Barlow'), sans-serif;
     font-size: 15px;
     font-weight: 400;
     color: var(--accent);

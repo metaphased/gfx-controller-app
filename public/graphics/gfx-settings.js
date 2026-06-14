@@ -11,6 +11,24 @@ window.GfxSettings = (function () {
 
   function get(s) { return (s && s.settings) || {}; }
 
+  // Strip characters that could break out of a quoted CSS font-family name.
+  function _cssFontName(name) { return String(name || '').replace(/['"\\<>;{}]/g, '').trim(); }
+
+  // Inject @font-face rules for any uploaded custom fonts carried in the broadcast
+  // settings, so a chosen custom family renders on overlays. Idempotent.
+  function _applyCustomFonts(list) {
+    var css = (Array.isArray(list) ? list : []).map(function (f) {
+      var name = _cssFontName(f && f.name), url = f && f.url;
+      if (!name || !url) return '';
+      var fmt = /\.woff2(\?|$)/i.test(url) ? 'woff2' : /\.woff(\?|$)/i.test(url) ? 'woff'
+              : /\.otf(\?|$)/i.test(url)  ? 'opentype' : 'truetype';
+      return "@font-face{font-family:'" + name + "';font-display:swap;src:url('" + url + "') format('" + fmt + "');}";
+    }).join('\n');
+    var el = document.getElementById('_gfx-custom-fonts');
+    if (!el) { el = document.createElement('style'); el.id = '_gfx-custom-fonts'; document.head.appendChild(el); }
+    if (el.textContent !== css) el.textContent = css;
+  }
+
   // Hex (#rgb or #rrggbb) → "r, g, b" triplet string for use inside rgba(var(...), a).
   function _hexTriplet(hex) {
     let h = String(hex || '').trim().replace('#', '');
@@ -39,6 +57,13 @@ window.GfxSettings = (function () {
     if (blueTrip) el.style.setProperty('--gfx-blue-rgb', blueTrip);
     if (redTrip)  el.style.setProperty('--gfx-red-rgb',  redTrip);
     el.style.setProperty('--gfx-bg',   st.bgColor    || 'transparent');
+
+    // Overlay typography — a single broadcast font, themeable like the palette.
+    // Empty = leave unset so each overlay's literal `'Barlow Condensed'` fallback wins.
+    _applyCustomFonts(st.customFonts);
+    var font = _cssFontName(st.overlayFont);
+    if (font) el.style.setProperty('--gfx-font', "'" + font + "'");
+    else      el.style.removeProperty('--gfx-font');
   }
 
   function applyBackground(el, s) {

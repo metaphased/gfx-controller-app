@@ -20,6 +20,22 @@ Four palette slots are wired across **every** overlay (exposed as CSS variables 
 
 Every wiring keeps the original colour as a literal fallback, so the default palette reproduces the standard look exactly and unsupported renderers degrade gracefully. Changing a slot updates all graphics live. A wild palette can reduce legibility — the seeded **Looks** are safe starting points.
 
+## Typography
+
+The **Typography** card sets the **broadcast font** used across *every* overlay. The default is **Barlow Condensed**; pick any bundled family from the dropdown and all graphics restyle live. A preview line shows the chosen font. The font choice is saved per profile and travels with [Looks](#looks).
+
+Bundled families ship self-hosted (no external font CDN) with display weights (400–900), so headings and names stay crisp rather than faux-bold.
+
+### Custom fonts (advanced)
+
+Upload your own typeface to use across the overlays:
+
+- Supported formats: **woff2, woff, ttf, otf** (max 4 MB).
+- Give it a **display name**; it then appears in the Overlay font list (under **Custom**) and in the live preview.
+- **Custom fonts are global** — shared across all profiles, not tied to one. Removing a font reverts any overlay using it to the default.
+
+Under the hood, the chosen family is injected as the `--gfx-font` CSS variable; overlay CSS uses `font-family: var(--gfx-font, 'Barlow Condensed')` so an unset value always falls back to the default. Uploaded fonts are registered as `@font-face` rules built from `settings.customFonts` and served from `/uploads/fonts`.
+
 ## Background
 
 Graphic overlays are **always transparent** — composite them over your scene in OBS/vMix. For a coloured or animated backdrop, use the dedicated **BG Output** source (its own tab: background mode Transparent / Solid / Image / Animated, plus animation type, base colour, speed and an optional fog layer) as a separate layer underneath the overlays.
@@ -56,7 +72,7 @@ so an unset token always falls back to the original look.
 
 ## Looks
 
-A **Look** bundles the palette, accents, background and full animation config (including per-graphic overrides) into a named, reusable visual identity. Looks are theme-only — applying one never touches teams, schedule or other tournament data, and the logo library is intentionally excluded.
+A **Look** bundles the palette, accents, background, overlay font and full animation config (including per-graphic overrides) into a named, reusable visual identity. Looks are theme-only — applying one never touches teams, schedule or other tournament data, and the logo library is intentionally excluded.
 
 From the **Looks** card (top of Broadcast Theme):
 
