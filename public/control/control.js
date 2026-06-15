@@ -3939,7 +3939,46 @@ function syncLiveBar(s) {
   });
 
   _syncLbarLtSets(s);
+  _measureLbar();
 }
+
+// ── Live-bar expand / collapse + lock ────────────────────────────────────────────
+// Collapsed = a single clipped row (compact). Expanded = wraps to extra rows that
+// grow upward, "buying" space for everything. Lock pins it open so a stray click
+// can't hide it. Both states persist.
+let _lbarExpanded = localStorage.getItem('gfx_lbar_expanded') === '1';
+let _lbarLocked   = localStorage.getItem('gfx_lbar_locked') === '1';
+function _measureLbar() {
+  const bar = g('live-bar'); if (!bar) return;
+  requestAnimationFrame(function () {
+    document.documentElement.style.setProperty('--lbar-h', bar.offsetHeight + 'px');
+  });
+}
+function _applyLbarState() {
+  const bar = g('live-bar'); if (!bar) return;
+  const expanded = _lbarExpanded || _lbarLocked;   // a locked bar is always open
+  bar.classList.toggle('lbar-expanded', expanded);
+  bar.classList.toggle('lbar-collapsed', !expanded);
+  const eb = g('lbar-expand-btn');
+  if (eb) { eb.textContent = expanded ? '▼' : '▲'; eb.disabled = _lbarLocked; eb.title = _lbarLocked ? 'Locked open — unlock to collapse' : (expanded ? 'Collapse control bar' : 'Expand control bar'); }
+  const lb = g('lbar-lock-btn');
+  if (lb) { lb.textContent = _lbarLocked ? '🔒' : '🔓'; lb.classList.toggle('is-on', _lbarLocked); lb.title = _lbarLocked ? 'Unlock (allow collapse)' : 'Lock bar open'; }
+  _measureLbar();
+}
+function toggleLbarExpand() {
+  if (_lbarLocked) return;                          // can't collapse/expand while locked
+  _lbarExpanded = !_lbarExpanded;
+  localStorage.setItem('gfx_lbar_expanded', _lbarExpanded ? '1' : '0');
+  _applyLbarState();
+}
+function toggleLbarLock() {
+  _lbarLocked = !_lbarLocked;
+  localStorage.setItem('gfx_lbar_locked', _lbarLocked ? '1' : '0');
+  if (_lbarLocked) { _lbarExpanded = true; localStorage.setItem('gfx_lbar_expanded', '1'); }
+  _applyLbarState();
+}
+window.addEventListener('resize', _measureLbar);
+_applyLbarState();
 
 // Live-bar Lower Third set chips — quick triggers next to the LOWER 3RD button.
 // Only shown when there's more than one set (a single set = the master toggle is enough).
