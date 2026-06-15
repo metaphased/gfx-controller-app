@@ -624,16 +624,69 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   box-shadow: 0 -6px 32px rgba(0,0,0,0.6);
 }
 
-/* Row 1: always visible toggle row */
+/* Control row. Collapsed = bar fully hidden (only the handle tab shows);
+   expanded = the row wraps to as many rows as needed, the bar growing upward
+   (it's bottom-anchored). */
 .lbar-row {
   display: flex;
   align-items: center;
   padding: 0 0 0 16px;
-  height: 48px;
   gap: 0;
-  overflow-x: auto;
+}
+#live-bar.lbar-collapsed .lbar-row { display: none; }
+/* When collapsed there's no bar — just the floating handle tab. */
+#live-bar.lbar-collapsed { background: transparent; border-top: none; box-shadow: none; }
+#live-bar.lbar-expanded .lbar-row {
+  flex-wrap: wrap;
+  height: auto;
+  min-height: 48px;
+  row-gap: 4px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  padding-right: 16px;
+  align-content: flex-start;
 }
 
+/* Expand / lock handle — a small tab protruding above the bar's top edge.
+   When collapsed it's the only visible part of the bar. */
+.lbar-handle {
+  position: absolute;
+  top: 0; right: 16px;
+  transform: translateY(-100%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #060d10;
+  border: 1px solid rgba(255,255,255,0.14);
+  border-bottom: none;
+  border-radius: 5px 5px 0 0;
+  padding: 3px 6px;
+  z-index: 1;
+}
+.lbar-handle-label {
+  font-family: var(--ui-font), sans-serif;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  padding: 0 2px;
+}
+.lbar-handle-label:hover { color: #fff; }
+#live-bar.lbar-expanded .lbar-handle-label { display: none; }   /* notifier only while collapsed */
+#live-bar.lbar-locked .lbar-handle-label { cursor: default; color: rgba(255,255,255,0.55); }
+.lbar-handle-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; height: 20px;
+  font-size: 11px; line-height: 1;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 3px;
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.7);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.lbar-handle-btn:hover { border-color: rgba(255,255,255,0.5); color: #fff; }
+.lbar-handle-btn:disabled { opacity: 0.4; cursor: default; }
+.lbar-handle-btn.is-on { border-color: #e0a330; color: #ffcf6b; background: rgba(224,163,48,0.15); }
 
 /* Each graphic control group */
 .lbar-group {
@@ -641,7 +694,7 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   align-items: center;
   gap: 4px;
   padding: 0 8px;
-  height: 100%;
+  height: 40px;
   flex-shrink: 0;
   transition: background 0.15s;
   border-top: 2px solid transparent;
@@ -836,11 +889,9 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 .lbar-timer-btn:hover { border-color: rgba(255,255,255,0.6); color: #fff; }
 .lbar-timer-clear:hover { border-color: var(--danger); color: var(--danger); }
 
-/* Push main content above the bar (row1 48px + possible row2 44px + border) */
-.main { padding-bottom: 56px; }
-#live-bar.expanded ~ .main,
-.main { padding-bottom: 56px; }
-#live-bar.expanded + * { padding-bottom: 100px; }
+/* Clear the live bar — its height (--lbar-h) is measured in JS and grows when the
+   bar is expanded into extra rows, so content is never hidden under it. */
+.main { padding-bottom: calc(var(--lbar-h, 48px) + 10px); }
 
 /* ── Stage formats ────────────────────────────────────────────────────────────── */
 .stage-format-grid { display: flex; flex-direction: column; gap: 0; }

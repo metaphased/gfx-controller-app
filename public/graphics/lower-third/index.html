@@ -168,10 +168,15 @@ socket.on('state', (state) => {
   }
   const lt = state.lowerThird || {};
   const out = (lt.outputs || []).find(o => o.id === _outId) || (lt.outputs || [])[0] || {};
-  // Phase 1: single 'main' output driven by the top-level visible/activeSetId.
   const visible = !!lt.visible;
-  const activeSet = (lt.sets || []).find(s => s.id === lt.activeSetId) || null;
-  const items = (activeSet && activeSet.items) || [];
+  // Live sets = activeSetIds (exclusive holds one, freeform may stack several).
+  // Fall back to activeSetId so the master Show toggle still works on its own.
+  let liveIds = Array.isArray(lt.activeSetIds) ? lt.activeSetIds : [];
+  if (!liveIds.length && lt.activeSetId) liveIds = [lt.activeSetId];
+  const items = liveIds
+    .map(id => (lt.sets || []).find(s => s.id === id))
+    .filter(Boolean)
+    .flatMap(s => s.items || []);
 
   // Rebuild the DOM only when the rendered content changes; visibility alone just
   // toggles the entrance/exit transition on the existing elements.

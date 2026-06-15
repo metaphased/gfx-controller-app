@@ -743,8 +743,13 @@
             </button>
           </div>
           <div class="gfx-ctrl-group">
-            <span class="gfx-ctrl-section-label">Active Set</span>
+            <span class="gfx-ctrl-section-label">Air Set</span>
             <div id="lt-setbar" class="lt-setbar"></div>
+          </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Mode</span>
+            <button class="btn btn-sm" id="lt-mode-exclusive" onclick="ltSetMode('exclusive')">Exclusive</button>
+            <button class="btn btn-sm" id="lt-mode-freeform" onclick="ltSetMode('freeform')">Freeform</button>
           </div>
         </div>
       </div>
@@ -2493,13 +2498,20 @@
 
 
 <!-- ── Live Control Bar ─────────────────────────────────────────────────────── -->
-<div id="live-bar">
+<div id="live-bar" class="lbar-collapsed">
+  <div class="lbar-handle">
+    <span class="lbar-handle-label" id="lbar-handle-label" onclick="toggleLbarExpand()">Controls</span>
+    <button class="lbar-handle-btn" id="lbar-expand-btn" onclick="toggleLbarExpand()" title="Expand control bar">▲</button>
+    <button class="lbar-handle-btn" id="lbar-lock-btn" onclick="toggleLbarLock()" title="Lock bar open">🔓</button>
+  </div>
   <div class="lbar-row">
 
     <!-- Game graphics -->
     <div class="lbar-group" id="lbar-group-lowerThird">
       <button class="lbar-toggle" id="lbar-toggle-lowerThird" onclick="toggleGraphic('lowerThird')"><span class="lbar-dot" id="lbar-dot-lowerThird"></span>LOWER 3RD</button>
+      <span class="lbar-lt-sets" id="lbar-lt-sets"></span>
     </div>
+    <div class="lbar-divider"></div>
     <div class="lbar-group" id="lbar-group-headToHead">
       <button class="lbar-toggle" id="lbar-toggle-headToHead" onclick="toggleGraphic('headToHead')"><span class="lbar-dot" id="lbar-dot-headToHead"></span>H2H</button>
     </div>

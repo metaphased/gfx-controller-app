@@ -497,7 +497,7 @@ const makeDefault = () => ({
   // Casters / Interview …); each set holds 1+ items positioned freely on the
   // 1920×1080 canvas. `activeSetId` is the set currently shown on the main output.
   // Migrated from the legacy flat {text,subtext,supertext,side} shape on load.
-  lowerThird:  { visible: false, activeSetId: '', mode: 'exclusive', sets: [], outputs: [{ id: 'main', name: 'Main', busId: null }] },
+  lowerThird:  { visible: false, activeSetId: '', activeSetIds: [], mode: 'exclusive', sets: [], outputs: [{ id: 'main', name: 'Main', busId: null }] },
   headToHead:  { visible: false, mode: 'spotlight', spotlightRole: 0, animStyle: 'standard' },
   playerIntro: { visible: false, layout: 'panel', animVariant: 'rise', showLogo: true, showRank: false, showChamps: false, piBg: 'transparent', piLogoUrl: '' },
   preShow:     { visible: false, timerEnd: null, logoUrl: '', logoScale: 8, hideLogo: false, headerText: '', hideHeaderText: false, timerLabel: '', layout: 'center' },
@@ -637,6 +637,11 @@ function migrateLowerThird(st) {
     lt.sets = [{ id: 'set_default', name: 'Default', items: [item] }];
   }
   if (!lt.activeSetId || !lt.sets.some(s => s.id === lt.activeSetId)) lt.activeSetId = lt.sets[0].id;
+  // activeSetIds = the set(s) currently composited on the main output (live state,
+  // distinct from activeSetId which is the builder's edit selection). Drop any ids
+  // pointing at sets that no longer exist.
+  if (!Array.isArray(lt.activeSetIds)) lt.activeSetIds = [];
+  lt.activeSetIds = lt.activeSetIds.filter(id => lt.sets.some(s => s.id === id));
   if (lt.mode !== 'freeform') lt.mode = 'exclusive';
   if (!Array.isArray(lt.outputs) || !lt.outputs.length) lt.outputs = [{ id: 'main', name: 'Main', busId: null }];
   ['text', 'subtext', 'supertext', 'side'].forEach(k => delete lt[k]); // drop legacy scalar content
@@ -1234,7 +1239,7 @@ app.get('/api/companion/profile', (req, res) => {
 
   // Page numbers double as the keys of the `pages` object AND the targets for the
   // internal set_page nav action (Companion resolves `page` by 1-based ordinal).
-  const PAGE = { HOME: 1, SHOWHIDE: 2, TOGGLE: 3, OPTIONS: 4, MATCH: 5, BUS: 6 };
+  const PAGE = { HOME: 1, SHOWHIDE: 2, TOGGLE: 3, OPTIONS: 4, MATCH: 5, BUS: 6, LTSETS: 7 };
   const NAV_BG  = 1323855;   // 0x14314f — deep blue, distinguishes nav from action buttons
   const HOME_BG = 1326382;   // 0x143f2e — deep green, the Home hub category buttons
 
@@ -1306,6 +1311,12 @@ app.get('/api/companion/profile', (req, res) => {
     httpButton('Replay\nIntro', '/api/draft', '{"replayIntro":true}'),
   ];
   const busBtns = (state.settings.buses || []).map(b => httpButton(`${b.name || b.id}\nNext`, `/api/bus/${b.id}/next`));
+  // Lower Third sets — mode toggles + one air/toggle button per set (mode-aware server-side).
+  const ltSetBtns = [
+    httpButton('LT Mode\nExclusive', '/api/lowerThird', '{"mode":"exclusive"}'),
+    httpButton('LT Mode\nFreeform',  '/api/lowerThird', '{"mode":"freeform"}'),
+    ...((state.lowerThird.sets || []).map(s => httpButton(`Air Set\n${s.name || 'Set'}`, '/api/lowerThird/trigger', JSON.stringify({ setId: s.id })))),
+  ];
 
   // Home hub — one button per category page, so the profile is click-navigable.
   const homeBtns = [
@@ -1314,6 +1325,7 @@ app.get('/api/companion/profile', (req, res) => {
     navButton('GFX\nOptions',     PAGE.OPTIONS,  HOME_BG),
     navButton('Match\n& Draft',   PAGE.MATCH,    HOME_BG),
     navButton('Bus',              PAGE.BUS,      HOME_BG),
+    navButton('Lower Third\nSets', PAGE.LTSETS,  HOME_BG),
   ];
 
   // ── Page assembly ─────────────────────────────────────────────────────────────
@@ -1339,6 +1351,7 @@ app.get('/api/companion/profile', (req, res) => {
     { num: PAGE.OPTIONS,  name: 'GFX Options',   nav: homeNav(),  actions: optionBtns },
     { num: PAGE.MATCH,    name: 'Match & Draft', nav: homeNav(),  actions: matchBtns },
     { num: PAGE.BUS,      name: 'Bus',           nav: homeNav(),  actions: busBtns },
+    { num: PAGE.LTSETS,   name: 'Lower Third Sets', nav: homeNav(), actions: ltSetBtns },
   ];
 
   const pages = {};
@@ -1389,7 +1402,52 @@ app.get('/api/companion/profile', (req, res) => {
   res.json(profile);
 });
 
-app.post('/api/lowerThird',  (req, res) => { Object.assign(state.lowerThird,  req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/lowerThird',  (req, res) => {
+  Object.assign(state.lowerThird,  req.body);
+  // Leaving freeform for exclusive: collapse any stack down to a single live set.
+  if (req.body.mode === 'exclusive' && Array.isArray(state.lowerThird.activeSetIds) && state.lowerThird.activeSetIds.length > 1) {
+    state.lowerThird.activeSetIds = [state.lowerThird.activeSetIds[0]];
+  }
+  broadcast(); res.json({ok:true});
+});
+
+// Set trigger — air/toggle a lower-third set on the main output, honouring the
+// exclusive (one set at a time) vs freeform (stack) mode. Drives `activeSetIds`
+// (the live sets) + `visible`; the overlay composites every live set's items.
+app.post('/api/lowerThird/trigger', (req, res) => {
+  const setId = req.body && req.body.setId;
+  const lt = state.lowerThird;
+  if (!setId || !(lt.sets || []).some(s => s.id === setId)) return res.status(400).json({ error: 'unknown set' });
+  if (!Array.isArray(lt.activeSetIds)) lt.activeSetIds = [];
+  let aired;
+  if (lt.mode === 'freeform') {
+    // Toggle this set in/out of the stack.
+    const i = lt.activeSetIds.indexOf(setId);
+    if (i === -1) { lt.activeSetIds.push(setId); aired = true; }
+    else { lt.activeSetIds.splice(i, 1); aired = false; }
+    lt.visible = lt.activeSetIds.length > 0;
+  } else {
+    // Exclusive: re-airing the sole live set hides it; otherwise replace.
+    const isSoleLive = lt.visible && lt.activeSetIds.length === 1 && lt.activeSetIds[0] === setId;
+    if (isSoleLive) { lt.visible = false; aired = false; }
+    else { lt.activeSetIds = [setId]; lt.visible = true; aired = true; }
+  }
+  lt.activeSetId = setId; // builder follows the set you just triggered
+  // Keep an assigned bus in sync with the main output's visibility.
+  const bus = findBusForGraphic('lowerThird');
+  if (bus) {
+    if (!busState[bus.id]) busState[bus.id] = {};
+    if (lt.visible) { busState[bus.id].activeGraphic = 'lowerThird'; busState[bus.id].visible = true; }
+    else if (busState[bus.id].activeGraphic === 'lowerThird') { busState[bus.id].visible = false; }
+    io.emit('bus:active', { busId: bus.id, graphic: 'lowerThird', visible: lt.visible });
+    io.emit('busState', busState);
+  }
+  const setName = (lt.sets.find(s => s.id === setId) || {}).name || 'Set';
+  const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
+  recordAction('lower-thirds', user, aired ? 'Air ' + setName : 'Hide ' + setName);
+  logAction(user, role, aired ? 'air set' : 'hide set', 'lower-thirds (' + setName + ')');
+  broadcast(); res.json({ ok: true, visible: lt.visible, activeSetIds: lt.activeSetIds });
+});
 app.post('/api/draft', (req, res) => {
   const prevStep = state.draft.currentStep;
   // replayIntro:true is a signal, not a stored value — convert to counter increment
@@ -2519,6 +2577,7 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
     if (Array.isArray(d.lowerThird.outputs)) state.lowerThird.outputs = JSON.parse(JSON.stringify(d.lowerThird.outputs));
     if (d.lowerThird.mode) state.lowerThird.mode = d.lowerThird.mode;
     state.lowerThird.visible = false; // don't auto-show on profile load
+    state.lowerThird.activeSetIds = []; // clear live sets; operator re-triggers
     state.lowerThird.activeSetId = (state.lowerThird.sets[0] && state.lowerThird.sets[0].id) || '';
   }
   if (d.settings) {

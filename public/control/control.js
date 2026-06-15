@@ -153,6 +153,7 @@ socket.on('state', async (state) => {
   window._state = state;
   syncUI(state);
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
+  if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
   // Debounced dirty check — runs 2 s after state settles
   clearTimeout(_dirtyCheckTimer);
   _dirtyCheckTimer = setTimeout(checkProfileDirty, 2000);
@@ -968,6 +969,8 @@ function hideGraphic(name) { fetch('/api/graphic/'+name+'/hide',{method:'POST'})
 
 // ── Lower Third (set-driven builder) ─────────────────────────────────────────────
 function patchLT(data) { api('/api/lowerThird', data); }
+function ltTriggerSet(id) { api('/api/lowerThird/trigger', { setId: id }); }
+function ltSetMode(mode) { patchLT({ mode }); }
 
 const LT_DESIGNS = [['bar','Bar'],['box','Box'],['underline','Underline'],['interview','Interview']];
 const LT_ACCENTS = [['primary','Primary'],['blue','Blue side'],['red','Red side'],['custom','Custom']];
@@ -986,32 +989,52 @@ function syncLowerThirdTab(s) {
   const lt = s.lowerThird || {}; const sets = lt.sets || [];
   const active = _ltActiveSet(lt);
   if (active && (!_ltSelItem || !active.items.some(i => i.id === _ltSelItem))) _ltSelItem = (active.items[0] && active.items[0].id) || null;
+  const live = _ltLiveIds(lt);
   const fp = JSON.stringify({
-    a: lt.activeSetId, sel: _ltSelItem,
+    a: lt.activeSetId, sel: _ltSelItem, live, mode: lt.mode, vis: lt.visible,
     sets: sets.map(st => ({ id: st.id, name: st.name, items: (st.items || []).map(i => ({ id: i.id, design: i.design })) })),
   });
   if (fp === _ltTabFp) return;   // content-only edits don't re-render → inputs keep focus
   _ltTabFp = fp;
-  _ltRenderSetbar(sets, lt.activeSetId);
-  _ltRenderSetsList(sets, active);
+  _ltRenderSetbar(sets, live);
+  _ltRenderMode(lt.mode);
+  _ltRenderSetsList(sets, active, live);
   _ltRenderItems(active);
   _ltRenderStage(active);
 }
 
-function _ltRenderSetbar(sets, activeId) {
+// Live set ids (what's on-air). Falls back to activeSetId only while visible, so the
+// set bar reflects the master Show toggle even before any explicit set trigger.
+function _ltLiveIds(lt) {
+  lt = lt || _ltGet();
+  const ids = Array.isArray(lt.activeSetIds) ? lt.activeSetIds.slice() : [];
+  if (!ids.length && lt.visible && lt.activeSetId) ids.push(lt.activeSetId);
+  return ids;
+}
+function _ltRenderSetbar(sets, live) {
   const bar = g('lt-setbar'); if (!bar) return;
   bar.innerHTML = sets.length
-    ? sets.map(st => '<button class="lt-set-btn' + (st.id === activeId ? ' is-active' : '') + '" onclick="ltSelectSet(\'' + st.id + '\')">' + esc(st.name || 'Set') + '</button>').join('')
+    ? sets.map(st => '<button class="lt-set-btn' + (live.indexOf(st.id) !== -1 ? ' is-live' : '') + '" onclick="ltTriggerSet(\'' + st.id + '\')">' +
+        (live.indexOf(st.id) !== -1 ? '<span class="lt-live-dot"></span>' : '') + esc(st.name || 'Set') + '</button>').join('')
     : '<span class="lt-set-count">No sets</span>';
 }
-function _ltRenderSetsList(sets, active) {
+function _ltRenderMode(mode) {
+  const ex = g('lt-mode-exclusive'), fr = g('lt-mode-freeform');
+  if (ex) ex.classList.toggle('btn-active', mode !== 'freeform');
+  if (fr) fr.classList.toggle('btn-active', mode === 'freeform');
+}
+function _ltRenderSetsList(sets, active, live) {
   const host = g('lt-sets-list'); if (!host) return;
+  live = live || [];
   host.innerHTML = sets.map(st => {
-    const isA = active && st.id === active.id, n = (st.items || []).length;
-    return '<div class="lt-set-row' + (isA ? ' is-active' : '') + '">' +
-      '<button class="lt-set-pick btn btn-sm' + (isA ? ' btn-active' : '') + '" onclick="ltSelectSet(\'' + st.id + '\')">' + (isA ? '● Active' : 'Use') + '</button>' +
+    const isEd = active && st.id === active.id, n = (st.items || []).length;
+    const onAir = live.indexOf(st.id) !== -1;
+    return '<div class="lt-set-row' + (isEd ? ' is-active' : '') + (onAir ? ' is-live' : '') + '">' +
+      '<button class="lt-set-pick btn btn-sm' + (isEd ? ' btn-active' : '') + '" onclick="ltSelectSet(\'' + st.id + '\')">' + (isEd ? '● Editing' : 'Edit') + '</button>' +
       '<input class="lt-set-name" value="' + esc(st.name || '') + '" oninput="ltRenameSet(\'' + st.id + '\',this.value)">' +
+      (onAir ? '<span class="lt-onair-badge">ON AIR</span>' : '') +
       '<span class="lt-set-count">' + n + ' item' + (n !== 1 ? 's' : '') + '</span>' +
+      '<button class="lt-set-air btn btn-sm" title="Air / hide this set" onclick="ltTriggerSet(\'' + st.id + '\')">' + (onAir ? 'Hide' : 'Air') + '</button>' +
       '<button class="lt-ie-del" title="Delete set" onclick="ltDeleteSet(\'' + st.id + '\')">&times;</button>' +
     '</div>';
   }).join('') || '<p class="hint">No sets yet — add one to begin.</p>';
@@ -3914,6 +3937,68 @@ function syncLiveBar(s) {
     if (dot)     dot.classList.toggle('active', !!active);
     if (toggleB) toggleB.className = 'lbar-toggle' + (active ? ' is-on' : '');
   });
+
+  _syncLbarLtSets(s);
+  _measureLbar();
+}
+
+// ── Live-bar expand / collapse + lock ────────────────────────────────────────────
+// Collapsed = a single clipped row (compact). Expanded = wraps to extra rows that
+// grow upward, "buying" space for everything. Lock pins it open so a stray click
+// can't hide it. Both states persist.
+let _lbarExpanded = localStorage.getItem('gfx_lbar_expanded') === '1';
+let _lbarLocked   = localStorage.getItem('gfx_lbar_locked') === '1';
+function _measureLbar() {
+  const bar = g('live-bar'); if (!bar) return;
+  const handle = bar.querySelector('.lbar-handle');
+  requestAnimationFrame(function () {
+    // When collapsed the row is hidden (bar height ~0) — reserve the floating
+    // handle's height so content at the bottom-right isn't tucked under it.
+    const h = Math.max(bar.offsetHeight, handle ? handle.offsetHeight : 0);
+    document.documentElement.style.setProperty('--lbar-h', h + 'px');
+  });
+}
+function _applyLbarState() {
+  const bar = g('live-bar'); if (!bar) return;
+  // Lock freezes whichever state the bar is in — it doesn't force it open, so a
+  // collapsed+locked bar can't be expanded by accident either.
+  bar.classList.toggle('lbar-expanded', _lbarExpanded);
+  bar.classList.toggle('lbar-collapsed', !_lbarExpanded);
+  bar.classList.toggle('lbar-locked', _lbarLocked);
+  const eb = g('lbar-expand-btn');
+  if (eb) { eb.textContent = _lbarExpanded ? '▼' : '▲'; eb.disabled = _lbarLocked; eb.title = _lbarLocked ? 'Locked — unlock to change' : (_lbarExpanded ? 'Collapse control bar' : 'Expand control bar'); }
+  const lb = g('lbar-lock-btn');
+  if (lb) { lb.textContent = _lbarLocked ? '🔒' : '🔓'; lb.classList.toggle('is-on', _lbarLocked); lb.title = _lbarLocked ? 'Unlock (allow expand/collapse)' : 'Lock current state'; }
+  _measureLbar();
+}
+function toggleLbarExpand() {
+  if (_lbarLocked) return;                          // frozen while locked (either state)
+  _lbarExpanded = !_lbarExpanded;
+  localStorage.setItem('gfx_lbar_expanded', _lbarExpanded ? '1' : '0');
+  _applyLbarState();
+}
+function toggleLbarLock() {
+  _lbarLocked = !_lbarLocked;                       // freeze/unfreeze the current state
+  localStorage.setItem('gfx_lbar_locked', _lbarLocked ? '1' : '0');
+  _applyLbarState();
+}
+window.addEventListener('resize', _measureLbar);
+_applyLbarState();
+
+// Live-bar Lower Third set chips — quick triggers next to the LOWER 3RD button.
+// Only shown when there's more than one set (a single set = the master toggle is enough).
+let _lbarLtFp = null;
+function _syncLbarLtSets(s) {
+  const host = g('lbar-lt-sets'); if (!host) return;
+  const lt = s.lowerThird || {};
+  const sets = lt.sets || [];
+  const live = _ltLiveIds(lt);
+  const fp = JSON.stringify({ sets: sets.map(st => [st.id, st.name]), live });
+  if (fp === _lbarLtFp) return;
+  _lbarLtFp = fp;
+  host.innerHTML = sets.length > 1
+    ? sets.map(st => '<button class="lbar-lt-chip' + (live.indexOf(st.id) !== -1 ? ' is-live' : '') + '" onclick="ltTriggerSet(\'' + st.id + '\')">' + esc(st.name || 'Set') + '</button>').join('')
+    : '';
 }
 
 function lbarSetWinTeam(team) {
