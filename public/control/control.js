@@ -1029,9 +1029,13 @@ function _ltItemHtml(it, idx) {
       '<label>Accent<select onchange="ltUpdateItem(\'' + q + '\',\'accent\',this.value)">' + _ltOpts(LT_ACCENTS, it.accent || 'primary') + '</select></label>' +
       '<label>Custom colour<input type="color" value="' + esc(it.accentCustom || '#1ffaff') + '" oninput="ltUpdateItem(\'' + q + '\',\'accentCustom\',this.value)"></label>' +
       '<label>Scale<input type="number" step="0.05" min="0.4" max="2.5" value="' + (it.scale || 1) + '" oninput="ltUpdateItem(\'' + q + '\',\'scale\',parseFloat(this.value)||1)"></label>' +
-      '<label>Logo URL<input value="' + esc(it.logo || '') + '" oninput="ltUpdateItem(\'' + q + '\',\'logo\',this.value)"></label>' +
       '<label>X<input type="number" id="lt-x-' + q + '" value="' + Math.round(it.x || 0) + '" oninput="ltUpdateItem(\'' + q + '\',\'x\',parseInt(this.value)||0)"></label>' +
       '<label>Y<input type="number" id="lt-y-' + q + '" value="' + Math.round(it.y || 0) + '" oninput="ltUpdateItem(\'' + q + '\',\'y\',parseInt(this.value)||0)"></label>' +
+      '<label class="full">Logo <span class="lt-ie-hint">optional — a team/sponsor mark shown beside the text</span>' +
+        '<span class="lt-ie-logo"><input id="lt-logo-' + q + '" value="' + esc(it.logo || '') + '" placeholder="Paste an image URL, or upload" oninput="ltUpdateItem(\'' + q + '\',\'logo\',this.value)">' +
+        '<button type="button" class="btn btn-sm" onclick="ltUploadLogo(\'' + q + '\')">Upload</button>' +
+        (it.logo ? '<button type="button" class="lt-ie-del" title="Remove logo" onclick="ltUpdateItem(\'' + q + '\',\'logo\',\'\');this.closest(\'.lt-ie-logo\').querySelector(\'input\').value=\'\'">&times;</button>' : '') +
+        '</span></label>' +
     '</div></div>';
 }
 function _ltRenderItems(active) {
@@ -1054,17 +1058,23 @@ function _ltAttachDrag(el, stage) {
     e.preventDefault();
     const id = el.dataset.id;
     el.setPointerCapture(e.pointerId);
-    const rect = stage.getBoundingClientRect();
+    const stageRect = stage.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    // Keep the grab point under the cursor so the element doesn't jump on pick-up.
+    const grabDX = e.clientX - elRect.left, grabDY = e.clientY - elRect.top;
+    let moved = false; el._nx = null;
     const move = (ev) => {
-      let nx = Math.max(0, Math.min(1920, Math.round((ev.clientX - rect.left) / rect.width  * 1920)));
-      let ny = Math.max(0, Math.min(1080, Math.round((ev.clientY - rect.top)  / rect.height * 1080)));
+      moved = true;
+      let nx = Math.max(0, Math.min(1920, Math.round((ev.clientX - grabDX - stageRect.left) / stageRect.width  * 1920)));
+      let ny = Math.max(0, Math.min(1080, Math.round((ev.clientY - grabDY - stageRect.top)  / stageRect.height * 1080)));
       el.style.left = (nx / 1920 * 100) + '%'; el.style.top = (ny / 1080 * 100) + '%';
       const xi = g('lt-x-' + id), yi = g('lt-y-' + id); if (xi) xi.value = nx; if (yi) yi.value = ny;
       el._nx = nx; el._ny = ny;
     };
     const up = () => {
       el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up);
-      if (el._nx != null) _ltCommitItem(id, { x: el._nx, y: el._ny });
+      if (moved && el._nx != null) _ltCommitItem(id, { x: el._nx, y: el._ny });
+      else if (!moved && id !== _ltSelItem) ltSelectItem(id);   // a click (no drag) selects the item
     };
     el.addEventListener('pointermove', move); el.addEventListener('pointerup', up);
   });
@@ -1097,6 +1107,17 @@ function ltUpdateItem(itemId, field, val) { const sets = _ltCloneSets(); for (co
 function _ltCommitItem(itemId, patch) { const sets = _ltCloneSets(); for (const s of sets) { const it = (s.items || []).find(i => i.id === itemId); if (it) { Object.assign(it, patch); break; } } patchLT({ sets }); }
 function ltDeleteItem(itemId) { const sets = _ltCloneSets(); for (const s of sets) { const idx = (s.items || []).findIndex(i => i.id === itemId); if (idx >= 0) { s.items.splice(idx, 1); break; } } patchLT({ sets }); }
 function ltSelectItem(id) { _ltSelItem = id; syncLowerThirdTab(window._state); }
+function ltUploadLogo(itemId) {
+  const inp = document.createElement('input'); inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    const url = await uploadImageFile(f);   // auto-optimised to WebP server-side
+    if (!url) return;
+    ltUpdateItem(itemId, 'logo', url);
+    const box = g('lt-logo-' + itemId); if (box) box.value = url;   // reflect immediately (logo isn't a structural change)
+  };
+  inp.click();
+}
 
 function renderLTQuickGrid(players, match) {
   const grid = g('lt-player-grid'); if (!grid) return;
