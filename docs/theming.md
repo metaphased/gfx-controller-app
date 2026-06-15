@@ -87,6 +87,15 @@ so an unset token always falls back to the original look.
 - **Bounce / Elastic** can't be a single `cubic-bezier`, so they're emitted as CSS `linear()` easing functions. On renderers without `linear()` support (older embedded browsers), the nearest overshoot bezier is substituted automatically.
 - **Reduced motion** — if the viewer's OS/browser requests reduced motion, the duration scale is forced to 0 (animations resolve instantly).
 
+## Logos & image uploads
+
+Wherever you upload an image in the control panel — broadcast/event logos, sponsor logos, team logos, prize-pool and pre-show artwork — the file is **automatically optimised on upload** so output stays light no matter what you drop in:
+
+- **Re-encoded to WebP** (transparency and animated GIF/WebP frames are preserved).
+- **Downscaled to fit 1920 px on the long edge** (never upscaled, so small logos stay crisp).
+
+This keeps `uploads/` small and your OBS/vMix browser sources fast — a 7 MB 4000 px PNG typically lands well under 100 KB. Accepted formats are PNG, JPEG, GIF and WebP (SVG is intentionally not accepted); files larger than 16 MB are rejected before processing. Images uploaded before this behaviour was added are left untouched — re-upload them if you want them optimised.
+
 ## Looks
 
 A **Look** bundles the palette, accents, background, overlay font and full animation config (including per-graphic overrides) into a named, reusable visual identity. Looks are theme-only — applying one never touches teams, schedule or other tournament data, and the logo library is intentionally excluded.

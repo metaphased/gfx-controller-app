@@ -6,6 +6,7 @@ const path     = require('path');
 const fs       = require('fs');
 const fetch    = require('node-fetch');
 const multer   = require('multer');
+const sharp    = require('sharp');
 const csv      = require('csv-parser');
 const cors     = require('cors');
 const session  = require('express-session');
@@ -310,13 +311,16 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
   filename:    (req, file, cb) => cb(null, Date.now() + '-' + safeFilename(file.originalname))
 });
-// Images only, 8 MB cap — uploads are served unauthenticated from /uploads, so an
-// uploaded .html/.svg/.js would be a same-origin stored-XSS vector. SVG is excluded
-// because it can carry scripts.
+// Images only — uploads are served unauthenticated from /uploads, so an uploaded
+// .html/.svg/.js would be a same-origin stored-XSS vector. SVG is excluded because
+// it can carry scripts. Files are buffered in memory then re-encoded by sharp (see
+// /api/upload), so the inbound cap is generous; the *stored* file is always small.
 const ALLOWED_UPLOAD_MIME = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'];
-const upload = multer({
-  storage,
-  limits: { fileSize: 8 * 1024 * 1024 },
+const MAX_UPLOAD_DIM = 1920;          // long-edge px — outputs are 1080p, logos far smaller
+const UPLOAD_WEBP_QUALITY = 82;       // visually lossless for broadcast at this scale
+const uploadImage = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 16 * 1024 * 1024 },  // generous: we compress down after accepting
   fileFilter: (req, file, cb) => {
     if (ALLOWED_UPLOAD_MIME.includes(file.mimetype)) return cb(null, true);
     cb(new Error('Only PNG, JPEG, GIF, or WebP images are allowed'));
@@ -1724,9 +1728,27 @@ app.get('/api/champions', (req, res) => {
 });
 
 // Upload / Import (admin only)
-app.post('/api/upload', requireAdmin, singleUpload(upload.single('file')), (req, res) => {
-  if (!req.file) return res.status(400).json({error:'No file'});
-  res.json({ ok: true, url: '/uploads/' + req.file.filename });
+// Every accepted image is normalised: downscaled to fit MAX_UPLOAD_DIM on the long
+// edge (never upscaled) and re-encoded to WebP — preserving transparency and GIF/WebP
+// animation — so the stored file is small and predictable regardless of the input.
+app.post('/api/upload', requireAdmin, singleUpload(uploadImage.single('file')), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file' });
+  try {
+    const animated = req.file.mimetype === 'image/gif' || req.file.mimetype === 'image/webp';
+    let pipeline = sharp(req.file.buffer, { animated });
+    if (!animated) pipeline = pipeline.rotate();   // honour EXIF orientation (JPEG from phones)
+    const out = await pipeline
+      .resize({ width: MAX_UPLOAD_DIM, height: MAX_UPLOAD_DIM, fit: 'inside', withoutEnlargement: true })
+      .webp({ quality: UPLOAD_WEBP_QUALITY })
+      .toBuffer();
+    const base = (safeFilename(req.file.originalname).replace(/\.[^.]+$/, '') || 'image').slice(0, 60);
+    const filename = Date.now() + '-' + base + '.webp';
+    fs.writeFileSync(path.join(uploadDir, filename), out);
+    res.json({ ok: true, url: '/uploads/' + filename });
+  } catch (e) {
+    console.error('Image processing failed:', e.message);
+    res.status(400).json({ error: 'Could not process image — try a different file.' });
+  }
 });
 
 // ── Custom overlay fonts ───────────────────────────────────────────────────────

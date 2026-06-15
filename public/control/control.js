@@ -3023,7 +3023,7 @@ async function uploadImageFile(file) {
     const res = await fetch('/api/upload', { method: 'POST', body: fd });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.url) {
-      showAlert(data.error || 'Upload failed — images only (PNG, JPEG, GIF, WebP, max 8 MB).');
+      showAlert(data.error || 'Upload failed — images only (PNG, JPEG, GIF or WebP). Images are auto-optimised on upload.');
       return null;
     }
     return data.url;
