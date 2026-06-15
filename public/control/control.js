@@ -1146,6 +1146,7 @@ function quickLT(i) {
   it.name = p.handle || p.name;
   it.sub = (p.role ? p.role + ' · ' : '') + (p.teamName || '');
   it.super = (window._state && window._state.match && window._state.match.tournament) || '';
+  _ltTabFp = null;   // force the editor to re-render on the resulting broadcast (content-only change)
   patchLT({ sets, visible: true });
 }
 
