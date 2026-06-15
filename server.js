@@ -23,6 +23,7 @@ const EXTERNAL_URL = process.env.EXTERNAL_URL || null;
 const DATA_DIR    = path.join(__dirname, 'data');
 const DATA_FILE   = path.join(DATA_DIR, 'state.json');
 const TEAMS_FILE    = path.join(DATA_DIR, 'teams.json');
+const TALENT_FILE   = path.join(DATA_DIR, 'talent.json');
 const USERS_FILE    = path.join(DATA_DIR, 'users.json');
 const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
 const LOOKS_FILE    = path.join(DATA_DIR, 'looks.json');
@@ -658,6 +659,12 @@ let _teams = [];
 function loadTeams() { try { if (fs.existsSync(TEAMS_FILE)) return JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf8')); } catch(e) {} return []; }
 function saveTeams(t) { _teams = t; try { fs.writeFileSync(TEAMS_FILE, JSON.stringify(t, null, 2)); } catch(e) { console.error(e); } }
 
+// Talent roster — a GLOBAL list of on-air people (hosts/casters/analysts/guests),
+// like the teams DB, reused across tournaments for quick-filling lower thirds.
+let _talent = [];
+function loadTalent() { try { if (fs.existsSync(TALENT_FILE)) return JSON.parse(fs.readFileSync(TALENT_FILE, 'utf8')); } catch(e) {} return []; }
+function saveTalent(t) { _talent = t; try { fs.writeFileSync(TALENT_FILE, JSON.stringify(t, null, 2)); } catch(e) { console.error(e); } }
+
 // Team IDs referenced anywhere in the active tournament (schedule games + groups).
 function _referencedTeamIds() {
   const ids = new Set();
@@ -728,6 +735,7 @@ function snapshotForProfile() {
 
 let state = loadState();
 _teams = loadTeams(); // prime in-memory cache after state is ready
+_talent = loadTalent();
 _ensureTeamPool();    // migrate legacy tournaments to an explicit competing-teams pool
 
 // ── Bus state (in-memory, not persisted) ───────────────────────────────────────
@@ -802,7 +810,7 @@ function broadcastSchedule() { io.emit('schedule', state.tournament.schedule || 
 // operators and graphics-token connections get it stripped.
 function buildStatePayload(includeToken) {
   const { schedule: _s, ...tournamentForBcast } = (state.tournament || {});
-  const payload = Object.assign({}, state, { tournament: tournamentForBcast, teams: _teams, busState, switcher: switcher.getSnapshot() });
+  const payload = Object.assign({}, state, { tournament: tournamentForBcast, teams: _teams, talent: _talent, busState, switcher: switcher.getSnapshot() });
   if (!includeToken && payload.settings) {
     payload.settings = Object.assign({}, payload.settings); // clone so we don't mutate real state
     delete payload.settings.graphicsToken;
@@ -1651,6 +1659,31 @@ app.post('/api/champstats/draft', requireAdmin, async (req, res) => {
 });
 
 // Teams CRUD (admin only)
+// ── Talent roster (global on-air people for lower-third quick-fill) ────────────
+app.get('/api/talent', (req, res) => res.json({ talent: _talent }));
+app.post('/api/talent/save', requireAdmin, (req, res) => {
+  const inc = req.body || {};
+  if (!inc.name && !inc.id) return res.status(400).json({ error: 'name required' });
+  const list = _talent.slice();
+  if (inc.id) {
+    const idx = list.findIndex(t => t.id === inc.id);
+    if (idx !== -1) list[idx] = { ...list[idx], ...inc }; else list.push(inc);
+  } else {
+    inc.id = 'tal_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+    list.push(inc);
+  }
+  saveTalent(list);
+  broadcast();
+  res.json({ ok: true, member: inc });
+});
+app.post('/api/talent/delete', requireAdmin, (req, res) => {
+  const { id } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'id required' });
+  saveTalent(_talent.filter(t => t.id !== id));
+  broadcast();
+  res.json({ ok: true });
+});
+
 app.get('/api/teams', (req, res) => res.json({ teams: _teams }));
 app.post('/api/teams/save', requireAdmin, (req, res) => {
   const teams = _teams.slice();

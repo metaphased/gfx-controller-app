@@ -759,6 +759,15 @@
             <p class="hint" style="margin-top:6px">Select a lower third (click it in the list or on the preview), then click a player to fill its name, role and team.</p>
             <div class="player-quick-grid" id="lt-player-grid"></div>
           </div>
+          <div class="card" style="margin-top:16px">
+            <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+              <span>Talent Roster</span>
+              <button class="btn btn-sm" id="talent-manage-btn" onclick="toggleTalentManage()">Manage</button>
+            </div>
+            <p class="hint" style="margin:6px 0 10px">Your saved hosts, casters and guests. Select a lower third, then click a talent member to fill their name, role and social.</p>
+            <div class="player-quick-grid" id="talent-quick-grid"></div>
+            <div id="talent-manage" style="display:none"></div>
+          </div>
         </div>
 
       </div>

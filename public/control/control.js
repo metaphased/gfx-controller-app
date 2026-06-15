@@ -894,6 +894,7 @@ function syncUI(s) {
   if (_sfp('players', { t1: (p.team1||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId];}), t1s: p.team1subs, t2: (p.team2||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId];}), t2s: p.team2subs })) renderPlayerEditors(p);
   renderIntelPanel(s);
   if (_sfp('ltGrid', { t1: m.team1.name+m.team1.tag, t2: m.team2.name+m.team2.tag, p1: (p.team1||[]).map(function(x){return x.handle||x.name;}), p2: (p.team2||[]).map(function(x){return x.handle||x.name;}) })) renderLTQuickGrid(p, m);
+  syncTalent(s);
   renderDraftTab(s.draft, s);
   syncGraphicIndicators(s);
   syncOperatorPage(s);
@@ -1117,6 +1118,54 @@ function ltUploadLogo(itemId) {
     const box = g('lt-logo-' + itemId); if (box) box.value = url;   // reflect immediately (logo isn't a structural change)
   };
   inp.click();
+}
+
+// ── Talent roster (global on-air people; quick-fill the selected lower third) ──
+let _talentManaging = false;
+let _talentFp = null;
+function _talentList() { return (window._state && window._state.talent) || []; }
+
+function syncTalent(s) {
+  const list = (s && s.talent) || [];
+  const fp = JSON.stringify({ m: _talentManaging, t: list.map(t => [t.id, t.name, t.role, t.social]) });
+  if (fp === _talentFp) return;   // onchange edits already live in the inputs; avoid clobber
+  _talentFp = fp;
+  const grid = g('talent-quick-grid');
+  if (grid) {
+    grid.innerHTML = list.length
+      ? list.map(t => '<button class="player-quick-btn" onclick="talentFill(\'' + t.id + '\')">' +
+          '<span class="pqb-handle">' + esc(t.name || '(unnamed)') + '</span>' +
+          '<span class="pqb-team">' + esc([t.role, t.social].filter(Boolean).join(' · ') || '—') + '</span></button>').join('')
+      : '<p class="hint" style="margin:0">No talent saved yet — click <b>Manage</b> to add hosts, casters and guests.</p>';
+  }
+  const mbtn = g('talent-manage-btn'); if (mbtn) mbtn.classList.toggle('btn-active', _talentManaging);
+  const panel = g('talent-manage'); if (!panel) return;
+  panel.style.display = _talentManaging ? 'block' : 'none';
+  if (!_talentManaging) return;
+  panel.innerHTML =
+    list.map(t => '<div class="talent-row" data-id="' + t.id + '">' +
+      '<input class="talent-f" placeholder="Name" value="' + esc(t.name || '') + '" onchange="talentSaveField(\'' + t.id + '\',\'name\',this.value)">' +
+      '<input class="talent-f" placeholder="Role (e.g. Host)" value="' + esc(t.role || '') + '" onchange="talentSaveField(\'' + t.id + '\',\'role\',this.value)">' +
+      '<input class="talent-f" placeholder="Social (e.g. @handle)" value="' + esc(t.social || '') + '" onchange="talentSaveField(\'' + t.id + '\',\'social\',this.value)">' +
+      '<button class="lt-ie-del" title="Delete" onclick="talentDelete(\'' + t.id + '\')">&times;</button></div>').join('') +
+    '<button class="btn btn-sm" style="margin-top:8px" onclick="talentAdd()">+ Add Talent</button>';
+}
+function toggleTalentManage() { _talentManaging = !_talentManaging; _talentFp = null; syncTalent(window._state); }
+function talentAdd() { api('/api/talent/save', { name: 'New Talent', role: '', social: '' }); }
+function talentSaveField(id, field, value) { const m = _talentList().find(t => t.id === id) || {}; api('/api/talent/save', { id, name: m.name, role: m.role, social: m.social, [field]: value }); }
+function talentDelete(id) { showConfirm('Delete this talent member?', () => api('/api/talent/delete', { id }), { danger: true, okLabel: 'Delete' }); }
+function talentFill(id) {
+  const m = _talentList().find(t => t.id === id); if (!m) return;
+  const sets = _ltCloneSets();
+  const s = sets.find(x => x.id === _ltActiveId()) || sets[0];
+  if (!s) { showAlert('Add a set first.'); return; }
+  let it = (s.items || []).find(x => x.id === _ltSelItem) || s.items[0];
+  if (!it) { it = _ltNewItem(); s.items.push(it); _ltSelItem = it.id; }
+  it.name = m.name || '';
+  it.sub = m.role || '';
+  it.super = m.social || '';
+  _ltTabFp = null;   // refresh the editor fields on the resulting broadcast
+  patchLT({ sets, visible: true });
 }
 
 function renderLTQuickGrid(players, match) {
