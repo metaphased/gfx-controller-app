@@ -31,6 +31,7 @@
       <div class="nav-section-label">TOURNAMENT</div>
       <a class="nav-item" data-tab="tournament">Tournament Setup</a>
       <a class="nav-item" data-tab="teams">Teams Database</a>
+      <a class="nav-item" data-tab="talent">Talent Roster</a>
       <a class="nav-item" data-tab="schedule">Schedule</a>
       <a class="nav-item" data-tab="groups" id="nav-item-groups" style="display:none">Groups</a>
       <a class="nav-item" data-tab="playoffs">Playoffs</a>
@@ -670,6 +671,27 @@
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════
+         TALENT ROSTER
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-talent">
+      <div class="tab-header">
+        <h1>Talent Roster</h1>
+        <button class="btn btn-primary btn-sm" onclick="talentAdd()">+ New Talent</button>
+      </div>
+      <p class="hint" style="margin-bottom:16px">Your saved on-air people — hosts, casters, analysts and guests. They appear as one-click <strong>quick-fill</strong> chips on the <a onclick="switchToTab('lowerthird')" href="#" style="color:var(--primary)">Lower Third</a> page, dropping a person's name, role and social into a lower third. Talent is shared across all profiles.</p>
+      <div class="card">
+        <div class="talent-row talent-head">
+          <span class="talent-f-h">Name</span>
+          <span class="talent-f-h">Role</span>
+          <span class="talent-f-h">Social</span>
+          <span class="talent-del-spacer"></span>
+        </div>
+        <div id="talent-page-list"></div>
+        <p class="hint" id="talent-page-empty" style="display:none;margin:4px 0 0">No talent saved yet. Click <strong>+ New Talent</strong> to add your first host, caster or guest.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
          PLAYERS
     ══════════════════════════════════════════════════════════════════════════ -->
     <section class="tab" id="tab-players">
@@ -762,11 +784,10 @@
           <div class="card" style="margin-top:16px">
             <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
               <span>Talent Roster</span>
-              <button class="btn btn-sm" id="talent-manage-btn" onclick="toggleTalentManage()">Manage</button>
+              <button class="btn btn-sm" onclick="switchToTab('talent')">Manage Roster ↗</button>
             </div>
-            <p class="hint" style="margin:6px 0 10px">Your saved hosts, casters and guests. Select a lower third, then click a talent member to fill their name, role and social.</p>
+            <p class="hint" style="margin:6px 0 10px">Your saved hosts, casters and guests. Select a lower third, then click a talent member to fill their name, role and social. Add or edit people on the <a onclick="switchToTab('talent')" href="#" style="color:var(--primary)">Talent Roster</a> page.</p>
             <div class="player-quick-grid" id="talent-quick-grid"></div>
-            <div id="talent-manage" style="display:none"></div>
           </div>
         </div>
 
