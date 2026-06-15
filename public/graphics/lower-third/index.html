@@ -7,130 +7,190 @@
 <link rel="stylesheet" href="/fonts/fonts.css">
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
+  html, body { width: 100%; height: 100%; background: transparent; overflow: hidden; }
+
+  /* 1920×1080 stage, scaled to fit any viewport (preview panes, non-1080 sources)
+     so bottom-anchored lower thirds never clip. No-op at exactly 1920×1080. */
+  #lt-root {
+    position: absolute; top: 0; left: 0;
     width: 1920px; height: 1080px;
-    background: transparent;
+    transform-origin: top left;
     font-family: var(--gfx-font, 'Barlow Condensed'), 'Arial Narrow', sans-serif;
-    overflow: hidden;
-    position: relative;
   }
 
-  :root {
-    --bg: var(--gfx-c4, #0a1b20);
-    --accent: var(--gfx-c2, #a7a38e);
-    --primary: var(--gfx-c1, #1ffaff);
-  }
-
-  .lower-third {
+  /* ── Item shell + entrance/exit (driven by the shared animation tokens) ─────── */
+  .lt-item {
     position: absolute;
-    bottom: 120px;
-    left: 80px;
     display: flex;
     align-items: stretch;
+    transform-origin: top left;
     opacity: 0;
-    transform: translateX(-60px);
-    transition: opacity 0.4s cubic-bezier(.4,0,.2,1), transform 0.4s cubic-bezier(.4,0,.2,1);
-    pointer-events: none;
+    /* exit curve by default; .in swaps to the entrance curve */
+    transition: opacity calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(.4,0,1,1)),
+                transform calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(.4,0,1,1));
+    transform: translateX(var(--lt-enter-shift, -60px)) scale(var(--lt-scale, 1));
+    will-change: opacity, transform;
   }
-  .lower-third.side-right {
-    left: auto; right: 80px;
-    transform: translateX(60px);
-    flex-direction: row-reverse;
-  }
-  .lower-third.visible {
+  .lt-item.side-right { flex-direction: row-reverse; transform-origin: top right; }
+  .lt-item.in {
     opacity: 1;
-    transform: translateX(0);
+    transform: translateX(0) scale(var(--lt-scale, 1));
+    transition-timing-function: var(--gfx-ease-enter, cubic-bezier(.16,1,.3,1));
   }
 
-  .lt-bar {
-    width: 6px;
-    background: var(--primary);
-    flex-shrink: 0;
-    border-radius: 3px 0 0 3px;
-  }
-  .lower-third.side-right .lt-bar { border-radius: 0 3px 3px 0; }
+  .lt-accent-bar { width: 6px; background: var(--lt-accent, #1ffaff); flex-shrink: 0; border-radius: 3px 0 0 3px; }
+  .side-right .lt-accent-bar { border-radius: 0 3px 3px 0; }
 
-  .lt-body {
-    background: var(--bg);
-    padding: 14px 28px 14px 22px;
-    position: relative;
-    clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
-    min-width: 320px;
-  }
-  .lower-third.side-right .lt-body {
-    clip-path: polygon(20px 0, 100% 0, 100% 100%, 0 100%, 0 20px);
-  }
+  .lt-logo { width: 70px; height: 70px; object-fit: contain; align-self: center; margin: 0 16px; flex-shrink: 0; }
 
+  .lt-body { position: relative; }
   .lt-super {
     font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
-    font-size: 13px;
-    font-weight: 600;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--primary);
-    margin-bottom: 4px;
+    font-size: 13px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--lt-accent, #1ffaff); margin-bottom: 4px;
+    /* padding+negative margin so slanted/italic glyphs never clip at the edges */
+    padding: 0 0.14em; margin-left: -0.14em;
   }
   .lt-name {
     font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
-    font-size: 36px;
-    font-weight: 800;
-    color: var(--gfx-c3, #ffffff);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    line-height: 1;
+    font-size: 36px; font-weight: 800; color: var(--gfx-c3, #fff);
+    text-transform: uppercase; letter-spacing: 0.04em; line-height: 1; white-space: nowrap;
+    padding: 0 0.14em; margin-left: -0.14em;
   }
   .lt-sub {
     font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow')), sans-serif;
-    font-size: 15px;
-    font-weight: 400;
-    color: var(--accent);
-    margin-top: 4px;
-    letter-spacing: 0.05em;
+    font-size: 15px; font-weight: 400; color: var(--gfx-c2, #a7a38e);
+    margin-top: 4px; letter-spacing: 0.05em; white-space: nowrap;
+    padding: 0 0.14em; margin-left: -0.14em;
   }
 
-  /* Team logo version */
-  .lt-logo {
-    width: 70px;
-    height: 70px;
-    object-fit: contain;
-    margin-right: 16px;
-    flex-shrink: 0;
+  /* ── Design: BAR (accent bar + angled glass box) ───────────────────────────── */
+  .lt--bar .lt-body {
+    background: var(--gfx-c4, #0a1b20);
+    padding: 14px 30px 14px 22px;
+    clip-path: polygon(0 0, calc(100% - 20px) 0, 100% 20px, 100% 100%, 0 100%);
+    min-width: 320px;
   }
+  .lt--bar.side-right .lt-body { clip-path: polygon(20px 0, 100% 0, 100% 100%, 0 100%, 0 20px); padding: 14px 22px 14px 30px; }
+
+  /* ── Design: BOX (clean solid card, square corners) ────────────────────────── */
+  .lt--box .lt-body {
+    background: var(--gfx-c4, #0a1b20);
+    padding: 14px 30px; min-width: 320px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.35);
+  }
+  .lt--box .lt-accent-bar { border-radius: 0; }
+
+  /* ── Design: UNDERLINE (minimal, no box — rule under the name) ──────────────── */
+  .lt--underline .lt-accent-bar { display: none; }
+  .lt--underline .lt-body { background: transparent; padding: 6px 0; min-width: 0; }
+  .lt--underline .lt-name {
+    display: inline-block; padding-bottom: 8px;
+    border-bottom: 4px solid var(--lt-accent, #1ffaff);
+    text-shadow: 0 2px 14px rgba(0,0,0,0.55);
+  }
+  .lt--underline .lt-super,
+  .lt--underline .lt-sub { text-shadow: 0 2px 10px rgba(0,0,0,0.6); }
+
+  /* ── Design: INTERVIEW (larger card for a call-in / solo cam) ──────────────── */
+  .lt--interview .lt-accent-bar { width: 10px; }
+  .lt--interview .lt-body {
+    background: var(--gfx-c4, #0a1b20);
+    padding: 22px 46px 22px 34px; min-width: 460px;
+    clip-path: polygon(0 0, calc(100% - 26px) 0, 100% 26px, 100% 100%, 0 100%);
+  }
+  .lt--interview.side-right .lt-body { clip-path: polygon(26px 0, 100% 0, 100% 100%, 0 100%, 0 26px); padding: 22px 34px 22px 46px; }
+  .lt--interview .lt-super { font-size: 16px; }
+  .lt--interview .lt-name  { font-size: 54px; }
+  .lt--interview .lt-sub   { font-size: 20px; margin-top: 6px; }
+  .lt--interview .lt-logo  { width: 96px; height: 96px; }
 </style>
 </head>
 <body>
-<div class="lower-third" id="lt">
-  <div class="lt-bar" id="lt-bar"></div>
-  <div class="lt-body">
-    <div class="lt-super" id="lt-super"></div>
-    <div class="lt-name" id="lt-name">Player Name</div>
-    <div class="lt-sub" id="lt-sub"></div>
-  </div>
-</div>
+<div id="lt-root"></div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script src="/graphics/gfx-settings.js"></script>
 <script>
 const _gfxToken = new URLSearchParams(window.location.search).get('token') || '';
+const _outId    = new URLSearchParams(window.location.search).get('out') || 'main';
 const socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
+const root = document.getElementById('lt-root');
 
-const el  = document.getElementById('lt');
-const bar = document.getElementById('lt-bar');
+// Scale the 1920×1080 stage to fill the viewport (no-op at exactly 1920×1080).
+function scaleToFit() {
+  const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080) || 1;
+  root.style.transform = 'scale(' + scale + ')';
+  root.style.left = ((window.innerWidth  - 1920 * scale) / 2) + 'px';
+  root.style.top  = ((window.innerHeight - 1080 * scale) / 2) + 'px';
+}
+window.addEventListener('resize', scaleToFit);
+scaleToFit();
 
-let _ltFp = null;
+function resolveAccent(state, item) {
+  const a = item.accent || 'primary';
+  if (a === 'blue')   return GfxSettings.accent(state, 'blue');
+  if (a === 'red')    return GfxSettings.accent(state, 'red');
+  if (a === 'custom') return item.accentCustom || '#1ffaff';
+  return GfxSettings.palette(state, 0); // primary
+}
+
+function buildItem(state, item, idx) {
+  const el = document.createElement('div');
+  el.className = 'lt-item lt--' + (item.design || 'bar') + ' side-' + (item.side || 'left');
+  el.style.left = (item.x || 0) + 'px';
+  el.style.top  = (item.y || 0) + 'px';
+  el.style.setProperty('--lt-scale', String(item.scale || 1));
+  el.style.setProperty('--lt-enter-shift', (item.side === 'right' ? '60px' : '-60px'));
+  el.style.setProperty('--lt-accent', resolveAccent(state, item));
+  el.style.transitionDelay = 'calc(' + (idx * 70) + 'ms * var(--gfx-dur-scale, 1))';
+
+  if (item.design !== 'underline') {
+    const bar = document.createElement('div'); bar.className = 'lt-accent-bar'; el.appendChild(bar);
+  }
+  if (item.logo) {
+    const img = document.createElement('img'); img.className = 'lt-logo'; img.src = item.logo; el.appendChild(img);
+  }
+  const body = document.createElement('div'); body.className = 'lt-body';
+  if (item.super) { const s = document.createElement('div'); s.className = 'lt-super'; s.textContent = item.super; body.appendChild(s); }
+  const n = document.createElement('div'); n.className = 'lt-name'; n.textContent = item.name || ''; body.appendChild(n);
+  if (item.sub) { const sub = document.createElement('div'); sub.className = 'lt-sub'; sub.textContent = item.sub; body.appendChild(sub); }
+  el.appendChild(body);
+  return el;
+}
+
+let _fp = null;
+let _shown = false;
 socket.on('state', (state) => {
-  if (window.GfxSettings) GfxSettings.applyTheme(document.documentElement, state); // palette, always (before fingerprint guard)
-  const lt = state.lowerThird;
-  const key = JSON.stringify([lt.visible, lt.text, lt.subtext, lt.supertext, lt.side, state.match.tournament]);
-  if (_ltFp === key) return;
-  _ltFp = key;
+  if (window.GfxSettings) {
+    GfxSettings.applyTheme(document.documentElement, state);
+    GfxSettings.applyAnimation(document.documentElement, state, 'lowerThird');
+  }
+  const lt = state.lowerThird || {};
+  const out = (lt.outputs || []).find(o => o.id === _outId) || (lt.outputs || [])[0] || {};
+  // Phase 1: single 'main' output driven by the top-level visible/activeSetId.
+  const visible = !!lt.visible;
+  const activeSet = (lt.sets || []).find(s => s.id === lt.activeSetId) || null;
+  const items = (activeSet && activeSet.items) || [];
 
-  document.getElementById('lt-super').textContent = lt.supertext || state.match.tournament || '';
-  document.getElementById('lt-name').textContent  = lt.text    || '';
-  document.getElementById('lt-sub').textContent   = lt.subtext || '';
-
-  el.classList.toggle('side-right', lt.side === 'right');
-  el.classList.toggle('visible',    !!lt.visible);
+  // Rebuild the DOM only when the rendered content changes; visibility alone just
+  // toggles the entrance/exit transition on the existing elements.
+  const contentFp = JSON.stringify(items);
+  if (contentFp !== _fp) {
+    _fp = contentFp;
+    root.innerHTML = '';
+    items.forEach((it, i) => root.appendChild(buildItem(state, it, i)));
+    _shown = false;
+  }
+  if (visible && !_shown) {
+    _shown = true;
+    requestAnimationFrame(() => root.querySelectorAll('.lt-item').forEach(el => el.classList.add('in')));
+  } else if (!visible && _shown) {
+    _shown = false;
+    root.querySelectorAll('.lt-item').forEach(el => el.classList.remove('in'));
+  } else if (visible && _shown) {
+    root.querySelectorAll('.lt-item').forEach(el => el.classList.add('in'));
+  }
 });
 </script>
 </body>

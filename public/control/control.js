@@ -819,7 +819,7 @@ function syncUI(s) {
   setText('players-t1-label', m.team1.name + ' Roster');
   setText('players-t2-label', m.team2.name + ' Roster');
 
-  setInpSafe('lt-text', s.lowerThird.text); setInpSafe('lt-sub', s.lowerThird.subtext); setInpSafe('lt-super', s.lowerThird.supertext);
+  syncLowerThirdTab(s);
   setInpSafe('break-msg', s.breakScreen.message); setInpSafe('break-sub', s.breakScreen.subtext); setInpSafe('break-next', s.breakScreen.nextMatch);
   const _bls = s.breakScreen.centerLogoScale || 8;
   setInpSafe('break-logo-scale', _bls);
@@ -965,8 +965,138 @@ function syncTeamDisplay(n, team) {
 function showGraphic(name) { fetch('/api/graphic/'+name+'/show',{method:'POST'}).catch(console.error); }
 function hideGraphic(name) { fetch('/api/graphic/'+name+'/hide',{method:'POST'}).catch(console.error); }
 
-// ── Lower Third ────────────────────────────────────────────────────────────────
+// ── Lower Third (set-driven builder) ─────────────────────────────────────────────
 function patchLT(data) { api('/api/lowerThird', data); }
+
+const LT_DESIGNS = [['bar','Bar'],['box','Box'],['underline','Underline'],['interview','Interview']];
+const LT_ACCENTS = [['primary','Primary'],['blue','Blue side'],['red','Red side'],['custom','Custom']];
+let _ltSelItem = null;      // id of the item being edited (preview highlight + quick-player target)
+let _ltTabFp = null;        // structural fingerprint — re-render only when structure/selection changes
+
+function _ltGet() { return (window._state && window._state.lowerThird) || { sets: [], activeSetId: '' }; }
+function _ltActiveSet(lt) { lt = lt || _ltGet(); return (lt.sets || []).find(s => s.id === lt.activeSetId) || (lt.sets || [])[0] || null; }
+function _ltCloneSets() { return JSON.parse(JSON.stringify(_ltGet().sets || [])); }
+function _ltActiveId() { const lt = _ltGet(); return lt.activeSetId || ((lt.sets || [])[0] || {}).id || ''; }
+function _ltUid(p) { return p + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+function _ltNewItem(over) { return Object.assign({ id: _ltUid('lti'), design: 'bar', x: 80, y: 840, side: 'left', scale: 1, super: '', name: '', sub: '', logo: '', accent: 'primary', accentCustom: '#1ffaff' }, over || {}); }
+function _ltOpts(list, val) { return list.map(([v, l]) => '<option value="' + v + '"' + (v === val ? ' selected' : '') + '>' + l + '</option>').join(''); }
+
+function syncLowerThirdTab(s) {
+  const lt = s.lowerThird || {}; const sets = lt.sets || [];
+  const active = _ltActiveSet(lt);
+  if (active && (!_ltSelItem || !active.items.some(i => i.id === _ltSelItem))) _ltSelItem = (active.items[0] && active.items[0].id) || null;
+  const fp = JSON.stringify({
+    a: lt.activeSetId, sel: _ltSelItem,
+    sets: sets.map(st => ({ id: st.id, name: st.name, items: (st.items || []).map(i => ({ id: i.id, design: i.design })) })),
+  });
+  if (fp === _ltTabFp) return;   // content-only edits don't re-render → inputs keep focus
+  _ltTabFp = fp;
+  _ltRenderSetbar(sets, lt.activeSetId);
+  _ltRenderSetsList(sets, active);
+  _ltRenderItems(active);
+  _ltRenderStage(active);
+}
+
+function _ltRenderSetbar(sets, activeId) {
+  const bar = g('lt-setbar'); if (!bar) return;
+  bar.innerHTML = sets.length
+    ? sets.map(st => '<button class="lt-set-btn' + (st.id === activeId ? ' is-active' : '') + '" onclick="ltSelectSet(\'' + st.id + '\')">' + esc(st.name || 'Set') + '</button>').join('')
+    : '<span class="lt-set-count">No sets</span>';
+}
+function _ltRenderSetsList(sets, active) {
+  const host = g('lt-sets-list'); if (!host) return;
+  host.innerHTML = sets.map(st => {
+    const isA = active && st.id === active.id, n = (st.items || []).length;
+    return '<div class="lt-set-row' + (isA ? ' is-active' : '') + '">' +
+      '<button class="lt-set-pick btn btn-sm' + (isA ? ' btn-active' : '') + '" onclick="ltSelectSet(\'' + st.id + '\')">' + (isA ? '● Active' : 'Use') + '</button>' +
+      '<input class="lt-set-name" value="' + esc(st.name || '') + '" oninput="ltRenameSet(\'' + st.id + '\',this.value)">' +
+      '<span class="lt-set-count">' + n + ' item' + (n !== 1 ? 's' : '') + '</span>' +
+      '<button class="lt-ie-del" title="Delete set" onclick="ltDeleteSet(\'' + st.id + '\')">&times;</button>' +
+    '</div>';
+  }).join('') || '<p class="hint">No sets yet — add one to begin.</p>';
+}
+function _ltItemHtml(it, idx) {
+  const q = it.id;
+  return '<div class="lt-item-edit' + (it.id === _ltSelItem ? ' is-sel' : '') + '" data-id="' + q + '">' +
+    '<div class="lt-ie-head"><span class="lt-ie-title" onclick="ltSelectItem(\'' + q + '\')">#' + (idx + 1) + ' ' + esc(it.name || '(unnamed)') + '</span>' +
+      '<button class="lt-ie-del" title="Remove" onclick="ltDeleteItem(\'' + q + '\')">&times;</button></div>' +
+    '<div class="lt-ie-grid">' +
+      '<label class="full">Name<input value="' + esc(it.name || '') + '" oninput="ltUpdateItem(\'' + q + '\',\'name\',this.value)"></label>' +
+      '<label>Super label<input value="' + esc(it.super || '') + '" oninput="ltUpdateItem(\'' + q + '\',\'super\',this.value)"></label>' +
+      '<label>Subtext<input value="' + esc(it.sub || '') + '" oninput="ltUpdateItem(\'' + q + '\',\'sub\',this.value)"></label>' +
+      '<label>Design<select onchange="ltUpdateItem(\'' + q + '\',\'design\',this.value)">' + _ltOpts(LT_DESIGNS, it.design || 'bar') + '</select></label>' +
+      '<label>Side<select onchange="ltUpdateItem(\'' + q + '\',\'side\',this.value)">' + _ltOpts([['left','Left'],['right','Right']], it.side || 'left') + '</select></label>' +
+      '<label>Accent<select onchange="ltUpdateItem(\'' + q + '\',\'accent\',this.value)">' + _ltOpts(LT_ACCENTS, it.accent || 'primary') + '</select></label>' +
+      '<label>Custom colour<input type="color" value="' + esc(it.accentCustom || '#1ffaff') + '" oninput="ltUpdateItem(\'' + q + '\',\'accentCustom\',this.value)"></label>' +
+      '<label>Scale<input type="number" step="0.05" min="0.4" max="2.5" value="' + (it.scale || 1) + '" oninput="ltUpdateItem(\'' + q + '\',\'scale\',parseFloat(this.value)||1)"></label>' +
+      '<label>Logo URL<input value="' + esc(it.logo || '') + '" oninput="ltUpdateItem(\'' + q + '\',\'logo\',this.value)"></label>' +
+      '<label>X<input type="number" id="lt-x-' + q + '" value="' + Math.round(it.x || 0) + '" oninput="ltUpdateItem(\'' + q + '\',\'x\',parseInt(this.value)||0)"></label>' +
+      '<label>Y<input type="number" id="lt-y-' + q + '" value="' + Math.round(it.y || 0) + '" oninput="ltUpdateItem(\'' + q + '\',\'y\',parseInt(this.value)||0)"></label>' +
+    '</div></div>';
+}
+function _ltRenderItems(active) {
+  const host = g('lt-items-editor'); if (!host) return;
+  const title = g('lt-items-title');
+  if (!active) { host.innerHTML = '<p class="hint">Add a set to begin.</p>'; if (title) title.textContent = 'Lower Thirds'; return; }
+  if (title) title.textContent = 'Lower Thirds — ' + (active.name || 'Set');
+  host.innerHTML = (active.items || []).map((it, i) => _ltItemHtml(it, i)).join('') || '<p class="hint">No lower thirds in this set — add one.</p>';
+}
+function _ltRenderStage(active) {
+  const stage = g('lt-preview-stage'); if (!stage) return;
+  if (!active || !(active.items || []).length) { stage.innerHTML = '<div class="lt-stage-empty">No lower thirds to place</div>'; return; }
+  stage.innerHTML = active.items.map(it =>
+    '<div class="lt-stage-item' + (it.id === _ltSelItem ? ' is-sel' : '') + '" data-id="' + it.id + '" style="left:' + ((it.x || 0) / 1920 * 100) + '%;top:' + ((it.y || 0) / 1080 * 100) + '%">' + esc(it.name || 'LT') + '</div>'
+  ).join('');
+  stage.querySelectorAll('.lt-stage-item').forEach(el => _ltAttachDrag(el, stage));
+}
+function _ltAttachDrag(el, stage) {
+  el.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const id = el.dataset.id;
+    el.setPointerCapture(e.pointerId);
+    const rect = stage.getBoundingClientRect();
+    const move = (ev) => {
+      let nx = Math.max(0, Math.min(1920, Math.round((ev.clientX - rect.left) / rect.width  * 1920)));
+      let ny = Math.max(0, Math.min(1080, Math.round((ev.clientY - rect.top)  / rect.height * 1080)));
+      el.style.left = (nx / 1920 * 100) + '%'; el.style.top = (ny / 1080 * 100) + '%';
+      const xi = g('lt-x-' + id), yi = g('lt-y-' + id); if (xi) xi.value = nx; if (yi) yi.value = ny;
+      el._nx = nx; el._ny = ny;
+    };
+    const up = () => {
+      el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up);
+      if (el._nx != null) _ltCommitItem(id, { x: el._nx, y: el._ny });
+    };
+    el.addEventListener('pointermove', move); el.addEventListener('pointerup', up);
+  });
+}
+
+// ── Mutations (build the new sets array, then POST) ───────────────────────────
+function ltAddSet() {
+  const sets = _ltCloneSets(); const id = _ltUid('set');
+  const it = _ltNewItem();
+  sets.push({ id, name: 'Set ' + (sets.length + 1), items: [it] });
+  _ltSelItem = it.id; patchLT({ sets, activeSetId: id });
+}
+function ltSelectSet(id) { const set = (_ltGet().sets || []).find(s => s.id === id); _ltSelItem = set && set.items[0] ? set.items[0].id : null; patchLT({ activeSetId: id }); }
+function ltRenameSet(id, name) { const sets = _ltCloneSets(); const s = sets.find(x => x.id === id); if (s) { s.name = name; patchLT({ sets }); } }
+function ltDeleteSet(id) {
+  let sets = _ltCloneSets();
+  if (sets.length <= 1) { showAlert('Keep at least one set.'); return; }
+  sets = sets.filter(s => s.id !== id);
+  const active = _ltActiveId() === id ? sets[0].id : _ltActiveId();
+  patchLT({ sets, activeSetId: active });
+}
+function ltAddItem() {
+  const sets = _ltCloneSets(); const s = sets.find(x => x.id === _ltActiveId()) || sets[0];
+  if (!s) { showAlert('Add a set first.'); return; }
+  if ((s.items || []).length >= 6) { showAlert('Max 6 lower thirds per set.'); return; }
+  const it = _ltNewItem({ name: 'New Lower Third', y: Math.max(120, 840 - s.items.length * 130) });
+  s.items.push(it); _ltSelItem = it.id; patchLT({ sets });
+}
+function ltUpdateItem(itemId, field, val) { const sets = _ltCloneSets(); for (const s of sets) { const it = (s.items || []).find(i => i.id === itemId); if (it) { it[field] = val; break; } } patchLT({ sets }); }
+function _ltCommitItem(itemId, patch) { const sets = _ltCloneSets(); for (const s of sets) { const it = (s.items || []).find(i => i.id === itemId); if (it) { Object.assign(it, patch); break; } } patchLT({ sets }); }
+function ltDeleteItem(itemId) { const sets = _ltCloneSets(); for (const s of sets) { const idx = (s.items || []).findIndex(i => i.id === itemId); if (idx >= 0) { s.items.splice(idx, 1); break; } } patchLT({ sets }); }
+function ltSelectItem(id) { _ltSelItem = id; syncLowerThirdTab(window._state); }
 
 function renderLTQuickGrid(players, match) {
   const grid = g('lt-player-grid'); if (!grid) return;
@@ -986,8 +1116,16 @@ function renderLTQuickGrid(players, match) {
 
 function quickLT(i) {
   const grid = g('lt-player-grid');
-  const p = grid&&grid._players&&grid._players[i]; if (!p) return;
-  api('/api/lowerThird', { text:p.handle||p.name, subtext:(p.role?p.role+' · ':'')+p.teamName, supertext:(window._state&&window._state.match&&window._state.match.tournament)||'', visible:true });
+  const p = grid && grid._players && grid._players[i]; if (!p) return;
+  const sets = _ltCloneSets();
+  const s = sets.find(x => x.id === _ltActiveId()) || sets[0];
+  if (!s) { showAlert('Add a set first.'); return; }
+  let it = (s.items || []).find(x => x.id === _ltSelItem) || s.items[0];
+  if (!it) { it = _ltNewItem(); s.items.push(it); _ltSelItem = it.id; }
+  it.name = p.handle || p.name;
+  it.sub = (p.role ? p.role + ' · ' : '') + (p.teamName || '');
+  it.super = (window._state && window._state.match && window._state.match.tournament) || '';
+  patchLT({ sets, visible: true });
 }
 
 // ── Draft ──────────────────────────────────────────────────────────────────────
@@ -3592,9 +3730,10 @@ function syncOperatorPage(s) {
   setText('ops-t2-score', m.team2.score);
 
   // Lower third fields
-  setInpSafe('ops-lt-text',  s.lowerThird.text);
-  setInpSafe('ops-lt-sub',   s.lowerThird.subtext);
-  setInpSafe('ops-lt-super', s.lowerThird.supertext);
+  const _opIt = ((_ltActiveSet(s) || {}).items || [])[0] || {};
+  setInpSafe('ops-lt-text',  _opIt.name);
+  setInpSafe('ops-lt-sub',   _opIt.sub);
+  setInpSafe('ops-lt-super', _opIt.super);
 
   // Break screen fields
   setInpSafe('ops-break-msg',  s.breakScreen.message);
@@ -3648,7 +3787,12 @@ function renderOpsLTQuickGrid(players, match) {
 function opsQuickLT(i) {
   const grid = g('ops-lt-player-grid');
   const p = grid&&grid._players&&grid._players[i]; if (!p) return;
-  api('/api/lowerThird', { text:p.handle||p.name, subtext:(p.role?p.role+' · ':'')+p.teamName, supertext:(window._state&&window._state.match&&window._state.match.tournament)||'', visible:true });
+  const sets = _ltCloneSets();
+  const s = sets.find(x => x.id === _ltActiveId()) || sets[0];
+  if (!s) return;
+  if (!s.items || !s.items.length) s.items = [_ltNewItem()];
+  Object.assign(s.items[0], { name: p.handle || p.name, sub: (p.role ? p.role + ' · ' : '') + (p.teamName || ''), super: (window._state && window._state.match && window._state.match.tournament) || '' });
+  patchLT({ sets, visible: true });
 }
 
 // ── Operator page timer helper ─────────────────────────────────────────────────
@@ -5899,6 +6043,7 @@ function playEasePreview(style) {
 // Edits the same settings.animation.overrides[key] the Theme page uses, so a
 // graphic's motion can be tuned theme-wide (Theme page) OR per-graphic (its page).
 const _GFX_ANIM_PAGES = {
+  'lowerthird': ['lowerThird', 'Lower Third'],
   'player-intro': ['playerIntro', 'Player Intro'], 'h2h': ['headToHead', 'Head to Head'],
   'draft-gfx': ['draft', 'Draft'], 'win': ['winScreen', 'Win Screen'],
   'break': ['breakScreen', 'Break Screen'], 'preshow': ['preShow', 'Pre-show'],

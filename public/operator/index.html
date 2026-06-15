@@ -551,15 +551,15 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
     <div class="ops-panel-body">
       <div class="field-row">
         <label>Main Text</label>
-        <input type="text" id="ops-lt-text" placeholder="Player name / heading" oninput="api('/api/lowerThird',{text:this.value})">
+        <input type="text" id="ops-lt-text" placeholder="Player name / heading" oninput="opsLT('name',this.value)">
       </div>
       <div class="field-row">
         <label>Subtext</label>
-        <input type="text" id="ops-lt-sub" placeholder="Team / Role" oninput="api('/api/lowerThird',{subtext:this.value})">
+        <input type="text" id="ops-lt-sub" placeholder="Team / Role" oninput="opsLT('sub',this.value)">
       </div>
       <div class="field-row">
         <label>Super Label</label>
-        <input type="text" id="ops-lt-super" placeholder="e.g. TOURNAMENT NAME" oninput="api('/api/lowerThird',{supertext:this.value})">
+        <input type="text" id="ops-lt-super" placeholder="e.g. TOURNAMENT NAME" oninput="opsLT('super',this.value)">
       </div>
       <div class="player-grid" id="ops-lt-grid"></div>
     </div>
@@ -847,13 +847,14 @@ socket.on('state', state => {
   setText('tb-t2-score', t2s);
   setText('tb-game-ctx', `G${gNum} of ${fmtN} · ${fmt}`);
 
-  /* LT fields */
-  setInp('ops-lt-text',    state.lowerThird && state.lowerThird.text);
-  setInp('ops-lt-sub',     state.lowerThird && state.lowerThird.subtext);
-  setInp('ops-lt-super',   state.lowerThird && state.lowerThird.supertext);
+  /* LT fields — edit the active set's first item */
+  const _opsLtItem = _opsLtFirstItem();
+  setInp('ops-lt-text',    _opsLtItem.name);
+  setInp('ops-lt-sub',     _opsLtItem.sub);
+  setInp('ops-lt-super',   _opsLtItem.super);
 
   /* LT position + accent buttons */
-  const ltSide = state.lowerThird && state.lowerThird.side;
+  const ltSide = _opsLtItem.side;
   setModeActive('lt-pos-left',  ltSide === 'left'  || !ltSide);
   setModeActive('lt-pos-right', ltSide === 'right');
 
@@ -950,10 +951,24 @@ function setWinner(team) {
   api('/api/winScreen', { team });
 }
 
-/* ── Lower Third ── */
-function patchLT(side) {
-  api('/api/lowerThird', { side });
+/* ── Lower Third (set-driven; operator edits the active set's first item) ── */
+function _opsLtSets() { return JSON.parse(JSON.stringify((window._state && window._state.lowerThird && window._state.lowerThird.sets) || [])); }
+function _opsLtActiveId() { const lt = (window._state && window._state.lowerThird) || {}; return lt.activeSetId || ((lt.sets || [])[0] || {}).id || ''; }
+function _opsLtFirstItem() {
+  const lt = (window._state && window._state.lowerThird) || {};
+  const s = (lt.sets || []).find(x => x.id === lt.activeSetId) || (lt.sets || [])[0];
+  return (s && s.items && s.items[0]) || {};
 }
+function _opsLtNewItem() { return { id: 'lti_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6), design: 'bar', x: 80, y: 840, side: 'left', scale: 1, super: '', name: '', sub: '', logo: '', accent: 'primary', accentCustom: '#1ffaff' }; }
+function opsLT(field, value) {
+  const sets = _opsLtSets();
+  const s = sets.find(x => x.id === _opsLtActiveId()) || sets[0];
+  if (!s) return;
+  if (!s.items || !s.items.length) s.items = [_opsLtNewItem()];
+  s.items[0][field] = value;
+  api('/api/lowerThird', { sets });
+}
+function patchLT(side) { opsLT('side', side); }
 
 /* ── Player Intro ── */
 function setPlayerIntroLayout(layout) {
@@ -1034,11 +1049,12 @@ function opsQuickLT(idx) {
   if (!p) return;
   const state = window._state;
   const tag = state.match[p.teamKey].tag || state.match[p.teamKey].name || '';
-  api('/api/lowerThird', {
-    text: p.handle,
-    subtext: (p.name ? p.name + ' · ' : '') + p.role,
-    supertext: tag
-  }).then(() => fetch('/api/graphic/lowerThird/show', { method: 'POST' })).catch(console.error);
+  const sets = _opsLtSets();
+  const s = sets.find(x => x.id === _opsLtActiveId()) || sets[0];
+  if (!s) return;
+  if (!s.items || !s.items.length) s.items = [_opsLtNewItem()];
+  Object.assign(s.items[0], { name: p.handle, sub: (p.name ? p.name + ' · ' : '') + p.role, super: tag });
+  api('/api/lowerThird', { sets, visible: true });
 }
 
 /* ── Countdowns ── */

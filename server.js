@@ -492,7 +492,11 @@ const makeDefault = () => ({
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),
     team1subs: makeDefaultSubs(), team2subs: makeDefaultSubs()
   },
-  lowerThird:  { visible: false, text: '', subtext: '', supertext: '', side: 'left' },
+  // Lower Third — set-driven. `sets` are reusable content collections (Host /
+  // Casters / Interview …); each set holds 1+ items positioned freely on the
+  // 1920×1080 canvas. `activeSetId` is the set currently shown on the main output.
+  // Migrated from the legacy flat {text,subtext,supertext,side} shape on load.
+  lowerThird:  { visible: false, activeSetId: '', mode: 'exclusive', sets: [], outputs: [{ id: 'main', name: 'Main', busId: null }] },
   headToHead:  { visible: false, mode: 'spotlight', spotlightRole: 0, animStyle: 'standard' },
   playerIntro: { visible: false, layout: 'panel', animVariant: 'rise', showLogo: true, showRank: false, showChamps: false, piBg: 'transparent', piLogoUrl: '' },
   preShow:     { visible: false, timerEnd: null, logoUrl: '', logoScale: 8, hideLogo: false, headerText: '', hideHeaderText: false, timerLabel: '', layout: 'center' },
@@ -616,15 +620,38 @@ function migrateAnimationSettings(st) {
   delete a.transitionSpeed; delete a.motionEnergy;
 }
 
+// Migrate the legacy flat lower-third ({text,subtext,supertext,side}) to the new
+// set-driven model, and ensure every install has at least one set + the main output.
+function migrateLowerThird(st) {
+  const lt = st && st.lowerThird;
+  if (!lt) return;
+  if (!Array.isArray(lt.sets)) lt.sets = [];
+  if (lt.sets.length === 0) {
+    // Build the first set from legacy flat content if present, else a blank starter.
+    const item = {
+      id: 'lti_default', design: 'bar', x: 80, y: 840, side: lt.side || 'left', scale: 1,
+      super: lt.supertext || '', name: lt.text || '', sub: lt.subtext || '',
+      logo: '', accent: 'primary', accentCustom: '#1ffaff',
+    };
+    lt.sets = [{ id: 'set_default', name: 'Default', items: [item] }];
+  }
+  if (!lt.activeSetId || !lt.sets.some(s => s.id === lt.activeSetId)) lt.activeSetId = lt.sets[0].id;
+  if (lt.mode !== 'freeform') lt.mode = 'exclusive';
+  if (!Array.isArray(lt.outputs) || !lt.outputs.length) lt.outputs = [{ id: 'main', name: 'Main', busId: null }];
+  ['text', 'subtext', 'supertext', 'side'].forEach(k => delete lt[k]); // drop legacy scalar content
+}
+
 function loadState() {
+  let st;
   try {
     if (fs.existsSync(DATA_FILE)) {
-      const st = deepMerge(makeDefault(), JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')));
-      migrateAnimationSettings(st);
-      return st;
+      st = deepMerge(makeDefault(), JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')));
     }
   } catch(e) { console.error('State load:', e.message); }
-  return makeDefault();
+  if (!st) st = makeDefault();
+  migrateAnimationSettings(st);
+  migrateLowerThird(st);
+  return st;
 }
 function saveState() { try { fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2)); } catch(e) { console.error(e); } }
 let _teams = [];
@@ -692,6 +719,9 @@ function snapshotForProfile() {
          fearlessDraft, currentGameNum, seriesGames, scheduleDayId, scheduleGameId }))(state.match),
     players: JSON.parse(JSON.stringify(state.players)),
     prizepool: { showLogo: pp.showLogo, logoScale: pp.logoScale, logoPosition: pp.logoPosition, entries: JSON.parse(JSON.stringify(pp.entries || [])) },
+    // Lower-third content (reusable sets + output config) — but not the live
+    // visible/active-set flags, so loading a profile never auto-shows a graphic.
+    lowerThird: { sets: JSON.parse(JSON.stringify(state.lowerThird.sets || [])), outputs: JSON.parse(JSON.stringify(state.lowerThird.outputs || [])), mode: state.lowerThird.mode },
     settings: settingsSnap,
   };
 }
@@ -2450,6 +2480,13 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
     if (showLogo    !== undefined) state.prizepool.showLogo     = showLogo;
     if (logoScale   !== undefined) state.prizepool.logoScale    = logoScale;
     if (logoPosition !== undefined) state.prizepool.logoPosition = logoPosition;
+  }
+  if (d.lowerThird) {
+    if (Array.isArray(d.lowerThird.sets))    state.lowerThird.sets    = JSON.parse(JSON.stringify(d.lowerThird.sets));
+    if (Array.isArray(d.lowerThird.outputs)) state.lowerThird.outputs = JSON.parse(JSON.stringify(d.lowerThird.outputs));
+    if (d.lowerThird.mode) state.lowerThird.mode = d.lowerThird.mode;
+    state.lowerThird.visible = false; // don't auto-show on profile load
+    state.lowerThird.activeSetId = (state.lowerThird.sets[0] && state.lowerThird.sets[0].id) || '';
   }
   if (d.settings) {
     const incoming = JSON.parse(JSON.stringify(d.settings));

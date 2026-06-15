@@ -1675,6 +1675,54 @@ input[type=search]::-webkit-search-decoration { display: none; }
   line-height: 1.8;
 }
 
+/* ── Lower Third set-builder ──────────────────────────── */
+.lt-setbar { display: flex; gap: 6px; flex-wrap: wrap; }
+.lt-set-btn {
+  background: var(--bg3, #1b1e23); border: 1px solid var(--border, rgba(255,255,255,.14));
+  color: var(--text, #d7dbe2); border-radius: var(--radius, 2px); padding: 5px 12px;
+  font-size: 11px; font-weight: 700; letter-spacing: .04em; cursor: pointer; white-space: nowrap;
+}
+.lt-set-btn:hover { border-color: var(--accent, #888); color: var(--text-strong, #fff); }
+.lt-set-btn.is-active { background: rgba(var(--primary-rgb,31,250,255),.16); border-color: var(--primary, #1ffaff); color: var(--text-strong, #fff); }
+
+.lt-sets-list { display: flex; flex-direction: column; gap: 6px; }
+.lt-set-row { display: flex; align-items: center; gap: 8px; padding: 6px; border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: var(--radius,2px); }
+.lt-set-row.is-active { border-color: var(--primary, #1ffaff); background: rgba(var(--primary-rgb,31,250,255),.06); }
+.lt-set-row .lt-set-pick { flex: 0 0 auto; }
+.lt-set-row input.lt-set-name { flex: 1; background: var(--bg2,#16181c); border: 1px solid var(--border,rgba(255,255,255,.12)); color: var(--text,#d7dbe2); padding: 5px 8px; border-radius: var(--radius,2px); font-size: 13px; }
+.lt-set-count { font-size: 11px; color: var(--text-dim,#8a8f98); white-space: nowrap; }
+
+.lt-item-edit { border: 1px solid var(--border, rgba(255,255,255,.12)); border-radius: var(--radius,2px); padding: 10px; margin-bottom: 10px; }
+.lt-item-edit.is-sel { border-color: var(--primary,#1ffaff); }
+.lt-ie-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.lt-ie-head .lt-ie-title { font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--label,rgba(255,255,255,.7)); cursor: pointer; flex: 1; }
+.lt-ie-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.lt-ie-grid .full { grid-column: 1 / -1; }
+.lt-ie-grid label { display: flex; flex-direction: column; gap: 3px; font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-dim,#8a8f98); }
+.lt-ie-grid input, .lt-ie-grid select { background: var(--bg2,#16181c); border: 1px solid var(--border,rgba(255,255,255,.12)); color: var(--text,#d7dbe2); padding: 5px 7px; border-radius: var(--radius,2px); font-size: 12px; width: 100%; }
+.lt-ie-xy { display: flex; gap: 6px; }
+.lt-ie-xy input { width: 100%; }
+.lt-ie-del { background: none; border: none; color: var(--text-dim,#8a8f98); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px; }
+.lt-ie-del:hover { color: var(--danger,#ff4d4d); }
+
+.lt-stage {
+  position: relative; width: 100%; aspect-ratio: 16 / 9;
+  background: linear-gradient(135deg, #11151b, #1a2530); border: 1px solid var(--border-strong, rgba(255,255,255,.2));
+  border-radius: var(--radius,2px); overflow: hidden;
+  background-image: linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+  background-size: 10% 10%, 10% 10%;
+}
+.lt-stage-item {
+  position: absolute; transform: translate(0,0); cursor: grab;
+  background: rgba(var(--primary-rgb,31,250,255),.14); border: 1px solid var(--primary,#1ffaff);
+  border-radius: 2px; padding: 3px 6px; max-width: 46%;
+  font-size: 10px; font-weight: 700; color: var(--text-strong,#fff); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  user-select: none; touch-action: none;
+}
+.lt-stage-item.is-sel { background: rgba(var(--primary-rgb,31,250,255),.32); box-shadow: 0 0 0 1px var(--primary,#1ffaff); }
+.lt-stage-item:active { cursor: grabbing; }
+.lt-stage-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-dim,#8a8f98); font-size: 12px; font-style: italic; }
+
 /* ── Font picker ────────────────────────────────────── */
 
 /* ── Tournament History (intel panel) ────────────────── */

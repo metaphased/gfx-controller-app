@@ -721,28 +721,42 @@
             </button>
           </div>
           <div class="gfx-ctrl-group">
-            <span class="gfx-ctrl-section-label">Position</span>
-            <label class="ctrl-radio-label"><input type="radio" name="lt-side" value="left" onchange="patchLT({side:'left'})" checked> Left</label>
-            <label class="ctrl-radio-label"><input type="radio" name="lt-side" value="right" onchange="patchLT({side:'right'})"> Right</label>
+            <span class="gfx-ctrl-section-label">Active Set</span>
+            <div id="lt-setbar" class="lt-setbar"></div>
           </div>
         </div>
       </div>
       <div class="ps-two-col">
 
-        <!-- Left: form fields -->
+        <!-- Left: sets + item editor -->
         <div class="ps-col">
           <div class="card">
-            <div class="field-row"><label>Main Text</label><input type="text" id="lt-text" placeholder="Player name or heading" oninput="patchLT({text:this.value})"></div>
-            <div class="field-row"><label>Subtext</label><input type="text" id="lt-sub" placeholder="Team / Role / Info" oninput="patchLT({subtext:this.value})"></div>
-            <div class="field-row"><label>Super Label</label><input type="text" id="lt-super" placeholder="e.g. TOURNAMENT NAME" oninput="patchLT({supertext:this.value})"></div>
+            <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+              <span>Sets</span>
+              <button class="btn btn-sm" onclick="ltAddSet()">+ Add Set</button>
+            </div>
+            <p class="hint" style="margin:6px 0 10px">A set is a named group of lower thirds (e.g. Host, Casters, Interview). Pick one to edit and make it the active set.</p>
+            <div id="lt-sets-list" class="lt-sets-list"></div>
+          </div>
+          <div class="card" style="margin-top:16px">
+            <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+              <span id="lt-items-title">Lower Thirds</span>
+              <button class="btn btn-sm" onclick="ltAddItem()">+ Add</button>
+            </div>
+            <div id="lt-items-editor"></div>
           </div>
         </div>
 
-        <!-- Right: quick player grid -->
+        <!-- Right: position preview + quick player -->
         <div class="ps-col">
           <div class="card">
+            <div class="card-title">Position Preview</div>
+            <p class="hint" style="margin:6px 0 10px">Drag a lower third to place it freely. The frame is the 1920×1080 output.</p>
+            <div id="lt-preview-stage" class="lt-stage"></div>
+          </div>
+          <div class="card" style="margin-top:16px">
             <div class="card-title">Quick Player Lower Thirds</div>
-            <p class="hint" style="margin-top:6px">Click a player to instantly populate and show their lower third.</p>
+            <p class="hint" style="margin-top:6px">Click a player to fill the selected item with their name, role and team.</p>
             <div class="player-quick-grid" id="lt-player-grid"></div>
           </div>
         </div>
