@@ -3960,25 +3960,26 @@ function _measureLbar() {
 }
 function _applyLbarState() {
   const bar = g('live-bar'); if (!bar) return;
-  const expanded = _lbarExpanded || _lbarLocked;   // a locked bar is always open
-  bar.classList.toggle('lbar-expanded', expanded);
-  bar.classList.toggle('lbar-collapsed', !expanded);
+  // Lock freezes whichever state the bar is in — it doesn't force it open, so a
+  // collapsed+locked bar can't be expanded by accident either.
+  bar.classList.toggle('lbar-expanded', _lbarExpanded);
+  bar.classList.toggle('lbar-collapsed', !_lbarExpanded);
+  bar.classList.toggle('lbar-locked', _lbarLocked);
   const eb = g('lbar-expand-btn');
-  if (eb) { eb.textContent = expanded ? '▼' : '▲'; eb.disabled = _lbarLocked; eb.title = _lbarLocked ? 'Locked open — unlock to collapse' : (expanded ? 'Collapse control bar' : 'Expand control bar'); }
+  if (eb) { eb.textContent = _lbarExpanded ? '▼' : '▲'; eb.disabled = _lbarLocked; eb.title = _lbarLocked ? 'Locked — unlock to change' : (_lbarExpanded ? 'Collapse control bar' : 'Expand control bar'); }
   const lb = g('lbar-lock-btn');
-  if (lb) { lb.textContent = _lbarLocked ? '🔒' : '🔓'; lb.classList.toggle('is-on', _lbarLocked); lb.title = _lbarLocked ? 'Unlock (allow collapse)' : 'Lock bar open'; }
+  if (lb) { lb.textContent = _lbarLocked ? '🔒' : '🔓'; lb.classList.toggle('is-on', _lbarLocked); lb.title = _lbarLocked ? 'Unlock (allow expand/collapse)' : 'Lock current state'; }
   _measureLbar();
 }
 function toggleLbarExpand() {
-  if (_lbarLocked) return;                          // can't collapse/expand while locked
+  if (_lbarLocked) return;                          // frozen while locked (either state)
   _lbarExpanded = !_lbarExpanded;
   localStorage.setItem('gfx_lbar_expanded', _lbarExpanded ? '1' : '0');
   _applyLbarState();
 }
 function toggleLbarLock() {
-  _lbarLocked = !_lbarLocked;
+  _lbarLocked = !_lbarLocked;                       // freeze/unfreeze the current state
   localStorage.setItem('gfx_lbar_locked', _lbarLocked ? '1' : '0');
-  if (_lbarLocked) { _lbarExpanded = true; localStorage.setItem('gfx_lbar_expanded', '1'); }
   _applyLbarState();
 }
 window.addEventListener('resize', _measureLbar);

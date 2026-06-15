@@ -672,6 +672,7 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 }
 .lbar-handle-label:hover { color: #fff; }
 #live-bar.lbar-expanded .lbar-handle-label { display: none; }   /* notifier only while collapsed */
+#live-bar.lbar-locked .lbar-handle-label { cursor: default; color: rgba(255,255,255,0.55); }
 .lbar-handle-btn {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 24px; height: 20px;
