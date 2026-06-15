@@ -497,6 +497,23 @@ input.theme-hex-inp:focus { border-color: var(--primary); }
   width: 100%;
 }
 
+/* Lower Third tab: STABLE two-column layout (overrides the auto-balancing
+   multicol above). It's an interactive builder — left col (sets + item editor)
+   and right col (preview/quick-fill/talent) must grow vertically on their own
+   without cards jumping between columns on every add/edit. */
+#tab-lowerthird .ps-two-col {
+  columns: auto;
+  column-gap: normal;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+#tab-lowerthird .ps-col { display: block; }   /* real columns, not dissolved */
+@media (max-width: 1000px) {
+  #tab-lowerthird .ps-two-col { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Animation & Motion rows */
 .theme-anim-row {
   margin-bottom: 14px;

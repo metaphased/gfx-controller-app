@@ -190,7 +190,7 @@ let _myId = null;
 
 // ── Navigation ─────────────────────────────────────────────────────────────────
 const TAB_LABELS = {
-  home:'Dashboard', tournament:'Tournament Setup', teams:'Teams', schedule:'Schedule',
+  home:'Dashboard', tournament:'Tournament Setup', teams:'Teams', talent:'Talent Roster', schedule:'Schedule',
   groups:'Groups', playoffs:'Playoffs', game:'Game Setup', draft:'Draft',
   players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
   preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
@@ -1120,37 +1120,35 @@ function ltUploadLogo(itemId) {
   inp.click();
 }
 
-// ── Talent roster (global on-air people; quick-fill the selected lower third) ──
-let _talentManaging = false;
+// ── Talent roster (global on-air people; managed on the Talent tab, quick-fill on LT) ──
 let _talentFp = null;
 function _talentList() { return (window._state && window._state.talent) || []; }
 
 function syncTalent(s) {
   const list = (s && s.talent) || [];
-  const fp = JSON.stringify({ m: _talentManaging, t: list.map(t => [t.id, t.name, t.role, t.social]) });
+  const fp = JSON.stringify(list.map(t => [t.id, t.name, t.role, t.social]));
   if (fp === _talentFp) return;   // onchange edits already live in the inputs; avoid clobber
   _talentFp = fp;
+  // Quick-fill chips on the Lower Third tab
   const grid = g('talent-quick-grid');
   if (grid) {
     grid.innerHTML = list.length
       ? list.map(t => '<button class="player-quick-btn" onclick="talentFill(\'' + t.id + '\')">' +
           '<span class="pqb-handle">' + esc(t.name || '(unnamed)') + '</span>' +
           '<span class="pqb-team">' + esc([t.role, t.social].filter(Boolean).join(' · ') || '—') + '</span></button>').join('')
-      : '<p class="hint" style="margin:0">No talent saved yet — click <b>Manage</b> to add hosts, casters and guests.</p>';
+      : '<p class="hint" style="margin:0">No talent saved yet — add hosts, casters and guests on the <a onclick="switchToTab(\'talent\')" href="#" style="color:var(--primary)">Talent Roster</a> page.</p>';
   }
-  const mbtn = g('talent-manage-btn'); if (mbtn) mbtn.classList.toggle('btn-active', _talentManaging);
-  const panel = g('talent-manage'); if (!panel) return;
-  panel.style.display = _talentManaging ? 'block' : 'none';
-  if (!_talentManaging) return;
-  panel.innerHTML =
-    list.map(t => '<div class="talent-row" data-id="' + t.id + '">' +
+  // Full management list on the dedicated Talent Roster tab
+  const pageList = g('talent-page-list');
+  if (pageList) {
+    pageList.innerHTML = list.map(t => '<div class="talent-row" data-id="' + t.id + '">' +
       '<input class="talent-f" placeholder="Name" value="' + esc(t.name || '') + '" onchange="talentSaveField(\'' + t.id + '\',\'name\',this.value)">' +
       '<input class="talent-f" placeholder="Role (e.g. Host)" value="' + esc(t.role || '') + '" onchange="talentSaveField(\'' + t.id + '\',\'role\',this.value)">' +
       '<input class="talent-f" placeholder="Social (e.g. @handle)" value="' + esc(t.social || '') + '" onchange="talentSaveField(\'' + t.id + '\',\'social\',this.value)">' +
-      '<button class="lt-ie-del" title="Delete" onclick="talentDelete(\'' + t.id + '\')">&times;</button></div>').join('') +
-    '<button class="btn btn-sm" style="margin-top:8px" onclick="talentAdd()">+ Add Talent</button>';
+      '<button class="lt-ie-del" title="Delete" onclick="talentDelete(\'' + t.id + '\')">&times;</button></div>').join('');
+    const empty = g('talent-page-empty'); if (empty) empty.style.display = list.length ? 'none' : 'block';
+  }
 }
-function toggleTalentManage() { _talentManaging = !_talentManaging; _talentFp = null; syncTalent(window._state); }
 function talentAdd() { api('/api/talent/save', { name: 'New Talent', role: '', social: '' }); }
 function talentSaveField(id, field, value) { const m = _talentList().find(t => t.id === id) || {}; api('/api/talent/save', { id, name: m.name, role: m.role, social: m.social, [field]: value }); }
 function talentDelete(id) { showConfirm('Delete this talent member?', () => api('/api/talent/delete', { id }), { danger: true, okLabel: 'Delete' }); }
