@@ -171,6 +171,5 @@ Returns a downloadable `.companionconfig` file pre-populated with all action but
 | **Import fails in Companion** | The profile targets Companion 4.x (config `version: 12`). Use Companion 4.x — it won't import into v3. |
 | **Buttons do nothing, 401 in MetaGFX logs** | No graphics token, or the token changed after the profile was generated. Set/confirm the token, re-download the profile, re-import. |
 | **Buttons hit the wrong host** | The connection's Base URL is whatever host you downloaded the profile from (e.g. `localhost`). If Companion runs on a different machine, edit **Connections → MetaGFX → Base URL** to the server's LAN IP. |
-| **`$(custom:undefined)` warnings in the Companion log** | Resolved — the generated profile leaves the generic-http response-variable fields empty in the correct wrapped format. If you still see it, you're on a profile generated before that fix; re-download and re-import. |
 
 > The profile is generated to match the **generic-http** module's expected option format (option values wrapped as `{value, isExpression}`, `definitionId: "post"`, `moduleId: "generic-http"`). If a future Companion/module update changes that format, re-generating from `/api/companion/profile` is the place to adjust.

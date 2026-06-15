@@ -16,7 +16,7 @@ Four palette slots are wired across **every** overlay (exposed as CSS variables 
 | **Dark** | `--gfx-c4` | panel / card / bar backgrounds (kept translucent — the dark "glass" look) |
 
 - **Team Side Accents** — Blue side / Red side colours (`--gfx-blue` / `--gfx-red`), used to differentiate sides in Draft, Head-to-Head and Player Intro (team 1 = blue, team 2 = red). These are *side*-based, not per-team.
-- **Per-team colours were removed** — team logos and names differentiate teams; a designed palette + side accents avoid clashes. The Win Screen accent comes from the winning side, Primary, or a custom colour (see its **Accent Colour** control).
+- **No per-team colours** — teams are differentiated by their logos and names, while a designed palette plus side accents avoid colour clashes. The Win Screen accent comes from the winning side, Primary, or a custom colour (see its **Accent Colour** control).
 
 Every wiring keeps the original colour as a literal fallback, so the default palette reproduces the standard look exactly and unsupported renderers degrade gracefully. Changing a slot updates all graphics live. A wild palette can reduce legibility — the seeded **Looks** are safe starting points.
 
@@ -94,7 +94,7 @@ Wherever you upload an image in the control panel — broadcast/event logos, spo
 - **Re-encoded to WebP** (transparency and animated GIF/WebP frames are preserved).
 - **Downscaled to fit 1920 px on the long edge** (never upscaled, so small logos stay crisp).
 
-This keeps `uploads/` small and your OBS/vMix browser sources fast — a 7 MB 4000 px PNG typically lands well under 100 KB. Accepted formats are PNG, JPEG, GIF and WebP (SVG is intentionally not accepted); files larger than 16 MB are rejected before processing. Images uploaded before this behaviour was added are left untouched — re-upload them if you want them optimised.
+This keeps `uploads/` small and your OBS/vMix browser sources fast — a 7 MB 4000 px PNG typically lands well under 100 KB. Accepted formats are PNG, JPEG, GIF and WebP (SVG is intentionally not accepted); files larger than 16 MB are rejected before processing.
 
 ## Looks
 

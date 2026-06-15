@@ -109,7 +109,7 @@ Two import paths sit at the bottom of the Teams tab. Both **create or update** t
 | `logo` | – | Team logo URL (team-level). |
 | `sub` | – | Truthy (`yes`/`true`/`1`) marks the row as a **substitute**. (A 6th+ starter also rolls into subs.) |
 
-Only `team` + `handle` are required; everything else is optional. A simple `team, handle, role` sheet still works exactly as before — the new columns just let you bring in Riot IDs, regions and team branding in one go instead of typing them in the [editor](#creating--editing-a-team) afterwards.
+Only `team` + `handle` are required; everything else is optional — a simple `team, handle, role` sheet works fine. The extra columns let you bring in Riot IDs, regions and team branding in one go instead of typing them in the [editor](#creating--editing-a-team) afterwards.
 
 **Example CSV:**
 

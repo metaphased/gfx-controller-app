@@ -159,7 +159,7 @@ The full guide lives in [`docs/`](docs/README.md) — start there for the comple
 - [Theming &amp; Looks](docs/theming.md)
 - [Control-surface theming](docs/ui-theming.md)
 
-*(Per-graphic guides are being added — this is an actively growing wiki.)*
+Per-graphic guides and more live in the [full docs index](docs/README.md).
 
 ## Control panel sections
 
