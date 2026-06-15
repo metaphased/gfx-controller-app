@@ -1469,12 +1469,17 @@ input[type=search]::-webkit-search-decoration { display: none; }
 .it-wr-low  { color: #f07070; }
 
 /* ── Dashboard ──────────────────────────────────────── */
-/* Dashboard is a landing page — kept as a fixed 2-up grid, not auto-columned.
-   (Backlog: revisit how the dashboard presents on ultra-wide screens.) */
+/* Dashboard is a landing page — a fixed 2-up grid, not auto-columned. Capped and
+   centred (header + grid share --dash-max) so the cards keep a comfortable width
+   on ultra-wide screens instead of stretching into sparse, far-flung content.
+   The cap sits just above a 1080p content area, so ≤1920px is unaffected. */
+#tab-home .tab-header { max-width: var(--dash-max, 1700px); margin-inline: auto; }
 .dash-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
+  max-width: var(--dash-max, 1700px);
+  margin-inline: auto;
 }
 .dash-empty {
   font-size: 12px;
