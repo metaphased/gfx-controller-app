@@ -1028,9 +1028,9 @@ function _ltItemHtml(it, idx) {
       '<label>Side<select onchange="ltUpdateItem(\'' + q + '\',\'side\',this.value)">' + _ltOpts([['left','Left'],['right','Right']], it.side || 'left') + '</select></label>' +
       '<label>Accent<select onchange="ltUpdateItem(\'' + q + '\',\'accent\',this.value)">' + _ltOpts(LT_ACCENTS, it.accent || 'primary') + '</select></label>' +
       '<label>Custom colour<input type="color" value="' + esc(it.accentCustom || '#1ffaff') + '" oninput="ltUpdateItem(\'' + q + '\',\'accentCustom\',this.value)"></label>' +
-      '<label>Scale<input type="number" step="0.05" min="0.4" max="2.5" value="' + (it.scale || 1) + '" oninput="ltUpdateItem(\'' + q + '\',\'scale\',parseFloat(this.value)||1)"></label>' +
       '<label>X<input type="number" id="lt-x-' + q + '" value="' + Math.round(it.x || 0) + '" oninput="ltUpdateItem(\'' + q + '\',\'x\',parseInt(this.value)||0)"></label>' +
       '<label>Y<input type="number" id="lt-y-' + q + '" value="' + Math.round(it.y || 0) + '" oninput="ltUpdateItem(\'' + q + '\',\'y\',parseInt(this.value)||0)"></label>' +
+      '<label>Scale<input type="number" step="0.05" min="0.4" max="2.5" value="' + (it.scale || 1) + '" oninput="ltUpdateItem(\'' + q + '\',\'scale\',parseFloat(this.value)||1)"></label>' +
       '<label class="full">Logo <span class="lt-ie-hint">optional — a team/sponsor mark shown beside the text</span>' +
         '<span class="lt-ie-logo"><input id="lt-logo-' + q + '" value="' + esc(it.logo || '') + '" placeholder="Paste an image URL, or upload" oninput="ltUpdateItem(\'' + q + '\',\'logo\',this.value)">' +
         '<button type="button" class="btn btn-sm" onclick="ltUploadLogo(\'' + q + '\')">Upload</button>' +
