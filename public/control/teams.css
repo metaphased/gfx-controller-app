@@ -624,19 +624,18 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   box-shadow: 0 -6px 32px rgba(0,0,0,0.6);
 }
 
-/* Control row. Collapsed = single clipped row (no scrollbar); expanded = wraps
-   to as many rows as needed, the bar growing upward (it's bottom-anchored). */
+/* Control row. Collapsed = bar fully hidden (only the handle tab shows);
+   expanded = the row wraps to as many rows as needed, the bar growing upward
+   (it's bottom-anchored). */
 .lbar-row {
   display: flex;
   align-items: center;
   padding: 0 0 0 16px;
   gap: 0;
 }
-#live-bar.lbar-collapsed .lbar-row {
-  flex-wrap: nowrap;
-  overflow: hidden;          /* clip the surplus instead of a horizontal scrollbar */
-  height: 48px;
-}
+#live-bar.lbar-collapsed .lbar-row { display: none; }
+/* When collapsed there's no bar — just the floating handle tab. */
+#live-bar.lbar-collapsed { background: transparent; border-top: none; box-shadow: none; }
 #live-bar.lbar-expanded .lbar-row {
   flex-wrap: wrap;
   height: auto;
@@ -647,28 +646,32 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   padding-right: 16px;
   align-content: flex-start;
 }
-/* Hint that there's more when collapsed content is clipped. */
-#live-bar.lbar-collapsed::after {
-  content: '';
-  position: absolute; right: 0; bottom: 0; top: 0; width: 48px;
-  background: linear-gradient(90deg, rgba(6,13,16,0), #060d10);
-  pointer-events: none;
-}
 
-/* Expand / lock handle — a small tab protruding above the bar's top edge. */
+/* Expand / lock handle — a small tab protruding above the bar's top edge.
+   When collapsed it's the only visible part of the bar. */
 .lbar-handle {
   position: absolute;
   top: 0; right: 16px;
   transform: translateY(-100%);
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: 4px;
   background: #060d10;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.14);
   border-bottom: none;
   border-radius: 5px 5px 0 0;
-  padding: 3px 5px;
+  padding: 3px 6px;
   z-index: 1;
 }
+.lbar-handle-label {
+  font-family: var(--ui-font), sans-serif;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+  color: rgba(255,255,255,0.55);
+  cursor: pointer;
+  padding: 0 2px;
+}
+.lbar-handle-label:hover { color: #fff; }
+#live-bar.lbar-expanded .lbar-handle-label { display: none; }   /* notifier only while collapsed */
 .lbar-handle-btn {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 24px; height: 20px;

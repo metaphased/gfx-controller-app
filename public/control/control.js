@@ -3950,8 +3950,12 @@ let _lbarExpanded = localStorage.getItem('gfx_lbar_expanded') === '1';
 let _lbarLocked   = localStorage.getItem('gfx_lbar_locked') === '1';
 function _measureLbar() {
   const bar = g('live-bar'); if (!bar) return;
+  const handle = bar.querySelector('.lbar-handle');
   requestAnimationFrame(function () {
-    document.documentElement.style.setProperty('--lbar-h', bar.offsetHeight + 'px');
+    // When collapsed the row is hidden (bar height ~0) — reserve the floating
+    // handle's height so content at the bottom-right isn't tucked under it.
+    const h = Math.max(bar.offsetHeight, handle ? handle.offsetHeight : 0);
+    document.documentElement.style.setProperty('--lbar-h', h + 'px');
   });
 }
 function _applyLbarState() {
