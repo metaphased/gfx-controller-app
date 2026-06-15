@@ -400,7 +400,7 @@ const GFX_OUTPUTS = [
   { label: 'Break Screen',          path: 'graphics/break-screen/' },
   { label: 'Win Screen',            path: 'graphics/win-screen/' },
   { label: 'Player Spotlight',      path: 'graphics/player-spotlight/' },
-  { label: 'Lower Third',           path: 'graphics/lower-third/' },
+  // Lower Third outputs are appended dynamically (one row per output) in syncGfxToken.
 ];
 
 // Open the Caster view in a new tab with the current graphics token appended.
@@ -496,8 +496,10 @@ function syncGfxToken(settings) {
   // The URL list only changes when the token, the bus set or the Local/External
   // mode changes — skip the innerHTML rebuild on every unrelated state push.
   const _gtBuses = (window._state && window._state.settings && window._state.settings.buses) || [];
+  const _gtLtOuts = (window._state && window._state.lowerThird && window._state.lowerThird.outputs) || [];
   if (!_sfp('gfxTokenList', { token, mode: _gfxUrlMode, ext: _externalUrl,
-        buses: _gtBuses.map(function(b){ return [b.id, b.name]; }) })) return;
+        buses: _gtBuses.map(function(b){ return [b.id, b.name]; }),
+        ltOuts: _gtLtOuts.map(function(o){ return [o.id, o.name]; }) })) return;
   const base    = (_gfxUrlMode === 'external' && _externalUrl ? _externalUrl : window.location.origin) + '/';
 
   // Toggle bar — only shown when an external URL is configured
@@ -513,7 +515,7 @@ function syncGfxToken(settings) {
   const urlRow = (label, path) =>
     '<div style="display:flex;align-items:center;gap:8px">' +
     '<span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);width:130px;flex-shrink:0">' + escHtml(label) + '</span>' +
-    '<input type="text" readonly value="' + escHtml(base + path + (token ? '?token=' + token : '')) + '" style="flex:1;font-family:monospace;font-size:11px" onclick="this.select()">' +
+    '<input type="text" readonly value="' + escHtml(base + path + (token ? (path.indexOf('?') !== -1 ? '&' : '?') + 'token=' + token : '')) + '" style="flex:1;font-family:monospace;font-size:11px" onclick="this.select()">' +
     '<button class="btn btn-sm" onclick="copyText(this.previousElementSibling.value)">Copy</button>' +
     '</div>';
 
@@ -525,7 +527,17 @@ function syncGfxToken(settings) {
       '</div>'
     : '';
 
-  listEl.innerHTML = toggleHtml + GFX_OUTPUTS.map(o => urlRow(o.label, o.path)).join('') + busRows;
+  // Lower Third outputs — one browser source per output (?out=<id>); main is the
+  // bare path. Listed as their own group since there can be several.
+  const ltOuts = (window._state && window._state.lowerThird && window._state.lowerThird.outputs) || [];
+  const ltRows = ltOuts.length
+    ? '<div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">' +
+      '<div style="font-size:10px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-dim);margin-bottom:6px">Lower Third Outputs</div>' +
+      ltOuts.map(o => urlRow(o.name || o.id, 'graphics/lower-third/' + (o.id === 'main' ? '' : '?out=' + o.id))).join('') +
+      '</div>'
+    : '';
+
+  listEl.innerHTML = toggleHtml + GFX_OUTPUTS.map(o => urlRow(o.label, o.path)).join('') + ltRows + busRows;
 }
 
 // ── Bus config ─────────────────────────────────────────────────────────────────
@@ -538,15 +550,28 @@ function syncBusConfig(s) {
   if (emptyEl) emptyEl.style.display = buses.length ? 'none' : '';
 
   // Bus config (names, graphic assignments, URLs) is static during a show —
-  // only rebuild when the buses, token or Local/External mode actually change.
-  if (!_sfp('busConfigList', { buses, token, mode: _gfxUrlMode, ext: _externalUrl })) return;
+  // only rebuild when the buses, token, mode or LT outputs actually change.
+  const _bcLtOuts = (s.lowerThird && s.lowerThird.outputs) || [];
+  if (!_sfp('busConfigList', { buses, token, mode: _gfxUrlMode, ext: _externalUrl,
+        ltOuts: _bcLtOuts.map(function(o){ return [o.id, o.name]; }) })) return;
 
+  const _busCheckbox = function(i, key, label, checked) {
+    return '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap">' +
+      '<input type="checkbox" data-bus-idx="' + i + '" data-gfx-key="' + key + '" ' + (checked ? 'checked' : '') + ' onchange="saveBusConfig()"> ' +
+      escHtml(label) + '</label>';
+  };
   list.innerHTML = buses.map(function(bus, i) {
-    const assignChecks = GRAPHIC_MAP.map(function(gfx) {
-      const checked = (bus.assignments || []).includes(gfx.key);
-      return '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap">' +
-        '<input type="checkbox" data-bus-idx="' + i + '" data-gfx-key="' + gfx.key + '" ' + (checked ? 'checked' : '') + ' onchange="saveBusConfig()"> ' +
-        escHtml(gfx.label) + '</label>';
+    // Lower Third expands into one entry per output (lowerThird:<outId>); main keeps
+    // the bare 'lowerThird' key for back-compat with existing assignments.
+    const assignChecks = GRAPHIC_MAP.flatMap(function(gfx) {
+      if (gfx.key === 'lowerThird') {
+        const outs = (s.lowerThird && s.lowerThird.outputs) || [{ id: 'main', name: 'Main' }];
+        return outs.map(function(o) {
+          const key = o.id === 'main' ? 'lowerThird' : 'lowerThird:' + o.id;
+          return _busCheckbox(i, key, 'Lower Third — ' + (o.name || o.id), (bus.assignments || []).includes(key));
+        });
+      }
+      return [_busCheckbox(i, gfx.key, gfx.label, (bus.assignments || []).includes(gfx.key))];
     }).join('');
 
     const urlVal = base + 'bus/' + bus.id + (token ? '?token=' + token : '');
@@ -969,8 +994,55 @@ function hideGraphic(name) { fetch('/api/graphic/'+name+'/hide',{method:'POST'})
 
 // ── Lower Third (set-driven builder) ─────────────────────────────────────────────
 function patchLT(data) { api('/api/lowerThird', data); }
-function ltTriggerSet(id) { api('/api/lowerThird/trigger', { setId: id }); }
+function ltTriggerSet(id, outId) { api('/api/lowerThird/trigger', { setId: id, outId: outId || 'main' }); }
 function ltSetMode(mode) { patchLT({ mode }); }
+
+// ── Lower Third outputs (per-scene addressable channels) ──────────────────────
+function _ltLiveFor(lt, outId) {
+  if (outId === 'main') {
+    const ids = Array.isArray(lt.activeSetIds) ? lt.activeSetIds.slice() : [];
+    if (!ids.length && lt.visible && lt.activeSetId) ids.push(lt.activeSetId);
+    return { mode: lt.mode, activeSetIds: ids, visible: !!lt.visible };
+  }
+  const o = (lt.outputs || []).find(x => x.id === outId) || {};
+  return { mode: o.mode || 'exclusive', activeSetIds: Array.isArray(o.activeSetIds) ? o.activeSetIds.slice() : [], visible: !!o.visible };
+}
+function _ltRenderOutputs(lt) {
+  const host = g('lt-outputs-list'); if (!host) return;
+  const sets = lt.sets || [];
+  host.innerHTML = (lt.outputs || []).map(function (o) {
+    const isMain = o.id === 'main';
+    const live = _ltLiveFor(lt, o.id);
+    const ids = live.activeSetIds;
+    const chips = sets.length
+      ? sets.map(s => '<button class="lt-set-btn' + (ids.indexOf(s.id) !== -1 ? ' is-live' : '') + '" onclick="ltTriggerSet(\'' + s.id + '\',\'' + o.id + '\')">' +
+          (ids.indexOf(s.id) !== -1 ? '<span class="lt-live-dot"></span>' : '') + esc(s.name || 'Set') + '</button>').join('')
+      : '<span class="hint" style="margin:0">No sets yet</span>';
+    return '<div class="lt-output' + (live.visible ? ' is-live' : '') + '">' +
+      '<div class="lt-output-head">' +
+        '<button class="lt-out-vis' + (live.visible ? ' is-on' : '') + '" title="Show / hide this output" onclick="' + (isMain ? 'toggleGraphic(\'lowerThird\')' : 'ltToggleOutput(\'' + o.id + '\')') + '"><span class="lt-out-dot"></span></button>' +
+        '<input class="lt-out-name" value="' + esc(o.name || '') + '" oninput="ltRenameOutput(\'' + o.id + '\',this.value)"' + (isMain ? ' title="Main output"' : '') + '>' +
+        '<span class="lt-out-mode">' +
+          '<button class="btn btn-sm' + (live.mode !== 'freeform' ? ' btn-active' : '') + '" title="Exclusive — one set at a time" onclick="ltSetOutputMode(\'' + o.id + '\',\'exclusive\')">Excl</button>' +
+          '<button class="btn btn-sm' + (live.mode === 'freeform' ? ' btn-active' : '') + '" title="Freeform — stack multiple sets" onclick="ltSetOutputMode(\'' + o.id + '\',\'freeform\')">Free</button>' +
+        '</span>' +
+        '<button class="btn btn-sm" title="Copy browser-source URL" onclick="ltCopyOutputUrl(\'' + o.id + '\')">URL</button>' +
+        (isMain ? '' : '<button class="lt-ie-del" title="Delete output" onclick="ltDeleteOutput(\'' + o.id + '\')">&times;</button>') +
+      '</div>' +
+      '<div class="lt-output-air"><span class="lt-output-air-label">Air</span>' + chips + '</div>' +
+    '</div>';
+  }).join('');
+}
+function ltAddOutput() { api('/api/lowerThird/output/add', { name: 'Output ' + ((_ltGet().outputs || []).length) }); }
+function ltRenameOutput(id, name) { api('/api/lowerThird/output/update', { id, name }); }
+function ltDeleteOutput(id) { showConfirm('Delete this output? Its browser source will go blank.', () => api('/api/lowerThird/output/delete', { id }), { danger: true, okLabel: 'Delete' }); }
+function ltSetOutputMode(id, mode) { if (id === 'main') return patchLT({ mode }); api('/api/lowerThird/output/update', { id, mode }); }
+function ltToggleOutput(id) { api('/api/lowerThird/output/toggle', { id }); }
+function ltCopyOutputUrl(id) {
+  const token = (window._state && window._state.settings && window._state.settings.graphicsToken) || '';
+  const url = window.location.origin + '/graphics/lower-third/?out=' + id + (token ? '&token=' + token : '');
+  copyText(url);
+}
 
 const LT_DESIGNS = [['bar','Bar'],['box','Box'],['underline','Underline'],['interview','Interview']];
 const LT_ACCENTS = [['primary','Primary'],['blue','Blue side'],['red','Red side'],['custom','Custom']];
@@ -993,6 +1065,8 @@ function syncLowerThirdTab(s) {
   const fp = JSON.stringify({
     a: lt.activeSetId, sel: _ltSelItem, live, mode: lt.mode, vis: lt.visible,
     sets: sets.map(st => ({ id: st.id, name: st.name, items: (st.items || []).map(i => ({ id: i.id, design: i.design })) })),
+    // outputs: live state + structure, but NOT names (rename via oninput must keep focus)
+    outs: (lt.outputs || []).map(o => { const l = _ltLiveFor(lt, o.id); return { id: o.id, mode: l.mode, vis: l.visible, ids: l.activeSetIds }; }),
   });
   if (fp === _ltTabFp) return;   // content-only edits don't re-render → inputs keep focus
   _ltTabFp = fp;
@@ -1001,6 +1075,7 @@ function syncLowerThirdTab(s) {
   _ltRenderSetsList(sets, active, live);
   _ltRenderItems(active);
   _ltRenderStage(active);
+  _ltRenderOutputs(lt);
 }
 
 // Live set ids (what's on-air). Falls back to activeSetId only while visible, so the

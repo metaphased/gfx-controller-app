@@ -774,9 +774,17 @@
           </div>
         </div>
 
-        <!-- Right: position preview + quick player -->
+        <!-- Right: outputs + position preview + quick player -->
         <div class="ps-col">
           <div class="card">
+            <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+              <span>Outputs</span>
+              <button class="btn btn-sm" onclick="ltAddOutput()">+ Add Output</button>
+            </div>
+            <p class="hint" style="margin:6px 0 10px">Each output is its own browser source (<code>?out=…</code>) for a different scene — air different lower thirds on each at the same time. Grab the URLs from <a onclick="switchToTab('users')" href="#" style="color:var(--primary)">Settings → Output URLs</a>.</p>
+            <div id="lt-outputs-list" class="lt-outputs-list"></div>
+          </div>
+          <div class="card" style="margin-top:16px">
             <div class="card-title">Position Preview</div>
             <p class="hint" style="margin:6px 0 10px">Drag a lower third to place it freely. The frame is the 1920×1080 output.</p>
             <div id="lt-preview-stage" class="lt-stage"></div>

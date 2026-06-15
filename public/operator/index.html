@@ -1146,6 +1146,15 @@ const GFX_LABELS = {
   winScreen:'Win Screen', prizepool:'Prizepool', bgOutput:'BG Output', champSelect:'Champ Select',
 };
 
+function _gfxKeyLabel(state, key) {
+  const m = /^lowerThird:(.+)$/.exec(key);
+  if (m) {
+    const o = ((state.lowerThird && state.lowerThird.outputs) || []).find(x => x.id === m[1]);
+    return 'LT — ' + ((o && o.name) || m[1]);
+  }
+  return GFX_LABELS[key] || key;
+}
+
 function renderBusPanel(state) {
   const panel = g('bus-routing-panel');
   const list  = g('bus-routing-list');
@@ -1167,7 +1176,7 @@ function renderBusPanel(state) {
       return '<button class="bus-btn' + (isActive ? ' is-active' : '') + '" ' +
         'title="' + (isActive ? 'Live on ' + esc(bus.name || bus.id) + ' — click to take off air' : 'Put live on ' + esc(bus.name || bus.id)) + '" ' +
         'onclick="busRoute(\'' + bus.id + '\',\'' + key + '\',' + isActive + ')">' +
-        esc(GFX_LABELS[key] || key) + '</button>';
+        esc(_gfxKeyLabel(state, key)) + '</button>';
     }).join('');
 
     return '<div class="bus-route-row">' +

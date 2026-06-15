@@ -643,7 +643,20 @@ function migrateLowerThird(st) {
   if (!Array.isArray(lt.activeSetIds)) lt.activeSetIds = [];
   lt.activeSetIds = lt.activeSetIds.filter(id => lt.sets.some(s => s.id === id));
   if (lt.mode !== 'freeform') lt.mode = 'exclusive';
+  // Outputs = independent addressable channels (browser sources). 'main' is the
+  // primary output whose live state lives at the top level (back-compat); every
+  // other output carries its OWN mode/activeSetIds/visible so a solo-cam scene and
+  // a duo-cam scene can show different lower thirds simultaneously.
   if (!Array.isArray(lt.outputs) || !lt.outputs.length) lt.outputs = [{ id: 'main', name: 'Main', busId: null }];
+  if (!lt.outputs.some(o => o.id === 'main')) lt.outputs.unshift({ id: 'main', name: 'Main', busId: null });
+  lt.outputs.forEach(o => {
+    if (o.busId === undefined) o.busId = null;
+    if (o.id === 'main') return;               // main's live state is top-level
+    if (o.mode !== 'freeform') o.mode = 'exclusive';
+    if (!Array.isArray(o.activeSetIds)) o.activeSetIds = [];
+    o.activeSetIds = o.activeSetIds.filter(id => lt.sets.some(s => s.id === id));
+    o.visible = !!o.visible;
+  });
   ['text', 'subtext', 'supertext', 'side'].forEach(k => delete lt[k]); // drop legacy scalar content
 }
 
@@ -733,7 +746,11 @@ function snapshotForProfile() {
     prizepool: { showLogo: pp.showLogo, logoScale: pp.logoScale, logoPosition: pp.logoPosition, entries: JSON.parse(JSON.stringify(pp.entries || [])) },
     // Lower-third content (reusable sets + output config) — but not the live
     // visible/active-set flags, so loading a profile never auto-shows a graphic.
-    lowerThird: { sets: JSON.parse(JSON.stringify(state.lowerThird.sets || [])), outputs: JSON.parse(JSON.stringify(state.lowerThird.outputs || [])), mode: state.lowerThird.mode },
+    lowerThird: { sets: JSON.parse(JSON.stringify(state.lowerThird.sets || [])), mode: state.lowerThird.mode,
+      // output CONFIG only (id/name/mode/bus) — not the live activeSetIds/visible flags
+      outputs: (state.lowerThird.outputs || []).map(o => (o.id === 'main'
+        ? { id: 'main', name: o.name || 'Main', busId: o.busId || null }
+        : { id: o.id, name: o.name || 'Output', busId: o.busId || null, mode: o.mode || 'exclusive' })) },
     settings: settingsSnap,
   };
 }
@@ -1411,42 +1428,131 @@ app.post('/api/lowerThird',  (req, res) => {
   broadcast(); res.json({ok:true});
 });
 
-// Set trigger — air/toggle a lower-third set on the main output, honouring the
-// exclusive (one set at a time) vs freeform (stack) mode. Drives `activeSetIds`
-// (the live sets) + `visible`; the overlay composites every live set's items.
+// Resolve an output's live-state container. 'main' lives at the top level
+// (back-compat with the generic graphic show/hide); other outputs carry their own
+// mode/activeSetIds/visible on the output object.
+function ltLiveContainer(outId) {
+  const lt = state.lowerThird;
+  if (!outId || outId === 'main') return lt;
+  return (lt.outputs || []).find(o => o.id === outId) || null;
+}
+function ltOutputName(outId) {
+  const o = (state.lowerThird.outputs || []).find(x => x.id === (outId || 'main'));
+  return (o && o.name) || (outId && outId !== 'main' ? 'Output' : 'Main');
+}
+// Keep a bus assigned to this LT output in sync with its visibility. Main uses the
+// plain 'lowerThird' key; extra outputs use the compound 'lowerThird:<outId>' key.
+function ltSyncBus(outId, visible) {
+  const key = (!outId || outId === 'main') ? 'lowerThird' : 'lowerThird:' + outId;
+  const bus = findBusForGraphic(key);
+  if (!bus) return;
+  if (!busState[bus.id]) busState[bus.id] = {};
+  if (visible) { busState[bus.id].activeGraphic = key; busState[bus.id].visible = true; }
+  else if (busState[bus.id].activeGraphic === key) { busState[bus.id].visible = false; }
+  io.emit('bus:active', { busId: bus.id, graphic: key, visible: visible });
+  io.emit('busState', busState);
+}
+
+// A visibility accessor for a (possibly compound) graphic key. Plain keys map to
+// state[key].visible; `lowerThird:<outId>` maps to that output's visible flag (and
+// seeds its set list when first shown so the overlay isn't blank). Used by bus routing.
+function graphicVisibleRef(key) {
+  const m = /^lowerThird:(.+)$/.exec(key);
+  if (m) {
+    const o = (state.lowerThird.outputs || []).find(x => x.id === m[1]);
+    if (!o) return null;
+    return { get: () => !!o.visible, set: (v) => {
+      o.visible = v;
+      if (v && (!Array.isArray(o.activeSetIds) || !o.activeSetIds.length)) {
+        const fb = state.lowerThird.activeSetId || (state.lowerThird.sets[0] && state.lowerThird.sets[0].id);
+        if (fb) o.activeSetIds = [fb];
+      }
+    } };
+  }
+  if (state[key]) return { get: () => !!state[key].visible, set: (v) => { state[key].visible = v; } };
+  return null;
+}
+
+// Set trigger — air/toggle a set on an output (default 'main'), honouring that
+// output's exclusive (one at a time) vs freeform (stack) mode. Each output keeps
+// independent activeSetIds + visible, so different browser sources (?out=) can show
+// different lower thirds at once.
 app.post('/api/lowerThird/trigger', (req, res) => {
-  const setId = req.body && req.body.setId;
+  const { setId, outId } = req.body || {};
   const lt = state.lowerThird;
   if (!setId || !(lt.sets || []).some(s => s.id === setId)) return res.status(400).json({ error: 'unknown set' });
-  if (!Array.isArray(lt.activeSetIds)) lt.activeSetIds = [];
+  const live = ltLiveContainer(outId);
+  if (!live) return res.status(400).json({ error: 'unknown output' });
+  if (!Array.isArray(live.activeSetIds)) live.activeSetIds = [];
   let aired;
-  if (lt.mode === 'freeform') {
-    // Toggle this set in/out of the stack.
-    const i = lt.activeSetIds.indexOf(setId);
-    if (i === -1) { lt.activeSetIds.push(setId); aired = true; }
-    else { lt.activeSetIds.splice(i, 1); aired = false; }
-    lt.visible = lt.activeSetIds.length > 0;
+  if ((live.mode || 'exclusive') === 'freeform') {
+    const i = live.activeSetIds.indexOf(setId);
+    if (i === -1) { live.activeSetIds.push(setId); aired = true; }
+    else { live.activeSetIds.splice(i, 1); aired = false; }
+    live.visible = live.activeSetIds.length > 0;
   } else {
-    // Exclusive: re-airing the sole live set hides it; otherwise replace.
-    const isSoleLive = lt.visible && lt.activeSetIds.length === 1 && lt.activeSetIds[0] === setId;
-    if (isSoleLive) { lt.visible = false; aired = false; }
-    else { lt.activeSetIds = [setId]; lt.visible = true; aired = true; }
+    const isSoleLive = live.visible && live.activeSetIds.length === 1 && live.activeSetIds[0] === setId;
+    if (isSoleLive) { live.visible = false; aired = false; }
+    else { live.activeSetIds = [setId]; live.visible = true; aired = true; }
   }
-  lt.activeSetId = setId; // builder follows the set you just triggered
-  // Keep an assigned bus in sync with the main output's visibility.
-  const bus = findBusForGraphic('lowerThird');
-  if (bus) {
-    if (!busState[bus.id]) busState[bus.id] = {};
-    if (lt.visible) { busState[bus.id].activeGraphic = 'lowerThird'; busState[bus.id].visible = true; }
-    else if (busState[bus.id].activeGraphic === 'lowerThird') { busState[bus.id].visible = false; }
-    io.emit('bus:active', { busId: bus.id, graphic: 'lowerThird', visible: lt.visible });
-    io.emit('busState', busState);
-  }
+  live.activeSetId = setId; // builder follows the set you just triggered
+  ltSyncBus(outId, live.visible);
   const setName = (lt.sets.find(s => s.id === setId) || {}).name || 'Set';
+  const tail = (outId && outId !== 'main') ? ' → ' + ltOutputName(outId) : '';
   const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
-  recordAction('lower-thirds', user, aired ? 'Air ' + setName : 'Hide ' + setName);
-  logAction(user, role, aired ? 'air set' : 'hide set', 'lower-thirds (' + setName + ')');
-  broadcast(); res.json({ ok: true, visible: lt.visible, activeSetIds: lt.activeSetIds });
+  recordAction('lower-thirds', user, (aired ? 'Air ' : 'Hide ') + setName + tail);
+  logAction(user, role, aired ? 'air set' : 'hide set', 'lower-thirds (' + setName + tail + ')');
+  broadcast(); res.json({ ok: true, visible: live.visible, activeSetIds: live.activeSetIds });
+});
+
+// ── Lower-third outputs (per-scene addressable channels) ─────────────────────────
+app.post('/api/lowerThird/output/add', (req, res) => {
+  const lt = state.lowerThird;
+  if (!Array.isArray(lt.outputs)) lt.outputs = [];
+  const name = (req.body && req.body.name) || ('Output ' + lt.outputs.length);
+  const id = 'lto_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  lt.outputs.push({ id, name, busId: null, mode: 'exclusive', activeSetIds: [], visible: false });
+  broadcast(); res.json({ ok: true, id });
+});
+app.post('/api/lowerThird/output/update', (req, res) => {
+  const { id, name, mode, busId } = req.body || {};
+  const lt = state.lowerThird;
+  const o = (lt.outputs || []).find(x => x.id === id);
+  if (!o) return res.status(400).json({ error: 'unknown output' });
+  if (name !== undefined) o.name = name;
+  if (busId !== undefined) o.busId = busId || null;
+  if (mode !== undefined) {
+    const m = mode === 'freeform' ? 'freeform' : 'exclusive';
+    if (id === 'main') {
+      lt.mode = m;
+      if (m === 'exclusive' && Array.isArray(lt.activeSetIds) && lt.activeSetIds.length > 1) lt.activeSetIds = [lt.activeSetIds[0]];
+    } else {
+      o.mode = m;
+      if (m === 'exclusive' && Array.isArray(o.activeSetIds) && o.activeSetIds.length > 1) o.activeSetIds = [o.activeSetIds[0]];
+    }
+  }
+  broadcast(); res.json({ ok: true });
+});
+app.post('/api/lowerThird/output/delete', (req, res) => {
+  const { id } = req.body || {};
+  if (id === 'main') return res.status(400).json({ error: 'cannot delete the main output' });
+  state.lowerThird.outputs = (state.lowerThird.outputs || []).filter(o => o.id !== id);
+  broadcast(); res.json({ ok: true });
+});
+app.post('/api/lowerThird/output/toggle', (req, res) => {
+  const { id } = req.body || {};
+  if (id === 'main') return res.status(400).json({ error: 'use /api/graphic/lowerThird/toggle for the main output' });
+  const o = (state.lowerThird.outputs || []).find(x => x.id === id);
+  if (!o) return res.status(400).json({ error: 'unknown output' });
+  o.visible = !o.visible;
+  if (o.visible && (!Array.isArray(o.activeSetIds) || !o.activeSetIds.length)) {
+    const fallback = state.lowerThird.activeSetId || (state.lowerThird.sets[0] && state.lowerThird.sets[0].id);
+    if (fallback) o.activeSetIds = [fallback];
+  }
+  ltSyncBus(id, o.visible);
+  const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
+  logAction(user, role, o.visible ? 'show' : 'hide', 'lower-thirds (' + (o.name || 'Output') + ')');
+  broadcast(); res.json({ ok: true, visible: o.visible });
 });
 app.post('/api/draft', (req, res) => {
   const prevStep = state.draft.currentStep;
@@ -2579,6 +2685,9 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
     state.lowerThird.visible = false; // don't auto-show on profile load
     state.lowerThird.activeSetIds = []; // clear live sets; operator re-triggers
     state.lowerThird.activeSetId = (state.lowerThird.sets[0] && state.lowerThird.sets[0].id) || '';
+    // Clear every extra output's live state too (config persists; live doesn't).
+    (state.lowerThird.outputs || []).forEach(o => { if (o.id !== 'main') { o.visible = false; o.activeSetIds = []; } });
+    migrateLowerThird(state); // re-normalise outputs (defaults for any newly-loaded ones)
   }
   if (d.settings) {
     const incoming = JSON.parse(JSON.stringify(d.settings));
@@ -2837,11 +2946,13 @@ io.on('connection', socket => {
         bid !== busId && busState[bid] && busState[bid].visible && busState[bid].activeGraphic === gKey);
       // Hide the currently active graphic on this bus (if switching away from it)
       const prev = busState[busId] && busState[busId].activeGraphic;
-      if (prev && prev !== graphic && state[prev] && !liveOnOtherBus(prev)) state[prev].visible = false;
+      const prevRef = prev ? graphicVisibleRef(prev) : null;
+      if (prev && prev !== graphic && prevRef && !liveOnOtherBus(prev)) prevRef.set(false);
       // Show or hide the target graphic (don't hide globally if another bus still shows it)
-      if (graphic && state[graphic]) {
-        if (show) state[graphic].visible = true;
-        else if (!liveOnOtherBus(graphic)) state[graphic].visible = false;
+      const gRef = graphic ? graphicVisibleRef(graphic) : null;
+      if (gRef) {
+        if (show) gRef.set(true);
+        else if (!liveOnOtherBus(graphic)) gRef.set(false);
       }
       // Update busState tracking
       if (!busState[busId]) busState[busId] = {};

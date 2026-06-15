@@ -1689,6 +1689,21 @@ input[type=search]::-webkit-search-decoration { display: none; }
 .lt-set-btn .lt-live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ff4d4d; margin-right: 6px; box-shadow: 0 0 6px rgba(255,77,77,.9); animation: lt-live-pulse 1.6s ease-in-out infinite; vertical-align: middle; }
 @keyframes lt-live-pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 
+/* ── Outputs (per-scene channels) ── */
+.lt-outputs-list { display: flex; flex-direction: column; gap: 8px; }
+.lt-output { border: 1px solid var(--border, rgba(255,255,255,.12)); border-radius: var(--radius,2px); padding: 8px; }
+.lt-output.is-live { box-shadow: inset 3px 0 0 #ff4d4d; }
+.lt-output-head { display: flex; align-items: center; gap: 6px; }
+.lt-out-vis { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 1px solid var(--border,rgba(255,255,255,.18)); border-radius: var(--radius,2px); background: rgba(255,255,255,.04); cursor: pointer; }
+.lt-out-vis .lt-out-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.25); transition: background .15s, box-shadow .15s; }
+.lt-out-vis.is-on { border-color: #ff4d4d; background: rgba(255,77,77,.16); }
+.lt-out-vis.is-on .lt-out-dot { background: #ff4d4d; box-shadow: 0 0 6px rgba(255,77,77,.9); }
+.lt-out-name { flex: 1; min-width: 0; background: var(--bg2,#16181c); border: 1px solid var(--border,rgba(255,255,255,.12)); color: var(--text,#d7dbe2); padding: 5px 8px; border-radius: var(--radius,2px); font-size: 13px; font-weight: 700; }
+.lt-out-mode { display: inline-flex; gap: 2px; flex: 0 0 auto; }
+.lt-out-mode .btn { padding: 4px 7px; }
+.lt-output-air { display: flex; align-items: center; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.lt-output-air-label { font-size: 10px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--text-dim,#8a8f98); margin-right: 2px; }
+
 .lt-sets-list { display: flex; flex-direction: column; gap: 6px; }
 .lt-set-row { display: flex; align-items: center; gap: 8px; padding: 6px; border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: var(--radius,2px); }
 .lt-set-row.is-active { border-color: var(--primary, #1ffaff); background: rgba(var(--primary-rgb,31,250,255),.06); }
