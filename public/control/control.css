@@ -1684,13 +1684,31 @@ input[type=search]::-webkit-search-decoration { display: none; }
 }
 .lt-set-btn:hover { border-color: var(--accent, #888); color: var(--text-strong, #fff); }
 .lt-set-btn.is-active { background: rgba(var(--primary-rgb,31,250,255),.16); border-color: var(--primary, #1ffaff); color: var(--text-strong, #fff); }
+/* Air Set bar: a live (on-air) set glows red, like the rest of the app's on-air cues. */
+.lt-set-btn.is-live { background: rgba(255,77,77,.18); border-color: #ff4d4d; color: #fff; }
+.lt-set-btn .lt-live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ff4d4d; margin-right: 6px; box-shadow: 0 0 6px rgba(255,77,77,.9); animation: lt-live-pulse 1.6s ease-in-out infinite; vertical-align: middle; }
+@keyframes lt-live-pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
 
 .lt-sets-list { display: flex; flex-direction: column; gap: 6px; }
 .lt-set-row { display: flex; align-items: center; gap: 8px; padding: 6px; border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: var(--radius,2px); }
 .lt-set-row.is-active { border-color: var(--primary, #1ffaff); background: rgba(var(--primary-rgb,31,250,255),.06); }
+.lt-set-row.is-live { box-shadow: inset 3px 0 0 #ff4d4d; }
 .lt-set-row .lt-set-pick { flex: 0 0 auto; }
 .lt-set-row input.lt-set-name { flex: 1; background: var(--bg2,#16181c); border: 1px solid var(--border,rgba(255,255,255,.12)); color: var(--text,#d7dbe2); padding: 5px 8px; border-radius: var(--radius,2px); font-size: 13px; }
 .lt-set-count { font-size: 11px; color: var(--text-dim,#8a8f98); white-space: nowrap; }
+.lt-onair-badge { font-size: 9px; font-weight: 800; letter-spacing: .1em; color: #ff4d4d; border: 1px solid #ff4d4d; border-radius: 2px; padding: 1px 4px; white-space: nowrap; }
+.lt-set-row .lt-set-air { flex: 0 0 auto; }
+.lt-set-row.is-live .lt-set-air { border-color: #ff4d4d; color: #ff8a8a; }
+
+/* Live-bar Lower Third set chips */
+.lbar-lt-sets { display: inline-flex; gap: 4px; margin-left: 6px; }
+.lbar-lt-chip {
+  background: var(--bg3,#1b1e23); border: 1px solid var(--border,rgba(255,255,255,.14));
+  color: var(--text,#d7dbe2); border-radius: var(--radius,2px); padding: 3px 8px;
+  font-size: 10px; font-weight: 700; letter-spacing: .03em; cursor: pointer; white-space: nowrap;
+}
+.lbar-lt-chip:hover { border-color: var(--accent,#888); color: #fff; }
+.lbar-lt-chip.is-live { background: rgba(255,77,77,.2); border-color: #ff4d4d; color: #fff; }
 
 .lt-item-edit { border: 1px solid var(--border, rgba(255,255,255,.12)); border-radius: var(--radius,2px); padding: 10px; margin-bottom: 10px; }
 .lt-item-edit.is-sel { border-color: var(--primary,#1ffaff); }

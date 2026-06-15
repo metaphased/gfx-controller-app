@@ -273,6 +273,21 @@ body {
   color: #ff5555;
 }
 
+/* ── Lower Third set-trigger bar ── */
+.ops-lt-setbar { display: inline-flex; gap: 5px; flex-wrap: wrap; }
+.ops-lt-set-btn {
+  font-family: var(--ui-font), sans-serif;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.04em;
+  padding: 3px 10px; border-radius: 2px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.05);
+  color: rgba(255,255,255,0.7);
+  cursor: pointer; white-space: nowrap; flex-shrink: 0;
+  transition: all 0.12s;
+}
+.ops-lt-set-btn:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
+.ops-lt-set-btn.is-live { background: rgba(255,77,77,0.2); border-color: #ff4d4d; color: #fff; }
+
 /* ── Timer controls ── */
 .lbar-num {
   width: 38px;
@@ -546,6 +561,17 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
         <span class="ops-ctrl-label">Position</span>
         <button class="mode-btn" id="lt-pos-left"  onclick="patchLT('left')">Left</button>
         <button class="mode-btn" id="lt-pos-right" onclick="patchLT('right')">Right</button>
+      </div>
+    </div>
+    <div class="ops-ctrl-row">
+      <div class="ops-ctrl-group">
+        <span class="ops-ctrl-label">Air Set</span>
+        <div class="ops-lt-setbar" id="ops-lt-setbar"></div>
+      </div>
+      <div class="ops-ctrl-group">
+        <span class="ops-ctrl-label">Mode</span>
+        <button class="mode-btn" id="ops-lt-mode-exclusive" onclick="opsSetLtMode('exclusive')">Excl</button>
+        <button class="mode-btn" id="ops-lt-mode-freeform" onclick="opsSetLtMode('freeform')">Free</button>
       </div>
     </div>
     <div class="ops-panel-body">
@@ -828,6 +854,8 @@ socket.on('state', state => {
   const m = state.match;
 
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
+  if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
+  opsRenderLtSets(state);
   if (state.switcher) applySwitcher(state.switcher);
 
   /* Topbar */
@@ -969,6 +997,30 @@ function opsLT(field, value) {
   api('/api/lowerThird', { sets });
 }
 function patchLT(side) { opsLT('side', side); }
+function opsTriggerSet(id) { api('/api/lowerThird/trigger', { setId: id }); }
+function opsSetLtMode(mode) { api('/api/lowerThird', { mode }); }
+function _opsLtLiveIds(lt) {
+  const ids = Array.isArray(lt.activeSetIds) ? lt.activeSetIds.slice() : [];
+  if (!ids.length && lt.visible && lt.activeSetId) ids.push(lt.activeSetId);
+  return ids;
+}
+let _opsLtSetsFp = null;
+function opsRenderLtSets(state) {
+  const bar = g('ops-lt-setbar'); if (!bar) return;
+  const lt = (state && state.lowerThird) || {};
+  const sets = lt.sets || [];
+  const live = _opsLtLiveIds(lt);
+  const fp = JSON.stringify({ sets: sets.map(s => [s.id, s.name]), live, mode: lt.mode });
+  if (fp !== _opsLtSetsFp) {
+    _opsLtSetsFp = fp;
+    bar.innerHTML = sets.length
+      ? sets.map(s => '<button class="ops-lt-set-btn' + (live.indexOf(s.id) !== -1 ? ' is-live' : '') + '" onclick="opsTriggerSet(\'' + s.id + '\')">' + esc(s.name || 'Set') + '</button>').join('')
+      : '<span class="ops-ctrl-label" style="opacity:.6">No sets</span>';
+  }
+  const ex = g('ops-lt-mode-exclusive'), fr = g('ops-lt-mode-freeform');
+  if (ex) ex.classList.toggle('is-active', lt.mode !== 'freeform');
+  if (fr) fr.classList.toggle('is-active', lt.mode === 'freeform');
+}
 
 /* ── Player Intro ── */
 function setPlayerIntroLayout(layout) {

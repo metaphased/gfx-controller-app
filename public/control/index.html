@@ -743,8 +743,13 @@
             </button>
           </div>
           <div class="gfx-ctrl-group">
-            <span class="gfx-ctrl-section-label">Active Set</span>
+            <span class="gfx-ctrl-section-label">Air Set</span>
             <div id="lt-setbar" class="lt-setbar"></div>
+          </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Mode</span>
+            <button class="btn btn-sm" id="lt-mode-exclusive" onclick="ltSetMode('exclusive')">Exclusive</button>
+            <button class="btn btn-sm" id="lt-mode-freeform" onclick="ltSetMode('freeform')">Freeform</button>
           </div>
         </div>
       </div>
@@ -2499,6 +2504,7 @@
     <!-- Game graphics -->
     <div class="lbar-group" id="lbar-group-lowerThird">
       <button class="lbar-toggle" id="lbar-toggle-lowerThird" onclick="toggleGraphic('lowerThird')"><span class="lbar-dot" id="lbar-dot-lowerThird"></span>LOWER 3RD</button>
+      <span class="lbar-lt-sets" id="lbar-lt-sets"></span>
     </div>
     <div class="lbar-group" id="lbar-group-headToHead">
       <button class="lbar-toggle" id="lbar-toggle-headToHead" onclick="toggleGraphic('headToHead')"><span class="lbar-dot" id="lbar-dot-headToHead"></span>H2H</button>
