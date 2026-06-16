@@ -131,7 +131,7 @@ All graphics are browser sources for OBS/vMix at **1920×1080**, each needing `?
 | Win Screen | `/graphics/win-screen/` | 10 styles incl. 3 full-screen stingers + COMP (winning picks) |
 | Break Screen | `/graphics/break-screen/` | PIP mode supported |
 | Pre-show | `/graphics/pre-show/` | Countdown, sponsors, ticker |
-| Lower Third | `/graphics/lower-third/` | |
+| Lower Third | `/graphics/lower-third/` | Set-driven, multi-output: 4 designs, free X/Y positioning, exclusive/freeform per-scene outputs |
 | Bracket | `/graphics/bracket/` | Single + double elimination |
 | Group Stage | `/graphics/group-stage/` | |
 | Tournament Structure | `/graphics/tournament-structure/` | |
@@ -154,6 +154,7 @@ The full guide lives in [`docs/`](docs/README.md) — start there for the comple
 
 **Systems & integrations**
 - [Player Spotlight](docs/player-spotlight.md)
+- [Lower Third](docs/lower-third.md) (set-driven, multi-output)
 - [Live Switcher (OBS/vMix on-air detection)](docs/live-switcher.md)
 - [Bitfocus Companion / Stream Deck](docs/companion.md)
 - [Theming &amp; Looks](docs/theming.md)
