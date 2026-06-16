@@ -27,7 +27,7 @@ Every graphic is a browser source for OBS/vMix at 1920×1080. Each page below co
 | [Win Screen](win-screen.md) | Match/series result, stingers and the COMP winning-picks screen. |
 | [Break Screen](break-screen.md) | "Back soon" / PIP break card. |
 | [Pre-show](pre-show.md) | Countdown, sponsors and ticker. |
-| [Lower Third](lower-third.md) | Name/title lower thirds. |
+| [Lower Third](lower-third.md) | Set-driven name/title strips — 4 designs, free positioning, per-scene outputs and bus routing. |
 | [Bracket](bracket.md) | Single/double-elimination bracket. |
 | [Group Stage](group-stage.md) | Group standings overlay. |
 | [Tournament Structure](tournament-structure.md) | Format/structure overview overlay. |

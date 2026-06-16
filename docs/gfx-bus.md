@@ -21,6 +21,10 @@ Without buses you'd add ~14 browser sources to OBS (one per overlay), each runni
 2. In OBS/vMix, add one Browser Source per bus pointing at its `/bus/<id>?token=XXXX` URL (grab them from **Settings → Output URLs**, which lists the bus URLs alongside the graphics).
 3. Arrange the bus sources in your scene; from then on, just Show/Hide graphics as normal.
 
+## Graphics with multiple outputs
+
+Most graphics are a single assignable entry. A few expose **more than one output** — notably the [Lower Third](lower-third.md), which can drive several independent browser sources. Each of those outputs appears in Routing as its **own entry** (*Lower Third — Main*, *Lower Third — Interview*, …), so you can route each onto a different bus (or leave some direct). Assigning and clearing work exactly as for any other graphic; the bus simply follows whichever of that output's sets is live.
+
 ## Notes
 
 - Group graphics that are never on screen at the same time onto the same bus; put things that *do* overlap (e.g. a lower third over a bracket) on different buses.

@@ -36,10 +36,16 @@ A handful of things bite people the first time. Read these once.
 
 ## Adding the graphics to OBS / vMix
 
+**Settings → Output URLs** lists a ready-made, token-bearing URL for every graphic, caster view and GFX bus. Toggle **Local / External** at the top to switch between `localhost` and your `EXTERNAL_URL` for a remote OBS.
+
+![Settings → Output URLs](img/output-urls.jpg)
+
 1. In MetaGFX, open **Settings → Output URLs** and copy the URL for the graphic you want (each already includes `?token=XXXX`).
 2. In OBS/vMix add a **Browser Source** and paste the URL.
 3. Set the source to **1920 × 1080**.
 4. Leave the background transparent — overlays are transparent by design; composite them over your scene. For a coloured/animated backdrop use the separate [BG Output](bg-output.md) source as its own layer underneath.
+
+A few graphics expose **more than one output** — e.g. the [Lower Third](lower-third.md) lists a **Main** URL plus a `?out=<id>` URL per extra output, so you can run independent lower thirds on different scenes at once.
 
 To run many graphics through a handful of shared browser sources (big RAM/VRAM saving), see [GFX Bus](gfx-bus.md).
 
