@@ -30,11 +30,26 @@ const hideTimers = {};   // graphicId → setTimeout handle
 // How long to keep an outgoing iframe visible so its own out-animation can complete
 const OUT_DELAY = 800;
 
+// Resolve a graphic key to its overlay URL. A compound key `lowerThird:<outId>`
+// targets a specific per-scene lower-third output (browser source ?out=<id>).
+function resolveGraphicUrl(graphicId) {
+  const m = /^lowerThird:(.+)$/.exec(graphicId);
+  if (m) return GRAPHIC_PATHS.lowerThird + '?out=' + encodeURIComponent(m[1]);
+  return GRAPHIC_PATHS[graphicId] || null;
+}
+// Is a (possibly compound) graphic key currently visible in the broadcast state?
+function keyVisible(s, key) {
+  const m = /^lowerThird:(.+)$/.exec(key);
+  if (m) { const o = ((s.lowerThird && s.lowerThird.outputs) || []).find(x => x.id === m[1]); return !!(o && o.visible); }
+  return !!(s[key] && s[key].visible);
+}
+
 function ensureFrame(graphicId) {
   if (frames[graphicId]) return frames[graphicId];
-  const url = GRAPHIC_PATHS[graphicId];
+  const url = resolveGraphicUrl(graphicId);
   if (!url) return null;
-  const src = token ? url + '?token=' + encodeURIComponent(token) : url;
+  const sep = url.indexOf('?') !== -1 ? '&' : '?';
+  const src = token ? url + sep + 'token=' + encodeURIComponent(token) : url;
   const iframe = document.createElement('iframe');
   iframe.className = 'bus-frame';
   iframe.src = src;
@@ -62,7 +77,7 @@ function syncDisplay(s) {
     activeKey = (bs.visible && bs.activeGraphic && (bus.assignments || []).includes(bs.activeGraphic))
       ? bs.activeGraphic : null;
   } else {
-    activeKey = (bus.assignments || []).find(k => s[k] && s[k].visible) || null;
+    activeKey = (bus.assignments || []).find(k => keyVisible(s, k)) || null;
   }
 
   Object.entries(frames).forEach(([graphicId, frame]) => {

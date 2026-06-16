@@ -738,18 +738,17 @@
         <div class="gfx-ctrl-row">
           <div class="gfx-ctrl-group" id="ctrlgrp-lowerThird">
             <span class="gfx-ctrl-section-label">Output</span>
-            <button class="lbar-toggle" id="ctrlbtn-lowerThird" onclick="toggleGraphic('lowerThird')">
+            <span class="lbar-toggle lt-master-label" id="ctrlbtn-lowerThird">
               <span class="lbar-dot" id="ctrl-dot-lowerThird"></span>LOWER THIRD
-            </button>
+            </span>
+          </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Outputs</span>
+            <div id="lt-output-bar" class="lt-setbar"></div>
           </div>
           <div class="gfx-ctrl-group">
             <span class="gfx-ctrl-section-label">Air Set</span>
             <div id="lt-setbar" class="lt-setbar"></div>
-          </div>
-          <div class="gfx-ctrl-group">
-            <span class="gfx-ctrl-section-label">Mode</span>
-            <button class="btn btn-sm" id="lt-mode-exclusive" onclick="ltSetMode('exclusive')">Exclusive</button>
-            <button class="btn btn-sm" id="lt-mode-freeform" onclick="ltSetMode('freeform')">Freeform</button>
           </div>
         </div>
       </div>
@@ -774,9 +773,17 @@
           </div>
         </div>
 
-        <!-- Right: position preview + quick player -->
+        <!-- Right: outputs + position preview + quick player -->
         <div class="ps-col">
           <div class="card">
+            <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+              <span>Outputs</span>
+              <button class="btn btn-sm" onclick="ltAddOutput()">+ Add Output</button>
+            </div>
+            <p class="hint" style="margin:6px 0 10px">Each output is its own browser source (<code>?out=…</code>) for a different scene — air different lower thirds on each at the same time. Grab the URLs from <a onclick="switchToTab('users')" href="#" style="color:var(--primary)">Settings → Output URLs</a>.</p>
+            <div id="lt-outputs-list" class="lt-outputs-list"></div>
+          </div>
+          <div class="card" style="margin-top:16px">
             <div class="card-title">Position Preview</div>
             <p class="hint" style="margin:6px 0 10px">Drag a lower third to place it freely. The frame is the 1920×1080 output.</p>
             <div id="lt-preview-stage" class="lt-stage"></div>
@@ -2508,7 +2515,7 @@
 
     <!-- Game graphics -->
     <div class="lbar-group" id="lbar-group-lowerThird">
-      <button class="lbar-toggle" id="lbar-toggle-lowerThird" onclick="toggleGraphic('lowerThird')"><span class="lbar-dot" id="lbar-dot-lowerThird"></span>LOWER 3RD</button>
+      <span class="lbar-toggle lt-master-label" id="lbar-toggle-lowerThird"><span class="lbar-dot" id="lbar-dot-lowerThird"></span>LOWER 3RD</span>
       <span class="lbar-lt-sets" id="lbar-lt-sets"></span>
     </div>
     <div class="lbar-divider"></div>

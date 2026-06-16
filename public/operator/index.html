@@ -234,6 +234,11 @@ body {
   border-color: #ff4444;
   color: #ff6666;
 }
+.lbar-toggle.lt-master-label,
+.lbar-toggle.lt-master-label.is-on {
+  pointer-events: none; background: transparent; border-color: transparent; box-shadow: none;
+  color: rgba(255,255,255,0.5); padding-left: 2px;
+}
 .lbar-dot {
   display: inline-block;
   width: 5px; height: 5px;
@@ -286,7 +291,9 @@ body {
   transition: all 0.12s;
 }
 .ops-lt-set-btn:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
+.ops-lt-out-btn:not(.is-excl) { background: rgba(31,250,255,0.1); border-color: rgba(31,250,255,0.4); }
 .ops-lt-set-btn.is-live { background: rgba(255,77,77,0.2); border-color: #ff4d4d; color: #fff; }
+.lt-out-flag { font-size: 9px; font-weight: 800; opacity: .6; margin-left: 4px; vertical-align: super; }
 
 /* ── Timer controls ── */
 .lbar-num {
@@ -553,9 +560,9 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
     <div class="ops-ctrl-row">
       <div class="ops-ctrl-group" id="ops-grp-lowerThird">
         <span class="ops-ctrl-label">Output</span>
-        <button class="lbar-toggle" id="ops-btn-lowerThird" onclick="toggleGfx('lowerThird')">
+        <span class="lbar-toggle lt-master-label" id="ops-btn-lowerThird">
           <span class="lbar-dot" id="ops-dot-lowerThird"></span>Lower Third
-        </button>
+        </span>
       </div>
       <div class="ops-ctrl-group">
         <span class="ops-ctrl-label">Position</span>
@@ -565,13 +572,12 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
     </div>
     <div class="ops-ctrl-row">
       <div class="ops-ctrl-group">
-        <span class="ops-ctrl-label">Air Set</span>
-        <div class="ops-lt-setbar" id="ops-lt-setbar"></div>
+        <span class="ops-ctrl-label">Outputs</span>
+        <div class="ops-lt-setbar" id="ops-lt-outbar"></div>
       </div>
       <div class="ops-ctrl-group">
-        <span class="ops-ctrl-label">Mode</span>
-        <button class="mode-btn" id="ops-lt-mode-exclusive" onclick="opsSetLtMode('exclusive')">Excl</button>
-        <button class="mode-btn" id="ops-lt-mode-freeform" onclick="opsSetLtMode('freeform')">Free</button>
+        <span class="ops-ctrl-label">Air Set</span>
+        <div class="ops-lt-setbar" id="ops-lt-setbar"></div>
       </div>
     </div>
     <div class="ops-panel-body">
@@ -958,7 +964,7 @@ function setText(id, val) { const e = g(id); if (e) e.textContent = val; }
 function setInp(id, val) { const e = g(id); if (e && document.activeElement !== e) e.value = val || ''; }
 function setModeActive(id, active) { const e = g(id); if (e) e.className = 'mode-btn' + (active ? ' is-active' : ''); }
 function syncToggle(btnId, dotId, grpId, active) {
-  const btn = g(btnId); if (btn) btn.className = 'lbar-toggle' + (active ? ' is-on' : '');
+  const btn = g(btnId); if (btn) btn.className = 'lbar-toggle' + (btnId === 'ops-btn-lowerThird' ? ' lt-master-label' : '') + (active ? ' is-on' : '');
   const dot = g(dotId); if (dot) dot.classList.toggle('active', active);
   const grp = g(grpId); if (grp) grp.classList.toggle('is-live', active);
 }
@@ -997,29 +1003,39 @@ function opsLT(field, value) {
   api('/api/lowerThird', { sets });
 }
 function patchLT(side) { opsLT('side', side); }
-function opsTriggerSet(id) { api('/api/lowerThird/trigger', { setId: id }); }
-function opsSetLtMode(mode) { api('/api/lowerThird', { mode }); }
-function _opsLtLiveIds(lt) {
-  const ids = Array.isArray(lt.activeSetIds) ? lt.activeSetIds.slice() : [];
-  if (!ids.length && lt.visible && lt.activeSetId) ids.push(lt.activeSetId);
-  return ids;
-}
+// outId given → that one output; omitted → all the set's assigned outputs.
+function opsTriggerSet(id, outId) { api('/api/lowerThird/trigger', outId ? { setId: id, outId: outId } : { setId: id }); }
+function opsToggleOutput(id) { api('/api/lowerThird/output/toggle', { id }); }
 let _opsLtSetsFp = null;
 function opsRenderLtSets(state) {
   const bar = g('ops-lt-setbar'); if (!bar) return;
   const lt = (state && state.lowerThird) || {};
   const sets = lt.sets || [];
-  const live = _opsLtLiveIds(lt);
-  const fp = JSON.stringify({ sets: sets.map(s => [s.id, s.name]), live, mode: lt.mode });
-  if (fp !== _opsLtSetsFp) {
-    _opsLtSetsFp = fp;
-    bar.innerHTML = sets.length
-      ? sets.map(s => '<button class="ops-lt-set-btn' + (live.indexOf(s.id) !== -1 ? ' is-live' : '') + '" onclick="opsTriggerSet(\'' + s.id + '\')">' + esc(s.name || 'Set') + '</button>').join('')
-      : '<span class="ops-ctrl-label" style="opacity:.6">No sets</span>';
-  }
-  const ex = g('ops-lt-mode-exclusive'), fr = g('ops-lt-mode-freeform');
-  if (ex) ex.classList.toggle('is-active', lt.mode !== 'freeform');
-  if (fr) fr.classList.toggle('is-active', lt.mode === 'freeform');
+  const outs = lt.outputs || [];
+  const fp = JSON.stringify({
+    sets: sets.map(s => [s.id, s.name, (s.outputIds || []).slice().sort()]),
+    outs: outs.map(o => [o.id, o.name, (o.activeSetIds || []).slice().sort()]),
+  });
+  if (fp === _opsLtSetsFp) return;
+  _opsLtSetsFp = fp;
+  // Output toggle buttons — toggle everything on that output (¹ = exclusive).
+  const outBar = g('ops-lt-outbar');
+  if (outBar) outBar.innerHTML = outs.length
+    ? outs.map(o => { const excl = o.mode !== 'freeform';
+        return '<button class="ops-lt-set-btn ops-lt-out-btn' + (excl ? ' is-excl' : '') + ((o.activeSetIds || []).length ? ' is-live' : '') + '" title="' + (excl ? 'Exclusive — one at a time' : 'Freeform — stacks all') + '" onclick="opsToggleOutput(\'' + o.id + '\')">' + esc(o.name || 'Out') + '<span class="lt-out-flag">' + (excl ? '1' : '+') + '</span></button>'; }).join('')
+    : '<span class="ops-ctrl-label" style="opacity:.6">—</span>';
+  // One button per (set, assigned output); a multi-output set shows "Set · Output".
+  const btns = [];
+  sets.forEach(s => {
+    const assigned = (s.outputIds || []).map(id => outs.find(o => o.id === id)).filter(Boolean);
+    const multi = assigned.length > 1;
+    assigned.forEach(o => {
+      const live = (o.activeSetIds || []).includes(s.id);
+      const label = esc(s.name || 'Set') + (multi ? ' · ' + esc(o.name || 'Out') : '');
+      btns.push('<button class="ops-lt-set-btn' + (live ? ' is-live' : '') + '" onclick="opsTriggerSet(\'' + s.id + '\',\'' + o.id + '\')">' + label + '</button>');
+    });
+  });
+  bar.innerHTML = btns.length ? btns.join('') : '<span class="ops-ctrl-label" style="opacity:.6">No sets</span>';
 }
 
 /* ── Player Intro ── */
@@ -1146,6 +1162,15 @@ const GFX_LABELS = {
   winScreen:'Win Screen', prizepool:'Prizepool', bgOutput:'BG Output', champSelect:'Champ Select',
 };
 
+function _gfxKeyLabel(state, key) {
+  const m = /^lowerThird:(.+)$/.exec(key);
+  if (m) {
+    const o = ((state.lowerThird && state.lowerThird.outputs) || []).find(x => x.id === m[1]);
+    return 'LT — ' + ((o && o.name) || m[1]);
+  }
+  return GFX_LABELS[key] || key;
+}
+
 function renderBusPanel(state) {
   const panel = g('bus-routing-panel');
   const list  = g('bus-routing-list');
@@ -1167,7 +1192,7 @@ function renderBusPanel(state) {
       return '<button class="bus-btn' + (isActive ? ' is-active' : '') + '" ' +
         'title="' + (isActive ? 'Live on ' + esc(bus.name || bus.id) + ' — click to take off air' : 'Put live on ' + esc(bus.name || bus.id)) + '" ' +
         'onclick="busRoute(\'' + bus.id + '\',\'' + key + '\',' + isActive + ')">' +
-        esc(GFX_LABELS[key] || key) + '</button>';
+        esc(_gfxKeyLabel(state, key)) + '</button>';
     }).join('');
 
     return '<div class="bus-route-row">' +

@@ -59,10 +59,9 @@
     { id: 'groupStage.mode.final',      label: 'Standings: Final Standings',  category: 'Group Stage', handler: () => postBody('/api/groupStage', { mode: 'final' }) },
   );
 
-  // Static Lower Third mode actions (set-trigger actions are dynamic, below).
+  // Master "hide all lower thirds" (per-set trigger actions are dynamic, below).
   _static.push(
-    { id: 'lowerThird.mode.exclusive', label: 'Lower Third: Exclusive Mode', category: 'Lower Third', handler: () => postBody('/api/lowerThird', { mode: 'exclusive' }) },
-    { id: 'lowerThird.mode.freeform',  label: 'Lower Third: Freeform Mode',  category: 'Lower Third', handler: () => postBody('/api/lowerThird', { mode: 'freeform' }) },
+    { id: 'lowerThird.hideAll', label: 'Lower Third: Hide All', category: 'Lower Third', handler: () => post('/api/lowerThird/hideAll') },
   );
 
   window.ActionRegistry = {
@@ -83,8 +82,8 @@
       }));
     },
 
-    // One bindable action per Lower Third set — airs/toggles that set on the main
-    // output (mode-aware server-side). Mirrors updateBuses; call on every state.
+    // One bindable action per Lower Third set — animates that set in/out on whichever
+    // output(s) it's assigned to. Mirrors updateBuses; call on every state.
     updateLowerThirdSets(lt) {
       this._ltSets = ((lt && lt.sets) || []).map(s => ({
         id: `lowerThird.set.${s.id}`,
