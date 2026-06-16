@@ -1691,7 +1691,11 @@ input[type=search]::-webkit-search-decoration { display: none; }
   font-size: 11px; font-weight: 800; letter-spacing: .04em; cursor: pointer; white-space: nowrap;
 }
 .lt-out-btn:hover { border-color: var(--primary, #1ffaff); color: #fff; }
+/* Exclusive outputs look neutral (single) vs the channel-tinted freeform (stacks). */
+.lt-out-btn.is-excl { background: rgba(255,255,255,.05); border-color: rgba(255,255,255,.22); }
+.lt-out-btn.is-excl:hover { border-color: rgba(255,255,255,.5); color: #fff; }
 .lt-out-btn.is-live { background: rgba(255,77,77,.18); border-color: #ff4d4d; color: #fff; }
+.lt-out-flag { font-size: 9px; font-weight: 800; opacity: .6; margin-left: 4px; vertical-align: super; }
 /* Lower Third master — a status label, not a button (no border/fill, just dot + text). */
 .lbar-toggle.lt-master-label,
 .lbar-toggle.lt-master-label.is-on {
@@ -1752,6 +1756,8 @@ input[type=search]::-webkit-search-decoration { display: none; }
   font-size: 10px; font-weight: 800; letter-spacing: .03em; cursor: pointer; white-space: nowrap;
 }
 .lbar-lt-out:hover { border-color: var(--primary,#1ffaff); color: #fff; }
+.lbar-lt-out.is-excl { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.22); }
+.lbar-lt-out.is-excl:hover { border-color: rgba(255,255,255,.5); color: #fff; }
 .lbar-lt-out.is-live { background: rgba(255,77,77,.22); border-color: #ff4d4d; color: #fff; }
 .lbar-lt-sep { display: inline-block; width: 1px; height: 16px; background: rgba(255,255,255,.18); margin: 0 3px; vertical-align: middle; }
 

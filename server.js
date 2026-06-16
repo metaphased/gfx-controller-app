@@ -1155,7 +1155,7 @@ function ltMasterSet(show) {
   const lt = state.lowerThird;
   if (show) {
     const main = (lt.outputs || []).find(o => o.id === 'main');
-    if (main && !(main.activeSetIds || []).length) main.activeSetIds = ltAssignedSetIds('main');
+    if (main && !(main.activeSetIds || []).length) main.activeSetIds = ltSeedFor('main');
     if (main) ltSyncBus('main', (main.activeSetIds || []).length > 0);
   } else {
     (lt.outputs || []).forEach(o => { o.activeSetIds = []; ltSyncBus(o.id, false); });
@@ -1495,6 +1495,13 @@ app.post('/api/lowerThird',  (req, res) => {
 function ltOutput(outId) { return (state.lowerThird.outputs || []).find(o => o.id === outId) || null; }
 // Every set assigned to draw on this output (in set order).
 function ltAssignedSetIds(outId) { return (state.lowerThird.sets || []).filter(s => (s.outputIds || []).includes(outId)).map(s => s.id); }
+// What to air when an output is turned ON: a freeform output shows ALL its sets;
+// an exclusive output shows only the first (it can never stack).
+function ltSeedFor(outId) {
+  const o = ltOutput(outId);
+  const assigned = ltAssignedSetIds(outId);
+  return (o && o.mode === 'freeform') ? assigned : assigned.slice(0, 1);
+}
 function ltOutputName(outId) { const o = ltOutput(outId); return (o && o.name) || (outId === 'main' ? 'Main' : 'Output'); }
 // Keep any bus assigned to an LT output in sync with whether that output has live
 // sets. Main uses the plain 'lowerThird' key; extra outputs use 'lowerThird:<outId>'.
@@ -1525,7 +1532,7 @@ function graphicVisibleRef(key) {
     const o = ltOutput(outId);
     if (!o) return null;
     return { get: () => (o.activeSetIds || []).length > 0, set: (v) => {
-      if (v) { if (!(o.activeSetIds || []).length) o.activeSetIds = ltAssignedSetIds(o.id); }
+      if (v) { if (!(o.activeSetIds || []).length) o.activeSetIds = ltSeedFor(o.id); }
       else o.activeSetIds = [];
       ltRecomputeVisible(state.lowerThird);
     } };
@@ -1611,10 +1618,15 @@ app.post('/api/lowerThird/output/toggle', (req, res) => {
   const { id } = req.body || {};
   const o = ltOutput(id);
   if (!o) return res.status(400).json({ error: 'unknown output' });
-  // Air EVERY set linked to this output (or clear if they're all already up).
+  // Turn the output on (freeform → all its sets; exclusive → just the first, never
+  // stacking) or clear it. For freeform a partial state fills up to all.
   const assigned = ltAssignedSetIds(o.id);
-  const allLive = assigned.length > 0 && assigned.every(id => (o.activeSetIds || []).includes(id));
-  o.activeSetIds = allLive ? [] : assigned.slice();
+  if (o.mode === 'freeform') {
+    const allLive = assigned.length > 0 && assigned.every(id => (o.activeSetIds || []).includes(id));
+    o.activeSetIds = allLive ? [] : assigned.slice();
+  } else {
+    o.activeSetIds = (o.activeSetIds || []).length > 0 ? [] : assigned.slice(0, 1);
+  }
   ltSyncBus(o.id, o.activeSetIds.length > 0);
   ltRecomputeVisible(state.lowerThird);
   const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);

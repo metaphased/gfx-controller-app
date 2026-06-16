@@ -291,7 +291,9 @@ body {
   transition: all 0.12s;
 }
 .ops-lt-set-btn:hover { border-color: rgba(255,255,255,0.4); color: #fff; }
+.ops-lt-out-btn:not(.is-excl) { background: rgba(31,250,255,0.1); border-color: rgba(31,250,255,0.4); }
 .ops-lt-set-btn.is-live { background: rgba(255,77,77,0.2); border-color: #ff4d4d; color: #fff; }
+.lt-out-flag { font-size: 9px; font-weight: 800; opacity: .6; margin-left: 4px; vertical-align: super; }
 
 /* ── Timer controls ── */
 .lbar-num {
@@ -1016,10 +1018,11 @@ function opsRenderLtSets(state) {
   });
   if (fp === _opsLtSetsFp) return;
   _opsLtSetsFp = fp;
-  // Output toggle buttons — toggle everything on that output.
+  // Output toggle buttons — toggle everything on that output (¹ = exclusive).
   const outBar = g('ops-lt-outbar');
   if (outBar) outBar.innerHTML = outs.length
-    ? outs.map(o => '<button class="ops-lt-set-btn' + ((o.activeSetIds || []).length ? ' is-live' : '') + '" onclick="opsToggleOutput(\'' + o.id + '\')">' + esc(o.name || 'Out') + '</button>').join('')
+    ? outs.map(o => { const excl = o.mode !== 'freeform';
+        return '<button class="ops-lt-set-btn ops-lt-out-btn' + (excl ? ' is-excl' : '') + ((o.activeSetIds || []).length ? ' is-live' : '') + '" title="' + (excl ? 'Exclusive — one at a time' : 'Freeform — stacks all') + '" onclick="opsToggleOutput(\'' + o.id + '\')">' + esc(o.name || 'Out') + '<span class="lt-out-flag">' + (excl ? '1' : '+') + '</span></button>'; }).join('')
     : '<span class="ops-ctrl-label" style="opacity:.6">—</span>';
   // One button per (set, assigned output); a multi-output set shows "Set · Output".
   const btns = [];

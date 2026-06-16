@@ -999,11 +999,15 @@ function ltTriggerSet(id, outId) { api('/api/lowerThird/trigger', outId ? { setI
 function ltHideAll() { api('/api/lowerThird/hideAll', {}); }
 function ltToggleOutput(id) { api('/api/lowerThird/output/toggle', { id }); }   // air/clear a whole output
 // Output toggle buttons (one per output) — toggle everything in that output.
+// Exclusive outputs are flagged (¹) and styled apart, since they air one at a time.
 function _ltOutputButtons(lt, cls) {
   return (lt.outputs || []).map(function (o) {
     const live = (o.activeSetIds || []).length > 0;
-    return '<button class="' + cls + (live ? ' is-live' : '') + '" title="Toggle everything on ' + esc(o.name || 'this output') + '" onclick="ltToggleOutput(\'' + o.id + '\')">' +
-      (live && cls === 'lt-out-btn' ? '<span class="lt-live-dot"></span>' : '') + esc(o.name || 'Out') + '</button>';
+    const excl = o.mode !== 'freeform';
+    const title = excl ? 'Exclusive output — airs one lower third at a time' : 'Freeform output — airs all its lower thirds together';
+    const flag = '<span class="lt-out-flag">' + (excl ? '1' : '+') + '</span>';
+    return '<button class="' + cls + (excl ? ' is-excl' : '') + (live ? ' is-live' : '') + '" title="' + title + '" onclick="ltToggleOutput(\'' + o.id + '\')">' +
+      (live && cls === 'lt-out-btn' ? '<span class="lt-live-dot"></span>' : '') + esc(o.name || 'Out') + flag + '</button>';
   });
 }
 
@@ -1030,8 +1034,8 @@ function _ltRenderOutputs(lt) {
         '<span class="lt-out-dot' + (_ltOutHasLive(o) ? ' is-on' : '') + '" title="' + (_ltOutHasLive(o) ? 'On air' : 'Idle') + '"></span>' +
         '<input class="lt-out-name" value="' + esc(o.name || '') + '" oninput="ltRenameOutput(\'' + o.id + '\',this.value)"' + (isMain ? ' title="Main output"' : '') + '>' +
         '<span class="lt-out-mode">' +
-          '<button class="btn btn-sm' + (o.mode !== 'freeform' ? ' btn-active' : '') + '" title="Exclusive — one set at a time" onclick="ltSetOutputMode(\'' + o.id + '\',\'exclusive\')">Excl</button>' +
-          '<button class="btn btn-sm' + (o.mode === 'freeform' ? ' btn-active' : '') + '" title="Freeform — stack multiple sets" onclick="ltSetOutputMode(\'' + o.id + '\',\'freeform\')">Free</button>' +
+          '<button class="btn btn-sm' + (o.mode !== 'freeform' ? ' btn-active' : '') + '" title="One lower third at a time" onclick="ltSetOutputMode(\'' + o.id + '\',\'exclusive\')">Exclusive</button>' +
+          '<button class="btn btn-sm' + (o.mode === 'freeform' ? ' btn-active' : '') + '" title="Stack multiple lower thirds" onclick="ltSetOutputMode(\'' + o.id + '\',\'freeform\')">Freeform</button>' +
         '</span>' +
         '<button class="btn btn-sm" title="Copy browser-source URL" onclick="ltCopyOutputUrl(\'' + o.id + '\')">URL</button>' +
         (isMain ? '' : '<button class="lt-ie-del" title="Delete output" onclick="ltDeleteOutput(\'' + o.id + '\')">&times;</button>') +
@@ -1142,7 +1146,6 @@ function _ltRenderSetsList(sets, active, lt) {
         '<input class="lt-set-name" value="' + esc(st.name || '') + '" oninput="ltRenameSet(\'' + st.id + '\',this.value)">' +
         (onAir ? '<span class="lt-onair-badge">ON AIR</span>' : '') +
         '<span class="lt-set-count">' + n + ' item' + (n !== 1 ? 's' : '') + '</span>' +
-        '<button class="lt-set-air btn btn-sm" title="Animate this set in/out on its output(s)" onclick="ltTriggerSet(\'' + st.id + '\')">' + (onAir ? 'Hide' : 'Air') + '</button>' +
         '<button class="lt-ie-del" title="Delete set" onclick="ltDeleteSet(\'' + st.id + '\')">&times;</button>' +
       '</div>' +
       '<div class="lt-set-outs"><span class="lt-set-outs-label">Outputs</span>' + checks + '</div>' +
