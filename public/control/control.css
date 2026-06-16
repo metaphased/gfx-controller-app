@@ -1692,8 +1692,12 @@ input[type=search]::-webkit-search-decoration { display: none; }
 }
 .lt-out-btn:hover { border-color: var(--primary, #1ffaff); color: #fff; }
 .lt-out-btn.is-live { background: rgba(255,77,77,.18); border-color: #ff4d4d; color: #fff; }
-/* Lower Third master label in the ctrl-bar — status only, never a trigger. */
-.lbar-toggle.lt-master-label { pointer-events: none; }
+/* Lower Third master — a status label, not a button (no border/fill, just dot + text). */
+.lbar-toggle.lt-master-label,
+.lbar-toggle.lt-master-label.is-on {
+  pointer-events: none; background: transparent; border-color: transparent; box-shadow: none;
+  color: var(--text-dim, #8a8f98); padding-left: 2px; padding-right: 4px;
+}
 /* Air Set bar: a live (on-air) set glows red, like the rest of the app's on-air cues. */
 .lt-set-btn.is-live { background: rgba(255,77,77,.18); border-color: #ff4d4d; color: #fff; }
 .lt-set-btn .lt-live-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: #ff4d4d; margin-right: 6px; box-shadow: 0 0 6px rgba(255,77,77,.9); animation: lt-live-pulse 1.6s ease-in-out infinite; vertical-align: middle; }
@@ -1750,8 +1754,6 @@ input[type=search]::-webkit-search-decoration { display: none; }
 .lbar-lt-out:hover { border-color: var(--primary,#1ffaff); color: #fff; }
 .lbar-lt-out.is-live { background: rgba(255,77,77,.22); border-color: #ff4d4d; color: #fff; }
 .lbar-lt-sep { display: inline-block; width: 1px; height: 16px; background: rgba(255,255,255,.18); margin: 0 3px; vertical-align: middle; }
-/* Live-bar Lower Third master label — status only, never a trigger. */
-.lbar-toggle.lt-master-label { pointer-events: none; }
 
 .lt-item-edit { border: 1px solid var(--border, rgba(255,255,255,.12)); border-radius: var(--radius,2px); padding: 10px; margin-bottom: 10px; }
 .lt-item-edit.is-sel { border-color: var(--primary,#1ffaff); }

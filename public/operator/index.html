@@ -234,7 +234,11 @@ body {
   border-color: #ff4444;
   color: #ff6666;
 }
-.lbar-toggle.lt-master-label { pointer-events: none; }
+.lbar-toggle.lt-master-label,
+.lbar-toggle.lt-master-label.is-on {
+  pointer-events: none; background: transparent; border-color: transparent; box-shadow: none;
+  color: rgba(255,255,255,0.5); padding-left: 2px;
+}
 .lbar-dot {
   display: inline-block;
   width: 5px; height: 5px;

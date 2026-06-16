@@ -1155,10 +1155,7 @@ function ltMasterSet(show) {
   const lt = state.lowerThird;
   if (show) {
     const main = (lt.outputs || []).find(o => o.id === 'main');
-    if (main && !(main.activeSetIds || []).length) {
-      const seed = (lt.sets || []).filter(s => (s.outputIds || []).includes('main')).map(s => s.id);
-      main.activeSetIds = main.mode === 'freeform' ? seed : seed.slice(0, 1);
-    }
+    if (main && !(main.activeSetIds || []).length) main.activeSetIds = ltAssignedSetIds('main');
     if (main) ltSyncBus('main', (main.activeSetIds || []).length > 0);
   } else {
     (lt.outputs || []).forEach(o => { o.activeSetIds = []; ltSyncBus(o.id, false); });
@@ -1496,6 +1493,8 @@ app.post('/api/lowerThird',  (req, res) => {
 });
 
 function ltOutput(outId) { return (state.lowerThird.outputs || []).find(o => o.id === outId) || null; }
+// Every set assigned to draw on this output (in set order).
+function ltAssignedSetIds(outId) { return (state.lowerThird.sets || []).filter(s => (s.outputIds || []).includes(outId)).map(s => s.id); }
 function ltOutputName(outId) { const o = ltOutput(outId); return (o && o.name) || (outId === 'main' ? 'Main' : 'Output'); }
 // Keep any bus assigned to an LT output in sync with whether that output has live
 // sets. Main uses the plain 'lowerThird' key; extra outputs use 'lowerThird:<outId>'.
@@ -1526,12 +1525,8 @@ function graphicVisibleRef(key) {
     const o = ltOutput(outId);
     if (!o) return null;
     return { get: () => (o.activeSetIds || []).length > 0, set: (v) => {
-      if (v) {
-        if (!(o.activeSetIds || []).length) {
-          const seed = (state.lowerThird.sets || []).filter(s => (s.outputIds || []).includes(o.id)).map(s => s.id);
-          o.activeSetIds = o.mode === 'freeform' ? seed : seed.slice(0, 1);
-        }
-      } else o.activeSetIds = [];
+      if (v) { if (!(o.activeSetIds || []).length) o.activeSetIds = ltAssignedSetIds(o.id); }
+      else o.activeSetIds = [];
       ltRecomputeVisible(state.lowerThird);
     } };
   }
@@ -1616,12 +1611,10 @@ app.post('/api/lowerThird/output/toggle', (req, res) => {
   const { id } = req.body || {};
   const o = ltOutput(id);
   if (!o) return res.status(400).json({ error: 'unknown output' });
-  if ((o.activeSetIds || []).length > 0) {
-    o.activeSetIds = [];
-  } else {
-    const seed = (state.lowerThird.sets || []).filter(s => (s.outputIds || []).includes(o.id)).map(s => s.id);
-    o.activeSetIds = o.mode === 'freeform' ? seed : seed.slice(0, 1);
-  }
+  // Air EVERY set linked to this output (or clear if they're all already up).
+  const assigned = ltAssignedSetIds(o.id);
+  const allLive = assigned.length > 0 && assigned.every(id => (o.activeSetIds || []).includes(id));
+  o.activeSetIds = allLive ? [] : assigned.slice();
   ltSyncBus(o.id, o.activeSetIds.length > 0);
   ltRecomputeVisible(state.lowerThird);
   const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
