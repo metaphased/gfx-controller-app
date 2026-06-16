@@ -994,15 +994,17 @@ function hideGraphic(name) { fetch('/api/graphic/'+name+'/hide',{method:'POST'})
 
 // ── Lower Third (set-driven builder) ─────────────────────────────────────────────
 function patchLT(data) { api('/api/lowerThird', data); }
-function ltTriggerSet(id) { api('/api/lowerThird/trigger', { setId: id }); }   // draws to the set's assigned output(s)
+// outId given → that one output; omitted → all the set's assigned outputs at once.
+function ltTriggerSet(id, outId) { api('/api/lowerThird/trigger', outId ? { setId: id, outId: outId } : { setId: id }); }
 function ltHideAll() { api('/api/lowerThird/hideAll', {}); }
 
 // ── Lower Third outputs (channels — like buses for lower-third groups) ─────────
-// A set is "live" when it's showing on every output it's assigned to.
+// A set is "live" when it's showing on ANY output it's assigned to (so a set still
+// up on a freeform output reads as live even after an exclusive output dropped it).
 function _ltSetLive(lt, setId) {
   const s = (lt.sets || []).find(x => x.id === setId); if (!s) return false;
   const outs = (s.outputIds || []).map(id => (lt.outputs || []).find(o => o.id === id)).filter(Boolean);
-  return outs.length > 0 && outs.every(o => (o.activeSetIds || []).includes(setId));
+  return outs.some(o => (o.activeSetIds || []).includes(setId));
 }
 function _ltOutHasLive(o) { return (o.activeSetIds || []).length > 0; }
 function _ltBuses() { return (window._state && window._state.settings && window._state.settings.buses) || []; }
@@ -1074,9 +1076,9 @@ function syncLowerThirdTab(s) {
   const liveSets = sets.filter(st => _ltSetLive(lt, st.id)).map(st => st.id);
   const fp = JSON.stringify({
     a: lt.activeSetId, sel: _ltSelItem, liveSets,
-    // set name IS in the fp (it appears on the air buttons/outputs) but output name is NOT
-    // (rename via oninput must keep focus); assignments + per-output live state included.
-    sets: sets.map(st => ({ id: st.id, name: st.name, outs: (st.outputIds || []).slice().sort(), items: (st.items || []).map(i => ({ id: i.id, design: i.design })) })),
+    // Names (set + output) are excluded so renaming via oninput keeps input focus —
+    // labels elsewhere refresh on the next structural change. Structure/assignment/live in.
+    sets: sets.map(st => ({ id: st.id, outs: (st.outputIds || []).slice().sort(), items: (st.items || []).map(i => ({ id: i.id, design: i.design })) })),
     outs: (lt.outputs || []).map(o => ({ id: o.id, mode: o.mode, bus: o.busId || '', live: (o.activeSetIds || []).slice().sort() })),
   });
   if (fp === _ltTabFp) return;   // content-only edits don't re-render → inputs keep focus
@@ -1088,13 +1090,27 @@ function syncLowerThirdTab(s) {
   _ltRenderOutputs(lt);
 }
 
+// One button per (set, assigned output). A set on a single output shows just its name;
+// a set on several outputs gets one button each ("Set · Output") so each is independent.
+function _ltSetButtons(sets, lt, cls) {
+  const outs = lt.outputs || [];
+  const btns = [];
+  sets.forEach(st => {
+    const assigned = (st.outputIds || []).map(id => outs.find(o => o.id === id)).filter(Boolean);
+    const multi = assigned.length > 1;
+    assigned.forEach(o => {
+      const live = (o.activeSetIds || []).includes(st.id);
+      const label = esc(st.name || 'Set') + (multi ? ' · ' + esc(o.name || 'Out') : '');
+      btns.push('<button class="' + cls + (live ? ' is-live' : '') + '" onclick="ltTriggerSet(\'' + st.id + '\',\'' + o.id + '\')">' +
+        (live && cls === 'lt-set-btn' ? '<span class="lt-live-dot"></span>' : '') + label + '</button>');
+    });
+  });
+  return btns;
+}
 function _ltRenderSetbar(sets, lt) {
   const bar = g('lt-setbar'); if (!bar) return;
-  bar.innerHTML = sets.length
-    ? sets.map(st => { const live = _ltSetLive(lt, st.id);
-        return '<button class="lt-set-btn' + (live ? ' is-live' : '') + '" onclick="ltTriggerSet(\'' + st.id + '\')">' +
-          (live ? '<span class="lt-live-dot"></span>' : '') + esc(st.name || 'Set') + '</button>'; }).join('')
-    : '<span class="lt-set-count">No sets</span>';
+  const btns = _ltSetButtons(sets, lt, 'lt-set-btn');
+  bar.innerHTML = btns.length ? btns.join('') : '<span class="lt-set-count">No sets</span>';
 }
 function _ltRenderSetsList(sets, active, lt) {
   const host = g('lt-sets-list'); if (!host) return;
@@ -4071,13 +4087,15 @@ function _syncLbarLtSets(s) {
   const host = g('lbar-lt-sets'); if (!host) return;
   const lt = s.lowerThird || {};
   const sets = lt.sets || [];
-  const live = sets.filter(st => _ltSetLive(lt, st.id)).map(st => st.id);
-  const fp = JSON.stringify({ sets: sets.map(st => [st.id, st.name]), live });
+  const btns = _ltSetButtons(sets, lt, 'lbar-lt-chip');
+  const fp = JSON.stringify({
+    sets: sets.map(st => [st.id, st.name, (st.outputIds || []).slice().sort()]),
+    outs: (lt.outputs || []).map(o => [o.id, o.name, (o.activeSetIds || []).slice().sort()]),
+  });
   if (fp === _lbarLtFp) return;
   _lbarLtFp = fp;
-  host.innerHTML = sets.length > 1
-    ? sets.map(st => '<button class="lbar-lt-chip' + (live.indexOf(st.id) !== -1 ? ' is-live' : '') + '" onclick="ltTriggerSet(\'' + st.id + '\')">' + esc(st.name || 'Set') + '</button>').join('')
-    : '';
+  // Only worth showing in the cramped live bar when there's more than one button.
+  host.innerHTML = btns.length > 1 ? btns.join('') : '';
 }
 
 function lbarSetWinTeam(team) {

@@ -992,25 +992,32 @@ function opsLT(field, value) {
   api('/api/lowerThird', { sets });
 }
 function patchLT(side) { opsLT('side', side); }
-function opsTriggerSet(id) { api('/api/lowerThird/trigger', { setId: id }); }   // draws to the set's assigned output(s)
-// A set is live when it's showing on every output it's assigned to.
-function _opsLtSetLive(lt, setId) {
-  const s = (lt.sets || []).find(x => x.id === setId); if (!s) return false;
-  const outs = (s.outputIds || []).map(id => (lt.outputs || []).find(o => o.id === id)).filter(Boolean);
-  return outs.length > 0 && outs.every(o => (o.activeSetIds || []).includes(setId));
-}
+// outId given → that one output; omitted → all the set's assigned outputs.
+function opsTriggerSet(id, outId) { api('/api/lowerThird/trigger', outId ? { setId: id, outId: outId } : { setId: id }); }
 let _opsLtSetsFp = null;
 function opsRenderLtSets(state) {
   const bar = g('ops-lt-setbar'); if (!bar) return;
   const lt = (state && state.lowerThird) || {};
   const sets = lt.sets || [];
-  const live = sets.filter(s => _opsLtSetLive(lt, s.id)).map(s => s.id);
-  const fp = JSON.stringify({ sets: sets.map(s => [s.id, s.name]), live });
+  const outs = lt.outputs || [];
+  const fp = JSON.stringify({
+    sets: sets.map(s => [s.id, s.name, (s.outputIds || []).slice().sort()]),
+    outs: outs.map(o => [o.id, o.name, (o.activeSetIds || []).slice().sort()]),
+  });
   if (fp !== _opsLtSetsFp) {
     _opsLtSetsFp = fp;
-    bar.innerHTML = sets.length
-      ? sets.map(s => '<button class="ops-lt-set-btn' + (live.indexOf(s.id) !== -1 ? ' is-live' : '') + '" onclick="opsTriggerSet(\'' + s.id + '\')">' + esc(s.name || 'Set') + '</button>').join('')
-      : '<span class="ops-ctrl-label" style="opacity:.6">No sets</span>';
+    // One button per (set, assigned output); a multi-output set shows "Set · Output".
+    const btns = [];
+    sets.forEach(s => {
+      const assigned = (s.outputIds || []).map(id => outs.find(o => o.id === id)).filter(Boolean);
+      const multi = assigned.length > 1;
+      assigned.forEach(o => {
+        const live = (o.activeSetIds || []).includes(s.id);
+        const label = esc(s.name || 'Set') + (multi ? ' · ' + esc(o.name || 'Out') : '');
+        btns.push('<button class="ops-lt-set-btn' + (live ? ' is-live' : '') + '" onclick="opsTriggerSet(\'' + s.id + '\',\'' + o.id + '\')">' + label + '</button>');
+      });
+    });
+    bar.innerHTML = btns.length ? btns.join('') : '<span class="ops-ctrl-label" style="opacity:.6">No sets</span>';
   }
 }
 

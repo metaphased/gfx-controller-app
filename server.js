@@ -1510,10 +1510,10 @@ function ltSyncBus(outId, visible) {
   io.emit('busState', busState);
 }
 function ltSetLive(lt, setId) {
-  // A set is "live" when it's showing on EVERY output it's assigned to.
+  // A set is "live" when it's showing on ANY output it's assigned to.
   const s = (lt.sets || []).find(x => x.id === setId); if (!s) return false;
   const outs = (s.outputIds || []).map(id => ltOutput(id)).filter(Boolean);
-  return outs.length > 0 && outs.every(o => (o.activeSetIds || []).includes(setId));
+  return outs.some(o => (o.activeSetIds || []).includes(setId));
 }
 
 // A visibility accessor for a (possibly compound) graphic key, used by bus routing.
@@ -1539,17 +1539,24 @@ function graphicVisibleRef(key) {
   return null;
 }
 
-// Set trigger — animate a set IN or OUT. The set draws to whichever output(s) it's
-// assigned to (set.outputIds); each output honours its own exclusive (one at a time)
-// vs freeform (stack) mode. The control surface never picks an output — only the set.
+// Set trigger — animate a set IN or OUT. With an `outId` it targets that one output
+// (a set on several outputs gets a button per output, so each is driven independently);
+// without one it toggles across ALL the set's assigned outputs (Companion / keybinds).
+// Each output honours its own exclusive (one at a time) vs freeform (stack) mode.
 app.post('/api/lowerThird/trigger', (req, res) => {
-  const { setId } = req.body || {};
+  const { setId, outId } = req.body || {};
   const lt = state.lowerThird;
   const set = (lt.sets || []).find(s => s.id === setId);
   if (!set) return res.status(400).json({ error: 'unknown set' });
-  const outs = (set.outputIds || []).map(id => ltOutput(id)).filter(Boolean);
+  let outs = (set.outputIds || []).map(id => ltOutput(id)).filter(Boolean);
+  if (outId) {
+    outs = outs.filter(o => o.id === outId);
+    if (!outs.length) return res.status(400).json({ error: 'set is not assigned to that output' });
+  }
   if (!outs.length) return res.status(400).json({ error: 'set has no assigned output' });
-  const isOn = outs.every(o => (o.activeSetIds || []).includes(setId));
+  // Live if showing on ANY targeted output (an exclusive output may have dropped it
+  // when another set took over) — so one press cleanly clears it from all of them.
+  const isOn = outs.some(o => (o.activeSetIds || []).includes(setId));
   outs.forEach(o => {
     if (!Array.isArray(o.activeSetIds)) o.activeSetIds = [];
     if (isOn) {
@@ -1564,9 +1571,10 @@ app.post('/api/lowerThird/trigger', (req, res) => {
   lt.activeSetId = setId; // builder follows the set you just triggered
   ltRecomputeVisible(lt);
   const aired = !isOn;
+  const tail = outId ? ' → ' + ltOutputName(outId) : '';
   const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
-  recordAction('lower-thirds', user, (aired ? 'Air ' : 'Hide ') + (set.name || 'Set'));
-  logAction(user, role, aired ? 'air set' : 'hide set', 'lower-thirds (' + (set.name || 'Set') + ')');
+  recordAction('lower-thirds', user, (aired ? 'Air ' : 'Hide ') + (set.name || 'Set') + tail);
+  logAction(user, role, aired ? 'air set' : 'hide set', 'lower-thirds (' + (set.name || 'Set') + tail + ')');
   broadcast(); res.json({ ok: true, live: aired });
 });
 
