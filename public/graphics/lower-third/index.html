@@ -167,18 +167,11 @@ socket.on('state', (state) => {
     GfxSettings.applyAnimation(document.documentElement, state, 'lowerThird');
   }
   const lt = state.lowerThird || {};
-  // Per-output state: 'main' lives at the top level; every other output (?out=<id>)
-  // carries its own visible + activeSetIds, so each browser source is independent.
-  let visible, liveIds;
-  if (_outId === 'main') {
-    visible = !!lt.visible;
-    liveIds = Array.isArray(lt.activeSetIds) ? lt.activeSetIds.slice() : [];
-    if (!liveIds.length && lt.activeSetId) liveIds = [lt.activeSetId]; // master Show toggle fallback
-  } else {
-    const out = (lt.outputs || []).find(o => o.id === _outId);
-    visible = !!(out && out.visible);
-    liveIds = (out && Array.isArray(out.activeSetIds)) ? out.activeSetIds.slice() : [];
-  }
+  // Each output (?out=<id>, default 'main') composites its own live sets. An output
+  // is visible whenever it has live sets — no separate flag.
+  const out = (lt.outputs || []).find(o => o.id === _outId);
+  const liveIds = (out && Array.isArray(out.activeSetIds)) ? out.activeSetIds.slice() : [];
+  const visible = liveIds.length > 0;
   const items = liveIds
     .map(id => (lt.sets || []).find(s => s.id === id))
     .filter(Boolean)
