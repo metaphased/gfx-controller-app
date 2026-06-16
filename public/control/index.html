@@ -738,9 +738,13 @@
         <div class="gfx-ctrl-row">
           <div class="gfx-ctrl-group" id="ctrlgrp-lowerThird">
             <span class="gfx-ctrl-section-label">Output</span>
-            <button class="lbar-toggle" id="ctrlbtn-lowerThird" onclick="toggleGraphic('lowerThird')">
+            <span class="lbar-toggle lt-master-label" id="ctrlbtn-lowerThird">
               <span class="lbar-dot" id="ctrl-dot-lowerThird"></span>LOWER THIRD
-            </button>
+            </span>
+          </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Outputs</span>
+            <div id="lt-output-bar" class="lt-setbar"></div>
           </div>
           <div class="gfx-ctrl-group">
             <span class="gfx-ctrl-section-label">Air Set</span>
@@ -2511,7 +2515,7 @@
 
     <!-- Game graphics -->
     <div class="lbar-group" id="lbar-group-lowerThird">
-      <button class="lbar-toggle" id="lbar-toggle-lowerThird" onclick="toggleGraphic('lowerThird')"><span class="lbar-dot" id="lbar-dot-lowerThird"></span>LOWER 3RD</button>
+      <span class="lbar-toggle lt-master-label" id="lbar-toggle-lowerThird"><span class="lbar-dot" id="lbar-dot-lowerThird"></span>LOWER 3RD</span>
       <span class="lbar-lt-sets" id="lbar-lt-sets"></span>
     </div>
     <div class="lbar-divider"></div>

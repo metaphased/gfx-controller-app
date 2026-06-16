@@ -159,8 +159,10 @@ function buildItem(state, item, idx) {
   return el;
 }
 
-let _fp = null;
-let _shown = false;
+// Per-item lifecycle so each lower third animates IN when its set is aired and
+// animates OUT (then leaves the DOM) when cleared — rather than the whole output
+// being rebuilt/cut. Keyed by item id (ids are globally unique across sets).
+const _live = {};   // itemId -> { el, fp }
 socket.on('state', (state) => {
   if (window.GfxSettings) {
     GfxSettings.applyTheme(document.documentElement, state);
@@ -171,30 +173,41 @@ socket.on('state', (state) => {
   // is visible whenever it has live sets — no separate flag.
   const out = (lt.outputs || []).find(o => o.id === _outId);
   const liveIds = (out && Array.isArray(out.activeSetIds)) ? out.activeSetIds.slice() : [];
-  const visible = liveIds.length > 0;
   const items = liveIds
     .map(id => (lt.sets || []).find(s => s.id === id))
     .filter(Boolean)
     .flatMap(s => s.items || []);
 
-  // Rebuild the DOM only when the rendered content changes; visibility alone just
-  // toggles the entrance/exit transition on the existing elements.
-  const contentFp = JSON.stringify(items);
-  if (contentFp !== _fp) {
-    _fp = contentFp;
-    root.innerHTML = '';
-    items.forEach((it, i) => root.appendChild(buildItem(state, it, i)));
-    _shown = false;
-  }
-  if (visible && !_shown) {
-    _shown = true;
-    requestAnimationFrame(() => root.querySelectorAll('.lt-item').forEach(el => el.classList.add('in')));
-  } else if (!visible && _shown) {
-    _shown = false;
-    root.querySelectorAll('.lt-item').forEach(el => el.classList.remove('in'));
-  } else if (visible && _shown) {
-    root.querySelectorAll('.lt-item').forEach(el => el.classList.add('in'));
-  }
+  const desired = new Map();
+  items.forEach((it, i) => desired.set(it.id, { it, i }));
+
+  // Exit: anything no longer desired animates out, then is removed.
+  Object.keys(_live).forEach(id => {
+    if (!desired.has(id)) {
+      const rec = _live[id]; delete _live[id];
+      rec.el.classList.remove('in');
+      setTimeout(() => { if (rec.el.parentNode) rec.el.remove(); }, 700);
+    }
+  });
+
+  // Enter / update.
+  desired.forEach(({ it, i }, id) => {
+    const fp = JSON.stringify(it);
+    const rec = _live[id];
+    if (!rec) {
+      const el = buildItem(state, it, i);
+      root.appendChild(el);
+      _live[id] = { el, fp };
+      // next frame so the entrance transition runs from the opacity:0 start state
+      requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('in')));
+    } else if (fp !== rec.fp) {
+      // content changed while already shown — swap in place, no re-entrance
+      const el = buildItem(state, it, i);
+      el.classList.add('in');
+      root.replaceChild(el, rec.el);
+      _live[id] = { el, fp };
+    }
+  });
 });
 </script>
 </body>

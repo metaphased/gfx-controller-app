@@ -997,6 +997,15 @@ function patchLT(data) { api('/api/lowerThird', data); }
 // outId given → that one output; omitted → all the set's assigned outputs at once.
 function ltTriggerSet(id, outId) { api('/api/lowerThird/trigger', outId ? { setId: id, outId: outId } : { setId: id }); }
 function ltHideAll() { api('/api/lowerThird/hideAll', {}); }
+function ltToggleOutput(id) { api('/api/lowerThird/output/toggle', { id }); }   // air/clear a whole output
+// Output toggle buttons (one per output) — toggle everything in that output.
+function _ltOutputButtons(lt, cls) {
+  return (lt.outputs || []).map(function (o) {
+    const live = (o.activeSetIds || []).length > 0;
+    return '<button class="' + cls + (live ? ' is-live' : '') + '" title="Toggle everything on ' + esc(o.name || 'this output') + '" onclick="ltToggleOutput(\'' + o.id + '\')">' +
+      (live && cls === 'lt-out-btn' ? '<span class="lt-live-dot"></span>' : '') + esc(o.name || 'Out') + '</button>';
+  });
+}
 
 // ── Lower Third outputs (channels — like buses for lower-third groups) ─────────
 // A set is "live" when it's showing on ANY output it's assigned to (so a set still
@@ -1083,6 +1092,7 @@ function syncLowerThirdTab(s) {
   });
   if (fp === _ltTabFp) return;   // content-only edits don't re-render → inputs keep focus
   _ltTabFp = fp;
+  _ltRenderOutputBar(lt);
   _ltRenderSetbar(sets, lt);
   _ltRenderSetsList(sets, active, lt);
   _ltRenderItems(active);
@@ -1106,6 +1116,11 @@ function _ltSetButtons(sets, lt, cls) {
     });
   });
   return btns;
+}
+function _ltRenderOutputBar(lt) {
+  const bar = g('lt-output-bar'); if (!bar) return;
+  const btns = _ltOutputButtons(lt, 'lt-out-btn');
+  bar.innerHTML = btns.length ? btns.join('') : '<span class="lt-set-count">—</span>';
 }
 function _ltRenderSetbar(sets, lt) {
   const bar = g('lt-setbar'); if (!bar) return;
@@ -3879,9 +3894,9 @@ function syncGraphicIndicators(s) {
     // Sidebar dot
     const navDot = g('nav-dot-' + gfx.tab);
     if (navDot) navDot.className = 'nav-status-dot' + (active ? ' active' : '');
-    // Ctrl-bar toggle button
+    // Ctrl-bar toggle button (Lower Third's is a non-clickable status label)
     const ctrlBtn = g('ctrlbtn-' + gfx.key);
-    if (ctrlBtn) ctrlBtn.className = 'lbar-toggle' + (active ? ' is-on' : '');
+    if (ctrlBtn) ctrlBtn.className = 'lbar-toggle' + (gfx.key === 'lowerThird' ? ' lt-master-label' : '') + (active ? ' is-on' : '');
     // Ctrl-bar dot
     const ctrlDot = g('ctrl-dot-' + gfx.key);
     if (ctrlDot) ctrlDot.classList.toggle('active', !!active);
@@ -4030,7 +4045,7 @@ function syncLiveBar(s) {
     const toggleB = g('lbar-toggle-' + gfx.key);
     if (group)   group.classList.toggle('lbar-group-active', !!active);
     if (dot)     dot.classList.toggle('active', !!active);
-    if (toggleB) toggleB.className = 'lbar-toggle' + (active ? ' is-on' : '');
+    if (toggleB) toggleB.className = 'lbar-toggle' + (gfx.key === 'lowerThird' ? ' lt-master-label' : '') + (active ? ' is-on' : '');
   });
 
   _syncLbarLtSets(s);
@@ -4087,15 +4102,16 @@ function _syncLbarLtSets(s) {
   const host = g('lbar-lt-sets'); if (!host) return;
   const lt = s.lowerThird || {};
   const sets = lt.sets || [];
-  const btns = _ltSetButtons(sets, lt, 'lbar-lt-chip');
+  const outBtns = _ltOutputButtons(lt, 'lbar-lt-out');     // toggle a whole output
+  const setBtns = _ltSetButtons(sets, lt, 'lbar-lt-chip'); // individual (set·output)
   const fp = JSON.stringify({
     sets: sets.map(st => [st.id, st.name, (st.outputIds || []).slice().sort()]),
     outs: (lt.outputs || []).map(o => [o.id, o.name, (o.activeSetIds || []).slice().sort()]),
   });
   if (fp === _lbarLtFp) return;
   _lbarLtFp = fp;
-  // Only worth showing in the cramped live bar when there's more than one button.
-  host.innerHTML = btns.length > 1 ? btns.join('') : '';
+  const sep = (outBtns.length && setBtns.length) ? '<span class="lbar-lt-sep"></span>' : '';
+  host.innerHTML = (outBtns.length + setBtns.length) ? (outBtns.join('') + sep + setBtns.join('')) : '';
 }
 
 function lbarSetWinTeam(team) {

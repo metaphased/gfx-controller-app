@@ -234,6 +234,7 @@ body {
   border-color: #ff4444;
   color: #ff6666;
 }
+.lbar-toggle.lt-master-label { pointer-events: none; }
 .lbar-dot {
   display: inline-block;
   width: 5px; height: 5px;
@@ -553,9 +554,9 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
     <div class="ops-ctrl-row">
       <div class="ops-ctrl-group" id="ops-grp-lowerThird">
         <span class="ops-ctrl-label">Output</span>
-        <button class="lbar-toggle" id="ops-btn-lowerThird" onclick="toggleGfx('lowerThird')">
+        <span class="lbar-toggle lt-master-label" id="ops-btn-lowerThird">
           <span class="lbar-dot" id="ops-dot-lowerThird"></span>Lower Third
-        </button>
+        </span>
       </div>
       <div class="ops-ctrl-group">
         <span class="ops-ctrl-label">Position</span>
@@ -564,6 +565,10 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
       </div>
     </div>
     <div class="ops-ctrl-row">
+      <div class="ops-ctrl-group">
+        <span class="ops-ctrl-label">Outputs</span>
+        <div class="ops-lt-setbar" id="ops-lt-outbar"></div>
+      </div>
       <div class="ops-ctrl-group">
         <span class="ops-ctrl-label">Air Set</span>
         <div class="ops-lt-setbar" id="ops-lt-setbar"></div>
@@ -953,7 +958,7 @@ function setText(id, val) { const e = g(id); if (e) e.textContent = val; }
 function setInp(id, val) { const e = g(id); if (e && document.activeElement !== e) e.value = val || ''; }
 function setModeActive(id, active) { const e = g(id); if (e) e.className = 'mode-btn' + (active ? ' is-active' : ''); }
 function syncToggle(btnId, dotId, grpId, active) {
-  const btn = g(btnId); if (btn) btn.className = 'lbar-toggle' + (active ? ' is-on' : '');
+  const btn = g(btnId); if (btn) btn.className = 'lbar-toggle' + (btnId === 'ops-btn-lowerThird' ? ' lt-master-label' : '') + (active ? ' is-on' : '');
   const dot = g(dotId); if (dot) dot.classList.toggle('active', active);
   const grp = g(grpId); if (grp) grp.classList.toggle('is-live', active);
 }
@@ -994,6 +999,7 @@ function opsLT(field, value) {
 function patchLT(side) { opsLT('side', side); }
 // outId given → that one output; omitted → all the set's assigned outputs.
 function opsTriggerSet(id, outId) { api('/api/lowerThird/trigger', outId ? { setId: id, outId: outId } : { setId: id }); }
+function opsToggleOutput(id) { api('/api/lowerThird/output/toggle', { id }); }
 let _opsLtSetsFp = null;
 function opsRenderLtSets(state) {
   const bar = g('ops-lt-setbar'); if (!bar) return;
@@ -1004,21 +1010,25 @@ function opsRenderLtSets(state) {
     sets: sets.map(s => [s.id, s.name, (s.outputIds || []).slice().sort()]),
     outs: outs.map(o => [o.id, o.name, (o.activeSetIds || []).slice().sort()]),
   });
-  if (fp !== _opsLtSetsFp) {
-    _opsLtSetsFp = fp;
-    // One button per (set, assigned output); a multi-output set shows "Set · Output".
-    const btns = [];
-    sets.forEach(s => {
-      const assigned = (s.outputIds || []).map(id => outs.find(o => o.id === id)).filter(Boolean);
-      const multi = assigned.length > 1;
-      assigned.forEach(o => {
-        const live = (o.activeSetIds || []).includes(s.id);
-        const label = esc(s.name || 'Set') + (multi ? ' · ' + esc(o.name || 'Out') : '');
-        btns.push('<button class="ops-lt-set-btn' + (live ? ' is-live' : '') + '" onclick="opsTriggerSet(\'' + s.id + '\',\'' + o.id + '\')">' + label + '</button>');
-      });
+  if (fp === _opsLtSetsFp) return;
+  _opsLtSetsFp = fp;
+  // Output toggle buttons — toggle everything on that output.
+  const outBar = g('ops-lt-outbar');
+  if (outBar) outBar.innerHTML = outs.length
+    ? outs.map(o => '<button class="ops-lt-set-btn' + ((o.activeSetIds || []).length ? ' is-live' : '') + '" onclick="opsToggleOutput(\'' + o.id + '\')">' + esc(o.name || 'Out') + '</button>').join('')
+    : '<span class="ops-ctrl-label" style="opacity:.6">—</span>';
+  // One button per (set, assigned output); a multi-output set shows "Set · Output".
+  const btns = [];
+  sets.forEach(s => {
+    const assigned = (s.outputIds || []).map(id => outs.find(o => o.id === id)).filter(Boolean);
+    const multi = assigned.length > 1;
+    assigned.forEach(o => {
+      const live = (o.activeSetIds || []).includes(s.id);
+      const label = esc(s.name || 'Set') + (multi ? ' · ' + esc(o.name || 'Out') : '');
+      btns.push('<button class="ops-lt-set-btn' + (live ? ' is-live' : '') + '" onclick="opsTriggerSet(\'' + s.id + '\',\'' + o.id + '\')">' + label + '</button>');
     });
-    bar.innerHTML = btns.length ? btns.join('') : '<span class="ops-ctrl-label" style="opacity:.6">No sets</span>';
-  }
+  });
+  bar.innerHTML = btns.length ? btns.join('') : '<span class="ops-ctrl-label" style="opacity:.6">No sets</span>';
 }
 
 /* ── Player Intro ── */

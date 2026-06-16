@@ -1610,6 +1610,26 @@ app.post('/api/lowerThird/output/update', (req, res) => {
   ltRecomputeVisible(state.lowerThird);
   broadcast(); res.json({ ok: true });
 });
+// Toggle a whole output on/off — air all its assigned sets (freeform) / the first
+// (exclusive), or clear them. The output's "name button" on the control surface.
+app.post('/api/lowerThird/output/toggle', (req, res) => {
+  const { id } = req.body || {};
+  const o = ltOutput(id);
+  if (!o) return res.status(400).json({ error: 'unknown output' });
+  if ((o.activeSetIds || []).length > 0) {
+    o.activeSetIds = [];
+  } else {
+    const seed = (state.lowerThird.sets || []).filter(s => (s.outputIds || []).includes(o.id)).map(s => s.id);
+    o.activeSetIds = o.mode === 'freeform' ? seed : seed.slice(0, 1);
+  }
+  ltSyncBus(o.id, o.activeSetIds.length > 0);
+  ltRecomputeVisible(state.lowerThird);
+  const user = resolveUserFromReq(req); const role = resolveRoleFromReq(req);
+  const on = o.activeSetIds.length > 0;
+  recordAction('lower-thirds', user, (on ? 'Air ' : 'Clear ') + (o.name || 'Output'));
+  logAction(user, role, on ? 'air output' : 'clear output', 'lower-thirds (' + (o.name || 'Output') + ')');
+  broadcast(); res.json({ ok: true, visible: on });
+});
 app.post('/api/lowerThird/output/delete', (req, res) => {
   const { id } = req.body || {};
   if (id === 'main') return res.status(400).json({ error: 'cannot delete the main output' });
