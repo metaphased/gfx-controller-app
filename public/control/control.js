@@ -6481,7 +6481,7 @@ function deleteLook(id, btn) {
 function patchBgo(data) { api('/api/bgOutput', data); }
 
 // Animation types offered by the BG Output source
-const _BG_ANIMS = ['particles', 'scanlines', 'grid', 'hexgrid', 'diamonds', 'dotwave', 'lines', 'rings', 'circuit', 'rain', 'fog', 'wave'];
+const _BG_ANIMS = ['particles', 'grid', 'hexgrid', 'diamonds', 'dotwave', 'lines', 'rings', 'circuit', 'rain', 'fog', 'wave'];
 
 function setBgoType(type) {
   patchBgo({ bgType: type });
@@ -6498,12 +6498,35 @@ function setBgoAnim(val) {
   _BG_ANIMS.forEach(a => {
     const btn = g('bgo-anim-' + a); if (btn) btn.classList.toggle('is-active', a === val);
   });
+  const wr = g('bgo-wave-row'); if (wr) wr.style.display = val === 'wave' ? 'block' : 'none';
+}
+
+function setBgoWaveMode(val) {
+  patchBgo({ bgWaveMode: val });
+  ['clean','image'].forEach(v => {
+    const btn = g('bgo-wave-' + v); if (btn) btn.classList.toggle('is-active', v === val);
+  });
+  const ir = g('bgo-wave-image-row'); if (ir) ir.style.display = val === 'image' ? 'block' : 'none';
 }
 
 function setBgoSpeed(val) {
   patchBgo({ animation: { bgSpeed: val } });
   ['slow','medium','fast'].forEach(v => {
     const btn = g('bgo-speed-' + v); if (btn) btn.classList.toggle('is-active', v === val);
+  });
+}
+
+function setBgoRenderer(val) {
+  patchBgo({ bgRenderer: val });
+  ['gpu','canvas'].forEach(v => {
+    const btn = g('bgo-renderer-' + v); if (btn) btn.classList.toggle('is-active', v === val);
+  });
+}
+
+function setBgoFps(val) {
+  patchBgo({ bgFps: val });
+  [60,30].forEach(v => {
+    const btn = g('bgo-fps-' + v); if (btn) btn.classList.toggle('is-active', v === val);
   });
 }
 
@@ -6525,6 +6548,9 @@ function syncBgoTab(bgo) {
   const bgAnimation = bgo.bgAnimation || 'particles';
   const bgColor     = bgo.bgColor     || '#070f12';
   const bgSpeed     = (bgo.animation  || {}).bgSpeed || 'medium';
+  const bgRenderer  = bgo.bgRenderer  || 'gpu';
+  const bgFps       = bgo.bgFps != null ? bgo.bgFps : 60;
+  const bgWaveMode  = bgo.bgWaveMode  || 'clean';
 
   ['transparent','color','image','animation'].forEach(t => {
     const btn = g('bgo-bg-' + t); if (btn) btn.classList.toggle('is-active', t === bgType);
@@ -6547,6 +6573,18 @@ function syncBgoTab(bgo) {
   ['slow','medium','fast'].forEach(v => {
     const btn = g('bgo-speed-' + v); if (btn) btn.classList.toggle('is-active', v === bgSpeed);
   });
+  ['gpu','canvas'].forEach(v => {
+    const btn = g('bgo-renderer-' + v); if (btn) btn.classList.toggle('is-active', v === bgRenderer);
+  });
+  [60,30].forEach(v => {
+    const btn = g('bgo-fps-' + v); if (btn) btn.classList.toggle('is-active', v === bgFps);
+  });
+  const waveRow = g('bgo-wave-row'); if (waveRow) waveRow.style.display = bgAnimation === 'wave' ? 'block' : 'none';
+  ['clean','image'].forEach(v => {
+    const btn = g('bgo-wave-' + v); if (btn) btn.classList.toggle('is-active', v === bgWaveMode);
+  });
+  const waveImgRow = g('bgo-wave-image-row'); if (waveImgRow) waveImgRow.style.display = bgWaveMode === 'image' ? 'block' : 'none';
+  const wImg = g('bgo-wave-img-url'); if (wImg && document.activeElement !== wImg) wImg.value = bgo.bgImage || '';
 
   const fogChk = g('bgo-fog-layer');
   if (fogChk) fogChk.checked = !!bgo.bgFogLayer;
