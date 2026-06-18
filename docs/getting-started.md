@@ -5,7 +5,7 @@ This page gets MetaGFX running and points you at the few things that will save y
 ## Requirements
 
 - **Node.js 18+**
-- **OBS or vMix** with a browser-source capable scene (graphics render at 1920×1080)
+- **OBS or vMix** with a browser-source capable scene (overlays are resolution-independent — 1920×1080 or 2560×1440 both work, see below)
 - *(Optional)* a **persistent Riot API key** for Solo Queue rank lookups — see [below](#riot-api-key)
 
 ## Install & first run
@@ -42,7 +42,7 @@ A handful of things bite people the first time. Read these once.
 
 1. In MetaGFX, open **Settings → Output URLs** and copy the URL for the graphic you want (each already includes `?token=XXXX`).
 2. In OBS/vMix add a **Browser Source** and paste the URL.
-3. Set the source to **1920 × 1080**.
+3. Set the source resolution to match your canvas — **1920 × 1080** for 1080p, or **2560 × 1440** for 1440p. The overlays are built on viewport units and scale to fill whatever size the browser source is, so there's nothing to reconfigure in MetaGFX when you switch; for crisp 1440p output just create the browser sources at 2560 × 1440 (and set the OBS canvas to match). *(The one source-art caveat: champion **splash backgrounds** in Head-to-Head / Player Spotlight come from Riot's Data Dragon at a fixed ~1215 px and will upscale slightly when shown full-bleed at 1440p — everything else, including all text and vector chrome, stays sharp.)*
 4. Leave the background transparent — overlays are transparent by design; composite them over your scene. For a coloured/animated backdrop use the separate [BG Output](bg-output.md) source as its own layer underneath.
 
 A few graphics expose **more than one output** — e.g. the [Lower Third](lower-third.md) lists a **Main** URL plus a `?out=<id>` URL per extra output, so you can run independent lower thirds on different scenes at once.
