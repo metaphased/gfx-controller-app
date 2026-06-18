@@ -39,10 +39,26 @@ window.GfxSettings = (function () {
     return r + ', ' + g + ', ' + b;
   }
 
+  var _lastThemeKey = null;
   function applyTheme(el, s) {
     const st = get(s);
     const pal = st.palette || [];
     const defaults = ['#1ffaff', '#a7a38e', '#e8e6df', '#070f12'];
+    // applyTheme runs on EVERY state broadcast in every overlay, but the theme
+    // (palette / accents / bg colour / fonts) rarely changes mid-show. Skip the
+    // ~15 redundant :root writes + custom-font rebuild when nothing themable
+    // changed, so frequent broadcasts (e.g. typing in a control field) don't
+    // dirty every overlay's root style. Mirrors applyAnimation's _lastAnimKey gate.
+    const themeKey = [
+      (pal[0] && pal[0].hex) || '', (pal[1] && pal[1].hex) || '',
+      (pal[2] && pal[2].hex) || '', (pal[3] && pal[3].hex) || '',
+      st.blueAccent || '', st.redAccent || '', st.bgColor || '',
+      st.overlayFont || '', st.overlayFont2 || '',
+      (Array.isArray(st.customFonts) ? st.customFonts : [])
+        .map(function (f) { return (f && f.name) + ':' + (f && f.url); }).join(','),
+    ].join('|');
+    if (themeKey === _lastThemeKey) return;
+    _lastThemeKey = themeKey;
     for (let i = 0; i < 4; i++) {
       const hex = (pal[i] && pal[i].hex) || defaults[i];
       el.style.setProperty('--gfx-c' + (i + 1), hex);
