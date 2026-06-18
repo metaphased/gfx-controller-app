@@ -545,6 +545,8 @@ const makeDefault = () => ({
     bgType: 'animation', bgAnimation: 'particles',
     bgColor: '#070f12',  bgImage: '',
     bgFogLayer: false,   bgFogIntensity: 50,
+    bgRenderer: 'gpu',   bgFps: 60,   // 'gpu' (WebGL shader, falls back to canvas) | 'canvas'; 60 | 30 fps
+    bgWaveMode: 'clean', // wave style: 'clean' (shader sine-bands) | 'image' (ripples bgImage, canvas)
     animation: { bgSpeed: 'medium' },
     palette: [],
   },

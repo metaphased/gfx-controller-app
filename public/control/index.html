@@ -1798,7 +1798,6 @@
               <span class="theme-anim-label theme-anim-label--section">Animation Type</span>
               <div class="theme-pills" style="flex-wrap:wrap;gap:6px;margin-bottom:12px">
                 <button class="theme-pill" id="bgo-anim-particles" onclick="setBgoAnim('particles')">Particles</button>
-                <button class="theme-pill" id="bgo-anim-scanlines" onclick="setBgoAnim('scanlines')">Scanlines</button>
                 <button class="theme-pill" id="bgo-anim-grid"      onclick="setBgoAnim('grid')">Grid</button>
                 <button class="theme-pill" id="bgo-anim-hexgrid"   onclick="setBgoAnim('hexgrid')">Hex Grid</button>
                 <button class="theme-pill" id="bgo-anim-diamonds"  onclick="setBgoAnim('diamonds')">Diamonds</button>
@@ -1810,6 +1809,23 @@
                 <button class="theme-pill" id="bgo-anim-fog"       onclick="setBgoAnim('fog')">Fog</button>
                 <button class="theme-pill" id="bgo-anim-wave"      onclick="setBgoAnim('wave')">Wave</button>
               </div>
+              <div id="bgo-wave-row" style="display:none;margin-bottom:12px">
+                <span class="theme-anim-label">Wave Style</span>
+                <div class="theme-pills" style="margin-top:4px;margin-bottom:8px">
+                  <button class="theme-pill" id="bgo-wave-clean" onclick="setBgoWaveMode('clean')">Clean</button>
+                  <button class="theme-pill" id="bgo-wave-image" onclick="setBgoWaveMode('image')">Image</button>
+                </div>
+                <div id="bgo-wave-image-row" style="display:none">
+                  <div class="field-row"><label>Image URL</label>
+                    <div class="upload-row">
+                      <input type="text" id="bgo-wave-img-url" placeholder="/uploads/…" oninput="patchBgo({bgImage:this.value})">
+                      <button class="btn btn-sm" onclick="g('bgo-wave-img-file').click()">Upload</button>
+                      <input type="file" id="bgo-wave-img-file" accept="image/*" style="display:none" onchange="uploadBgoImage(this)">
+                    </div>
+                  </div>
+                  <div style="font-size:11px;opacity:0.6;margin-top:2px">Ripples this image (scaled to fill). Canvas-rendered.</div>
+                </div>
+              </div>
               <div class="theme-palette-slot" style="margin-bottom:10px">
                 <span class="theme-fixed-label">Base Colour</span>
                 <input type="color" id="bgo-animcolor-swatch" class="theme-swatch" oninput="patchBgo({bgColor:this.value})">
@@ -1820,6 +1836,18 @@
                 <button class="theme-pill" id="bgo-speed-slow"   onclick="setBgoSpeed('slow')">Slow</button>
                 <button class="theme-pill" id="bgo-speed-medium" onclick="setBgoSpeed('medium')">Medium</button>
                 <button class="theme-pill" id="bgo-speed-fast"   onclick="setBgoSpeed('fast')">Fast</button>
+              </div>
+              <span class="theme-anim-label theme-anim-label--section">Performance</span>
+              <span class="theme-anim-label">Renderer</span>
+              <div class="theme-pills" style="margin-top:4px;margin-bottom:8px">
+                <button class="theme-pill" id="bgo-renderer-gpu"    onclick="setBgoRenderer('gpu')">GPU (shader)</button>
+                <button class="theme-pill" id="bgo-renderer-canvas" onclick="setBgoRenderer('canvas')">Canvas</button>
+              </div>
+              <div id="bgo-renderer-note" style="font-size:11px;opacity:0.6;margin-bottom:10px;line-height:1.4">GPU renders the background as a shader (much lighter on the encode GPU). Types without a shader yet use canvas automatically.</div>
+              <span class="theme-anim-label">Frame Rate</span>
+              <div class="theme-pills" style="margin-top:4px;margin-bottom:12px">
+                <button class="theme-pill" id="bgo-fps-60" onclick="setBgoFps(60)">Smooth&nbsp;60</button>
+                <button class="theme-pill" id="bgo-fps-30" onclick="setBgoFps(30)">Performance&nbsp;30</button>
               </div>
               <div class="field-row" style="align-items:center;gap:10px">
                 <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
@@ -2016,7 +2044,6 @@
                 <option value="solid">Solid colour</option>
                 <optgroup label="Premade animations">
                   <option value="particles">Particles</option>
-                  <option value="scanlines">Scanlines</option>
                   <option value="grid">Grid</option>
                   <option value="hexgrid">Hex grid</option>
                   <option value="diamonds">Diamonds</option>

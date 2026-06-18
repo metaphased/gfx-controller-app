@@ -73,6 +73,7 @@ window.GfxSettings = (function () {
 
   function applyBackground(el, s) {
     const st = get(s);
+    _setBgFps(st.bgFps);
 
     // Build a key from every setting that affects what's drawn.
     // If nothing relevant changed, leave the running animation untouched.
@@ -84,6 +85,9 @@ window.GfxSettings = (function () {
       (get(s).animation || {}).bgSpeed || 'medium',
       st.bgFogLayer    ? '1' : '0',
       st.bgFogIntensity != null ? String(st.bgFogIntensity) : '50',
+      st.bgRenderer    || 'gpu',
+      st.bgFps != null ? String(st.bgFps) : '60',
+      st.bgWaveMode    || 'clean',
     ].join('|');
     if (bgKey === _lastBgKey && (st.bgType !== 'animation' || !!_canvas) && (!st.bgFogLayer || !!_fogCanvas)) return;
 
@@ -101,10 +105,24 @@ window.GfxSettings = (function () {
           el.style.backgroundPosition = 'center';
         }
         break;
-      case 'animation':
+      case 'animation': {
         el.style.background = st.bgColor || '#070f12';
-        _startBgAnimation(el, st.bgAnimation || 'particles', bgSpeed(s), st.bgImage || '');
+        const animType = st.bgAnimation || 'particles';
+        const useGpu = (st.bgRenderer || 'gpu') === 'gpu';
+        const acc = _accentRgb();
+        const glColor = [acc[0] / 255, acc[1] / 255, acc[2] / 255];
+        // `wave` has two styles: 'clean' (the GPU shader sine-bands) and 'image'
+        // (canvas-only — ripples a loaded bg image, scaled to cover). Image style
+        // forces the canvas path; both renderer settings then behave identically.
+        const waveImg = (animType === 'wave' && st.bgWaveMode === 'image') ? (st.bgImage || '') : '';
+        const gpuOk = useGpu && _glSupportsType(animType) && !waveImg;
+        // Try the GPU/shader path first; _startGLAnimation returns false (and the
+        // canvas path runs) when the type has no shader or WebGL is unavailable.
+        if (!(gpuOk && _startGLAnimation(el, animType, bgSpeed(s), glColor))) {
+          _startBgAnimation(el, animType, bgSpeed(s), waveImg);
+        }
         break;
+      }
       case 'transparent':
       default:
         el.style.background = 'transparent';
@@ -269,33 +287,54 @@ window.GfxSettings = (function () {
   // bg canvas faster than that on a high-refresh dev monitor — skip frames that
   // arrive early. 1000/61 keeps true 60Hz displays running every frame (16.67ms ≥
   // 16.39ms) while clamping 120/144Hz down to ~60.
-  var _FRAME_MS = 1000 / 61;
+  // Configurable cap, derived from bgFps (default 60). 1000/(fps+1) keeps a true
+  // fps-Hz display running every frame while clamping higher-refresh monitors down.
+  // The 'Performance' (30fps) mode halves per-frame work for the slow ambient bgs.
+  let _frameMs = 1000 / 61;
+  function _setBgFps(fps) { _frameMs = 1000 / ((Number(fps) || 60) + 1); }
   var _mainLastTs = 0, _fogLastTs = 0;
 
-  // Pause rAF loops when the tab is hidden; resume when it becomes visible.
+  // Pause render loops when the page isn't actually being shown. document.hidden
+  // covers tab/scene switches, but OBS does NOT reliably set it for a source merely
+  // toggled invisible (the eye icon) inside an active scene — so also honour OBS's
+  // obsSourceVisibleChanged (eye toggle) / obsSourceActiveChanged (program) events,
+  // which it dispatches to browser sources. Defaults stay 'shown' for non-OBS hosts.
+  let _obsVisible = true, _obsActive = true;
+  var _resumeGL = null; // set by the WebGL engine so it resumes alongside the canvas loops
+  function _renderPaused() { return document.hidden || !_obsVisible || !_obsActive; }
+
   function _rafMain(fn) {
     _animFrameFn = fn;
-    if (document.hidden) { _animId = null; return; }
+    if (_renderPaused()) { _animId = null; return; }
     _animId = requestAnimationFrame(function (ts) {
-      if (ts - _mainLastTs < _FRAME_MS) { _rafMain(fn); return; } // early frame — skip, recheck next tick
+      if (ts - _mainLastTs < _frameMs) { _rafMain(fn); return; } // early frame — skip, recheck next tick
       _mainLastTs = ts;
       fn(ts);
     });
   }
   function _rafFog(fn) {
     _fogAnimFrameFn = fn;
-    if (document.hidden) { _fogAnimId = null; return; }
+    if (_renderPaused()) { _fogAnimId = null; return; }
     _fogAnimId = requestAnimationFrame(function (ts) {
-      if (ts - _fogLastTs < _FRAME_MS) { _rafFog(fn); return; }
+      if (ts - _fogLastTs < _frameMs) { _rafFog(fn); return; }
       _fogLastTs = ts;
       fn(ts);
     });
   }
-  document.addEventListener('visibilitychange', function () {
-    if (!document.hidden) {
-      if (_animFrameFn)    _animId    = requestAnimationFrame(_animFrameFn);
-      if (_fogAnimFrameFn) _fogAnimId = requestAnimationFrame(_fogAnimFrameFn);
-    }
+  function _resumeRenderLoops() {
+    if (_renderPaused()) return;
+    if (_animFrameFn    && _animId    == null) _animId    = requestAnimationFrame(_animFrameFn);
+    if (_fogAnimFrameFn && _fogAnimId == null) _fogAnimId = requestAnimationFrame(_fogAnimFrameFn);
+    if (_resumeGL) _resumeGL();
+  }
+  document.addEventListener('visibilitychange', _resumeRenderLoops);
+  window.addEventListener('obsSourceVisibleChanged', function (e) {
+    _obsVisible = !!(e && e.detail && e.detail.visible);
+    _resumeRenderLoops();
+  });
+  window.addEventListener('obsSourceActiveChanged', function (e) {
+    _obsActive = !!(e && e.detail && e.detail.active);
+    _resumeRenderLoops();
   });
 
   function stopBgAnimation() {
@@ -303,6 +342,7 @@ window.GfxSettings = (function () {
     if (_canvas && _canvas.parentNode) _canvas.parentNode.removeChild(_canvas);
     if (_bgResizeFn) { window.removeEventListener('resize', _bgResizeFn); _bgResizeFn = null; }
     _canvas = null; _ctx = null; _animFrameFn = null; _mainLastTs = 0;
+    _stopGLAnimation(); // tear down the GPU path too, so neither renderer lingers
     stopFogLayer();
   }
 
@@ -313,9 +353,195 @@ window.GfxSettings = (function () {
     _fogCanvas = null; _fogCtx = null; _fogAnimFrameFn = null; _fogLastTs = 0;
   }
 
+  // ── WebGL background engine (opt-in GPU path) ────────────────────────────────
+  // A single full-screen quad + one procedural fragment shader per bg type renders
+  // the whole frame in one GPU draw call — far cheaper than the thousands of 2D
+  // canvas ops the equivalent animation needs. Falls back to the canvas path when a
+  // type has no shader or the context can't be created. Only ONE renderer is ever
+  // live; stopBgAnimation tears both down so nothing lingers when unselected.
+  let _glCanvas = null, _gl = null, _glProgram = null, _glAnimId = null;
+  let _glResizeFn = null, _glPhase = 0, _glSpeed = 1, _glLastTs = 0;
+  let _glU = null, _glDraw = null;
+
+  const _GL_VERT = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.0,1.0);}';
+
+  // Fragment-shader registry keyed by bg animation type. Each procedural shader
+  // replicates the look of the same-named canvas animation, baking in that
+  // animation's exact constants. Uniforms (via _GL_HEAD): uRes (px), uTime
+  // (generic frame-time = accumulated speed/frame; each shader applies its own
+  // rate), uColor (theme accent, 0..1). gl_FragCoord origin is bottom-left, so
+  // every shader flips Y (`fc`) to match the canvas top-left origin. Output is
+  // premultiplied (vec4(rgb*a, a)) for correct transparent compositing.
+  // Only the types whose canvas versions are draw-call-heavy are shader-backed;
+  // cheap/stateful ones (particles, rings, circuit, fog) stay on canvas via fallback.
+  const _GL_HEAD = 'precision highp float;uniform vec2 uRes;uniform float uTime;uniform vec3 uColor;const float PI=3.14159265;\n';
+  const _GL_FRAG = {
+    // ~2040 dots/frame on canvas — the biggest win.
+    dotwave: _GL_HEAD +
+      'void main(){vec2 fc=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y);' +
+      'float SP=44.0,R=1.4,ph=uTime*0.008;' +
+      'vec2 gp=floor(fc/SP+0.5)*SP;float d=length(fc-gp);' +
+      'float wave=sin(gp.x/uRes.x*PI*4.0+ph)*cos(gp.y/uRes.y*PI*3.0+ph*0.75)*0.5+0.5;' +
+      'float a=(0.04+wave*0.16)*(1.0-smoothstep(R-0.6,R+0.6,d));' +
+      'gl_FragColor=vec4(vec3(a),a);}',
+    // Orthogonal grid, 44px, pulsing alpha.
+    grid: _GL_HEAD +
+      'void main(){vec2 fc=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y);' +
+      'float SP=44.0;vec2 m=mod(fc,SP);vec2 dl=min(m,SP-m);' +
+      'float line=max(1.0-smoothstep(0.0,1.0,dl.x),1.0-smoothstep(0.0,1.0,dl.y));' +
+      'float a=(0.055+sin(uTime*0.009)*0.02)*line;gl_FragColor=vec4(vec3(a),a);}',
+    // 45°-rotated grid, 40px.
+    diamonds: _GL_HEAD +
+      'void main(){vec2 fc=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y);' +
+      'vec2 p=fc-uRes*0.5;float s=0.70710678;vec2 rp=vec2(p.x*s+p.y*s,-p.x*s+p.y*s);' +
+      'float SP=40.0;vec2 m=mod(rp,SP);vec2 dl=min(m,SP-m);' +
+      'float line=max(1.0-smoothstep(0.0,1.0,dl.x),1.0-smoothstep(0.0,1.0,dl.y));' +
+      'float a=(0.055+sin(uTime*0.007)*0.018)*line;gl_FragColor=vec4(vec3(a),a);}',
+    // Diagonal scrolling stripes, 55px.
+    lines: _GL_HEAD +
+      'void main(){vec2 fc=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y);' +
+      'vec2 p=fc-uRes*0.5;float s=0.70710678;float rx=p.x*s+p.y*s;' +
+      'float SP=55.0;float m=mod(rx-uTime*0.18,SP);float d=min(m,SP-m);' +
+      'float a=0.05*(1.0-smoothstep(0.0,1.0,d));gl_FragColor=vec4(vec3(a),a);}',
+    // Six drifting accent-coloured sine bands (no-image wave variant).
+    wave: _GL_HEAD +
+      'void main(){vec2 fc=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y);' +
+      'float ph=uTime*0.007,x=fc.x/uRes.x,a=0.0;' +
+      'for(int i=0;i<6;i++){float fi=float(i);' +
+      'float yBase=uRes.y*(0.08+fi*0.16),amp=uRes.y*(0.025+fi*0.004),freq=2.0+fi*0.7;' +
+      'float y=yBase+sin(x*PI*freq+ph+fi*0.9)*amp+sin(x*PI*freq*0.5+ph*1.3)*amp*0.4;' +
+      'a+=(0.025+fi*0.013)*(1.0-smoothstep(0.8+fi*0.25,2.3+fi*0.25,abs(fc.y-y)));}' +
+      'a=min(a,1.0);gl_FragColor=vec4(uColor*a,a);}',
+    // Accent rain: one falling streak per ~14px column, hashed length/speed/alpha.
+    rain: _GL_HEAD +
+      'float h11(float n){return fract(sin(n*12.9898)*43758.5453);}' +
+      'void main(){vec2 fc=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y);' +
+      'float colW=14.0;float col=floor(fc.x/colW);' +
+      'float h1=h11(col),h2=h11(col+11.3),h3=h11(col+27.7);' +
+      'float len=15.0+h1*55.0;float speed=1.5+h2*4.5;float al=0.06+h3*0.18;' +
+      'float period=uRes.y+len;float headY=mod(uTime*speed+h1*period,period);' +
+      'float inStreak=step(headY-len,fc.y)*step(fc.y,headY);' +
+      'float grad=clamp((fc.y-(headY-len))/len,0.0,1.0);' +
+      'float cx=(col+0.5)*colW;float xline=1.0-smoothstep(0.5,1.5,abs(fc.x-cx));' +
+      'float a=al*grad*inStreak*xline;gl_FragColor=vec4(uColor*a,a);}',
+    // Pointy-top hex outline grid, size 28, pulsing alpha. Cube-round to the nearest
+    // hex centre, then an iq hexagon SDF gives the cell border (outline = |sd|~0).
+    hexgrid: _GL_HEAD +
+      'void main(){vec2 fc=vec2(gl_FragCoord.x,uRes.y-gl_FragCoord.y);' +
+      'float s=28.0,R=24.248711;' +                                                  // R = apothem = s*sqrt(3)/2
+      'float q=(0.5773503*fc.x-0.3333333*fc.y)/s;float r=(0.6666667*fc.y)/s;' +      // pixel→axial
+      'float cx=q,cz=r,cy=-cx-cz;' +
+      'float rx=floor(cx+0.5),ry=floor(cy+0.5),rz=floor(cz+0.5);' +
+      'float dx=abs(rx-cx),dy=abs(ry-cy),dz=abs(rz-cz);' +
+      'if(dx>dy&&dx>dz){rx=-ry-rz;}else if(dy>dz){ry=-rx-rz;}else{rz=-rx-ry;}' +      // cube round
+      'float hx=s*1.7320508*(rx+rz*0.5);float hy=s*1.5*rz;' +                         // nearest centre (px)
+      'vec2 p=(fc-vec2(hx,hy)).yx;' +                                                 // swap → pointy-top
+      'vec3 k=vec3(-0.8660254,0.5,0.5773503);p=abs(p);' +
+      'p-=2.0*min(dot(k.xy,p),0.0)*k.xy;' +
+      'p-=vec2(clamp(p.x,-k.z*R,k.z*R),R);' +
+      'float sd=length(p)*sign(p.y);' +                                              // hex SDF, 0 at border
+      'float a=(0.05+sin(uTime*0.007)*0.018)*(1.0-smoothstep(0.0,1.0,abs(sd)));' +
+      'gl_FragColor=vec4(vec3(a),a);}',
+  };
+
+  function _glSupportsType(type) { return !!_GL_FRAG[type]; }
+
+  function _glCompile(gl, src, kind) {
+    const sh = gl.createShader(kind);
+    gl.shaderSource(sh, src); gl.compileShader(sh);
+    if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) {
+      console.warn('[gfx bg] shader compile failed:', gl.getShaderInfoLog(sh));
+      gl.deleteShader(sh); return null;
+    }
+    return sh;
+  }
+
+  // Returns true if the GL path took over; false → caller uses the canvas path.
+  function _startGLAnimation(container, type, sp, color) {
+    const frag = _GL_FRAG[type];
+    if (!frag) return false;
+    const cv = document.createElement('canvas');
+    cv.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0';
+    const gl = cv.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: true, depth: false, stencil: false })
+            || cv.getContext('experimental-webgl');
+    if (!gl) return false;
+    const vs = _glCompile(gl, _GL_VERT, gl.VERTEX_SHADER);
+    const fs = _glCompile(gl, frag, gl.FRAGMENT_SHADER);
+    if (!vs || !fs) return false;
+    const prog = gl.createProgram();
+    gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+    if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+      console.warn('[gfx bg] program link failed:', gl.getProgramInfoLog(prog));
+      return false;
+    }
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    gl.useProgram(prog);
+    const loc = gl.getAttribLocation(prog, 'p');
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA); // premultiplied-alpha compositing
+
+    container.style.position = container.style.position || 'relative';
+    container.insertBefore(cv, container.firstChild);
+
+    _glCanvas = cv; _gl = gl; _glProgram = prog;
+    _glSpeed = sp; _glPhase = 0; _glLastTs = 0;
+    _glU = {
+      res:   gl.getUniformLocation(prog, 'uRes'),
+      time:  gl.getUniformLocation(prog, 'uTime'),
+      color: gl.getUniformLocation(prog, 'uColor'),
+    };
+    const col = color || [1, 1, 1];
+
+    function resize() {
+      const w = container.offsetWidth || window.innerWidth;
+      const h = container.offsetHeight || window.innerHeight;
+      cv.width = w; cv.height = h;
+      gl.viewport(0, 0, w, h);
+    }
+    resize();
+    _glResizeFn = resize;
+    window.addEventListener('resize', resize);
+
+    _glDraw = function () {
+      gl.uniform2f(_glU.res, cv.width, cv.height);
+      gl.uniform1f(_glU.time, _glPhase);
+      if (_glU.color) gl.uniform3f(_glU.color, col[0], col[1], col[2]);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    };
+    _glLoop();
+    return true;
+  }
+
+  function _glLoop() {
+    if (_renderPaused() || !_gl) { _glAnimId = null; return; }
+    _glAnimId = requestAnimationFrame(function (ts) {
+      if (ts - _glLastTs < _frameMs) { _glLoop(); return; }
+      _glLastTs = ts;
+      _glPhase += _glSpeed; // generic frame-time; each shader bakes its own rate (matches the canvas per-type constants)
+      _glDraw();
+      _glLoop();
+    });
+  }
+  _resumeGL = function () { if (_gl && _glProgram && _glAnimId == null) _glLoop(); };
+
+  function _stopGLAnimation() {
+    if (_glAnimId)   { cancelAnimationFrame(_glAnimId); _glAnimId = null; }
+    if (_glResizeFn) { window.removeEventListener('resize', _glResizeFn); _glResizeFn = null; }
+    if (_gl) { const lose = _gl.getExtension('WEBGL_lose_context'); if (lose) lose.loseContext(); }
+    if (_glCanvas && _glCanvas.parentNode) _glCanvas.parentNode.removeChild(_glCanvas);
+    _glCanvas = null; _gl = null; _glProgram = null; _glU = null; _glDraw = null;
+    _glPhase = 0; _glLastTs = 0;
+  }
+
   function _startBgAnimation(container, type, sp, bgImgUrl) {
     _canvas = document.createElement('canvas');
-    _canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0;will-change:transform';
+    _canvas.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:0';
     container.style.position = container.style.position || 'relative';
     container.insertBefore(_canvas, container.firstChild);
     _ctx = _canvas.getContext('2d');
@@ -329,7 +555,6 @@ window.GfxSettings = (function () {
     window.addEventListener('resize', resize);
 
     if      (type === 'particles') _particles(sp);
-    else if (type === 'scanlines') _scanlines(sp);
     else if (type === 'grid')      _grid(sp);
     else if (type === 'hexgrid')   _hexgrid(sp);
     else if (type === 'diamonds')  _diamonds(sp);
@@ -391,17 +616,6 @@ window.GfxSettings = (function () {
     frame();
   }
 
-  function _scanlines(sp) {
-    let offset = 0;
-    function frame() {
-      _ctx.clearRect(0, 0, _canvas.width, _canvas.height);
-      _ctx.fillStyle = 'rgba(255,255,255,0.025)';
-      for (let y = offset % 4; y < _canvas.height; y += 4) _ctx.fillRect(0, y, _canvas.width, 1);
-      offset += 0.4 * sp;
-      _rafMain(frame);
-    }
-    frame();
-  }
 
   function _grid(sp) {
     let phase = 0;
@@ -471,9 +685,31 @@ window.GfxSettings = (function () {
     frame();
   }
 
+  // Pre-rendered dot sprites, one per brightness bucket — built once and reused.
+  // Blitting a cached bitmap with drawImage is far cheaper than re-tessellating a
+  // fresh arc() path for every one of ~2000 dots each frame (the old hot path).
+  let _dotSprites = null, _dotSpriteKey = '';
+  function _dotSpriteSet(r, buckets) {
+    const key = r + 'x' + buckets;
+    if (_dotSprites && _dotSpriteKey === key) return _dotSprites;
+    const size = Math.ceil(r * 2) + 2, c = size / 2;
+    const arr = [];
+    for (let b = 0; b < buckets; b++) {
+      const cv = document.createElement('canvas');
+      cv.width = cv.height = size;
+      const cx = cv.getContext('2d');
+      cx.fillStyle = 'rgba(255,255,255,' + (0.04 + b / buckets * 0.16).toFixed(3) + ')';
+      cx.beginPath(); cx.arc(c, c, r, 0, Math.PI * 2); cx.fill();
+      arr.push(cv);
+    }
+    _dotSprites = arr; _dotSpriteKey = key;
+    return arr;
+  }
+
   function _dotwave(sp) {
     const SPACING = 44, DOT_R = 1.4, BUCKETS = 16; // spacing widened for perf (was 38)
-    const slots = Array.from({ length: BUCKETS }, () => []);
+    const sprites = _dotSpriteSet(DOT_R, BUCKETS);
+    const off = sprites[0].width / 2; // sprite centre → grid point
     let phase = 0;
     function frame() {
       const w = _canvas.width, h = _canvas.height;
@@ -481,24 +717,13 @@ window.GfxSettings = (function () {
       phase += 0.008 * sp;
       const cols = Math.ceil(w / SPACING) + 1;
       const rows = Math.ceil(h / SPACING) + 1;
-      for (let b = 0; b < BUCKETS; b++) slots[b].length = 0;
       for (let r = 0; r < rows; r++) {
         for (let c = 0; c < cols; c++) {
           const x = c * SPACING, y = r * SPACING;
           const wave = Math.sin(x / w * Math.PI * 4 + phase) * Math.cos(y / h * Math.PI * 3 + phase * 0.75) * 0.5 + 0.5;
-          slots[Math.min(BUCKETS - 1, wave * BUCKETS | 0)].push(x, y);
+          const b = Math.min(BUCKETS - 1, wave * BUCKETS | 0);
+          _ctx.drawImage(sprites[b], (x - off) | 0, (y - off) | 0);
         }
-      }
-      for (let b = 0; b < BUCKETS; b++) {
-        const pts = slots[b];
-        if (!pts.length) continue;
-        _ctx.fillStyle = 'rgba(255,255,255,' + (0.04 + b / BUCKETS * 0.16).toFixed(3) + ')';
-        _ctx.beginPath();
-        for (let i = 0; i < pts.length; i += 2) {
-          _ctx.moveTo(pts[i] + DOT_R, pts[i + 1]);
-          _ctx.arc(pts[i], pts[i + 1], DOT_R, 0, Math.PI * 2);
-        }
-        _ctx.fill();
       }
       _rafMain(frame);
     }
@@ -762,18 +987,24 @@ window.GfxSettings = (function () {
     const [r, g, b] = _accentRgb();
     let phase = 0;
     let bgImg = null;
-    if (bgImgUrl) { bgImg = new Image(); bgImg.crossOrigin = 'anonymous'; bgImg.src = bgImgUrl; }
+    if (bgImgUrl) { bgImg = new Image(); bgImg.src = bgImgUrl; } // no crossOrigin: drawImage only (display), so a tainted image is fine — and it avoids CORS blocking cross-origin/EXTERNAL_URL images
     function frame() {
       const w = _canvas.width, h = _canvas.height;
       _ctx.clearRect(0, 0, w, h);
       phase += 0.007 * sp;
       if (bgImg && bgImg.complete && bgImg.naturalWidth > 0) {
         const STRIP_H = 4;
+        // Scale the source image to COVER the viewport (was sampled 1:1 in canvas
+        // pixels, so only the image's top-left corner showed on a larger source).
+        const iw = bgImg.naturalWidth, ih = bgImg.naturalHeight;
+        const scale = Math.max(w / iw, h / ih);
+        const ox = (w - iw * scale) / 2, oy = (h - ih * scale) / 2;
+        const srcX = -ox / scale, srcW = w / scale, srcH = STRIP_H / scale;
         for (let y = 0; y < h; y += STRIP_H) {
           const ny = y / h;
           const dx = Math.sin(ny * Math.PI * 5 + phase) * 14 * Math.sqrt(sp)
                    + Math.cos(ny * Math.PI * 2 + phase * 0.65) * 6 * Math.sqrt(sp);
-          _ctx.drawImage(bgImg, 0, y, w, STRIP_H, dx, y, w, STRIP_H);
+          _ctx.drawImage(bgImg, srcX, (y - oy) / scale, srcW, srcH, dx, y, w, STRIP_H);
         }
         for (let i = 0; i < 3; i++) {
           const yBase = h * (0.25 + i * 0.25), amp = h * 0.02;
