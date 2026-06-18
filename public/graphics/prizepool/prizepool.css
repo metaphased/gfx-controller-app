@@ -81,37 +81,106 @@ html, body {
   width: 100%;
   background: rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92);
   border: 1px solid rgba(255, 255, 255,0.09);
-  border-top: 3px solid rgba(255, 255, 255,0.15);
+  border-top: 3px solid var(--gfx-c1, #1ffaff);
   border-radius: 2px; overflow: hidden;
+  box-shadow: 0 1.2vh 4.5vh rgba(0, 0, 0,0.45);
 }
+
+/* Card header — anchors the panel so the rows don't float in empty space */
+.pp-pl-header {
+  display: flex; align-items: center; gap: 1vw;
+  padding: 1.4vh 3.5vw;
+  background: rgba(255, 255, 255,0.025);
+  border-bottom: 1px solid rgba(255, 255, 255,0.09);
+}
+.pp-pl-header::before {
+  content: ''; flex-shrink: 0;
+  width: 1.2vh; height: 1.2vh; transform: rotate(45deg);
+  background: var(--gfx-c1, #1ffaff);
+}
+.pp-pl-htitle { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.7vh; font-weight: 800;
+  letter-spacing: 0.28em; text-transform: uppercase;
+  color: rgba(255, 255, 255,0.85);
+}
+
 .pp-placement-row {
+  /* per-tier accent (gold/silver/bronze set below; default = theme accent) */
+  --pp-row-accent: var(--gfx-c1, #1ffaff);
+  --pp-row-accent-rgb: var(--gfx-c1-rgb, 31, 250, 255);
   display: flex; align-items: center;
-  justify-content: space-between;
-  padding: 1.5vh 3.5vw;
+  justify-content: space-between; gap: 2vw;
+  padding: 1.7vh 3.5vw;
+  border-left: 4px solid rgba(var(--gfx-c1-rgb, 31, 250, 255),0.18);
+  padding-left: calc(3.5vw - 4px);
   border-bottom: 1px solid rgba(255, 255, 255,0.06);
+  background: linear-gradient(180deg, rgba(255, 255, 255,0.035) 0%, rgba(255, 255, 255,0) 62%);
+  position: relative;
 }
 .pp-placement-row:last-child { border-bottom: none; }
 
-/* 1st place / top prize row — gradient tint, accent left border, larger value */
+/* Medal tier accenting — the left bar tints to the placement's medal colour */
+.pp-placement-row.medal-gold   { --pp-row-accent: #f5c451; --pp-row-accent-rgb: 245, 196, 81;  border-left-color: var(--pp-row-accent); }
+.pp-placement-row.medal-silver { --pp-row-accent: #cfd8e3; --pp-row-accent-rgb: 207, 216, 227; border-left-color: var(--pp-row-accent); }
+.pp-placement-row.medal-bronze { --pp-row-accent: #d68b54; --pp-row-accent-rgb: 214, 139, 84;  border-left-color: var(--pp-row-accent); }
+
+/* 1st place / top prize row — tinted wash + larger value (colour follows tier) */
 .pp-pl-highlight {
-  background: linear-gradient(to right, rgba(var(--gfx-c1-rgb, 31, 250, 255),0.07) 0%, transparent 55%);
-  border-left: 4px solid var(--gfx-c1, #1ffaff);
-  padding-left: calc(3.5vw - 4px);
-  padding-top: 2.2vh; padding-bottom: 2.2vh;
-  border-bottom-color: rgba(var(--gfx-c1-rgb, 31, 250, 255),0.12);
+  background: linear-gradient(to right, rgba(var(--pp-row-accent-rgb),0.13) 0%, rgba(var(--pp-row-accent-rgb),0.03) 45%, transparent 72%);
+  padding-top: 2.4vh; padding-bottom: 2.4vh;
+  border-bottom-color: rgba(var(--pp-row-accent-rgb),0.16);
 }
-.pp-pl-highlight .pp-pl-label { color: rgba(255, 255, 255,0.65); font-size: 1.8vh; }
-.pp-pl-highlight .pp-pl-value { color: var(--gfx-c1, #1ffaff); font-size: 4.5vh; }
+.pp-pl-highlight .pp-pl-label { color: rgba(255, 255, 255,0.7); font-size: 1.8vh; }
+.pp-pl-highlight .pp-pl-value { color: var(--pp-row-accent); font-size: 4.6vh; }
 
 /* Optional product image attached inline to 1st place row */
 .pp-pl-hl-img {
   width: auto; object-fit: contain; display: block; flex-shrink: 0;
 }
 
+/* Left group = medal + label */
+.pp-pl-left { display: flex; align-items: center; gap: 1.6vw; min-width: 0; }
+
+/* Medal coins (top 3) + accent pip (4th+) */
+.pp-pl-medal {
+  flex-shrink: 0;
+  width: 4.4vh; height: 4.4vh; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-weight: 900; font-size: 2.2vh; line-height: 1; color: #1a1407;
+  box-shadow: inset 0 0.15vh 0.3vh rgba(255, 255, 255,0.55),
+              inset 0 -0.25vh 0.45vh rgba(0, 0, 0,0.35),
+              0 0.3vh 0.7vh rgba(0, 0, 0,0.4);
+}
+.pp-medal-gold   { background: linear-gradient(150deg, #ffe9a8 0%, #f5c451 45%, #c8922e 100%); }
+.pp-medal-silver { background: linear-gradient(150deg, #fbfdff 0%, #cfd8e3 45%, #9aa6b5 100%); }
+.pp-medal-bronze { background: linear-gradient(150deg, #f3cda4 0%, #d68b54 45%, #a25c2c 100%); color: #241307; }
+.pp-pl-pip {
+  flex-shrink: 0;
+  width: 4.4vh; height: 4.4vh; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(var(--gfx-c1-rgb, 31, 250, 255),0.08);
+  border: 1px solid rgba(var(--gfx-c1-rgb, 31, 250, 255),0.3);
+}
+.pp-pl-pip::after {
+  content: ''; width: 0.9vh; height: 0.9vh; border-radius: 50%;
+  background: rgba(var(--gfx-c1-rgb, 31, 250, 255),0.7);
+}
+.pp-pl-highlight .pp-pl-medal { width: 5.4vh; height: 5.4vh; font-size: 2.8vh; }
+
+/* Every coin sits in a fixed-width slot, centred — so coins of different sizes
+   (the larger 1st-place medal included) share one centre-line and every placement
+   label starts at the same x. Alignment is fixed without resizing the medals. */
+.pp-pl-medal-slot {
+  flex-shrink: 0;
+  width: 5.6vh;
+  display: flex; align-items: center; justify-content: center;
+}
+
 .pp-pl-label { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.6vh; font-weight: 700;
   letter-spacing: 0.16em; text-transform: uppercase;
-  color: rgba(255, 255, 255,0.4);
+  color: rgba(255, 255, 255,0.55);
 }
 .pp-pl-value {
   font-size: 3vh; font-weight: 800;
@@ -122,15 +191,16 @@ html, body {
 /* ── Bonus / sponsor award cards (row below placements, same width) ──────── */
 .pp-bonuses-row {
   display: flex; flex-direction: row;
-  align-items: flex-start; gap: 2vw;
+  align-items: stretch; gap: 2vw;
   width: 100%;
 }
 .pp-bonus-card {
   flex: 1; min-width: 0;
-  background: rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92);
+  background: linear-gradient(180deg, rgba(255, 255, 255,0.04) 0%, rgba(255, 255, 255,0) 42%), rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92);
   border: 1px solid rgba(255, 255, 255,0.09);
-  border-top: 3px solid rgba(255, 255, 255,0.15);
+  border-top: 3px solid var(--gfx-c1, #1ffaff);
   border-radius: 2px; overflow: hidden;
+  box-shadow: 0 1.2vh 4.5vh rgba(0, 0, 0,0.45);
   display: flex; flex-direction: column;
 }
 /* Fixed-height container controlled by imageScale slider */

@@ -43,28 +43,34 @@ function renderPrizepool(state) {
     if (!placements.length) {
       plEl.innerHTML = '';
     } else {
-      var rows = placements.map(function(e) {
-        if (e.highlight) {
+      // Medal tier is keyed on placement ORDER (1st/2nd/3rd row) so it's robust
+      // against range labels like "3RD-4TH": top three get a numbered gold/silver/
+      // bronze coin, everything below gets a subtle accent pip.
+      var rows = placements.map(function(e, i) {
+        var tier  = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+        var coin  = tier
+          ? '<span class="pp-pl-medal pp-medal-' + tier + '">' + (i + 1) + '</span>'
+          : '<span class="pp-pl-pip"></span>';
+        var medal = '<span class="pp-pl-medal-slot">' + coin + '</span>';
+        var left  = '<span class="pp-pl-left">' + medal +
+                    '<span class="pp-pl-label">' + _eH(e.label) + '</span></span>';
+        var rowCls = 'pp-placement-row' + (tier ? ' medal-' + tier : '') + (e.highlight ? ' pp-pl-highlight' : '');
+        var imgHtml = '';
+        if (e.highlight && e.prizeImage) {
           var imgScale = e.imageScale != null ? e.imageScale : 10;
-          var imgHtml  = e.prizeImage
-            ? '<img class="pp-pl-hl-img" style="height:' + imgScale + 'vh" src="' + _eH(e.prizeImage) + '" alt="">'
-            : '';
-          return (
-            '<div class="pp-placement-row pp-pl-highlight">' +
-              '<span class="pp-pl-label">' + _eH(e.label) + '</span>' +
-              imgHtml +
-              '<span class="pp-pl-value">' + _eH(e.value) + '</span>' +
-            '</div>'
-          );
+          imgHtml = '<img class="pp-pl-hl-img" style="height:' + imgScale + 'vh" src="' + _eH(e.prizeImage) + '" alt="">';
         }
         return (
-          '<div class="pp-placement-row">' +
-            '<span class="pp-pl-label">' + _eH(e.label) + '</span>' +
+          '<div class="' + rowCls + '">' +
+            left +
+            imgHtml +
             '<span class="pp-pl-value">' + _eH(e.value) + '</span>' +
           '</div>'
         );
       }).join('');
-      plEl.innerHTML = '<div class="pp-placements-wrap">' + rows + '</div>';
+      plEl.innerHTML = '<div class="pp-placements-wrap">' +
+        '<div class="pp-pl-header"><span class="pp-pl-htitle">Prize Pool</span></div>' +
+        rows + '</div>';
     }
   }
 
