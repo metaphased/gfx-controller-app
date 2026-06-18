@@ -442,21 +442,31 @@ body.phase-bold .clock-series-phase {
   transition: filter calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-move, ease), transform calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-move, ease);
 }
 
-/* Pulse + glow when on the clock */
-/* Pulse uses glow intensity only — no scale so logo stays within the ring */
-@keyframes logo-pulse-blue {
-  0%, 100% { filter: drop-shadow(0 0 6px var(--gfx-blue))  drop-shadow(0 0 16px var(--gfx-blue)); }
-  50%       { filter: drop-shadow(0 0 14px var(--gfx-blue)) drop-shadow(0 0 36px var(--gfx-blue)); }
+/* Pulse + glow when on the clock — glow intensity only, no scale (logo stays in the ring).
+   PERF: the glow is a silhouette copy on a ::before (background-image:inherit grabs the
+   logo art) carrying a FIXED-radius drop-shadow; we pulse its OPACITY rather than animating
+   the blur radius. Animating a blur re-runs a gaussian blur every frame — costly, and the
+   draft sits on-screen for minutes — whereas the fixed blur rasterises once and opacity is
+   compositor-only. The real logo paints over the copy, so only the glow halo pulses. */
+.logo-timer-wrap .tourn-logo::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: inherit;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  z-index: -1;
+  opacity: 0;
+  pointer-events: none;
 }
-@keyframes logo-pulse-red {
-  0%, 100% { filter: drop-shadow(0 0 6px var(--gfx-red))  drop-shadow(0 0 16px var(--gfx-red)); }
-  50%       { filter: drop-shadow(0 0 14px var(--gfx-red)) drop-shadow(0 0 36px var(--gfx-red)); }
+@keyframes logo-glow-pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+.logo-timer-wrap .tourn-logo.side-blue::before {
+  filter: drop-shadow(0 0 12px var(--gfx-blue)) drop-shadow(0 0 30px var(--gfx-blue));
+  animation: logo-glow-pulse 1.3s ease-in-out infinite;
 }
-.logo-timer-wrap .tourn-logo.side-blue {
-  animation: logo-pulse-blue 1.3s ease-in-out infinite;
-}
-.logo-timer-wrap .tourn-logo.side-red {
-  animation: logo-pulse-red 1.3s ease-in-out infinite;
+.logo-timer-wrap .tourn-logo.side-red::before {
+  filter: drop-shadow(0 0 12px var(--gfx-red)) drop-shadow(0 0 30px var(--gfx-red));
+  animation: logo-glow-pulse 1.3s ease-in-out infinite;
 }
 
 /* Timer countdown value — always in layout flow; opacity controls visibility */

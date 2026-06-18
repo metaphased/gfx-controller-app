@@ -98,7 +98,6 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   border-top: 1px solid rgba(255, 255, 255,0.06);
   transition: height 0.7s var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1));
   position: relative;
-  will-change: height;
   contain: layout style paint;
 }
 
@@ -116,7 +115,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   background-color: var(--gfx-c4, #0a0f18); /* fallback when art hasn't loaded / no champ assigned */
   background-size: cover;
   background-repeat: no-repeat;
-  will-change: transform;
+  /* NB: will-change:transform is applied ONLY during the entrance/exit slide (see
+     .h2h-entering/.h2h-exiting rules). Keeping it permanent promoted all 10 large
+     splash cards to their own GPU layers forever — sustained per-frame compositing/
+     texture-copy churn (Copy engine pegged when live) that lingered after hide. */
 }
 
 /* Spotlight: anchor to top so expanding the card reveals the body downward */
@@ -350,6 +352,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 /* Champion cards slide in from their side */
+/* Promote cards to their own GPU layer ONLY while they actually slide (enter/exit). */
+#h2h-root.h2h-entering .h2h-card,
+#h2h-root.h2h-exiting  .h2h-card { will-change: transform; }
+
 #h2h-root.h2h-entering .h2h-card-left  {
   animation: h2h-slide-left  calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
 }
