@@ -3,7 +3,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 :root {
   --ps-c1:        var(--gfx-c1, #1ffaff);
-  --ps-panel:     rgba(var(--gfx-c4-rgb, 7, 15, 18),0.88);
+  /* Panels are now translucent "glass" so the living backdrop reads through them */
+  --ps-panel:     rgba(var(--gfx-c4-rgb, 7, 15, 18),0.55);
   --ps-ticker-h:  5.5vh;
   --ps-logo-scale: 8vh;
   --ps-timer-w:   38vw;  /* side layout left panel width */
@@ -16,10 +17,27 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: 100vw; height: 100vh;
   display: flex; flex-direction: column;
   position: relative;
+  overflow: hidden;
   opacity: 0;
   transition: opacity 0.6s ease;
+  /* Self-contained dark backdrop with a soft cool lift up top (the animated
+     shader layer #ps-bg sits over this, all content sits over that). */
+  background:
+    radial-gradient(ellipse 140% 90% at 50% 0%, rgba(46, 66, 88,0.32) 0%, rgba(0, 0, 0,0) 55%),
+    rgb(var(--gfx-c4-rgb, 7, 15, 18));
 }
 #ps-root.visible { opacity: 1; }
+
+/* Living backdrop layer — mirrors the BG Output source's background (driven by
+   GfxSettings.applyBackground from state.bgOutput in pre-show.js), so it's
+   controlled from one place and stays consistent with the rest of the show.
+   Transparent base so the #ps-root gradient shows when BG Output is transparent. */
+#ps-bg {
+  position: absolute; inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    HEADER — tournament logo + name
@@ -31,8 +49,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   justify-content: center;
   gap: 2.5vw;
   padding: 2vh 4vw;
-  background: var(--ps-panel);
-  border-bottom: 1px solid rgba(255, 255, 255,0.07);
+  background: linear-gradient(180deg, rgba(var(--gfx-c4-rgb, 7, 15, 18),0.62) 0%, rgba(var(--gfx-c4-rgb, 7, 15, 18),0.42) 100%);
+  border-bottom: 1px solid rgba(var(--gfx-c1-rgb, 31, 250, 255),0.38);
   position: relative;
   z-index: 1;
 }
@@ -75,7 +93,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-items: center;
   justify-content: center;
   padding: 4vh 0;
-  background: var(--ps-panel);
+  background: linear-gradient(180deg, rgba(var(--gfx-c4-rgb, 7, 15, 18),0.5) 0%, rgba(var(--gfx-c4-rgb, 7, 15, 18),0.28) 100%);
   border-bottom: 1px solid rgba(255, 255, 255,0.07);
 }
 
@@ -248,8 +266,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   /* Pre-allocate compositor layer so clip-path animation never promotes
      mid-frame, preventing visual cascade to nearby canvas elements */
   will-change: clip-path;
-  /* Gradient fades right edge so it doesn't read as a heavy dark block */
-  background: linear-gradient(to right, var(--ps-panel) 75%, rgba(var(--gfx-c4-rgb, 7, 15, 18),0.55));
+  /* Glass panel fades into the living backdrop on the right edge */
+  background: linear-gradient(to right, rgba(var(--gfx-c4-rgb, 7, 15, 18),0.55) 58%, rgba(var(--gfx-c4-rgb, 7, 15, 18),0) 100%);
 }
 
 /* ── Animated vertical divider line ────────────────────────────────────────
