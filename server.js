@@ -203,11 +203,12 @@ app.get('/api/events', (req, res) => {
 // ── Static — public (no auth) ──────────────────────────────────────────────────
 app.use('/login',    express.static(path.join(__dirname, 'public', 'login')));
 // Graphics overlays: don't let browsers (esp. OBS/vMix CEF) serve stale HTML/CSS/JS —
-// force revalidation so a source refresh always picks up the current build. Champion
-// art and other assets keep normal caching.
+// never cache so a source refresh ALWAYS picks up the current build — no-store
+// (not just no-cache) also defeats the browser back-forward cache / partial
+// "half-updated page" staleness. Champion art and other assets keep normal caching.
 app.use('/graphics', express.static(path.join(__dirname, 'public', 'graphics'), {
   setHeaders: (res, filePath) => {
-    if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   },
 }));
 app.use('/uploads',  express.static(path.join(__dirname, 'public', 'uploads')));
@@ -228,10 +229,10 @@ app.get(['/caster', '/caster/'], requireToken, (req, res) => {
 app.use('/caster', express.static(path.join(__dirname, 'public', 'caster')));
 
 // Bus output pages — static assets served first, then catch-all for bus IDs.
-// Same no-cache as /graphics so OBS/vMix CEF picks up updated bus HTML/CSS/JS on refresh.
+// Same no-store as /graphics so OBS/vMix CEF picks up updated bus HTML/CSS/JS on refresh.
 app.use('/bus', express.static(path.join(__dirname, 'public', 'bus'), {
   setHeaders: (res, filePath) => {
-    if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   },
 }));
 app.get('/bus/:id', (req, res) => {

@@ -142,7 +142,9 @@ function renderGames(games) {
 
   container.innerHTML = games.map(function(g) {
     var t1 = g.team1 || {}, t2 = g.team2 || {};
-    var cls = 'ps-card' + (g.isCurrent ? ' is-current' : '');
+    // Pre-show is a countdown holding screen — no game is "live/current" yet, so
+    // every match gets the same highlight treatment rather than singling one out.
+    var cls = 'ps-card is-current';
     var t1LogoBg = t1.logo ? 'background-image:url(' + _eH(t1.logo) + ')' : '';
     var t2LogoBg = t2.logo ? 'background-image:url(' + _eH(t2.logo) + ')' : '';
     var t1Name   = _eH(t1.name || t1.tag || '?');
@@ -174,6 +176,32 @@ function renderGames(games) {
       (footerParts.length ? '<div class="ps-card-footer">' + footerParts.join('') + '</div>' : '') +
     '</div>';
   }).join('');
+
+  fitGameNames();
+}
+
+// Shrink team-name font to fit its box instead of truncating with an ellipsis.
+// Broadcast fonts vary wildly in width, so a name that fits one font overflows
+// another — fit per card and unify both names to the smaller size so each VS
+// card stays balanced. Re-run on data change, font load, and resize.
+function fitGameNames() {
+  var cards = document.querySelectorAll('#ps-games .ps-card');
+  for (var c = 0; c < cards.length; c++) {
+    var names = cards[c].querySelectorAll('.ps-card-name');
+    var minSize = Infinity;
+    for (var i = 0; i < names.length; i++) {
+      var el = names[i];
+      el.style.fontSize = '';                                    // reset to CSS base
+      var size = parseFloat(getComputedStyle(el).fontSize) || 24;
+      var guard = 0;
+      while (el.scrollWidth > el.clientWidth + 1 && size > 9 && guard++ < 80) {
+        size -= 0.5;
+        el.style.fontSize = size + 'px';
+      }
+      if (size < minSize) minSize = size;
+    }
+    if (minSize !== Infinity) for (var j = 0; j < names.length; j++) names[j].style.fontSize = minSize + 'px';
+  }
 }
 
 // ── Main render ───────────────────────────────────────────────────────────────
@@ -219,6 +247,55 @@ function renderAll(state) {
   renderSponsors((state.match && state.match.sponsorLogos) || []);
   renderGames(state.todayGames || []);
   renderTicker(state.ticker || {});
+
+  // renderGames re-fits names on a data change; also re-fit when the broadcast
+  // font or layout changes (those don't rebuild the cards).
+  var font = (getComputedStyle(document.documentElement).getPropertyValue('--gfx-font') || '').trim();
+  var envKey = (ps.layout || '') + '|' + font;
+  if (envKey !== _fitEnv) { _fitEnv = envKey; requestAnimationFrame(fitGameNames); }
+}
+var _fitEnv = '';
+// Re-fit on web-font load (measurement before the font swaps is wrong) and resize.
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(function() { _fitEnv = ''; fitGameNames(); });
+window.addEventListener('resize', function() { _fitEnv = ''; fitGameNames(); });
+
+// ── Living backdrop — mirror the BG Output source's background ───────────────
+// Pre-show is a full-screen holding graphic, so it carries its own animated
+// backdrop on the dedicated #ps-bg layer, driven by the SAME settings as the
+// BG Output source (state.bgOutput) — one place to control it. applyBackground
+// key-caches internally (only restarts on real change) and its render loop
+// auto-pauses when OBS isn't showing the source, so it costs nothing off-program.
+function applyPreshowBg(state) {
+  var root = document.getElementById('ps-root');
+  if (!root) return;
+  // Ensure the backdrop layer exists — a cached index.html may not have #ps-bg.
+  var bgEl = document.getElementById('ps-bg');
+  if (!bgEl) {
+    bgEl = document.createElement('div');
+    bgEl.id = 'ps-bg';
+    root.insertBefore(bgEl, root.firstChild);
+  }
+  // Enforce positioning inline EVERY call, so the backdrop shows regardless of
+  // whether index.html / pre-show.css are cached or stale (a pre-existing but
+  // unpositioned #ps-bg would be a 0-height static block). Individual props are
+  // used so we never wipe the background applyBackground sets on it.
+  var bs = bgEl.style;
+  bs.position = 'absolute'; bs.top = '0'; bs.left = '0'; bs.right = '0'; bs.bottom = '0';
+  bs.zIndex = '0'; bs.overflow = 'hidden'; bs.pointerEvents = 'none';
+  var bgo = state.bgOutput || {};
+  GfxSettings.applyBackground(bgEl, { settings: {
+    bgType:         bgo.bgType         || 'animation',
+    bgAnimation:    bgo.bgAnimation    || 'particles',
+    bgColor:        bgo.bgColor        || 'transparent',
+    bgImage:        bgo.bgImage        || '',
+    bgFogLayer:     bgo.bgFogLayer     || false,
+    bgFogIntensity: bgo.bgFogIntensity != null ? bgo.bgFogIntensity : 50,
+    bgRenderer:     bgo.bgRenderer     || 'gpu',
+    bgFps:          bgo.bgFps          != null ? bgo.bgFps : 60,
+    bgWaveMode:     bgo.bgWaveMode     || 'clean',
+    animation:      bgo.animation      || { bgSpeed: 'medium' },
+    palette:        bgo.palette        || [],
+  } });
 }
 
 // ── Socket — graphic is always visible, no show/hide toggle ──────────────────
@@ -228,7 +305,7 @@ socket.on('state', function(state) {
 
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyAnimation(document.documentElement, state, 'preShow');
-  GfxSettings.clearBackground(root);
+  applyPreshowBg(state);
 
   if (!_initialised) {
     root.style.display = '';
