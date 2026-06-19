@@ -57,10 +57,12 @@ html, body {
 
 /* ── Group card ─────────────────────────────────────────────────────────────── */
 .gs-group {
-  background: rgba(var(--gfx-c4-rgb, 5, 11, 16), 0.90);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.035) 0%, rgba(255, 255, 255, 0) 38%), rgba(var(--gfx-c4-rgb, 5, 11, 16), 0.92);
   border: 1px solid rgba(255, 255, 255, 0.09);
+  border-top: 3px solid var(--gfx-c1, #1ffaff);
   border-radius: 3px;
   overflow: hidden;
+  box-shadow: 0 1vh 4vh rgba(0, 0, 0, 0.42);
   width: var(--gs-card-w, 22vw);
   flex-shrink: 0;
 }
@@ -73,7 +75,6 @@ html, body {
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--gfx-c1, #1ffaff);
-  text-shadow: 0 0 20px rgba(var(--gfx-c1-rgb, 31, 250, 255), 0.45);
   border-bottom: 1px solid rgba(255, 255, 255, 0.07);
 }
 
@@ -100,7 +101,7 @@ html, body {
   content: '';
   position: absolute;
   left: 0; top: 0; bottom: 0;
-  width: 2px;
+  width: 3px;
   background: var(--gfx-c1, #1ffaff);
   opacity: 1;
   transition: opacity 0.45s ease;
@@ -108,6 +109,26 @@ html, body {
 
 /* Eliminated */
 .gs-team.eliminated { opacity: 0.28; }
+
+/* ── Position badge ─────────────────────────────────────────────────────────── */
+/* Standings rank, mirroring the prizepool medal coins: accent-filled for the
+   qualifying positions (final mode), neutral elsewhere / in live mode. */
+.gs-pos {
+  flex-shrink: 0;
+  width: 3vh; height: 3vh; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-weight: 900; font-size: 1.6vh; line-height: 1;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: color 0.45s ease, background-color 0.45s ease, border-color 0.45s ease, box-shadow 0.45s ease;
+}
+.gs-team.qualifying .gs-pos {
+  color: #06141a;
+  background: var(--gfx-c1, #1ffaff);
+  border-color: var(--gfx-c1, #1ffaff);
+}
 
 /* ── Team logo ──────────────────────────────────────────────────────────────── */
 .gs-team-logo {
@@ -202,6 +223,12 @@ html, body {
 #groups-root.mode-live .gs-team.qualifying .gs-team-name { color: rgba(255, 255, 255, 0.8);   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 #groups-root.mode-live .gs-team.qualifying .gs-record    { color: rgba(255, 255, 255, 0.4);   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
+}
+#groups-root.mode-live .gs-team.qualifying .gs-pos {
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: none;
 }
 #groups-root.mode-live .gs-cutoff             { opacity: 0; pointer-events: none; height: 0; }
 

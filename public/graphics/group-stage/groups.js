@@ -137,6 +137,7 @@ function renderGroups(state) {
         ? '<span class="gs-record">' + entry.sw + ' – ' + entry.sl + '</span>'
         : '<span class="gs-record" style="opacity:0.2">0 – 0</span>';
       html += '<div class="gs-team ' + (isQ ? 'qualifying' : 'eliminated') + '" data-team-id="' + _eH(entry.teamId) + '">' +
+        '<span class="gs-pos">' + (idx + 1) + '</span>' +
         logo + '<span class="gs-team-name">' + _eH(entry.name) + '</span>' + record + '</div>';
       return html;
     }).join('');
@@ -179,6 +180,9 @@ function updateScores(state) {
 
       row.classList.toggle('qualifying', isQ);
       row.classList.toggle('eliminated', !isQ);
+
+      var pos = row.querySelector('.gs-pos');
+      if (pos) pos.textContent = (idx + 1);
 
       var rec = row.querySelector('.gs-record');
       if (rec) {
