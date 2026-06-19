@@ -94,11 +94,9 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: var(--gfx-c3, #fff);
   line-height: 1;
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 60px rgba(var(--gfx-c1-rgb, 31, 250, 255),0.18);
 }
 .ps-timer.ps-timer-done {
   color: var(--ps-c1);
-  text-shadow: 0 0 60px rgba(var(--gfx-c1-rgb, 31, 250, 255),0.5);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -134,7 +132,6 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   top: 0; left: 0; right: 0;
   height: 2px;
   background: var(--ps-c1);
-  box-shadow: 0 0 14px rgba(var(--gfx-c1-rgb, 31, 250, 255),0.65);
 }
 
 /* Card body — T1 | VS | T2 row */

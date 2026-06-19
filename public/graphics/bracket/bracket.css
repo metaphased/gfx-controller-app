@@ -146,7 +146,6 @@ html, body {
   letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--gfx-c2, #a7a38e);
-  text-shadow: 0 0 28px var(--gfx-c2, #a7a38e);
   line-height: 1.1;
   padding-bottom: 1.5vh;
 }
@@ -227,7 +226,6 @@ html, body {
   letter-spacing: 0.22em;
   line-height: 1.1;
   color: var(--gfx-c1, #1ffaff);
-  text-shadow: 0 0 28px var(--gfx-c1, #1ffaff);
   opacity: 1;
 }
 
