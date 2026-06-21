@@ -2,7 +2,18 @@
 
 A standalone animated background layer. Because every other overlay is **transparent**, BG Output is the source you put *underneath* them to give the broadcast a coloured or animated backdrop — without baking a canvas into every graphic (which would make each source expensive). Output at `/graphics/bg-output/`.
 
-![BG Output — animated dot field](img/bg-output.jpg)
+A few of the animated styles (all share the broadcast theme palette):
+
+<table>
+<tr>
+<td width="50%"><img src="img/bg-grid.webp" alt="BG Output — Grid"><br><sub><b>Grid</b></sub></td>
+<td width="50%"><img src="img/bg-wave.webp" alt="BG Output — Wave"><br><sub><b>Wave</b></sub></td>
+</tr>
+<tr>
+<td width="50%"><img src="img/bg-dotwave.webp" alt="BG Output — Dot field"><br><sub><b>Dot field</b></sub></td>
+<td width="50%"><img src="img/bg-fog.webp" alt="BG Output — Fog"><br><sub><b>Fog</b></sub></td>
+</tr>
+</table>
 
 ## Why it's separate
 
