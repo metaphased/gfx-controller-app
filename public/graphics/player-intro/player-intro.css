@@ -23,19 +23,6 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-bar   { width: 100%; height: 100%; align-items: flex-end; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   SHARED: CHAMPION ICON (circular crop of splash art)
-   ═══════════════════════════════════════════════════════════════════════════ */
-.pi-champ-icon {
-  display: inline-block;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background-size: 220%;
-  background-position: center 15%;
-  background-repeat: no-repeat;
-  border: 1px solid rgba(255, 255, 255,0.18);
-}
-
-/* ═══════════════════════════════════════════════════════════════════════════
    LAYOUT: NAMEPLATE PANEL
    ═══════════════════════════════════════════════════════════════════════════ */
 .pi-panel-box {
@@ -124,6 +111,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* ── Nameplate rows ─────────────────────────────────────────────────────── */
 .pi-pnl-row {
+  position: relative;     /* champ strip is absolutely positioned behind the text */
+  overflow: hidden;
   display: flex;
   align-items: center;
   gap: 1.2vw;
@@ -135,6 +124,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-pnl-row-right { flex-direction: row-reverse; }
 
 .pi-pnl-role-icon {
+  position: relative; z-index: 2;
   width: 4vh; height: 4vh;
   flex-shrink: 0;
   background-size: contain;
@@ -144,7 +134,36 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   opacity: 0.4;
 }
 
+/* ── Champion strip (top-3 most-played, blended splash crops) ─────────────────
+   Shared across all three layouts. Each row reads name → divider:
+       < < <|  divider  |> > >
+   Each champion image is an absolutely-positioned, overlapping slot with its own
+   horizontal alpha mask (set inline in JS). Every edge fades fully to transparent
+   BEFORE the image edge so no rectangular edges show; the only hard edge is where
+   the inner champion butts the centre divider. Overlapping slots + summing fades
+   give a smooth cross-blend with no dark gutters. Width is set per layout.       */
+.pi-champstrip {
+  position: absolute;
+  top: 0; bottom: 0; right: 0;       /* left side: strip butts the divider on its right */
+  z-index: 0;
+  overflow: hidden;
+}
+.pi-champstrip-right { right: auto; left: 0; }   /* right side: strip butts the divider on its left */
+.pi-champstrip-panel { width: 64%; }
+.pi-champstrip-stack { width: 60%; }
+.pi-champstrip-bar   { width: 56%; }
+
+.pi-champstrip .pi-champ-img {
+  position: absolute;
+  top: 0; bottom: 0;       /* height fills the row; slot width is set inline */
+  display: block;
+  object-fit: cover;
+  object-position: center 34%;   /* show more of each champion's central body, not just the top */
+  filter: saturate(1.05) brightness(0.82);
+}
+
 .pi-pnl-text {
+  position: relative; z-index: 2;
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -172,22 +191,6 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: var(--team-color, var(--gfx-c1));
   line-height: 1.2;
   margin-top: 0.2vh;
-}
-
-.pi-pnl-champ {
-  display: flex;
-  align-items: center;
-  gap: 0.5vw;
-  margin-top: 0.3vh;
-}
-.pi-pnl-row-right .pi-pnl-champ { flex-direction: row-reverse; }
-.pi-pnl-champ .pi-champ-icon { width: 2.6vh; height: 2.6vh; }
-
-.pi-pnl-champ-label {
-  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
-  font-size: 1.2vh; font-weight: 600;
-  letter-spacing: 0.06em; text-transform: uppercase;
-  color: rgba(255, 255, 255,0.45);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -250,19 +253,29 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-evenly;
+  justify-content: center;
   padding: 2vh 4.5vw 2vh;
-  gap: 1.4vh;
+  gap: 0;   /* rows are contiguous, separated by a hairline (below) */
 }
+/* Drop the inner (divider-side) padding so the champ strip reaches the centre
+   divider and the inner champion can butt hard against it, like the panel. */
+.pi-stack-t1 .pi-stack-players { padding-right: 0; }
+.pi-stack-t2 .pi-stack-players { padding-left: 0; }
 
 .pi-stk-player {
+  position: relative;
+  overflow: hidden;
+  min-height: 12vh;   /* tall band so the champ-strip crops read as portraits, not slivers */
   display: flex;
   align-items: center;
   gap: 1.8vw;
+  border-bottom: 1px solid rgba(255, 255, 255,0.07);  /* clean separation between rows */
 }
+.pi-stk-player:last-child { border-bottom: none; }
 .pi-stack-t2 .pi-stk-player { flex-direction: row-reverse; }
 
 .pi-stk-role {
+  position: relative; z-index: 2;
   width: 4.5vh; height: 4.5vh;
   flex-shrink: 0;
   background-size: contain;
@@ -273,6 +286,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 .pi-stk-handle {
+  position: relative; z-index: 2;
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 5.8vh; font-weight: 900;
   letter-spacing: 0.02em; text-transform: uppercase;
@@ -290,54 +304,6 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-self: flex-end;
   padding-bottom: 0.5vh;
   opacity: 0.85;
-}
-
-.pi-stk-champ {
-  display: flex;
-  align-items: center;
-  gap: 0.6vw;
-  margin-left: 0.5vw;
-}
-.pi-stack-t2 .pi-stk-champ { flex-direction: row-reverse; margin-left: 0; margin-right: 0.5vw; }
-.pi-stk-champ .pi-champ-icon { width: 3.5vh; height: 3.5vh; }
-
-.pi-stk-champ-label {
-  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
-  font-size: 1.3vh; font-weight: 600;
-  letter-spacing: 0.06em; text-transform: uppercase;
-  color: rgba(255, 255, 255,0.4);
-}
-
-/* ── Centre divider ─────────────────────────────────────────────────────── */
-.pi-stack-divider {
-  width: 2px;
-  flex-shrink: 0;
-  background: rgba(255, 255, 255,0.12);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  position: relative;
-  z-index: 2;
-}
-
-.pi-stack-divider-centre {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1vh;
-  background: var(--gfx-c4, #07101a);
-  padding: 1.5vh 0;
-}
-.pi-stack-divider-centre img { max-height: 7vh; max-width: 7vw; object-fit: contain; }
-
-.pi-stack-vs {
-  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
-  font-size: 2vh; font-weight: 900;
-  letter-spacing: 0.12em; text-transform: uppercase;
-  color: rgba(255, 255, 255,0.22);
-  writing-mode: vertical-rl;
-  text-orientation: mixed;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -374,8 +340,9 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-bar-players {
   flex: 0 0 auto;  /* shrink to content width; team name fills remaining space */
   display: grid;
-  /* col1: role icon | col2: player text (max-content so all rows share widest handle) | col3: champ icon */
-  grid-template-columns: 2.5vh max-content 2.5vh;
+  /* col1: role icon | col2: player text (max-content so all rows share widest handle).
+     Bar is name-only — no champ column. */
+  grid-template-columns: 2.5vh max-content;
   column-gap: 0.6vw;
   row-gap: 0.25vh;
   align-items: center;
@@ -428,14 +395,6 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: var(--team-color, var(--gfx-c1));
   margin-top: 0.15vh;
 }
-
-/* Always-present cell in column 3 — keeps the grid stable whether champs is on or off */
-.pi-bar-champ-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.pi-bar-champ-cell .pi-champ-icon { width: 2.2vh; height: 2.2vh; }
 
 /* Team name — fills the dead space between players and centre, flanking the VS */
 .pi-bar-team-name {

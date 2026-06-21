@@ -505,7 +505,7 @@ const makeDefault = () => ({
   // edit selection. 'main' is just outputs[0].
   lowerThird:  { visible: false, activeSetId: '', sets: [], outputs: [{ id: 'main', name: 'Main', mode: 'exclusive', busId: null, activeSetIds: [] }] },
   headToHead:  { visible: false, mode: 'spotlight', spotlightRole: 0, animStyle: 'standard' },
-  playerIntro: { visible: false, layout: 'panel', animVariant: 'rise', showLogo: true, showRank: false, showChamps: false, piBg: 'transparent', piLogoUrl: '' },
+  playerIntro: { visible: false, layout: 'panel', animVariant: 'rise', showLogo: true, showRank: false, showChamps: true, piBg: 'transparent', piLogoUrl: '' },
   preShow:     { visible: false, timerEnd: null, logoUrl: '', logoScale: 8, hideLogo: false, headerText: '', hideHeaderText: false, timerLabel: '', layout: 'center' },
   draft: {
     visible: false,

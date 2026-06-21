@@ -1,6 +1,6 @@
 # Player Intro
 
-A full-roster introduction for both teams — handles, roles, ranks and (optionally) signature champions — in one of three layouts. Driven from **Graphics → Player Intro**, output at `/graphics/player-intro/`.
+A full-roster introduction for both teams — handles, roles, ranks and (optionally) each player's top-3 most-played champions — in one of three layouts. Driven from **Graphics → Player Intro**, output at `/graphics/player-intro/`.
 
 It reads the two loaded teams and their rosters ([Match & draft control](match-and-draft.md)), so set those up first.
 
@@ -34,7 +34,7 @@ From the Player Intro ctrl-bar:
 
 - **Show / hide** the graphic (entrance/exit animate).
 - **Layout** — Panel · Stack · Bar.
-- **Show logo / Show rank / Show champions** — toggle each data row. Ranks come from the Riot API ([Players / Rosters](match-and-draft.md#ranks-and-champion-pools)); the signature champion is each player's most-played from their op.gg pool.
+- **Show logo / Show rank / Show champions** — toggle each data row. Ranks come from the Riot API ([Players / Rosters](match-and-draft.md#ranks-and-champion-pools)). **Champions** blends each player's **top 3 most-played** champions (from their op.gg pool) along their row as overlapping splash crops that fade toward the name and meet at the centre — players with no pool data fall back to a clean name. This is on by default for the **Panel** and **Team Stack** layouts; the **Bar** layout is always name-only.
 - **Animation variant** — the entrance style (the layout picks a sensible default — *rise* for Panel, *split* for Stack, *slide* for Bar).
 - **Background** — transparent by default; the centre logo can be overridden per broadcast.
 
