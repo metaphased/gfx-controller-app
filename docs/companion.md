@@ -9,6 +9,8 @@ MetaGFX supports two ways to trigger graphics and match actions without touching
 
 Both use the same underlying action API, so any action triggerable from a button is also triggerable from a keybind. Both are set up from your [User profile](user-profile.md) modal (sidebar user chip / **◈ Profile**).
 
+![Keyboard shortcuts in the profile modal — Graphics category expanded](img/keybinds-expanded.jpg)
+
 ---
 
 ## Keybinds

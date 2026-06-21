@@ -11,6 +11,10 @@ Without buses you'd add ~14 browser sources to OBS (one per overlay), each runni
 - A **bus** has an output URL `/bus/<id>` — add this as a Browser Source (1920×1080, `?token=XXXX`) like any graphic.
 - In **Routing**, assign each graphic to a bus.
 - When you **Show** a graphic (from its ctrl-bar, the live bar, the operator view, or Companion), it's automatically routed onto its assigned bus and that bus goes live. **Hide** clears it. No manual switching of sources.
+
+Here the single `/bus/busA` source is showing the live bracket, because the bracket is currently shown and assigned to that bus — show a different graphic on the bus and the same source switches to it:
+
+![A GFX bus source displaying whichever graphic is live on it](img/gfx-bus-output.webp)
 - The [Live Switcher](live-switcher.md) understands buses too: a `/bus/<id>` source resolves to whichever graphic is currently live on it for PGM/PVW tagging.
 
 ## Setting it up

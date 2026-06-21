@@ -20,7 +20,7 @@ Every graphic is a browser source for OBS/vMix at 1920×1080. Each page below co
 
 | Guide | Graphic |
 |---|---|
-| [Player Intro](player-intro.md) | Player/roster intro — Panel, Stack, Champion Showcase layouts. |
+| [Player Intro](player-intro.md) | Player/roster intro — Nameplate, Team Stack, Bar layouts. |
 | [Player Spotlight](player-spotlight.md) | 1–2 player spotlight; fullscreen + lower third; 4 designs. |
 | [Head to Head](head-to-head.md) | Team-vs-team comparison and lineups. |
 | [Draft Overlay](draft.md) | Live pick/ban board with timer. |

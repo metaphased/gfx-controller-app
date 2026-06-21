@@ -12,6 +12,8 @@ The chrome uses a deliberate, broadcast-tool aesthetic: **dark neutrals with a s
 
 **Settings → Appearance.** Changes preview instantly and are **saved to your own account** — every user keeps their own look.
 
+![Appearance settings card](img/tool-appearance.jpg)
+
 | Control | Effect |
 |---|---|
 | **Preset** | A starting palette: **Graphite** (neutral grey), **Steel** (cool blue accent), **Bronze** (warm). |

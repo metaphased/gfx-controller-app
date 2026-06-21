@@ -13,6 +13,8 @@ It's entirely optional — leave the switcher set to **None** and nothing change
 
 Configure under **Settings → Live Switcher** (admin). Pick **OBS** or **vMix**, fill in the connection details, tick **Enabled**, and click **Save & Connect**. The card shows a live **connection status**.
 
+![Live Switcher settings card](img/tool-live-switcher.jpg)
+
 ### OBS
 
 1. In OBS: **Tools → WebSocket Server Settings**.
