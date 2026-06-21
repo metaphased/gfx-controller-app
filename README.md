@@ -35,7 +35,7 @@ MetaGFX is a self-hosted control room for community esports productions. You man
 <p align="center"><b>One control panel runs the whole show — change something once and every overlay updates live.</b></p>
 
 <p align="center">
-  <img src="docs/img/readme/ui-control.jpg" alt="MetaGFX control panel dashboard" width="920">
+  <img src="docs/img/readme/ui-control.jpg" alt="MetaGFX control panel dashboard" width="680">
 </p>
 
 ## Highlights
@@ -189,11 +189,7 @@ All graphics are browser sources for OBS/vMix at **1920×1080**, each needing `?
   </tr>
 </table>
 
-All overlay URLs (with the token baked in) are one click away in **Settings → Output URLs** — drop them straight into OBS/vMix browser sources:
-
-<p align="center">
-  <img src="docs/img/readme/ui-output-urls.jpg" alt="Settings → Output URLs — copy-ready browser source URLs with token" width="560">
-</p>
+All overlay URLs (with the token baked in) are one click away in **Settings → Output URLs** — drop them straight into OBS/vMix browser sources.
 
 ---
 
@@ -218,8 +214,6 @@ The full guide lives in [`docs/`](docs/README.md) — start there for the comple
 Per-graphic guides and more live in the [full docs index](docs/README.md).
 
 ## Control panel sections
-
-<img src="docs/img/readme/ui-sidebar.jpg" alt="Control panel sidebar navigation" align="right" width="220">
 
 **Tournament:** Profiles · Tournament Setup · Teams Database · Schedule · Groups · Playoffs
 **Game:** Game Setup · Players / Rosters · Draft · Match Intel
