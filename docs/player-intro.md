@@ -8,23 +8,27 @@ It reads the two loaded teams and their rosters ([Match & draft control](match-a
 
 Pick a layout in the control tab. All three show the same data; choose the one that fits your scene.
 
-### Panel
+### Nameplate
 
-Both rosters side-by-side around a centre logo — the most complete read.
+Both rosters side-by-side around a centre logo — the most complete read. With **Champions** on, each player's top-3 most-played splash crops blend along their row:
 
-![Player Intro — Panel layout](img/player-intro-panel.jpg)
+![Player Intro — Nameplate layout, champions on](img/player-intro-panel.webp)
 
-### Stack
+With **Champions** off it falls back to a clean name + role + rank per player:
+
+![Player Intro — Nameplate layout, champions off](img/player-intro-panel-nochamps.webp)
+
+### Team Stack
 
 A cleaner two-column stack of each team's five players.
 
-![Player Intro — Stack layout](img/player-intro-stack.jpg)
+![Player Intro — Team Stack layout](img/player-intro-stack.webp)
 
 ### Bar
 
-A compact lower bar — useful when you want the rosters without covering the scene.
+A compact lower bar — useful when you want the rosters without covering the scene (always name + rank only).
 
-![Player Intro — Bar layout](img/player-intro-bar.jpg)
+![Player Intro — Bar layout](img/player-intro-bar.webp)
 
 ## Controls
 
@@ -32,11 +36,13 @@ A compact lower bar — useful when you want the rosters without covering the sc
 
 From the Player Intro ctrl-bar:
 
+![Player Intro live control bar — layout, options, animation and background](img/pi-controls.jpg)
+
 - **Show / hide** the graphic (entrance/exit animate).
-- **Layout** — Panel · Stack · Bar.
-- **Show logo / Show rank / Show champions** — toggle each data row. Ranks come from the Riot API ([Players / Rosters](match-and-draft.md#ranks-and-champion-pools)). **Champions** blends each player's **top 3 most-played** champions (from their op.gg pool) along their row as overlapping splash crops that fade toward the name and meet at the centre — players with no pool data fall back to a clean name. This is on by default for the **Panel** and **Team Stack** layouts; the **Bar** layout is always name-only.
-- **Animation variant** — the entrance style (the layout picks a sensible default — *rise* for Panel, *split* for Stack, *slide* for Bar).
-- **Background** — transparent by default; the centre logo can be overridden per broadcast.
+- **Layout** — Nameplate · Team Stack · Bar.
+- **Options: Logo / Rank / Champs** — toggle each data row. Ranks come from the Riot API ([Players / Rosters](match-and-draft.md#ranks-and-champion-pools)). **Champs** blends each player's **top 3 most-played** champions (from their op.gg pool) along their row as overlapping splash crops that fade toward the name — players with no pool data fall back to a clean name. Available on the **Nameplate** and **Team Stack** layouts; the **Bar** layout is always name-only.
+- **Animation** — the entrance style (*Rise · Stagger · Fade*); the layout picks a sensible default.
+- **Background** — transparent by default, or a **Dark** backdrop; the centre logo can be overridden per broadcast.
 
 ## Notes
 
