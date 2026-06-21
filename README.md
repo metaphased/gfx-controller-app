@@ -21,7 +21,22 @@ MetaGFX is a self-hosted control room for community esports productions. You man
 > **MetaGFX is built for community and grassroots tournaments — not paid or commercial productions.**
 > The built-in sponsor tools are for crediting sponsors who contribute to the players'/competitors' prize pool — not for selling commercial ad space or funding staff/operator pay.
 
-<!-- Screenshots go well here: control panel, a couple of overlays, the draft board. -->
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/readme/ov-player-intro.jpg" alt="Player Intro overlay — rosters with top-3 champion strips"></td>
+    <td width="50%"><img src="docs/img/readme/ov-head2head.jpg" alt="Head-to-Head overlay — lineup mode"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/readme/ov-draft.jpg" alt="Draft pick/ban board"></td>
+    <td><img src="docs/img/readme/ov-win-screen.jpg" alt="Win screen — winning composition"></td>
+  </tr>
+</table>
+
+<p align="center"><b>One control panel runs the whole show — change something once and every overlay updates live.</b></p>
+
+<p align="center">
+  <img src="docs/img/readme/ui-control.jpg" alt="MetaGFX control panel dashboard" width="920">
+</p>
 
 ## Highlights
 
@@ -35,6 +50,11 @@ MetaGFX is a self-hosted control room for community esports productions. You man
 - Full **control panel** for setup + live control, and a streamlined **operator view** with drag-reorderable panels.
 - A **GFX ctrl-bar** on every graphics page for instant show/hide, position and per-graphic options.
 - **Bo1/Bo3/Bo5** series tracking with per-game draft snapshots; **schedule ↔ bracket linking** that fills results automatically.
+
+<p align="center">
+  <img src="docs/img/readme/ui-ctrlbar.jpg" alt="GFX ctrl-bar — live control strip on a graphics page" width="900">
+</p>
+<p align="center"><i>The <b>GFX ctrl-bar</b> sits on every graphics page (Player Intro shown) — instant show/hide, layout, per-graphic options and animation.</i></p>
 
 **👥 Crew-friendly**
 - **Multi-user**: live presence, soft page-claiming, last-action attribution, a system log, and a superadmin/admin/operator role hierarchy.
@@ -118,13 +138,24 @@ npm run dev
 | **Operator view** | `/operator` | operator/admin | Streamlined live production: graphic toggles + ctrl-bar, score/series tracker, lower-third builder, drag-reorderable panels, on-air indicator. |
 | **Caster view** | `/caster?token=XXXX` | token | Read-only caster dashboard: roster, series, live draft, standings, bracket, schedule. |
 
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/readme/ui-operator.jpg" alt="Operator view"></td>
+    <td width="50%"><img src="docs/img/readme/ui-caster.jpg" alt="Caster view"></td>
+  </tr>
+  <tr>
+    <td align="center"><i>Operator view — streamlined live production with drag-reorderable panels.</i></td>
+    <td align="center"><i>Caster view — read-only roster, ranks &amp; live draft (token, no login).</i></td>
+  </tr>
+</table>
+
 ## Graphics outputs
 
 All graphics are browser sources for OBS/vMix at **1920×1080**, each needing `?token=XXXX` (grab the full URLs from **Settings → Output URLs**).
 
 | Graphic | Path | Notes |
 |---|---|---|
-| Player Intro | `/graphics/player-intro/` | 3 layouts: Panel, Stack, Champion Showcase |
+| Player Intro | `/graphics/player-intro/` | 3 layouts: Panel, Team Stack, Bar — with optional top-3 champion strips |
 | Player Spotlight | `/graphics/player-spotlight/` | 1–2 players; Fullscreen + Lower Third; 4 designs; champion art + stats with op.gg/tournament sources |
 | Head to Head | `/graphics/head2head/` | Spotlight + lineup modes, champion stats strip |
 | Draft Overlay | `/graphics/draft/` | Pick/ban board with timer |
@@ -139,6 +170,30 @@ All graphics are browser sources for OBS/vMix at **1920×1080**, each needing `?
 | BG Output | `/graphics/bg-output/` | Background animations only |
 
 **GFX Bus** outputs (`/bus/:id`) are shared sources that auto-display whichever assigned graphic is currently live — configure under **Routing**.
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/img/readme/ov-player-spotlight.jpg" alt="Player Spotlight"><br><sub><b>Player Spotlight</b></sub></td>
+    <td width="33%"><img src="docs/img/readme/ov-bracket.jpg" alt="Bracket"><br><sub><b>Bracket</b> (single/double elim)</sub></td>
+    <td width="33%"><img src="docs/img/readme/ov-group-stage.jpg" alt="Group Stage"><br><sub><b>Group Stage</b></sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/readme/ov-prizepool.jpg" alt="Prizepool"><br><sub><b>Prizepool</b></sub></td>
+    <td><img src="docs/img/readme/ov-tournament-structure.jpg" alt="Tournament Structure"><br><sub><b>Tournament Structure</b></sub></td>
+    <td><img src="docs/img/readme/ov-lower-third.jpg" alt="Lower Third"><br><sub><b>Lower Third</b> (set-driven, multi-output)</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/readme/ov-pre-show.jpg" alt="Pre-show"><br><sub><b>Pre-show</b> (countdown, ticker)</sub></td>
+    <td><img src="docs/img/readme/ov-break-screen.jpg" alt="Break Screen"><br><sub><b>Break Screen</b> (PIP)</sub></td>
+    <td></td>
+  </tr>
+</table>
+
+All overlay URLs (with the token baked in) are one click away in **Settings → Output URLs** — drop them straight into OBS/vMix browser sources:
+
+<p align="center">
+  <img src="docs/img/readme/ui-output-urls.jpg" alt="Settings → Output URLs — copy-ready browser source URLs with token" width="560">
+</p>
 
 ---
 
@@ -163,6 +218,8 @@ The full guide lives in [`docs/`](docs/README.md) — start there for the comple
 Per-graphic guides and more live in the [full docs index](docs/README.md).
 
 ## Control panel sections
+
+<img src="docs/img/readme/ui-sidebar.jpg" alt="Control panel sidebar navigation" align="right" width="220">
 
 **Tournament:** Profiles · Tournament Setup · Teams Database · Schedule · Groups · Playoffs
 **Game:** Game Setup · Players / Rosters · Draft · Match Intel
