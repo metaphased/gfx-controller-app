@@ -68,12 +68,15 @@ var _preloadedSplashes = new Set();
 function _preloadSplashes(players) {
   Object.values(players || {}).forEach(function(team) {
     (team || []).forEach(function(p) {
-      var name = p && p.champPool && p.champPool[0] && p.champPool[0].name;
-      if (!name) return;
-      var url = champSplashUrl(name);
-      if (!url || _preloadedSplashes.has(url)) return;
-      _preloadedSplashes.add(url);
-      var img = new Image(); img.src = url;
+      var pool = (p && p.champPool) || [];
+      pool.slice(0, 3).forEach(function(c) {
+        var name = c && c.name;
+        if (!name) return;
+        var url = champSplashUrl(name);
+        if (!url || _preloadedSplashes.has(url)) return;
+        _preloadedSplashes.add(url);
+        var img = new Image(); img.src = url;
+      });
     });
   });
 }
@@ -132,21 +135,6 @@ function setLogoOrVs(imgEl, vsEl, logoUrl) {
   }
 }
 
-// Champion section: circular splash crop + name label
-function champHtml(champName, wrapClass, iconClass, labelClass) {
-  if (!champName) return '';
-  var url = champSplashUrl(champName);
-  var iconHtml = url
-    ? '<span class="pi-champ-icon ' + iconClass + '" style="background-image:url(' + url + ')"></span>'
-    : '';
-  return (
-    '<span class="' + wrapClass + '">' +
-      iconHtml +
-      '<span class="' + labelClass + '">' + esc(champName) + '</span>' +
-    '</span>'
-  );
-}
-
 // ── Show / hide ───────────────────────────────────────────────────────────────
 function animateIn() {
   var root = $('pi-root');
@@ -181,25 +169,76 @@ function animateOut() {
 }
 
 // ── Layout: Nameplate Panel ───────────────────────────────────────────────────
+// Champion strip: the player's top-3 most-played champions as blended splash crops
+// filling the row toward the centre divider. Fades out toward the name side so the
+// handle stays legible (mirrors the H2H card scrim). Falls back to nothing when the
+// player has no champ-pool data, so the row reads cleanly either way.
+// L→R [left%, width%] slots per champion count. Slots overlap generously so each
+// image's edge-fade meets its neighbour's and the alphas sum to ~full opacity
+// (smooth cross-blend with no dark gutters and no visible rectangular edges).
+var CHAMP_SLOTS = {
+  1: [[0, 100]],
+  2: [[0, 62], [38, 62]],
+  3: [[0, 46], [27, 46], [54, 46]],
+};
+
+function champStripHtml(champPool, side, layout) {
+  var pool = (champPool || []).slice(0, 3).filter(function(c) { return c && c.name; });
+  if (!pool.length) return '';
+  var isRight = side === 'right';
+  // Mirror around the centre divider: most-played champion sits nearest the player
+  // name on BOTH sides. Left strip reads name→divider (c1..cN); right strip is
+  // reversed so it reads divider→name. Slot positions are the same L→R for both.
+  var ordered = isRight ? pool.slice().reverse() : pool;
+  var n = ordered.length;
+  var slots = CHAMP_SLOTS[n];
+
+  var imgs = ordered.map(function(c, idx) {
+    var url = champSplashUrl(c.name);
+    if (!url) return '';
+    var nameEnd = isRight ? idx === n - 1 : idx === 0;
+    var divEnd  = isRight ? idx === 0     : idx === n - 1;
+
+    // Build a horizontal alpha mask. Every edge fades fully to transparent BEFORE
+    // the image edge, except the one edge that butts the centre divider (kept hard
+    // so the inner champion meets the divider cleanly). The name-side outer edge
+    // gets a long fade; interior seam edges get a medium fade.
+    var leftHard  = divEnd && isRight;    // right column: divider is on the left
+    var rightHard = divEnd && !isRight;   // left column:  divider is on the right
+    var leftFade  = (nameEnd && !isRight) ? 58 : 30;
+    var rightFade = (nameEnd && isRight)  ? 58 : 30;
+    var leftStop  = leftHard  ? '#000 0%'   : 'transparent 0%';
+    var rightStop = rightHard ? '#000 100%' : 'transparent 100%';
+    var mask = 'linear-gradient(to right, ' + leftStop + ', #000 ' + leftFade + '%, #000 ' + (100 - rightFade) + '%, ' + rightStop + ')';
+
+    var s = slots[idx];
+    var style = 'left:' + s[0] + '%;width:' + s[1] + '%;background-image:url(' + url + ')' +
+      ';-webkit-mask-image:' + mask + ';mask-image:' + mask;
+    return '<span class="pi-champ-img" style="' + style + '"></span>';
+  }).join('');
+
+  var wrap = 'pi-champstrip pi-champstrip-' + (layout || 'panel') + (isRight ? ' pi-champstrip-right' : '');
+  return '<span class="' + wrap + '">' + imgs + '</span>';
+}
+
 function buildPanelRowHtml(player, roleKey, side, showRank, showChamps) {
   var handle    = player.handle || '';
   var icon      = ROLE_ICONS[roleKey] || '';
   var rank      = showRank   ? rankText(player.rank || null) : '';
-  var champName = showChamps ? ((player.champPool && player.champPool[0] && player.champPool[0].name) || '') : '';
 
   var isRight = side === 'right';
   var rowCls  = 'pi-pnl-row' + (isRight ? ' pi-pnl-row-right' : '');
 
+  var strip  = showChamps ? champStripHtml(player.champPool, side, 'panel') : '';
   var roleEl = '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>';
   var textEl = (
     '<span class="pi-pnl-text">' +
       '<span class="pi-pnl-handle">' + esc(handle) + '</span>' +
       (rank      ? '<span class="pi-pnl-rank">'  + rank      + '</span>' : '') +
-      (champName ? champHtml(champName, 'pi-pnl-champ', '', 'pi-pnl-champ-label') : '') +
     '</span>'
   );
 
-  return '<div class="' + rowCls + '">' + roleEl + textEl + '</div>';
+  return '<div class="' + rowCls + '">' + strip + roleEl + textEl + '</div>';
 }
 
 function renderPanel(state) {
@@ -234,7 +273,7 @@ function renderPanel(state) {
     var key = ROLES.map(function(r) {
       var p = getPlayerByRole(players, r);
       return [p.handle||'', showRank, rankText(p.rank||null), showChamps,
-        (p.champPool && p.champPool[0] && p.champPool[0].name) || ''].join(':');
+        (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(',')].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
       el.dataset.key = key;
@@ -249,18 +288,18 @@ function renderPanel(state) {
 }
 
 // ── Layout: Team Card Stack ───────────────────────────────────────────────────
-function buildStackPlayerHtml(player, roleKey, showRank, showChamps) {
+function buildStackPlayerHtml(player, roleKey, showRank, showChamps, side) {
   var handle    = player.handle || '';
   var icon      = ROLE_ICONS[roleKey] || '';
   var rank      = showRank   ? rankText(player.rank || null) : '';
-  var champName = showChamps ? ((player.champPool && player.champPool[0] && player.champPool[0].name) || '') : '';
 
+  var strip = showChamps ? champStripHtml(player.champPool, side, 'stack') : '';
   return (
     '<div class="pi-stk-player">' +
+      strip +
       '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' +
       '<span class="pi-stk-handle">' + esc(handle) + '</span>' +
       (rank      ? '<span class="pi-stk-rank">' + rank + '</span>' : '') +
-      (champName ? champHtml(champName, 'pi-stk-champ', '', 'pi-stk-champ-label') : '') +
     '</div>'
   );
 }
@@ -274,7 +313,6 @@ function renderStack(state) {
   var t2Players  = (state.players && state.players.team2) || [];
   var showRank   = !!pi.showRank;
   var showChamps = !!pi.showChamps;
-  var showLogo   = pi.showLogo !== false;
 
   var t1El = $('pi-stack-t1'), t2El = $('pi-stack-t2');
   if (t1El) t1El.style.setProperty('--team-color', 'var(--gfx-blue)');
@@ -285,46 +323,43 @@ function renderStack(state) {
   setTxt('pi-stack-t1-name', t1.name || t1.tag || '');
   setTxt('pi-stack-t2-name', t2.name || t2.tag || '');
 
-  setLogoOrVs($('pi-stack-centre-img'), $('pi-stack-vs'), showLogo ? getCentreLogo(state) : '');
+  // The stack has no centre VS/logo — the two team halves simply meet in the middle.
 
-  function fillPlayers(elId, players) {
+  function fillPlayers(elId, players, side) {
     var el = $(elId);
     if (!el) return;
     var key = ROLES.map(function(r) {
       var p = getPlayerByRole(players, r);
       return [p.handle||'', showRank, rankText(p.rank||null), showChamps,
-        (p.champPool && p.champPool[0] && p.champPool[0].name) || ''].join(':');
+        (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(',')].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
       el.dataset.key = key;
       el.innerHTML = ROLES.map(function(r) {
-        return buildStackPlayerHtml(getPlayerByRole(players, r), r, showRank, showChamps);
+        return buildStackPlayerHtml(getPlayerByRole(players, r), r, showRank, showChamps, side);
       }).join('');
     }
   }
 
-  fillPlayers('pi-stack-t1-players', t1Players);
-  fillPlayers('pi-stack-t2-players', t2Players);
+  fillPlayers('pi-stack-t1-players', t1Players, 'left');
+  fillPlayers('pi-stack-t2-players', t2Players, 'right');
 }
 
 // ── Layout: Nameplate Bar ─────────────────────────────────────────────────────
-function buildBarPlayerHtml(player, roleKey, showRank, showChamps) {
-  var handle    = player.handle || '';
-  var icon      = ROLE_ICONS[roleKey] || '';
-  var rank      = showRank   ? rankTextShort(player.rank || null) : '';
-  var champName = showChamps ? ((player.champPool && player.champPool[0] && player.champPool[0].name) || '') : '';
-  var champUrl  = champName  ? champSplashUrl(champName) : '';
+// The Bar layout is name-only: its rows are too thin for the champ strip and its
+// centre dead-space is already filled by the team names, so champions are never
+// shown here regardless of the showChamps toggle.
+function buildBarPlayerHtml(player, roleKey, showRank) {
+  var handle = player.handle || '';
+  var icon   = ROLE_ICONS[roleKey] || '';
+  var rank   = showRank ? rankTextShort(player.rank || null) : '';
 
-  // .pi-bar-champ-cell is always present so the subgrid has a stable 3-column shape
   return (
     '<div class="pi-bar-player">' +
       '<span class="pi-bar-role" style="background-image:url(' + icon + ')"></span>' +
       '<span class="pi-bar-text">' +
         '<span class="pi-bar-handle">' + esc(handle) + '</span>' +
         (rank ? '<span class="pi-bar-rank">' + rank + '</span>' : '') +
-      '</span>' +
-      '<span class="pi-bar-champ-cell">' +
-        (champUrl ? '<span class="pi-champ-icon" style="background-image:url(' + champUrl + ')"></span>' : '') +
       '</span>' +
     '</div>'
   );
@@ -338,7 +373,6 @@ function renderBar(state) {
   var t1Players  = (state.players && state.players.team1) || [];
   var t2Players  = (state.players && state.players.team2) || [];
   var showRank   = !!pi.showRank;
-  var showChamps = !!pi.showChamps;
   var showLogo   = pi.showLogo !== false;
 
   var bandEl = document.querySelector('.pi-bar-band');
@@ -372,13 +406,12 @@ function renderBar(state) {
     if (!el) return;
     var key = ROLES.map(function(r) {
       var p = getPlayerByRole(players, r);
-      return [p.handle||'', showRank, rankText(p.rank||null), showChamps,
-        (p.champPool && p.champPool[0] && p.champPool[0].name) || ''].join(':');
+      return [p.handle||'', showRank, rankText(p.rank||null)].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
       el.dataset.key = key;
       el.innerHTML = ROLES.map(function(r) {
-        return buildBarPlayerHtml(getPlayerByRole(players, r), r, showRank, showChamps);
+        return buildBarPlayerHtml(getPlayerByRole(players, r), r, showRank);
       }).join('');
     }
   }
