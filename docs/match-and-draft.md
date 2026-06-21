@@ -12,6 +12,8 @@ The live match state these tabs produce is what every team/draft/win graphic rea
 
 ### Loading a scheduled match
 
+![Load from Schedule — pick a day, then Set Active / Resume / Restore per game](img/md-load-schedule.jpg)
+
 1. **Load from Schedule** card → pick a **Broadcast Day** (it auto-selects today's date if a day matches).
 2. Each game in that day shows its teams, stage, format and status, with a button:
    - **Set Active** — load a fresh match (replaces current teams, resets the series).
@@ -28,6 +30,8 @@ The two team cards show the loaded **Team 1 / Team 2** (logo, name, tag) and the
 > **Team naming:** internally the live match uses `team1`/`team2`; per-game snapshots use abbreviated `t1*`/`t2*` keys. You won't see this in the UI, but it's worth knowing if you script against the API. See the naming-convention note in `server.js`.
 
 ### Series Tracker
+
+![Series Tracker — Bo3 with a completed game, the live game and the fearless pool](img/md-series-tracker.jpg)
 
 Click **Edit** to unlock the series controls:
 
@@ -59,6 +63,8 @@ Ranks and pools feed graphics like [Player Intro](player-intro.md), [Player Spot
 ### Match Intel
 
 **Game → Match Intel** is a denser read-only view of both rosters — ranks, Riot IDs and champion pools with op.gg deep links — handy to keep open for the casters. It has its own **↻ Ranks** / **↻ Champ Pools** buttons.
+
+![Match Intel — both rosters with Solo Queue ranks, LP and win rates](img/md-match-intel.jpg)
 
 ## Draft
 

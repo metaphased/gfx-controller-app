@@ -10,6 +10,8 @@ This page also covers the **[Teams Database](#teams-database)** (your reusable t
 
 The first card. Sets the broad identity used across overlays:
 
+![Tournament Info card](img/ts-info.jpg)
+
 - **Tournament Name** — shown on structure/break/pre-show graphics.
 - **Game** — League of Legends, VALORANT, CS2 or Generic. LoL unlocks the draft board, champion art and op.gg/Riot features.
 - **Tournament Logo** — paste a URL or **Upload**. Used where a tournament mark is shown.
@@ -20,9 +22,13 @@ The first card. Sets the broad identity used across overlays:
 
 Add sponsor logos here; they appear on the [Pre-show](pre-show.md) and other sponsor-aware graphics. Manage the list with **+ Add Sponsor Logo** (URL or upload).
 
+![Sponsor Logos card](img/ts-sponsors.jpg)
+
 ## Competing Teams
 
 The teams playing in **this** tournament — a *pool* drawn from your [Teams Database](#teams-database).
+
+![Competing Teams pool](img/ts-competing.jpg)
 
 - **+ Add Team** lets you pick an existing team from the database or create a new one.
 - Only teams in this pool appear in the **Schedule**, **Bracket**, **Groups** and **Game Setup** pickers — so the pickers stay short and relevant.
@@ -31,6 +37,8 @@ The teams playing in **this** tournament — a *pool* drawn from your [Teams Dat
 ## Tournament Structure
 
 Defines how the event is shaped. The card adapts depending on whether you have a group stage.
+
+![Tournament Structure card — group stage + double-elim playoffs](img/ts-structure.jpg)
 
 ### Group stage (optional)
 
@@ -57,12 +65,16 @@ See [Bracket](bracket.md) for the bracket *graphic*, and [Schedule](schedule.md#
 
 ## Roster
 
+![Roster card](img/ts-roster.jpg)
+
 - **Players per team** — drives the roster editors and structure overlay.
 - **Max substitutes per team** — `0` hides the sub count in the structure overlay.
 
 ## Broadcast Info
 
 Optional fields shown on the [Tournament Structure](tournament-structure.md) overlay when you toggle them on in that graphic's tab: **Start/End Date**, **Region**, **Patch / Version**, **Tiebreaker Rule**, **Location**.
+
+![Broadcast Info card](img/ts-broadcast.jpg)
 
 ## Prizepool
 
@@ -78,16 +90,20 @@ Per-stage default series formats (e.g. groups = Bo1, playoffs = Bo3, finals = Bo
 
 **Tournament → Teams Database** is your reusable, cross-tournament store of teams and their rosters. The [Competing Teams](#competing-teams) pool pulls from here; editing a team here doesn't disturb other events.
 
-![Teams Database — the New Team editor (name, tag, logo, lineup, subs)](img/tool-teams-database.jpg)
+![Teams Database — saved teams, each with logo, tag and roster size](img/ts-teams-table.jpg)
 
 ### Creating / editing a team
 
 **+ New Team** (or click an existing team) opens the editor:
 
+![Team editor — name, tag, logo, starting lineup and subs](img/tool-teams-database.jpg)
+
 - **Team Name**, **Tag** (short acronym, max 6 chars), **Logo** (URL or upload — square ~200×200 recommended; overlays show it at ~34px).
 - **Players** — one row per roster slot. Per player you can set the handle, **role**, **op.gg region** and **Riot ID** (`Name#TAG`). Riot ID + region power rank lookups and op.gg links; see [Match & draft control](match-and-draft.md#ranks-and-champion-pools).
 
 ### Importing teams
+
+![Importing teams — Google Sheets and JSON / CSV file import](img/ts-import.jpg)
 
 Two import paths sit at the bottom of the Teams tab. Both **create or update** teams (matched by name), one **row per player**.
 
@@ -125,6 +141,8 @@ Crimson Talons,CRT,,Granite,Top,Granite#NA1,na
 ## Profiles
 
 **System → Profiles** saves an entire event — tournament info, teams pool, structure, schedule and current state — as a named **profile**, so you can run several tournaments from one install and switch between them. Saved profiles live in `data/profiles.json`.
+
+![Profiles — each saved event with Load / Rename / Delete](img/ts-profiles.jpg)
 
 > Loading a profile resets live state (including the draft) to that profile's saved data, so don't switch profiles mid-match.
 

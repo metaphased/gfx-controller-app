@@ -22,6 +22,10 @@ Then open the **control panel** at `http://localhost:3000/control` and log in.
 
 > **First login:** `admin` / `admin` (a `superadmin` account seeded on first run).
 
+![The control panel after login — Dashboard](img/control-panel.jpg)
+
+The **Dashboard** is your landing page: the active match and series score, the tournament summary, today's schedule, and a live readout of which graphics are currently on air. The left sidebar groups everything into **Tournament**, **Game**, **Graphics** and **System** sections.
+
 ## ⚠️ Before you go live — required reading
 
 A handful of things bite people the first time. Read these once.

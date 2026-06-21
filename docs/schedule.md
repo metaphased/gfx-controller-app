@@ -20,6 +20,8 @@ Days hold an ordered list of **games** (matches).
 
 Add a game to a day and fill in:
 
+![The inline match editor — stage, bracket-match link, teams, format and label pickers](img/sched-editor.jpg)
+
 | Field | Notes |
 |---|---|
 | **Stage** | Group Stage, or a specific bracket round (Round of 16, Semifinals, Finals…). The stage's default **Format** pre-fills from [Stage Formats](tournament-setup.md#stage-formats). |
