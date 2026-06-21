@@ -47,13 +47,18 @@ function setBg(id, url)  { var e = $(id); if (e) e.style.backgroundImage = url ?
 function fitText(el, maxPx, minPx, styleTarget) {
   if (!el) return;
   var target = styleTarget || el;
-  // Available text width = the container's inner width minus its horizontal padding
-  // (clientWidth includes padding, which the text can't use — e.g. the bar name has
-  // padding: 0 2vw, ~77px, which would otherwise be mis-counted as usable space).
+  // When a separate measuring child is passed (the bar uses a <span> inside the
+  // name container), compare the child's intrinsic width to the container's inner
+  // width minus padding. el.scrollWidth can't be used there: an end-aligned span
+  // (justify-content:flex-end) overflows to the LEFT, which scrollWidth ignores,
+  // and clientWidth would also wrongly count the container's padding as usable.
+  // When the element holds the text directly (panel/stack), the classic
+  // scrollWidth>offsetWidth overflow test is correct.
   var cs = window.getComputedStyle(el);
   var avail = el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
   function fits(px) {
     target.style.fontSize = px + 'px';
+    if (target === el) return el.scrollWidth <= el.offsetWidth;
     return target.scrollWidth <= avail;
   }
   if (fits(maxPx)) return;
@@ -234,9 +239,12 @@ function champStripHtml(champPool, side, layout) {
     var mask = 'linear-gradient(to right, ' + leftStop + ', #000 ' + leftFade + '%, #000 ' + (100 - rightFade) + '%, ' + rightStop + ')';
 
     var s = slots[idx];
-    var style = 'left:' + s[0] + '%;width:' + s[1] + '%;background-image:url(' + url + ')' +
+    var style = 'left:' + s[0] + '%;width:' + s[1] + '%' +
       ';-webkit-mask-image:' + mask + ';mask-image:' + mask;
-    return '<span class="pi-champ-img" style="' + style + '"></span>';
+    // Real <img> (not a CSS background) so the browser decodes each splash to ~its
+    // display size with high-quality resampling, instead of GPU-scaling a full-res
+    // texture down ~7× — which aliases/artifacts badly in OBS/CEF.
+    return '<img class="pi-champ-img" decoding="async" src="' + url + '" style="' + style + '">';
   }).join('');
 
   var wrap = 'pi-champstrip pi-champstrip-' + (layout || 'panel') + (isRight ? ' pi-champstrip-right' : '');

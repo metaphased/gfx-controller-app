@@ -155,9 +155,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 .pi-champstrip .pi-champ-img {
   position: absolute;
-  top: 0; bottom: 0;
-  background-size: cover;
-  background-position: center 34%;   /* show more of each champion's central body, not just the top */
+  top: 0; bottom: 0;       /* height fills the row; slot width is set inline */
+  display: block;
+  object-fit: cover;
+  object-position: center 34%;   /* show more of each champion's central body, not just the top */
   filter: saturate(1.05) brightness(0.82);
 }
 
