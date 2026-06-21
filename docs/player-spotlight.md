@@ -8,11 +8,11 @@ All controls live on the **Player Spotlight** tab in the control panel. Output U
 
 **Fullscreen, Both view** — a face-off with the centre head-to-head stat comparison:
 
-![Player Spotlight — fullscreen Both view](img/player-spotlight-full.jpg)
+![Player Spotlight — fullscreen Both view](img/player-spotlight-full.webp)
 
 **Lower-third** — a single player over the live feed:
 
-![Player Spotlight — lower-third](img/player-spotlight-l3.jpg)
+![Player Spotlight — lower-third](img/player-spotlight-l3.webp)
 
 ## Picking the players
 
@@ -35,6 +35,10 @@ The **On stage** control decides who is shown:
 
 Switching live is a **directional slide** — each player always enters from / exits to their own side, so A↔B swaps cleanly and going to **Both** brings the missing player in. A staying player isn't re-animated.
 
+**Single player (Player A)** — champion on their own side, info and stat chips alongside:
+
+![Player Spotlight — single player, fullscreen](img/player-spotlight-solo.webp)
+
 **VS badge** (checkbox) toggles the centre "VS" in the Both view. In Both, each player's corner stats converge into a centre **head-to-head comparison** (A value · label · B value).
 
 ## Look
@@ -50,7 +54,15 @@ Switching live is a **directional slide** — each player always enters from / e
   | **Full-bleed** | Wide cinematic splash with a scrim |
   | **Framed** | Bordered portrait box |
 
-  Each design works in the A / B / Both stages.
+  Each design works in the A / B / Both stages:
+
+  <table>
+  <tr>
+  <td width="33%"><img src="img/player-spotlight-angled.webp" alt="Angled design"><br><b>Angled ⫽</b></td>
+  <td width="33%"><img src="img/player-spotlight-bleed.webp" alt="Full-bleed design"><br><b>Full-bleed</b></td>
+  <td width="33%"><img src="img/player-spotlight-framed.webp" alt="Framed design"><br><b>Framed</b></td>
+  </tr>
+  </table>
 
 ## Accent colour
 
