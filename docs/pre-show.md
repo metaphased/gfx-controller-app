@@ -2,11 +2,11 @@
 
 The "stream starting soon" screen — a countdown to broadcast, the day's matchup, sponsors and a scrolling ticker. Driven from **Graphics → Pre-show**, output at `/graphics/pre-show/`.
 
-![Pre-show — side layout: countdown beside the matchup list](img/pre-show.jpg)
+![Pre-show — side layout: countdown beside the matchup list](img/pre-show.webp)
 
 *Side layout — the countdown sits beside the day's matchup list.*
 
-![Pre-show — centre layout: countdown above the matchup cards](img/pre-show-center.jpg)
+![Pre-show — centre layout: countdown above the matchup cards](img/pre-show-center.webp)
 
 *Centre layout — the countdown is centred above a row of matchup cards. Switch between the two with the **Layout** control.*
 

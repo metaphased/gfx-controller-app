@@ -4,7 +4,11 @@ A scrolling information strip — scores, schedule, news — shown along the bot
 
 The ticker is the strip running along the bottom here:
 
-![Ticker, shown on the Pre-show](img/pre-show.jpg)
+![Ticker, shown on the Pre-show](img/pre-show.webp)
+
+A closer look at the strip — a label badge followed by auto and manual items:
+
+![Ticker strip close-up](img/ticker-strip.webp)
 
 ## Content
 
