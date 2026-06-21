@@ -28,7 +28,7 @@ MetaGFX is a self-hosted control room for community esports productions. You man
   </tr>
   <tr>
     <td><img src="docs/img/readme/ov-draft.jpg" alt="Draft pick/ban board"></td>
-    <td><img src="docs/img/readme/ov-win-screen.jpg" alt="Win screen — winning composition"></td>
+    <td><img src="docs/img/readme/ov-win-screen.webp" alt="Win screen — winning composition"></td>
   </tr>
 </table>
 
@@ -173,7 +173,7 @@ All graphics are browser sources for OBS/vMix at **1920×1080**, each needing `?
 
 <table>
   <tr>
-    <td width="33%"><img src="docs/img/readme/ov-player-spotlight.jpg" alt="Player Spotlight"><br><sub><b>Player Spotlight</b></sub></td>
+    <td width="33%"><img src="docs/img/readme/ov-player-spotlight.webp" alt="Player Spotlight"><br><sub><b>Player Spotlight</b></sub></td>
     <td width="33%"><img src="docs/img/readme/ov-bracket.jpg" alt="Bracket"><br><sub><b>Bracket</b> (single/double elim)</sub></td>
     <td width="33%"><img src="docs/img/readme/ov-group-stage.jpg" alt="Group Stage"><br><sub><b>Group Stage</b></sub></td>
   </tr>
