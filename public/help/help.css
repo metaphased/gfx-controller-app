@@ -147,6 +147,8 @@ body {
   border: 1px solid var(--border); border-radius: var(--radius);
   background: var(--bg2);
 }
+.markdown-body img.help-img { cursor: zoom-in; transition: border-color .12s ease; }
+.markdown-body img.help-img:hover { border-color: var(--border-strong); }
 .markdown-body img + em, .markdown-body p > em:only-child {
   display: block; font-size: 12.5px; color: var(--text-dim); margin: 0 0 18px;
 }
@@ -166,6 +168,20 @@ body {
 @keyframes help-flash {
   0%, 30% { background: rgba(var(--accent-rgb), 0.16); box-shadow: -8px 0 0 rgba(var(--accent-rgb), 0.16); }
   100%    { background: transparent; box-shadow: none; }
+}
+
+/* Click-to-enlarge lightbox */
+.help-lightbox {
+  position: fixed; inset: 0; z-index: 1000;
+  display: none; align-items: center; justify-content: center;
+  padding: 32px; background: rgba(5, 9, 12, 0.86);
+  cursor: zoom-out; opacity: 0; transition: opacity .14s ease;
+}
+.help-lightbox.open { display: flex; opacity: 1; }
+.help-lightbox img {
+  max-width: 96vw; max-height: 92vh; width: auto; height: auto;
+  border: 1px solid var(--border-strong); border-radius: var(--radius);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6); background: var(--bg2);
 }
 
 /* Scrollbars (match dark chrome) */

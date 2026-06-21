@@ -90,6 +90,7 @@
       if (/^(https?:)?\/\//.test(src) || src.charAt(0) === '/') return;
       img.setAttribute('src', withTok('/help/_src/' + src.replace(/^\.\//, '')));
       img.setAttribute('loading', 'lazy');
+      img.classList.add('help-img');                 // click-to-enlarge (see lightbox)
     });
     Array.prototype.forEach.call(root.querySelectorAll('a[href]'), function (a) {
       var href = a.getAttribute('href');
@@ -157,9 +158,30 @@
 
   function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
+  // ── Lightbox (click-to-enlarge screenshots) ──────────────────────────────────
+  // Many docs screenshots are dense; clicking one opens it full-size in an overlay.
+  // Click the backdrop / image or press Esc to close.
+  function setupLightbox() {
+    var box = document.createElement('div');
+    box.className = 'help-lightbox';
+    box.innerHTML = '<img alt="">';
+    box.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(box);
+    var boxImg = box.firstChild;
+    function close() { box.classList.remove('open'); box.setAttribute('aria-hidden', 'true'); boxImg.removeAttribute('src'); }
+    function open(src, alt) { boxImg.setAttribute('src', src); boxImg.setAttribute('alt', alt || ''); box.classList.add('open'); box.setAttribute('aria-hidden', 'false'); }
+    docEl.addEventListener('click', function (e) {
+      var img = e.target.closest && e.target.closest('img.help-img');
+      if (img && img.getAttribute('src')) { e.preventDefault(); open(img.getAttribute('src'), img.getAttribute('alt')); }
+    });
+    box.addEventListener('click', close);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && box.classList.contains('open')) close(); });
+  }
+
   // ── Init ─────────────────────────────────────────────────────────────────────
   // No "back" link: help opens in its own tab, so a return button just spawns
   // redundant tabs — users close this tab to go back.
+  setupLightbox();
   searchEl.addEventListener('input', function () { filterNav(searchEl.value); });
   window.addEventListener('hashchange', route);
   fetch(withTok('/api/help/manifest'), { credentials: 'same-origin' })
