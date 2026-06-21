@@ -704,8 +704,9 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
         </div>
         <div class="ops-ctrl-group">
           <span class="ops-ctrl-label">Layout</span>
-          <button class="mode-btn" id="ops-pi-layout-B" onclick="setPlayerIntroLayout('B')">Mirror</button>
-          <button class="mode-btn" id="ops-pi-layout-C" onclick="setPlayerIntroLayout('C')">Showcase</button>
+          <button class="mode-btn" id="ops-pi-layout-panel" onclick="setPlayerIntroLayout('panel')">Nameplate</button>
+          <button class="mode-btn" id="ops-pi-layout-stack" onclick="setPlayerIntroLayout('stack')">Team Stack</button>
+          <button class="mode-btn" id="ops-pi-layout-bar" onclick="setPlayerIntroLayout('bar')">Bar</button>
         </div>
       </div>
     </div>
@@ -904,9 +905,10 @@ socket.on('state', state => {
   const wt2 = g('ops-win-t2'); if (wt2) wt2.className = 'win-team-btn' + (winner === 'team2' ? ' is-active' : '');
 
   /* Player Intro layout buttons */
-  const piLayout = (state.playerIntro && state.playerIntro.layout) || 'B';
-  setModeActive('ops-pi-layout-B', piLayout === 'B');
-  setModeActive('ops-pi-layout-C', piLayout === 'C');
+  const piLayout = (state.playerIntro && state.playerIntro.layout) || 'panel';
+  setModeActive('ops-pi-layout-panel', piLayout === 'panel');
+  setModeActive('ops-pi-layout-stack', piLayout === 'stack');
+  setModeActive('ops-pi-layout-bar',   piLayout === 'bar');
 
   /* H2H mode buttons */
   const h2hMode = state.headToHead && state.headToHead.mode;
