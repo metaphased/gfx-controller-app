@@ -37,18 +37,30 @@ function $(id) { return document.getElementById(id); }
 function setTxt(id, val) { var e = $(id); if (e) e.textContent = val; }
 function setBg(id, url)  { var e = $(id); if (e) e.style.backgroundImage = url ? 'url(' + url + ')' : ''; }
 
-// Scales styleTarget's font-size down (binary search) until el's content fits within el.
+// Scales styleTarget's font-size down (binary search) until the text fits within el.
 // Pass styleTarget separately when the text node and its measuring container differ (bar layout).
+// Measures the TARGET's intrinsic width against el's inner width: el.scrollWidth is
+// unreliable when the text is right-/end-aligned (e.g. flex justify-end pushes the
+// overflow to the LEFT, which scrollWidth doesn't report) — so a long name on the
+// left-hand side would falsely "fit" and clip. The target's own scrollWidth is
+// direction-independent.
 function fitText(el, maxPx, minPx, styleTarget) {
   if (!el) return;
   var target = styleTarget || el;
-  target.style.fontSize = maxPx + 'px';
-  if (el.scrollWidth <= el.offsetWidth) return;
+  // Available text width = the container's inner width minus its horizontal padding
+  // (clientWidth includes padding, which the text can't use — e.g. the bar name has
+  // padding: 0 2vw, ~77px, which would otherwise be mis-counted as usable space).
+  var cs = window.getComputedStyle(el);
+  var avail = el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0);
+  function fits(px) {
+    target.style.fontSize = px + 'px';
+    return target.scrollWidth <= avail;
+  }
+  if (fits(maxPx)) return;
   var lo = minPx, hi = maxPx;
   while (hi - lo > 1) {
     var mid = (lo + hi) >> 1;
-    target.style.fontSize = mid + 'px';
-    if (el.scrollWidth <= el.offsetWidth) lo = mid; else hi = mid;
+    if (fits(mid)) lo = mid; else hi = mid;
   }
   target.style.fontSize = lo + 'px';
 }
@@ -149,10 +161,20 @@ function animateIn() {
     root.classList.remove('pi-entering');
     _enterTimer = null;
   }, 1200);
-  // Re-fit team names once Barlow Condensed is confirmed loaded.
-  // Resolves as a microtask (font already cached) or when the font file arrives —
-  // either way fires after the synchronous renderAll/fitText that follows this call.
-  document.fonts.load('900 1em "Barlow Condensed"').then(refitNames);
+  scheduleRefit();
+}
+
+// Re-fit team names after layout settles AND after fonts finish loading. The fit
+// depends on the player column's width (max-content), which depends on the active
+// font — if a broadcast/custom font swaps in after the first fit, a long team name
+// would otherwise overflow and clip. document.fonts.ready covers ALL fonts (not
+// just Barlow Condensed); the rAF + timeout catch late layout.
+function scheduleRefit() {
+  requestAnimationFrame(refitNames);
+  if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+    document.fonts.ready.then(refitNames);
+  }
+  setTimeout(refitNames, 300);
 }
 
 function animateOut() {
@@ -388,17 +410,6 @@ function renderBar(state) {
   if (t1El) t1El.style.setProperty('--team-color', 'var(--gfx-blue)');
   if (t2El) t2El.style.setProperty('--team-color', 'var(--gfx-red)');
 
-  // Team names in dead space flanking the centre
-  var t1NameEl = $('pi-bar-t1-team-name');
-  var t2NameEl = $('pi-bar-t2-team-name');
-  if (t1NameEl) t1NameEl.innerHTML = '<span>' + esc(t1.name || t1.tag || '') + '</span>';
-  if (t2NameEl) t2NameEl.innerHTML = '<span>' + esc(t2.name || t2.tag || '') + '</span>';
-
-  var maxBarNamePx = Math.round(window.innerHeight * 0.05);
-  var minBarNamePx = Math.round(maxBarNamePx * 0.42);
-  if (t1NameEl) fitText(t1NameEl, maxBarNamePx, minBarNamePx, t1NameEl.querySelector('span'));
-  if (t2NameEl) fitText(t2NameEl, maxBarNamePx, minBarNamePx, t2NameEl.querySelector('span'));
-
   setLogoOrVs($('pi-bar-centre-img'), $('pi-bar-vs'), showLogo ? getCentreLogo(state) : '');
 
   function fillPlayers(elId, players) {
@@ -416,8 +427,23 @@ function renderBar(state) {
     }
   }
 
+  // Populate the player columns FIRST — their max-content width determines how much
+  // room is left for the team name, so the name must be fitted against the final
+  // layout, not an empty (too-wide) slot.
   fillPlayers('pi-bar-t1-players', t1Players);
   fillPlayers('pi-bar-t2-players', t2Players);
+
+  // Team names in the dead space flanking the centre, fitted to the space the
+  // players leave behind.
+  var t1NameEl = $('pi-bar-t1-team-name');
+  var t2NameEl = $('pi-bar-t2-team-name');
+  if (t1NameEl) t1NameEl.innerHTML = '<span>' + esc(t1.name || t1.tag || '') + '</span>';
+  if (t2NameEl) t2NameEl.innerHTML = '<span>' + esc(t2.name || t2.tag || '') + '</span>';
+
+  var maxBarNamePx = Math.round(window.innerHeight * 0.05);
+  var minBarNamePx = Math.round(maxBarNamePx * 0.34);
+  if (t1NameEl) fitText(t1NameEl, maxBarNamePx, minBarNamePx, t1NameEl.querySelector('span'));
+  if (t2NameEl) fitText(t2NameEl, maxBarNamePx, minBarNamePx, t2NameEl.querySelector('span'));
 }
 
 // ── Render dispatch ───────────────────────────────────────────────────────────
@@ -465,7 +491,7 @@ function refitNames() {
     fitText($('pi-panel-t2-name'), maxPx, Math.round(maxPx * 0.42));
   } else if (layout === 'bar') {
     var maxBarPx = Math.round(window.innerHeight * 0.05);
-    var minBarPx = Math.round(maxBarPx * 0.42);
+    var minBarPx = Math.round(maxBarPx * 0.34);
     var t1El = $('pi-bar-t1-team-name'), t2El = $('pi-bar-t2-team-name');
     if (t1El) fitText(t1El, maxBarPx, minBarPx, t1El.querySelector('span'));
     if (t2El) fitText(t2El, maxBarPx, minBarPx, t2El.querySelector('span'));
@@ -505,3 +531,20 @@ socket.on('state', function(state) {
   if (!visible) return;
   renderAll(state);
 });
+
+// Safety net: re-fit team names whenever the space available to them changes —
+// e.g. a broadcast/custom font swapping in widens the player column and shrinks
+// the team-name slot. Without this a long name fitted against the wrong width
+// would overflow and clip. Debounced to a frame; fitText only changes font-size
+// (not the flex container width) so this can't loop.
+(function observeNameFit() {
+  if (!window.ResizeObserver) return;
+  var pending = false;
+  var ro = new ResizeObserver(function() {
+    if (pending) return;
+    pending = true;
+    requestAnimationFrame(function() { pending = false; refitNames(); });
+  });
+  ['pi-bar-t1-team-name', 'pi-bar-t2-team-name', 'pi-panel-t1-name', 'pi-panel-t2-name']
+    .forEach(function(id) { var el = $(id); if (el) ro.observe(el); });
+})();
