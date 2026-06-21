@@ -2,7 +2,7 @@
 
 Round-robin group standings as a broadcast overlay — one card per group, teams ranked by record. Output at `/graphics/group-stage/`.
 
-![Group Stage — standings](img/group-stage.jpg)
+![Group Stage — standings](img/group-stage.webp)
 
 ## Setting up groups
 

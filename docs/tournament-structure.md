@@ -2,7 +2,7 @@
 
 A one-screen overview of the whole event's format — group stage and playoff shape, series formats, roster size, dates and key info. Output at `/graphics/tournament-structure/`.
 
-![Tournament Structure overview](img/tournament-structure.jpg)
+![Tournament Structure overview](img/tournament-structure.webp)
 
 ## What it shows
 

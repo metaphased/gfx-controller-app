@@ -2,7 +2,7 @@
 
 A breakdown of the prize distribution — placements and amounts, with optional sponsor credit. Output at `/graphics/prizepool/`.
 
-![Prizepool breakdown](img/prizepool.jpg)
+![Prizepool breakdown](img/prizepool.webp)
 
 > **Scope:** the prize/sponsor tools are for crediting sponsors who contribute to a community/grassroots event's **prize pool** — not for selling commercial ad space. See the note in the [README](../README.md).
 
