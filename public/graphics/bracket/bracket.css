@@ -304,7 +304,7 @@ html, body {
 .bkt-match {
   background: rgba(var(--gfx-c4-rgb, 5, 11, 16), 0.90);
   border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 2px;
+  border-radius: var(--gfx-radius, 2px);
   overflow: hidden;
   max-width: 17vw; /* keeps cards from stretching too wide in large columns */
 }

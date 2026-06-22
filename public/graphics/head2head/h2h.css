@@ -266,7 +266,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   gap: 0.2vh;
   background: rgba(0, 0, 0,0.45);
   padding: 0.5vh 0.8vw;
-  border-radius: 2px;
+  border-radius: var(--gfx-radius, 2px);
   min-width: 0;
 }
 .h2h-stat-pill-label {
