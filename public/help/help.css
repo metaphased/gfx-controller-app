@@ -149,7 +149,10 @@ body {
 }
 .markdown-body img.help-img { cursor: zoom-in; transition: border-color .12s ease; }
 .markdown-body img.help-img:hover { border-color: var(--border-strong); }
-.markdown-body img + em, .markdown-body p > em:only-child {
+/* Figure caption: an <em> that is the whole paragraph (tagged in help.js). CSS
+   :only-child can't be used — it ignores the text nodes around an inline
+   *emphasis*, so it would wrongly block-break a single italic word mid-sentence. */
+.markdown-body em.help-caption {
   display: block; font-size: 12.5px; color: var(--text-dim); margin: 0 0 18px;
 }
 

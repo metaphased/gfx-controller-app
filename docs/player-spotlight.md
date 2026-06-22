@@ -10,9 +10,13 @@ All controls live on the **Player Spotlight** tab in the control panel. Output U
 
 ![Player Spotlight — fullscreen Both view](img/player-spotlight-full.webp)
 
-**Lower-third** — a single player over the live feed:
+**Lower-third** — a bottom band over the live feed; the champion sits at its own screen edge and fades in. Single player:
 
-![Player Spotlight — lower-third](img/player-spotlight-l3.webp)
+![Player Spotlight — lower-third, single player](img/player-spotlight-l3.webp)
+
+…or both players, each in their own corner with the centre VS badge:
+
+![Player Spotlight — lower-third, both players](img/player-spotlight-l3-both.webp)
 
 ## Picking the players
 

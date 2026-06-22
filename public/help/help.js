@@ -92,6 +92,13 @@
       img.setAttribute('loading', 'lazy');
       img.classList.add('help-img');                 // click-to-enlarge (see lightbox)
     });
+    // Figure captions: an <em> whose text is the WHOLE paragraph (a standalone
+    // *caption* line, or one right after an image) reads as a caption and gets
+    // block styling. Detected here rather than via CSS :only-child, which ignores
+    // text nodes and would mis-flag inline emphasis surrounded by prose.
+    Array.prototype.forEach.call(root.querySelectorAll('p > em'), function (em) {
+      if (em.textContent.trim() === em.parentNode.textContent.trim()) em.classList.add('help-caption');
+    });
     Array.prototype.forEach.call(root.querySelectorAll('a[href]'), function (a) {
       var href = a.getAttribute('href');
       var m;

@@ -2,14 +2,16 @@
 
 A breakdown of the prize distribution — placements and amounts, with optional sponsor credit. Output at `/graphics/prizepool/`.
 
-![Prizepool breakdown](img/prizepool.webp)
+Placements stack in the main table; any **Bonus / Sponsor** awards (e.g. MVP, Best Play) sit as cards in a row beneath it:
+
+![Prizepool breakdown — placements with bonus award cards below](img/prizepool.webp)
 
 > **Scope:** the prize/sponsor tools are for crediting sponsors who contribute to a community/grassroots event's **prize pool** — not for selling commercial ad space. See the note in the [README](../README.md).
 
 ## Setup
 
 1. In **[Tournament Setup → Prizepool](tournament-setup.md#prizepool)**, tick **This tournament has a prizepool**.
-2. In the **Prizepool graphics tab**, add entries — each has a **label** (e.g. "1st", "3rd–4th"), a **value** (e.g. "$2,000"), an optional **highlight**, and optional **sponsor name/logo** or a prize image.
+2. In the **Prizepool graphics tab**, add entries. Each is either a **Placement** (a row in the main table) or a **Bonus / Sponsor** award (a card in the row below — for MVP / side prizes / sponsor-backed extras). Every entry has a **label** (e.g. "1st", "Tournament MVP"), a **value** (e.g. "$2,000", "Gaming Peripherals"), an optional **highlight**, and optional **sponsor name/logo** or a prize image.
 
 ## Display options
 
