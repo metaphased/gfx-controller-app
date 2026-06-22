@@ -43,7 +43,7 @@ html, body {
 }
 .pp-hl-label { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.8vh; font-weight: 700;
-  letter-spacing: 0.15em; text-transform: uppercase;
+  letter-spacing: 0.15em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.4); line-height: 1;
 }
 .pp-hl-value {
@@ -61,7 +61,7 @@ html, body {
 }
 .pp-hl-sponsor-name { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.3vh; font-weight: 700;
-  letter-spacing: 0.18em; text-transform: uppercase;
+  letter-spacing: 0.18em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.3);
 }
 
@@ -100,7 +100,7 @@ html, body {
 }
 .pp-pl-htitle { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.7vh; font-weight: 800;
-  letter-spacing: 0.28em; text-transform: uppercase;
+  letter-spacing: 0.28em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.85);
 }
 
@@ -179,12 +179,12 @@ html, body {
 
 .pp-pl-label { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.6vh; font-weight: 700;
-  letter-spacing: 0.16em; text-transform: uppercase;
+  letter-spacing: 0.16em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.55);
 }
 .pp-pl-value {
   font-size: 3vh; font-weight: 800;
-  letter-spacing: 0.04em; text-transform: uppercase;
+  letter-spacing: 0.04em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.9);
 }
 
@@ -221,7 +221,7 @@ html, body {
 }
 .pp-bonus-label { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 2vh; font-weight: 900;
-  letter-spacing: 0.06em; text-transform: uppercase;
+  letter-spacing: 0.06em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c3, #fff); line-height: 1;
 }
 .pp-bonus-value {
@@ -236,7 +236,7 @@ html, body {
 }
 .pp-bonus-sponsor-name { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.3vh; font-weight: 700;
-  letter-spacing: 0.18em; text-transform: uppercase;
+  letter-spacing: 0.18em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.35);
 }
 .pp-bonus-sponsor-logo {

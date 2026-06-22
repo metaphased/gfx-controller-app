@@ -40,7 +40,7 @@ html, body {
 /* ── Optional display title ───────────────────────────────────────────────── */
 #ts-title {
   font-size: 5vh; font-weight: 900;
-  letter-spacing: 0.08em; text-transform: uppercase;
+  letter-spacing: 0.08em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c3, #fff); line-height: 1;
 }
 
@@ -57,7 +57,7 @@ html, body {
 }
 .ts-pill-lbl { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.2vh; font-weight: 700;
-  letter-spacing: 0.22em; text-transform: uppercase;
+  letter-spacing: 0.22em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.35);
   line-height: 1; margin-bottom: 0.6vh;
 }
@@ -140,12 +140,12 @@ html, body {
 }
 .ts-stage-name {
   font-size: 5.5vh; font-weight: 900;
-  letter-spacing: 0.03em; text-transform: uppercase;
+  letter-spacing: 0.03em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c3, #fff); line-height: 1;
 }
 .ts-stage-sub { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.8vh; font-weight: 700;
-  letter-spacing: 0.14em; text-transform: uppercase;
+  letter-spacing: 0.14em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.35); line-height: 1;
 }
 
@@ -160,12 +160,12 @@ html, body {
 }
 .ts-detail-lbl { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.6vh; font-weight: 700;
-  letter-spacing: 0.16em; text-transform: uppercase;
+  letter-spacing: 0.16em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.4); flex-shrink: 0;
 }
 .ts-detail-val {
   font-size: 2.8vh; font-weight: 800;
-  letter-spacing: 0.04em; text-transform: uppercase;
+  letter-spacing: 0.04em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.85); text-align: right;
 }
 

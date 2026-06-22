@@ -54,7 +54,7 @@ window.GfxSettings = (function () {
       (pal[2] && pal[2].hex) || '', (pal[3] && pal[3].hex) || '',
       st.blueAccent || '', st.redAccent || '', st.bgColor || '',
       st.overlayFont || '', st.overlayFont2 || '',
-      st.cornerStyle || '', st.surfaceStyle || '', st.labelCase || '', st.labelTracking || '',
+      st.cornerStyle || '', st.surfaceStyle || '', st.textCase || '',
       (Array.isArray(st.customFonts) ? st.customFonts : [])
         .map(function (f) { return (f && f.name) + ':' + (f && f.url); }).join(','),
     ].join('|');
@@ -112,12 +112,10 @@ window.GfxSettings = (function () {
       el.style.removeProperty('--gfx-panel-blur');
     }
 
-    if (st.labelCase === 'normal') el.style.setProperty('--gfx-label-transform', 'none');
-    else                           el.style.removeProperty('--gfx-label-transform'); // 'upper' / default
-    var trk = st.labelTracking;
-    if (trk === 'tight')     el.style.setProperty('--gfx-label-tracking', '0.02em');
-    else if (trk === 'wide') el.style.setProperty('--gfx-label-tracking', '0.2em');
-    else                     el.style.removeProperty('--gfx-label-tracking');        // 'normal' / default
+    // Text case — global across every overlay (names + labels). Default 'upper'
+    // leaves the token UNSET so wired CSS falls back to its own `uppercase` literal.
+    if (st.textCase === 'normal') el.style.setProperty('--gfx-text-transform', 'none');
+    else                          el.style.removeProperty('--gfx-text-transform');    // 'upper' / default
   }
 
   function applyBackground(el, s) {

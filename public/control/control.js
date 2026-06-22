@@ -6061,7 +6061,7 @@ function syncThemeTab(st) {
   // renders has changed — these otherwise ran on every state broadcast.
   if (!_sfp('themeTab', { p: st.palette, b: st.blueAccent, r: st.redAccent,
         l: (st.logoSet || {}).logos, a: st.animation, f: st.overlayFont, cf: st.customFonts,
-        cs: st.cornerStyle, ss: st.surfaceStyle, lc: st.labelCase, lt: st.labelTracking })) return;
+        cs: st.cornerStyle, ss: st.surfaceStyle, tc: st.textCase })) return;
   const { palette = [], blueAccent = '#1e6fff', redAccent = '#ff3b3b', logoSet = {} } = st;
 
   // Palette
@@ -6092,16 +6092,13 @@ function syncThemeTab(st) {
   // Logo library
   renderThemeLogos((logoSet.logos || []));
 
-  // Structural theme — shape / surface / label-style pills + live label preview
-  _syncPills('ts-corner-style',   'corner',    st.cornerStyle   || 'soft');
-  _syncPills('ts-surface-style',  'surface',   st.surfaceStyle  || 'glass');
-  _syncPills('ts-label-case',     'labelcase', st.labelCase     || 'upper');
-  _syncPills('ts-label-tracking', 'tracking',  st.labelTracking || 'normal');
-  const _pv2 = g('ts-font-preview-2');
-  if (_pv2) {
-    _pv2.style.textTransform = st.labelCase === 'normal' ? 'none' : 'uppercase';
-    _pv2.style.letterSpacing = st.labelTracking === 'tight' ? '0.02em' : st.labelTracking === 'wide' ? '0.2em' : '0.16em';
-  }
+  // Structural theme — shape / surface / text-case pills + live preview
+  _syncPills('ts-corner-style',  'corner',  st.cornerStyle  || 'soft');
+  _syncPills('ts-surface-style', 'surface', st.surfaceStyle || 'glass');
+  _syncPills('ts-text-case',     'case',    st.textCase     || 'upper');
+  ['ts-font-preview-1', 'ts-font-preview-2'].forEach(function (id) {
+    const e = g(id); if (e) e.style.textTransform = st.textCase === 'normal' ? 'none' : 'uppercase';
+  });
 }
 
 // Structural theme (Shape & Surface + label style) — persisted like any theme field.

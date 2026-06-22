@@ -574,8 +574,7 @@ const makeDefault = () => ({
     // the default value leaves the token UNSET and nothing changes).
     cornerStyle:   'soft',     // panel/card corners: 'sharp' (0) | 'soft' (current) | 'round'
     surfaceStyle:  'glass',    // panel surface:  'glass' (current translucent+blur) | 'solid' | 'outline'
-    labelCase:     'upper',    // label text-transform: 'upper' (current) | 'normal'
-    labelTracking: 'normal',   // label letter-spacing: 'tight' | 'normal' (current) | 'wide'
+    textCase:      'upper',    // overlay text-transform: 'upper' (current, UPPERCASE) | 'normal' (source case)
     customFonts: [],           // user-uploaded fonts: [{ id, name, url, format }]
     graphicsToken: require('crypto').randomBytes(16).toString('hex'),
     animation: {
@@ -741,9 +740,9 @@ function saveProfiles(p) { try { fs.writeFileSync(PROFILES_FILE, JSON.stringify(
 // ── Looks (reusable visual identities: palette + accents + background + animation) ──
 // A Look is theme-only and additive; it can be applied over any tournament profile
 // without touching teams/schedule. Logo library is intentionally excluded.
-const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation','overlayFont','overlayFont2','cornerStyle','surfaceStyle','labelCase','labelTracking'];
+const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation','overlayFont','overlayFont2','cornerStyle','surfaceStyle','textCase'];
 // Allowed values for the structural-theme enums (clamped on save so junk can't reach state/Looks).
-const STRUCTURAL_THEME_ENUMS = { cornerStyle: ['sharp','soft','round'], surfaceStyle: ['glass','solid','outline'], labelCase: ['upper','normal'], labelTracking: ['tight','normal','wide'] };
+const STRUCTURAL_THEME_ENUMS = { cornerStyle: ['sharp','soft','round'], surfaceStyle: ['glass','solid','outline'], textCase: ['upper','normal'] };
 function sanitizeStructuralTheme(body) {
   if (!body) return;
   for (const k in STRUCTURAL_THEME_ENUMS) {

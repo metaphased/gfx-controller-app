@@ -91,7 +91,7 @@ html, body {
   font-size: 1.5vh;
   font-weight: 800;
   letter-spacing: 0.28em;
-  text-transform: uppercase;
+  text-transform: var(--gfx-text-transform, uppercase);
   padding-bottom: 0.8vh;
   flex-shrink: 0;
 }
@@ -116,7 +116,7 @@ html, body {
   font-size: 1.2vh;
   font-weight: 700;
   letter-spacing: 0.2em;
-  text-transform: uppercase;
+  text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255, 0.3);
   padding-bottom: 0.5vh;
   align-self: end;
@@ -144,7 +144,7 @@ html, body {
   font-size: 2.8vh;
   font-weight: 900;
   letter-spacing: 0.22em;
-  text-transform: uppercase;
+  text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c2, #a7a38e);
   line-height: 1.1;
   padding-bottom: 1.5vh;
@@ -190,7 +190,7 @@ html, body {
   font-size: 1.2vh;
   font-weight: 700;
   letter-spacing: 0.2em;
-  text-transform: uppercase;
+  text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255, 0.3);
   flex-shrink: 0;
 }
@@ -274,7 +274,7 @@ html, body {
   font-size: 1.35vh;
   font-weight: 700;
   letter-spacing: 0.22em;
-  text-transform: uppercase;
+  text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255, 0.45);
   text-align: center;
 }
@@ -420,7 +420,7 @@ html, body {
   font-size: 0.9vh;
   font-weight: 800;
   letter-spacing: 0.22em;
-  text-transform: uppercase;
+  text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255, 0.2);
   background: rgba(255, 255, 255, 0.02);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -475,5 +475,5 @@ html, body {
   color: rgba(255, 255, 255, 0.15);
   font-size: 1.6vh;
   letter-spacing: 0.15em;
-  text-transform: uppercase;
+  text-transform: var(--gfx-text-transform, uppercase);
 }

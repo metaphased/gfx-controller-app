@@ -55,7 +55,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .h2h-header-name {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 4.8vh; font-weight: 900;
-  letter-spacing: 0.05em; text-transform: uppercase;
+  letter-spacing: 0.05em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c3, #fff);
   line-height: 1;
 }
@@ -172,7 +172,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .h2h-player-handle {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 6vh; font-weight: 900;
-  letter-spacing: 0.04em; text-transform: uppercase;
+  letter-spacing: 0.04em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c3, #fff);
   line-height: 1;
   transition: font-size 0.6s var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1));
@@ -180,7 +180,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .h2h-champ-name {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.9vh; font-weight: 700;
-  letter-spacing: 0.2em; text-transform: uppercase;
+  letter-spacing: 0.2em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c1);
   line-height: 1; margin-bottom: 0.4vh;
   transition: font-size 0.6s var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1));
@@ -226,7 +226,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .h2h-role-label {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.3vh; font-weight: 700;
-  letter-spacing: 0.22em; text-transform: uppercase;
+  letter-spacing: 0.22em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.35);
   transition: color 0.4s ease, font-size 0.4s ease;
 }
@@ -272,7 +272,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .h2h-stat-pill-label {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.2vh; font-weight: 700;
-  letter-spacing: 0.14em; text-transform: uppercase;
+  letter-spacing: 0.14em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.45);
   white-space: nowrap;
   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
