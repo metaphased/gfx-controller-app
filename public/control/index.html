@@ -1321,6 +1321,22 @@
               <div id="ts-font-preview-2" style="font-size:14px;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin-top:4px">Grand Final · Bo5 · 0123456789</div>
             </div>
 
+            <div class="theme-palette-slot" style="margin-top:12px">
+              <span class="theme-fixed-label">Label case</span>
+              <div class="theme-pills" id="ts-label-case">
+                <button class="theme-pill" data-labelcase="upper"  onclick="setStructural('labelCase','upper')">UPPERCASE</button>
+                <button class="theme-pill" data-labelcase="normal" onclick="setStructural('labelCase','normal')">Normal</button>
+              </div>
+            </div>
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Label tracking</span>
+              <div class="theme-pills" id="ts-label-tracking">
+                <button class="theme-pill" data-tracking="tight"  onclick="setStructural('labelTracking','tight')">Tight</button>
+                <button class="theme-pill" data-tracking="normal" onclick="setStructural('labelTracking','normal')">Normal</button>
+                <button class="theme-pill" data-tracking="wide"   onclick="setStructural('labelTracking','wide')">Wide</button>
+              </div>
+            </div>
+
             <!-- Custom fonts (advanced) -->
             <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
               <span class="theme-anim-label">Custom fonts <span style="font-size:10px;letter-spacing:0.12em;color:var(--text-dim);border:1px solid var(--border);padding:1px 6px;border-radius:var(--radius-pill);margin-left:6px;vertical-align:middle">ADVANCED</span></span>
@@ -1332,6 +1348,28 @@
                 <button class="btn btn-sm btn-primary" onclick="uploadCustomFont()">Upload</button>
               </div>
               <div id="ts-font-upload-status" class="hint" style="margin-top:6px"></div>
+            </div>
+          </div>
+
+          <!-- Shape & Surface -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Shape &amp; Surface</div>
+            <p class="hint">Structural look applied across <strong>every overlay</strong>. Defaults reproduce the standard design; saved with <strong>Looks</strong>.</p>
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Corners</span>
+              <div class="theme-pills" id="ts-corner-style">
+                <button class="theme-pill" data-corner="sharp" onclick="setStructural('cornerStyle','sharp')">Sharp</button>
+                <button class="theme-pill" data-corner="soft"  onclick="setStructural('cornerStyle','soft')">Soft</button>
+                <button class="theme-pill" data-corner="round" onclick="setStructural('cornerStyle','round')">Round</button>
+              </div>
+            </div>
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Surface</span>
+              <div class="theme-pills" id="ts-surface-style">
+                <button class="theme-pill" data-surface="glass"   onclick="setStructural('surfaceStyle','glass')">Glass</button>
+                <button class="theme-pill" data-surface="solid"   onclick="setStructural('surfaceStyle','solid')">Solid</button>
+                <button class="theme-pill" data-surface="outline" onclick="setStructural('surfaceStyle','outline')">Outline</button>
+              </div>
             </div>
           </div>
 

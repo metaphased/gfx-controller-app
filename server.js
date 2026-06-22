@@ -569,6 +569,13 @@ const makeDefault = () => ({
     draftLayout: 'arena',      // 'arena' | 'classic'
     overlayFont: '',           // PRIMARY (display) overlay font ('' = Barlow Condensed); a bundled family or a customFonts name
     overlayFont2: '',          // SECONDARY (labels/meta) overlay font ('' = inherit the primary font)
+    // Structural theme — wired as --gfx-* tokens in GfxSettings.applyTheme; every
+    // default reproduces the CURRENT look (the wired CSS keeps literal fallbacks, so
+    // the default value leaves the token UNSET and nothing changes).
+    cornerStyle:   'soft',     // panel/card corners: 'sharp' (0) | 'soft' (current) | 'round'
+    surfaceStyle:  'glass',    // panel surface:  'glass' (current translucent+blur) | 'solid' | 'outline'
+    labelCase:     'upper',    // label text-transform: 'upper' (current) | 'normal'
+    labelTracking: 'normal',   // label letter-spacing: 'tight' | 'normal' (current) | 'wide'
     customFonts: [],           // user-uploaded fonts: [{ id, name, url, format }]
     graphicsToken: require('crypto').randomBytes(16).toString('hex'),
     animation: {
@@ -734,7 +741,15 @@ function saveProfiles(p) { try { fs.writeFileSync(PROFILES_FILE, JSON.stringify(
 // ── Looks (reusable visual identities: palette + accents + background + animation) ──
 // A Look is theme-only and additive; it can be applied over any tournament profile
 // without touching teams/schedule. Logo library is intentionally excluded.
-const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation','overlayFont','overlayFont2'];
+const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation','overlayFont','overlayFont2','cornerStyle','surfaceStyle','labelCase','labelTracking'];
+// Allowed values for the structural-theme enums (clamped on save so junk can't reach state/Looks).
+const STRUCTURAL_THEME_ENUMS = { cornerStyle: ['sharp','soft','round'], surfaceStyle: ['glass','solid','outline'], labelCase: ['upper','normal'], labelTracking: ['tight','normal','wide'] };
+function sanitizeStructuralTheme(body) {
+  if (!body) return;
+  for (const k in STRUCTURAL_THEME_ENUMS) {
+    if (body[k] !== undefined && !STRUCTURAL_THEME_ENUMS[k].includes(body[k])) delete body[k];
+  }
+}
 function loadLooks() { try { if (fs.existsSync(LOOKS_FILE)) return JSON.parse(fs.readFileSync(LOOKS_FILE, 'utf8')); } catch(e) {} return null; }
 function saveLooks(l) { try { fs.writeFileSync(LOOKS_FILE, JSON.stringify(l, null, 2)); } catch(e) { console.error(e); } }
 function _seedLooks() {
@@ -2664,6 +2679,7 @@ app.get('/api/tournament-stats', (req, res) => {
 app.post('/api/settings', requireAdmin, (req, res) => {
   if (!state.settings) state.settings = {};
   if (req.body && req.body.uiTheme) req.body.uiTheme = sanitizeTheme(req.body.uiTheme);  // panel-wide default
+  sanitizeStructuralTheme(req.body);                                                     // cornerStyle/surfaceStyle/labelCase/labelTracking
   const switcherChanged = req.body && Object.prototype.hasOwnProperty.call(req.body, 'switcher');
   deepMerge(state.settings, req.body);
   if (req.body.buses) initBusState();
