@@ -42,6 +42,55 @@ setInterval(() => {
   el.textContent = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
 }, 500);
 
+// ── Countdown banner (time-to-live) ──────────────────────────────────────────────
+// Mirrors the on-air pre-show / break countdowns so casters always see how long
+// until the broadcast goes live / comes back, regardless of which tab they're on.
+function fmtCountdown(secs) {
+  const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), s = secs % 60;
+  return (h > 0 ? h + ':' + String(m).padStart(2, '0') : String(m))
+    + ':' + String(s).padStart(2, '0');
+}
+
+function computeCountdown(s) {
+  if (!s) return null;
+  const now = Date.now();
+  const bs = s.breakScreen || {};
+  const ps = s.preShow || {};
+  // Break "back in" takes priority over pre-show when both are counting.
+  if (bs.timerEnd && bs.timerEnd > now) {
+    return { kind: 'break', endsAt: bs.timerEnd, label: 'BACK LIVE IN', note: bs.message || '' };
+  }
+  if (ps.timerEnd && ps.timerEnd > now) {
+    return { kind: 'preshow', endsAt: ps.timerEnd, label: (ps.timerLabel || 'BROADCAST BEGINS IN'), note: '' };
+  }
+  return null;
+}
+
+let _ccKey = '';
+function renderCountdown() {
+  const bar = document.getElementById('caster-countdown');
+  if (!bar) return;
+  const c = computeCountdown(_state);
+  if (!c) {
+    if (_ccKey) { bar.className = 'caster-countdown'; bar.innerHTML = ''; _ccKey = ''; }
+    return;
+  }
+  const secs = Math.max(0, Math.ceil((c.endsAt - Date.now()) / 1000));
+  const key = c.kind + '|' + c.label + '|' + c.note;
+  if (key !== _ccKey) {
+    bar.innerHTML =
+      '<span class="cc-dot"></span>' +
+      '<span class="cc-label">' + esc(c.label) + '</span>' +
+      '<span class="cc-time" id="cc-time"></span>' +
+      (c.note ? '<span class="cc-note">' + esc(c.note) + '</span>' : '');
+    _ccKey = key;
+  }
+  bar.className = 'caster-countdown show cc-' + c.kind + (secs <= 30 ? ' cc-soon' : '');
+  const tEl = document.getElementById('cc-time');
+  if (tEl) tEl.textContent = fmtCountdown(secs);
+}
+setInterval(renderCountdown, 500);
+
 // ── Connection status ──────────────────────────────────────────────────────────
 socket.on('connect', () => {
   const dot = document.getElementById('conn-dot');
@@ -219,6 +268,7 @@ function calculateGroupStandings(state, teams) {
 function renderAll() {
   if (!_state) return;
   renderHeader();
+  renderCountdown();
   renderRoster();
   renderSeries();
   renderDraft();
