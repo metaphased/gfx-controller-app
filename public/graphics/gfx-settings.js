@@ -54,7 +54,7 @@ window.GfxSettings = (function () {
       (pal[2] && pal[2].hex) || '', (pal[3] && pal[3].hex) || '',
       st.blueAccent || '', st.redAccent || '', st.bgColor || '',
       st.overlayFont || '', st.overlayFont2 || '',
-      st.cornerStyle || '', st.surfaceStyle || '', st.textCase || '',
+      String(st.cornerRadius == null ? st.cornerStyle || '' : st.cornerRadius), st.surfaceStyle || '', st.textCase || '',
       (Array.isArray(st.customFonts) ? st.customFonts : [])
         .map(function (f) { return (f && f.name) + ':' + (f && f.url); }).join(','),
     ].join('|');
@@ -92,10 +92,10 @@ window.GfxSettings = (function () {
     // its own designed literal (per-element radii, glass surfaces, per-rule label
     // tracking) and the default look is reproduced exactly. Only a non-default
     // choice sets a token, overriding uniformly across every overlay.
-    var corner = st.cornerStyle;
-    if (corner === 'sharp')      el.style.setProperty('--gfx-radius', '0px');
-    else if (corner === 'round') el.style.setProperty('--gfx-radius', '14px');
-    else                         el.style.removeProperty('--gfx-radius');   // 'soft' / default
+    var cr = st.cornerRadius;
+    if (cr === undefined && typeof st.cornerStyle === 'string') cr = ({ sharp: 0, soft: 3, round: 14 })[st.cornerStyle]; // legacy enum
+    if (typeof cr === 'number' && isFinite(cr)) el.style.setProperty('--gfx-radius', cr + 'px');
+    else                                        el.style.removeProperty('--gfx-radius');
 
     // Surface — overlays composite over OBS with no backdrop-filter, so "glass" is
     // pure translucency. Default 'glass' leaves both tokens unset (each panel keeps

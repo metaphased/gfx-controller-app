@@ -6061,7 +6061,7 @@ function syncThemeTab(st) {
   // renders has changed — these otherwise ran on every state broadcast.
   if (!_sfp('themeTab', { p: st.palette, b: st.blueAccent, r: st.redAccent,
         l: (st.logoSet || {}).logos, a: st.animation, f: st.overlayFont, cf: st.customFonts,
-        cs: st.cornerStyle, ss: st.surfaceStyle, tc: st.textCase })) return;
+        cs: st.cornerRadius, ss: st.surfaceStyle, tc: st.textCase })) return;
   const { palette = [], blueAccent = '#1e6fff', redAccent = '#ff3b3b', logoSet = {} } = st;
 
   // Palette
@@ -6092,8 +6092,10 @@ function syncThemeTab(st) {
   // Logo library
   renderThemeLogos((logoSet.logos || []));
 
-  // Structural theme — shape / surface / text-case pills + live preview
-  _syncPills('ts-corner-style',  'corner',  st.cornerStyle  || 'soft');
+  // Structural theme — corner-radius slider + surface / text-case pills + live preview
+  const _cr = (st.cornerRadius != null ? st.cornerRadius : 3);
+  const _crEl = g('ts-corner-radius'); if (_crEl && document.activeElement !== _crEl) _crEl.value = _cr;
+  const _crv = g('ts-corner-radius-val'); if (_crv) _crv.textContent = _cr + 'px';
   _syncPills('ts-surface-style', 'surface', st.surfaceStyle || 'glass');
   _syncPills('ts-text-case',     'case',    st.textCase     || 'upper');
   ['ts-font-preview-1', 'ts-font-preview-2'].forEach(function (id) {

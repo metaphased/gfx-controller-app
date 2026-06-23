@@ -1351,11 +1351,9 @@
             <p class="hint">Structural look applied across <strong>every overlay</strong>. Defaults reproduce the standard design; saved with <strong>Looks</strong>.</p>
             <div class="theme-palette-slot">
               <span class="theme-fixed-label">Corners</span>
-              <div class="theme-pills" id="ts-corner-style">
-                <button class="theme-pill" data-corner="sharp" onclick="setStructural('cornerStyle','sharp')">Sharp</button>
-                <button class="theme-pill" data-corner="soft"  onclick="setStructural('cornerStyle','soft')">Soft</button>
-                <button class="theme-pill" data-corner="round" onclick="setStructural('cornerStyle','round')">Round</button>
-              </div>
+              <input type="range" id="ts-corner-radius" min="0" max="20" step="1" value="3" style="flex:1;min-width:0"
+                oninput="setStructural('cornerRadius', parseInt(this.value)); g('ts-corner-radius-val').textContent = this.value + 'px'">
+              <span id="ts-corner-radius-val" style="min-width:4ch;text-align:right;color:var(--text-dim)">3px</span>
             </div>
             <div class="theme-palette-slot">
               <span class="theme-fixed-label">Surface</span>

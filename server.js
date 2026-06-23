@@ -572,7 +572,7 @@ const makeDefault = () => ({
     // Structural theme — wired as --gfx-* tokens in GfxSettings.applyTheme; every
     // default reproduces the CURRENT look (the wired CSS keeps literal fallbacks, so
     // the default value leaves the token UNSET and nothing changes).
-    cornerStyle:   'soft',     // panel/card corners: 'sharp' (0) | 'soft' (current) | 'round'
+    cornerRadius:  3,          // panel/card corner radius in px (slider 0 = sharp right-angles … up to 20 = max curve)
     surfaceStyle:  'glass',    // panel surface:  'glass' (current translucent+blur) | 'solid' | 'outline'
     textCase:      'upper',    // overlay text-transform: 'upper' (current, UPPERCASE) | 'normal' (source case)
     customFonts: [],           // user-uploaded fonts: [{ id, name, url, format }]
@@ -740,13 +740,17 @@ function saveProfiles(p) { try { fs.writeFileSync(PROFILES_FILE, JSON.stringify(
 // ── Looks (reusable visual identities: palette + accents + background + animation) ──
 // A Look is theme-only and additive; it can be applied over any tournament profile
 // without touching teams/schedule. Logo library is intentionally excluded.
-const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation','overlayFont','overlayFont2','cornerStyle','surfaceStyle','textCase'];
+const LOOK_FIELDS = ['palette','blueAccent','redAccent','bgType','bgColor','bgImage','bgFogLayer','bgFogIntensity','animation','overlayFont','overlayFont2','cornerRadius','surfaceStyle','textCase'];
 // Allowed values for the structural-theme enums (clamped on save so junk can't reach state/Looks).
-const STRUCTURAL_THEME_ENUMS = { cornerStyle: ['sharp','soft','round'], surfaceStyle: ['glass','solid','outline'], textCase: ['upper','normal'] };
+const STRUCTURAL_THEME_ENUMS = { surfaceStyle: ['glass','solid','outline'], textCase: ['upper','normal'] };
 function sanitizeStructuralTheme(body) {
   if (!body) return;
   for (const k in STRUCTURAL_THEME_ENUMS) {
     if (body[k] !== undefined && !STRUCTURAL_THEME_ENUMS[k].includes(body[k])) delete body[k];
+  }
+  if (body.cornerRadius !== undefined) {           // numeric px, clamped 0–20
+    const n = Math.round(Number(body.cornerRadius));
+    if (!isFinite(n)) delete body.cornerRadius; else body.cornerRadius = Math.max(0, Math.min(20, n));
   }
 }
 function loadLooks() { try { if (fs.existsSync(LOOKS_FILE)) return JSON.parse(fs.readFileSync(LOOKS_FILE, 'utf8')); } catch(e) {} return null; }
@@ -757,13 +761,13 @@ function _seedLooks() {
     { name: 'Primary', hex: a }, { name: 'Secondary', hex: b }, { name: 'Light', hex: c }, { name: 'Dark', hex: d },
   ];
   const mk = (name, data) => ({ id: 'look_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), data });
-  const struct = (cornerStyle, surfaceStyle, textCase) => ({ cornerStyle, surfaceStyle, textCase });
+  const struct = (cornerRadius, surfaceStyle, textCase) => ({ cornerRadius, surfaceStyle, textCase });
   return [
-    mk('Broadcast Clean', { palette: pal('#1ffaff', '#a7a38e', '#F7F5F0', '#0a1b20'), blueAccent: '#1e6fff', redAccent: '#ff3b3b', bgType: 'transparent', bgColor: '#070f12', animation: mkAnim('medium', 'easeOutQuart', 'easeInQuart', 'easeInOutQuad'), ...struct('soft', 'glass', 'upper') }),
-    mk('Neon Surge',      { palette: pal('#ff2bd1', '#19e3ff', '#fdf0ff', '#120018'), blueAccent: '#19e3ff', redAccent: '#ff2bd1', bgType: 'transparent', bgColor: '#0a0014', animation: mkAnim('fast', 'easeOutExpo', 'easeInExpo', 'easeInOutExpo'), ...struct('round', 'glass', 'upper') }),
-    mk('Big Impact',      { palette: pal('#ffc83d', '#ff5a3c', '#fff6e6', '#1a1208'), blueAccent: '#3d7bff', redAccent: '#ff5a3c', bgType: 'transparent', bgColor: '#120c04', animation: mkAnim('slow', 'easeOutBack', 'easeInBack', 'easeInOutQuint'), ...struct('sharp', 'solid', 'upper') }),
-    mk('Minimal Mono',    { palette: pal('#e8e8ea', '#9aa0a6', '#ffffff', '#0c0e11'), blueAccent: '#5b8cff', redAccent: '#ff5d5d', bgType: 'transparent', bgColor: '#0a0c0f', animation: mkAnim('fast', 'easeOutQuart', 'easeInQuart', 'easeInOutQuad'), ...struct('sharp', 'outline', 'normal') }),
-    mk('Soft Rounded',    { palette: pal('#5ad1c8', '#d8b98c', '#f4f6f5', '#101a1c'), blueAccent: '#3d8bff', redAccent: '#ff6b6b', bgType: 'transparent', bgColor: '#0a1416', animation: mkAnim('medium', 'easeOutBack', 'easeInQuart', 'easeInOutQuad'), ...struct('round', 'glass', 'upper') }),
+    mk('Broadcast Clean', { palette: pal('#1ffaff', '#a7a38e', '#F7F5F0', '#0a1b20'), blueAccent: '#1e6fff', redAccent: '#ff3b3b', bgType: 'transparent', bgColor: '#070f12', animation: mkAnim('medium', 'easeOutQuart', 'easeInQuart', 'easeInOutQuad'), ...struct(3, 'glass', 'upper') }),
+    mk('Neon Surge',      { palette: pal('#ff2bd1', '#19e3ff', '#fdf0ff', '#120018'), blueAccent: '#19e3ff', redAccent: '#ff2bd1', bgType: 'transparent', bgColor: '#0a0014', animation: mkAnim('fast', 'easeOutExpo', 'easeInExpo', 'easeInOutExpo'), ...struct(14, 'glass', 'upper') }),
+    mk('Big Impact',      { palette: pal('#ffc83d', '#ff5a3c', '#fff6e6', '#1a1208'), blueAccent: '#3d7bff', redAccent: '#ff5a3c', bgType: 'transparent', bgColor: '#120c04', animation: mkAnim('slow', 'easeOutBack', 'easeInBack', 'easeInOutQuint'), ...struct(0, 'solid', 'upper') }),
+    mk('Minimal Mono',    { palette: pal('#e8e8ea', '#9aa0a6', '#ffffff', '#0c0e11'), blueAccent: '#5b8cff', redAccent: '#ff5d5d', bgType: 'transparent', bgColor: '#0a0c0f', animation: mkAnim('fast', 'easeOutQuart', 'easeInQuart', 'easeInOutQuad'), ...struct(0, 'outline', 'normal') }),
+    mk('Soft Rounded',    { palette: pal('#5ad1c8', '#d8b98c', '#f4f6f5', '#101a1c'), blueAccent: '#3d8bff', redAccent: '#ff6b6b', bgType: 'transparent', bgColor: '#0a1416', animation: mkAnim('medium', 'easeOutBack', 'easeInQuart', 'easeInOutQuad'), ...struct(16, 'glass', 'upper') }),
   ];
 }
 function getLooks() {
