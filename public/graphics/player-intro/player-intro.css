@@ -27,8 +27,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
    ═══════════════════════════════════════════════════════════════════════════ */
 .pi-panel-box {
   width: 80vw;
-  background: rgba(var(--gfx-c4-rgb, 6, 12, 20), 0.94);
-  border: 1px solid rgba(255, 255, 255,0.1);
+  background: var(--gfx-panel-bg, rgba(var(--gfx-c4-rgb, 6, 12, 20), 0.94));
+  border: var(--gfx-panel-border, 1px solid rgba(255, 255, 255,0.1));
   overflow: hidden;
 }
 
@@ -65,7 +65,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-panel-team-name {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 4.2vh; font-weight: 900;
-  letter-spacing: 0.08em; text-transform: uppercase;
+  letter-spacing: 0.08em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c3, #fff);
   line-height: 1;
   flex: 1;
@@ -89,7 +89,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-panel-vs {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 2.6vh; font-weight: 900;
-  letter-spacing: 0.28em; text-transform: uppercase;
+  letter-spacing: 0.28em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.28);
 }
 
@@ -175,7 +175,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-pnl-handle {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 4vh; font-weight: 800;
-  letter-spacing: 0.03em; text-transform: uppercase;
+  letter-spacing: 0.03em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c3, #fff);
   line-height: 1;
   white-space: nowrap;
@@ -187,7 +187,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-pnl-rank {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.35vh; font-weight: 700;
-  letter-spacing: 0.12em; text-transform: uppercase;
+  letter-spacing: 0.12em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--team-color, var(--gfx-c1));
   line-height: 1.2;
   margin-top: 0.2vh;
@@ -241,7 +241,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-stack-name {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 6.5vh; font-weight: 900;
-  letter-spacing: 0.05em; text-transform: uppercase;
+  letter-spacing: 0.05em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c3, #fff);
   line-height: 1;
 }
@@ -289,7 +289,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   position: relative; z-index: 2;
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 5.8vh; font-weight: 900;
-  letter-spacing: 0.02em; text-transform: uppercase;
+  letter-spacing: 0.02em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c3, #fff);
   line-height: 1;
   white-space: nowrap;
@@ -299,7 +299,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-stk-rank {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.5vh; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase;
+  letter-spacing: 0.1em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--team-color, var(--gfx-c1));
   align-self: flex-end;
   padding-bottom: 0.5vh;
@@ -314,7 +314,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   height: 20vh;     /* fixed height so bar is consistent with/without data */
   display: flex;
   overflow: hidden;
-  background: rgba(var(--gfx-c4-rgb, 6, 12, 20), var(--pi-bar-alpha, 0.93));
+  background: var(--gfx-panel-bg, rgba(var(--gfx-c4-rgb, 6, 12, 20), var(--pi-bar-alpha, 0.93)));
   border-top: 1px solid rgba(255, 255, 255,0.1);
 }
 .pi-bar-band.has-rank { height: 23vh; }
@@ -381,7 +381,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-bar-handle {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 2.5vh; font-weight: 800;
-  letter-spacing: 0.04em; text-transform: uppercase;
+  letter-spacing: 0.04em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--gfx-c3, #fff);
   line-height: 1;
   white-space: nowrap;
@@ -391,7 +391,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-bar-rank {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.1vh; font-weight: 700;
-  letter-spacing: 0.1em; text-transform: uppercase;
+  letter-spacing: 0.1em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--team-color, var(--gfx-c1));
   margin-top: 0.15vh;
 }
@@ -411,7 +411,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-bar-team-name span {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 5vh; font-weight: 900;
-  letter-spacing: 0.04em; text-transform: uppercase;
+  letter-spacing: 0.04em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.82);
   line-height: 1;
   white-space: nowrap;
@@ -432,7 +432,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-bar-vs {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 2.6vh; font-weight: 900;
-  letter-spacing: 0.22em; text-transform: uppercase;
+  letter-spacing: 0.22em; text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.28);
 }
 

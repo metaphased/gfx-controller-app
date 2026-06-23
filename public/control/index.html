@@ -1245,10 +1245,12 @@
       <!-- Looks: save / apply full visual identities -->
       <div class="card" style="margin-bottom:16px">
         <div class="card-title">Looks</div>
-        <p class="hint">A Look bundles the colour palette, accents, background and animation feel into a reusable visual identity. Apply one over any tournament — it never touches teams or schedule.</p>
+        <p class="hint">A Look bundles the colour palette, accents, background, shape &amp; surface, text case and animation feel into a reusable visual identity. Apply one over any tournament — it never touches teams or schedule. <strong>Export</strong> a Look to a file to carry it between events; <strong>Import</strong> one a colleague shared.</p>
         <div class="look-save-row">
           <input type="text" id="look-name-input" placeholder="Name this Look…" maxlength="40">
           <button class="btn btn-sm btn-primary" onclick="saveLook()">Save current as Look</button>
+          <button class="btn btn-sm" onclick="document.getElementById('look-import-file').click()" title="Import a Look from a .metalook.json file">Import…</button>
+          <input type="file" id="look-import-file" accept=".json,application/json" style="display:none" onchange="importLook(this)">
         </div>
         <div id="looks-list" class="looks-list"></div>
       </div>
@@ -1321,6 +1323,14 @@
               <div id="ts-font-preview-2" style="font-size:14px;font-weight:500;letter-spacing:0.16em;text-transform:uppercase;color:var(--text-dim);margin-top:4px">Grand Final · Bo5 · 0123456789</div>
             </div>
 
+            <div class="theme-palette-slot" style="margin-top:12px">
+              <span class="theme-fixed-label">Text case</span>
+              <div class="theme-pills" id="ts-text-case">
+                <button class="theme-pill" data-case="upper"  onclick="setStructural('textCase','upper')">UPPERCASE</button>
+                <button class="theme-pill" data-case="normal" onclick="setStructural('textCase','normal')">Normal</button>
+              </div>
+            </div>
+
             <!-- Custom fonts (advanced) -->
             <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
               <span class="theme-anim-label">Custom fonts <span style="font-size:10px;letter-spacing:0.12em;color:var(--text-dim);border:1px solid var(--border);padding:1px 6px;border-radius:var(--radius-pill);margin-left:6px;vertical-align:middle">ADVANCED</span></span>
@@ -1332,6 +1342,26 @@
                 <button class="btn btn-sm btn-primary" onclick="uploadCustomFont()">Upload</button>
               </div>
               <div id="ts-font-upload-status" class="hint" style="margin-top:6px"></div>
+            </div>
+          </div>
+
+          <!-- Shape & Surface -->
+          <div class="card" style="margin-bottom:16px">
+            <div class="card-title">Shape &amp; Surface</div>
+            <p class="hint">Structural look applied across <strong>every overlay</strong>. Defaults reproduce the standard design; saved with <strong>Looks</strong>.</p>
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Corners</span>
+              <input type="range" id="ts-corner-radius" min="0" max="20" step="1" value="3" style="flex:1;min-width:0"
+                oninput="setStructural('cornerRadius', parseInt(this.value)); g('ts-corner-radius-val').textContent = this.value + 'px'">
+              <span id="ts-corner-radius-val" style="min-width:4ch;text-align:right;color:var(--text-dim)">3px</span>
+            </div>
+            <div class="theme-palette-slot">
+              <span class="theme-fixed-label">Surface</span>
+              <div class="theme-pills" id="ts-surface-style">
+                <button class="theme-pill" data-surface="glass"   onclick="setStructural('surfaceStyle','glass')">Glass</button>
+                <button class="theme-pill" data-surface="solid"   onclick="setStructural('surfaceStyle','solid')">Solid</button>
+                <button class="theme-pill" data-surface="outline" onclick="setStructural('surfaceStyle','outline')">Outline</button>
+              </div>
             </div>
           </div>
 

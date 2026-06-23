@@ -54,6 +54,7 @@ window.GfxSettings = (function () {
       (pal[2] && pal[2].hex) || '', (pal[3] && pal[3].hex) || '',
       st.blueAccent || '', st.redAccent || '', st.bgColor || '',
       st.overlayFont || '', st.overlayFont2 || '',
+      String(st.cornerRadius == null ? st.cornerStyle || '' : st.cornerRadius), st.surfaceStyle || '', st.textCase || '',
       (Array.isArray(st.customFonts) ? st.customFonts : [])
         .map(function (f) { return (f && f.name) + ':' + (f && f.url); }).join(','),
     ].join('|');
@@ -85,6 +86,36 @@ window.GfxSettings = (function () {
     var font2 = _cssFontName(st.overlayFont2);
     if (font2) el.style.setProperty('--gfx-font-2', "'" + font2 + "'");
     else       el.style.removeProperty('--gfx-font-2');
+
+    // ── Structural theme (shape / surface / label style) ──────────────────────
+    // Each token stays UNSET for its DEFAULT value, so the wired CSS falls back to
+    // its own designed literal (per-element radii, glass surfaces, per-rule label
+    // tracking) and the default look is reproduced exactly. Only a non-default
+    // choice sets a token, overriding uniformly across every overlay.
+    var cr = st.cornerRadius;
+    if (cr === undefined && typeof st.cornerStyle === 'string') cr = ({ sharp: 0, soft: 3, round: 14 })[st.cornerStyle]; // legacy enum
+    if (typeof cr === 'number' && isFinite(cr)) el.style.setProperty('--gfx-radius', cr + 'px');
+    else                                        el.style.removeProperty('--gfx-radius');
+
+    // Surface — overlays composite over OBS with no backdrop-filter, so "glass" is
+    // pure translucency. Default 'glass' leaves both tokens unset (each panel keeps
+    // its own surface); 'solid' = opaque, 'outline' = near-transparent fill + accent edge.
+    var surf = st.surfaceStyle;
+    if (surf === 'solid') {
+      el.style.setProperty('--gfx-panel-bg', 'rgb(var(--gfx-c4-rgb, 7,15,18))');
+      el.style.removeProperty('--gfx-panel-border');
+    } else if (surf === 'outline') {
+      el.style.setProperty('--gfx-panel-bg', 'rgba(var(--gfx-c4-rgb, 7,15,18), 0.22)');
+      el.style.setProperty('--gfx-panel-border', '1px solid rgba(var(--gfx-c1-rgb, 31,250,255), 0.6)');
+    } else {                                                                // 'glass' / default
+      el.style.removeProperty('--gfx-panel-bg');
+      el.style.removeProperty('--gfx-panel-border');
+    }
+
+    // Text case — global across every overlay (names + labels). Default 'upper'
+    // leaves the token UNSET so wired CSS falls back to its own `uppercase` literal.
+    if (st.textCase === 'normal') el.style.setProperty('--gfx-text-transform', 'none');
+    else                          el.style.removeProperty('--gfx-text-transform');    // 'upper' / default
   }
 
   function applyBackground(el, s) {

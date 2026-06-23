@@ -44,7 +44,7 @@ MetaGFX is a self-hosted control room for community esports productions. You man
 - 12+ overlays: Player Intro, Player Spotlight, Head-to-Head, Draft board, Win Screen (10 styles incl. full-screen stingers), Break Screen (PIP), Pre-show, Lower Third, Bracket (single/double elim), Group Stage, Tournament Structure, Prizepool, animated backgrounds.
 - **Everything stays in sync** — change a score or a pick once and every overlay reflects it instantly via WebSockets.
 - **GFX Bus system** — route many graphics through 3–4 shared browser sources instead of one per graphic (big RAM/VRAM saving); switch live from the operator routing matrix.
-- **Theming & Looks** — palette, accents, background, animation easing/speed, and **broadcast typography** (primary display + secondary label fonts, 13 bundled families plus your own custom font uploads), saved as reusable named "Looks" applied over any event.
+- **Theming & Looks** — palette, accents, background, animation easing/speed, **broadcast typography** (primary display + secondary label fonts, 13 bundled families plus your own custom font uploads), and **structural style** (panel corner-radius slider, glass/solid/outline surface, UPPERCASE/Normal text case) — all saved as reusable named "Looks" you can apply over any event and **export/import** to carry between installs.
 
 **🎛️ Control & operation**
 - Full **control panel** for setup + live control, and a streamlined **operator view** with drag-reorderable panels.

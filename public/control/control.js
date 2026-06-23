@@ -6060,7 +6060,8 @@ function syncThemeTab(st) {
   // Skip the palette/accents/logos/anim rebuilds when nothing the Theme tab
   // renders has changed — these otherwise ran on every state broadcast.
   if (!_sfp('themeTab', { p: st.palette, b: st.blueAccent, r: st.redAccent,
-        l: (st.logoSet || {}).logos, a: st.animation, f: st.overlayFont, cf: st.customFonts })) return;
+        l: (st.logoSet || {}).logos, a: st.animation, f: st.overlayFont, cf: st.customFonts,
+        cs: st.cornerRadius, ss: st.surfaceStyle, tc: st.textCase })) return;
   const { palette = [], blueAccent = '#1e6fff', redAccent = '#ff3b3b', logoSet = {} } = st;
 
   // Palette
@@ -6090,6 +6091,25 @@ function syncThemeTab(st) {
 
   // Logo library
   renderThemeLogos((logoSet.logos || []));
+
+  // Structural theme — corner-radius slider + surface / text-case pills + live preview
+  const _cr = (st.cornerRadius != null ? st.cornerRadius : 3);
+  const _crEl = g('ts-corner-radius'); if (_crEl && document.activeElement !== _crEl) _crEl.value = _cr;
+  const _crv = g('ts-corner-radius-val'); if (_crv) _crv.textContent = _cr + 'px';
+  _syncPills('ts-surface-style', 'surface', st.surfaceStyle || 'glass');
+  _syncPills('ts-text-case',     'case',    st.textCase     || 'upper');
+  ['ts-font-preview-1', 'ts-font-preview-2'].forEach(function (id) {
+    const e = g(id); if (e) e.style.textTransform = st.textCase === 'normal' ? 'none' : 'uppercase';
+  });
+}
+
+// Structural theme (Shape & Surface + label style) — persisted like any theme field.
+function setStructural(key, val) { patchSettings({ [key]: val }); }
+function _syncPills(containerId, attr, val) {
+  const c = g(containerId); if (!c) return;
+  Array.prototype.forEach.call(c.querySelectorAll('.theme-pill'), function (b) {
+    b.classList.toggle('is-active', b.getAttribute('data-' + attr) === val);
+  });
 }
 
 // ── Overlay typography (broadcast font picker + custom uploads) ──────────────
@@ -6422,7 +6442,9 @@ function syncGraphicAnimCards() {
 function loadLooksList() {
   fetch('/api/looks').then(r => r.json()).then(d => renderLooks(d.looks || [])).catch(() => {});
 }
+let _looksCache = [];
 function renderLooks(looks) {
+  _looksCache = looks || [];
   const list = g('looks-list'); if (!list) return;
   if (!looks.length) { list.innerHTML = '<p class="hint" style="margin:0">No Looks saved yet.</p>'; return; }
   list.innerHTML = looks.map(lk =>
@@ -6432,9 +6454,40 @@ function renderLooks(looks) {
         <button class="btn btn-sm btn-primary" onclick="applyLook('${lk.id}')">Apply</button>
         <button class="btn btn-sm" onclick="updateLook('${lk.id}', '${escHtml(lk.name)}')" title="Overwrite this Look with the current theme + animation">Update</button>
         <button class="btn btn-sm" onclick="renameLookInline('${lk.id}')">Rename</button>
+        <button class="btn btn-sm" onclick="exportLook('${lk.id}')" title="Download this Look as a .metalook.json file">Export</button>
         <button class="btn btn-sm btn-danger" onclick="deleteLook('${lk.id}', this)">✕</button>
       </div>
     </div>`).join('');
+}
+// Export a Look as a portable JSON file ({name, data}). Reads from the cached list
+// (the /api/looks payload carries each Look's full data).
+function exportLook(id) {
+  const lk = _looksCache.find(l => l.id === id); if (!lk) return;
+  const payload = JSON.stringify({ name: lk.name, data: lk.data || {} }, null, 2);
+  const safe = String(lk.name).replace(/[^a-z0-9_-]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase() || 'look';
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([payload], { type: 'application/json' }));
+  a.download = safe + '.metalook.json';
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+}
+// Import a Look from a chosen .metalook.json file → POST /api/looks/import.
+function importLook(input) {
+  const file = input.files && input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    input.value = '';
+    let obj; try { obj = JSON.parse(reader.result); } catch (e) { return showAlert('That file is not valid JSON.'); }
+    const name = (obj && obj.name) || file.name.replace(/\.metalook\.json$|\.json$/i, '');
+    const data = obj && (obj.data || (obj.palette ? obj : null));   // accept {name,data} or a bare data object
+    if (!data) return showAlert('No Look data found in that file.');
+    fetch('/api/looks/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, data }) })
+      .then(r => r.json()).then(d => {
+        if (!d.ok) return showAlert(d.error || 'Failed to import Look.');
+        loadLooksList(); showAlert('Imported Look "' + d.look.name + '".');
+      }).catch(() => showAlert('Failed to import Look.'));
+  };
+  reader.readAsText(file);
 }
 function saveLook() {
   const inp = g('look-name-input'); if (!inp) return;

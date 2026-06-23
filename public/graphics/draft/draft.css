@@ -70,7 +70,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .team-name {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 2.7vh; font-weight: 800; letter-spacing: 0.07em;
-  text-transform: uppercase; color: var(--gfx-c3, #fff);
+  text-transform: var(--gfx-text-transform, uppercase); color: var(--gfx-c3, #fff);
   flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
@@ -178,7 +178,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .fearless-label {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.4vh; font-weight: 700; letter-spacing: 0.22em;
-  text-transform: uppercase; color: rgba(255, 255, 255,0.65);
+  text-transform: var(--gfx-text-transform, uppercase); color: rgba(255, 255, 255,0.65);
   text-align: center; margin-bottom: 0.5vh;
 }
 /* Grid layout: 5 role columns, one row per game.
@@ -211,7 +211,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   height: 1.7vw; /* matches icon row height */
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.4vh; font-weight: 800; letter-spacing: 0.2em;
-  text-transform: uppercase;
+  text-transform: var(--gfx-text-transform, uppercase);
   color: rgba(255, 255, 255,0.55); /* fallback if side unknown */
 }
 .fearless-bye-row::before,
@@ -315,7 +315,7 @@ body.phase-bold .fearless-label {
 .player-name {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
   font-size: 1.4vh; font-weight: 700; letter-spacing: 0.06em;
-  text-transform: uppercase; color: var(--gfx-c3, #fff);
+  text-transform: var(--gfx-text-transform, uppercase); color: var(--gfx-c3, #fff);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   max-width: 100%; text-align: center;
   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
@@ -356,7 +356,7 @@ body.phase-bold .fearless-label {
 .series-choice-tag {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.6vh; font-weight: 800; letter-spacing: 0.16em;
-  text-transform: uppercase; white-space: nowrap;
+  text-transform: var(--gfx-text-transform, uppercase); white-space: nowrap;
   flex-shrink: 0; flex: 1;
   opacity: 0; /* anim-fade-in handles reveal — no CSS transition */
   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
@@ -383,7 +383,7 @@ body.phase-bold .fearless-label {
 .clock-series-game {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.6vh; font-weight: 800; letter-spacing: 0.16em;
-  text-transform: uppercase; color: rgba(255, 255, 255,0.9);
+  text-transform: var(--gfx-text-transform, uppercase); color: rgba(255, 255, 255,0.9);
   white-space: nowrap; text-align: center;
   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
@@ -391,7 +391,7 @@ body.phase-bold .fearless-label {
 .clock-series-phase {
   font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.3vh; font-weight: 700; letter-spacing: 0.14em;
-  text-transform: uppercase; color: rgba(255, 255, 255,0.65);
+  text-transform: var(--gfx-text-transform, uppercase); color: rgba(255, 255, 255,0.65);
   white-space: nowrap; text-align: center;
   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
