@@ -30,10 +30,13 @@
   </div>
 </header>
 
+<div id="caster-countdown" class="caster-countdown" aria-live="polite"></div>
+
 <div id="presence-strip"></div>
 
 <nav class="tab-nav">
   <button class="tab-btn active" data-tab="roster">Roster</button>
+  <button class="tab-btn" data-tab="teams">Teams</button>
   <button class="tab-btn" data-tab="series">Series</button>
   <button class="tab-btn" data-tab="draft">Draft</button>
   <button class="tab-btn" data-tab="standings">Standings</button>
@@ -45,6 +48,12 @@
   <div class="tab-pane active" id="pane-roster">
     <div class="roster-grid" id="roster-grid">
       <div class="empty-state">Waiting for data…</div>
+    </div>
+  </div>
+
+  <div class="tab-pane" id="pane-teams">
+    <div id="teams-content">
+      <div class="empty-state">No competing teams configured</div>
     </div>
   </div>
 
