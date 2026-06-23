@@ -1034,23 +1034,32 @@ function renderStandings() {
   const html = '<div class="standings-grid">' +
     groups.map(grp => {
       const rows = standings[grp.id] || [];
-      return '<div class="card">' +
-        '<div class="card-header"><span class="card-title">' + esc(grp.name || 'Group') + '</span></div>' +
-        '<table class="standings-table">' +
-          '<thead><tr><th></th><th>Team</th><th class="right">W</th><th class="right">L</th></tr></thead>' +
-          '<tbody>' +
-          rows.map((r, i) => {
-            const isQual = (i < qualN) && (r.sw > 0 || r.sl > 0);
-            const logoStyle = r.logo ? 'background-image:url(' + esc(r.logo) + ')' : '';
-            return '<tr>' +
-              '<td class="standings-pos ' + (isQual ? 'standings-qual' : '') + '">' + (i+1) + '</td>' +
-              '<td><div class="team-cell"><div class="standings-logo" style="' + logoStyle + '"></div><span class="standings-name">' + esc(r.name) + '</span></div></td>' +
-              '<td class="right standings-w">' + r.sw + '</td>' +
-              '<td class="right standings-l">' + r.sl + '</td>' +
-            '</tr>';
-          }).join('') +
-          '</tbody>' +
-        '</table>' +
+      const rowsHtml = rows.map((r, i) => {
+        const isQual = i < qualN;
+        const logoStyle = r.logo ? 'background-image:url(' + esc(r.logo) + ')' : '';
+        const row =
+          '<div class="standings-row' + (isQual ? ' standings-row-qual' : '') + '">' +
+            '<div class="standings-badge' + (isQual ? ' qual' : '') + '">' + (i + 1) + '</div>' +
+            '<div class="standings-logo" style="' + logoStyle + '"></div>' +
+            '<span class="standings-name">' + esc(r.name) + '</span>' +
+            '<span class="standings-record">' +
+              '<b class="standings-w">' + r.sw + '</b>' +
+              '<span class="standings-rec-sep">–</span>' +
+              '<span class="standings-l">' + r.sl + '</span>' +
+            '</span>' +
+          '</div>';
+        // Qualification cutoff line after the last advancing position
+        const cutoff = (i === qualN - 1 && i < rows.length - 1)
+          ? '<div class="standings-cutoff"><span>Qualification</span></div>' : '';
+        return row + cutoff;
+      }).join('');
+
+      return '<div class="card standings-card">' +
+        '<div class="card-header standings-card-hdr">' +
+          '<span class="card-title">' + esc(grp.name || 'Group') + '</span>' +
+          '<span class="standings-qual-note">Top ' + qualN + ' advance</span>' +
+        '</div>' +
+        '<div class="standings-rows">' + rowsHtml + '</div>' +
       '</div>';
     }).join('') +
   '</div>';
@@ -1059,9 +1068,74 @@ function renderStandings() {
 }
 
 // ── BRACKET TAB ───────────────────────────────────────────────────────────────
+// Field shapes mirror the bracket overlay (public/graphics/bracket): each match is
+// { team1:{name,score}, team2:{name,score}, complete }; the winner is derived from
+// scores; team logos are resolved from the teams DB by name/tag.
+function bktInferTrack(label) {
+  const l = (label || '').toUpperCase().trim();
+  if (l.indexOf('UB ') === 0 || l.indexOf('UPPER') === 0) return 'upper';
+  if (l.indexOf('LB ') === 0 || l.indexOf('LOWER') === 0) return 'lower';
+  if (l.indexOf('GRAND') !== -1 || l === 'FINAL' || l === 'FINALS') return 'final';
+  return null;
+}
+function bktIsPendingRef(name) {
+  if (!name) return false;
+  const n = name.trim();
+  return n.indexOf('Winner of ') === 0 || n.indexOf('Loser of ') === 0;
+}
+function bktResolveTeam(name) {
+  if (!name || name === 'TBD' || name === 'BYE') return null;
+  const n = name.toLowerCase();
+  return _teams.find(t => (t.name && t.name.toLowerCase() === n) || (t.tag && t.tag.toLowerCase() === n)) || null;
+}
+
+function bktTeamRowHtml(team, done, isWin, isLose) {
+  team = team || {};
+  const name = team.name || '';
+  const td = bktResolveTeam(name);
+  const isTbd = !name || name === 'TBD' || name === 'BYE';
+  const isPending = !isTbd && bktIsPendingRef(name);
+  const cls = 'bkt-team' + (isTbd ? ' bkt-tbd' : '') + (isPending ? ' bkt-pending' : '') +
+              (isWin ? ' bkt-winner' : '') + (done && isLose ? ' bkt-loser' : '');
+  const logo = (td && td.logo)
+    ? '<div class="bkt-team-logo" style="background-image:url(' + esc(td.logo) + ')"></div>'
+    : '<div class="bkt-team-logo bkt-team-logo-ph"></div>';
+  const display = isTbd ? (name === 'BYE' ? 'BYE' : 'TBD') : name;
+  return '<div class="' + cls + '">' +
+    logo +
+    '<span class="bkt-team-name">' + esc(display) + '</span>' +
+    (done ? '<span class="bkt-team-score">' + (parseInt(team.score) || 0) + '</span>' : '') +
+  '</div>';
+}
+
+function bktMatchCard(match, matchCount, mi) {
+  match = match || {};
+  const t1 = match.team1 || {}, t2 = match.team2 || {};
+  const done = !!match.complete;
+  const t1win = done && (t1.score || 0) > (t2.score || 0);
+  const t2win = done && (t2.score || 0) > (t1.score || 0);
+  const badge = (matchCount > 1 && bktIsPendingRef(t1.name) && bktIsPendingRef(t2.name))
+    ? '<div class="bkt-match-badge">Match ' + (mi + 1) + '</div>' : '';
+  return '<div class="bkt-match">' + badge +
+    bktTeamRowHtml(t1, done, t1win, t2win) +
+    bktTeamRowHtml(t2, done, t2win, t1win) +
+  '</div>';
+}
+
+function bktRoundColumn(round) {
+  const matches = round.matches || [];
+  return '<div class="bkt-round">' +
+    '<div class="bkt-round-label">' + esc(round.label || 'Round') + '</div>' +
+    '<div class="bkt-round-matches">' +
+      matches.map((m, mi) => bktMatchCard(m, matches.length, mi)).join('') +
+    '</div>' +
+  '</div>';
+}
+
 function renderBracket() {
   const s = _state;
   const bracket = s.bracket || {};
+  const tourn = s.tournament || {};
   const rounds = bracket.rounds || [];
   const el = document.getElementById('bracket-content');
 
@@ -1070,42 +1144,29 @@ function renderBracket() {
     return;
   }
 
-  const roundsHtml = rounds.map(round => {
-    const matches = round.matches || [];
-    if (matches.length === 0) return '';
+  const isDouble = tourn.playoffFormat === 'doubleElim' || bracket.type === 'double';
 
-    return '<div class="bracket-round">' +
-      '<div class="bracket-round-label">' + esc(round.label || 'Round') + '</div>' +
-      matches.map(match => {
-        const t1 = match.team1 || {};
-        const t2 = match.team2 || {};
-        const w  = match.winner;
-        const s1 = match.score ? match.score.t1 : null;
-        const s2 = match.score ? match.score.t2 : null;
+  if (isDouble) {
+    const upper = rounds.filter(r => bktInferTrack(r.label) === 'upper');
+    const lower = rounds.filter(r => bktInferTrack(r.label) === 'lower');
+    const finals = rounds.filter(r => bktInferTrack(r.label) === 'final');
+    const other = rounds.filter(r => bktInferTrack(r.label) === null);
 
-        function teamRow(team, slot, score) {
-          const isTbd = !team.name && !team.tag;
-          const isWin = w === slot;
-          const cls   = isTbd ? 'tbd' : isWin ? 'winner' : (w && !isWin ? 'loser' : '');
-          const logo  = team.logo ? 'background-image:url(' + esc(team.logo) + ')' : '';
-          const name  = isTbd ? 'TBD' : (team.name || team.tag || '?');
-          const sc    = score != null ? String(score) : '';
-          return '<div class="bracket-team ' + cls + '">' +
-            '<div class="bracket-team-logo" style="' + logo + '"></div>' +
-            '<div class="bracket-team-name">' + esc(name) + '</div>' +
-            (sc ? '<div class="bracket-team-score">' + esc(sc) + '</div>' : '') +
-          '</div>';
-        }
+    const section = (cls, label, rs) =>
+      '<div class="bkt-section ' + cls + '">' +
+        (label ? '<div class="bkt-section-label ' + cls + '-label">' + label + '</div>' : '') +
+        '<div class="bkt-rounds">' + rs.map(bktRoundColumn).join('') + '</div>' +
+      '</div>';
 
-        return '<div class="bracket-match">' +
-          teamRow(t1, 'team1', s1) +
-          teamRow(t2, 'team2', s2) +
-        '</div>';
-      }).join('') +
-    '</div>';
-  }).join('');
-
-  el.innerHTML = '<div class="bracket-rounds">' + roundsHtml + '</div>';
+    let out = '';
+    if (upper.length)  out += section('bkt-upper', 'Upper Bracket', upper);
+    if (lower.length)  out += section('bkt-lower', 'Lower Bracket', lower);
+    if (other.length)  out += section('bkt-other', '', other);
+    if (finals.length) out += section('bkt-final', 'Grand Final', finals);
+    el.innerHTML = '<div class="bkt-double">' + out + '</div>';
+  } else {
+    el.innerHTML = '<div class="bkt-rounds">' + rounds.map(bktRoundColumn).join('') + '</div>';
+  }
 }
 
 // ── SCHEDULE TAB ──────────────────────────────────────────────────────────────
