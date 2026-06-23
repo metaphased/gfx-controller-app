@@ -270,6 +270,7 @@ function renderAll() {
   renderHeader();
   renderCountdown();
   renderRoster();
+  renderTeams();
   renderSeries();
   renderDraft();
   renderStandings();
@@ -467,6 +468,74 @@ function renderPlayerRow(p, color) {
       trnHistoryHtml +
       champRows +
     '</div>' +
+  '</div>';
+}
+
+// ── TEAMS TAB ─────────────────────────────────────────────────────────────────
+// All competing teams (the tournament pool), available even for teams not in the
+// active broadcast — so casters can pull up any team's roster on demand.
+function renderTeams() {
+  const s = _state;
+  const tourn = s.tournament || {};
+  const el = document.getElementById('teams-content');
+
+  // Competing-teams pool = tournament.teamPool (array of team ids); fall back to
+  // the whole teams DB when no pool is configured for this tournament.
+  let pool = (tourn.teamPool || []).map(id => teamById(id)).filter(Boolean);
+  if (pool.length === 0) pool = (_teams || []).slice();
+  if (pool.length === 0) {
+    el.innerHTML = '<div class="empty-state">No competing teams configured</div>';
+    return;
+  }
+
+  // Flag the two teams currently on broadcast. The live match stores team names
+  // (not ids), so match on name/tag rather than id.
+  const m = s.match || {};
+  const liveNames = new Set([ m.team1 && m.team1.name, m.team2 && m.team2.name ]
+    .filter(Boolean).map(n => n.toLowerCase()));
+  const isLive = t => liveNames.has((t.name || '').toLowerCase()) || liveNames.has((t.tag || '').toLowerCase());
+
+  el.innerHTML =
+    '<div class="section-label">' + pool.length + ' Competing Team' + (pool.length === 1 ? '' : 's') + '</div>' +
+    '<div class="teams-grid">' +
+      pool.map(t => renderTeamPoolCard(t, isLive(t))).join('') +
+    '</div>';
+}
+
+function renderTeamPoolCard(t, isLive) {
+  const color = t.color || '';
+  const colorStyle = color ? '--team-color:' + esc(color) : '';
+  const logoStyle = t.logo ? 'background-image:url(' + esc(t.logo) + ')' : '';
+  const players = (t.players || []).filter(p => p.handle || p.name);
+  const subs = (t.subs || []).filter(p => p.handle || p.name);
+
+  return '<div class="card tp-card' + (isLive ? ' tp-live' : '') + '" style="' + colorStyle + '">' +
+    '<div class="card-header tp-hdr">' +
+      '<div class="tp-logo" style="' + logoStyle + '"></div>' +
+      '<div class="tp-hdr-text">' +
+        '<div class="tp-name">' + esc(t.name || '—') + '</div>' +
+        (t.tag ? '<div class="tp-tag">' + esc(t.tag) + '</div>' : '') +
+      '</div>' +
+      (isLive ? '<span class="tp-live-badge">ON AIR</span>' : '') +
+    '</div>' +
+    '<div class="tp-players">' +
+      (players.length ? players.map(p => renderPoolPlayer(p)).join('')
+                      : '<div class="tp-empty">No players listed</div>') +
+      (subs.length ? '<div class="tp-subs-label">Substitutes</div>' + subs.map(p => renderPoolPlayer(p, true)).join('') : '') +
+    '</div>' +
+  '</div>';
+}
+
+function renderPoolPlayer(p, isSub) {
+  const ogUrl = opggUrl(p.opggRegion, p.riotId);
+  return '<div class="tp-player' + (isSub ? ' tp-player-sub' : '') + '">' +
+    '<div class="player-role-icon" style="background-image:url(' + esc(roleIconUrl(p.role)) + ')"></div>' +
+    '<span class="tp-handle">' + esc(p.handle || p.name || '—') + '</span>' +
+    (p.name && p.name !== p.handle ? '<span class="tp-realname">' + esc(p.name) + '</span>' : '') +
+    '<span class="tp-spacer"></span>' +
+    (p.riotId ? '<span class="tp-riot">' + esc(p.riotId) + '</span>' : '') +
+    (p.opggRegion ? '<span class="tp-region">' + esc(p.opggRegion.toUpperCase()) + '</span>' : '') +
+    (ogUrl ? '<a class="opgg-btn" href="' + esc(ogUrl) + '" target="_blank" rel="noopener">op.gg ↗</a>' : '') +
   '</div>';
 }
 

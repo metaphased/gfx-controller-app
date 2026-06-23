@@ -727,6 +727,109 @@ html, body {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
+   TEAMS TAB — all competing teams + rosters (incl. teams not on broadcast)
+   ═══════════════════════════════════════════════════════════════════════════════ */
+.teams-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(330px, 1fr));
+  gap: 16px;
+}
+
+.tp-card {
+  border-top: 2px solid var(--team-color, var(--border-hi));
+}
+.tp-card.tp-live {
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb),0.35), 0 6px 22px rgba(0,0,0,0.45);
+}
+
+.tp-hdr { gap: 11px; }
+.tp-logo {
+  width: 30px; height: 30px;
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+  flex-shrink: 0;
+}
+.tp-hdr-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.tp-name {
+  font-family: var(--data-font);
+  font-size: 15px; font-weight: 800;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tp-tag {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--team-color, var(--text-dim));
+}
+.tp-live-badge {
+  margin-left: auto;
+  font-family: var(--data-font);
+  font-size: 9px; font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--accent);
+  background: rgba(var(--accent-rgb),0.12);
+  border: 1px solid rgba(var(--accent-rgb),0.30);
+  border-radius: 2px;
+  padding: 2px 6px;
+  flex-shrink: 0;
+}
+
+.tp-players { padding: 4px 0; }
+.tp-player {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+.tp-player:last-child { border-bottom: none; }
+.tp-player-sub { opacity: 0.72; }
+
+.tp-handle {
+  font-family: var(--data-font);
+  font-size: 14px; font-weight: 700;
+  letter-spacing: 0.03em; text-transform: uppercase;
+  color: var(--text);
+  flex-shrink: 0;
+}
+.tp-realname {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tp-spacer { flex: 1; }
+.tp-riot {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: var(--data-font);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.tp-region {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-faint);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 2px;
+  padding: 1px 5px;
+  flex-shrink: 0;
+}
+.tp-subs-label {
+  font-size: 9px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 8px 14px 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.tp-empty {
+  padding: 12px 14px;
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
    STANDINGS TAB
    ═══════════════════════════════════════════════════════════════════════════════ */
 .standings-grid {
