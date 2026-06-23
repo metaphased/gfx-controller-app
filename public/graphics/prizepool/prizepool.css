@@ -32,8 +32,8 @@ html, body {
 
 /* ── Grand Final highlight card ───────────────────────────────────────────── */
 .pp-highlight-card {
-  background: rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92);
-  border: 1px solid rgba(255, 255, 255,0.1);
+  background: var(--gfx-panel-bg, rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92));
+  border: var(--gfx-panel-border, 1px solid rgba(255, 255, 255,0.1));
   border-top: 4px solid var(--gfx-c1, #1ffaff);
   border-radius: var(--gfx-radius, 2px);
   padding: 2.8vh 3.5vw;
@@ -79,8 +79,8 @@ html, body {
 /* ── Placement list card ─────────────────────────────────────────────────── */
 .pp-placements-wrap {
   width: 100%;
-  background: rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92);
-  border: 1px solid rgba(255, 255, 255,0.09);
+  background: var(--gfx-panel-bg, rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92));
+  border: var(--gfx-panel-border, 1px solid rgba(255, 255, 255,0.09));
   border-top: 3px solid var(--gfx-c1, #1ffaff);
   border-radius: var(--gfx-radius, 2px); overflow: hidden;
   box-shadow: 0 1.2vh 4.5vh rgba(0, 0, 0,0.45);
@@ -196,8 +196,8 @@ html, body {
 }
 .pp-bonus-card {
   flex: 1; min-width: 0;
-  background: linear-gradient(180deg, rgba(255, 255, 255,0.04) 0%, rgba(255, 255, 255,0) 42%), rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92);
-  border: 1px solid rgba(255, 255, 255,0.09);
+  background: var(--gfx-panel-bg, linear-gradient(180deg, rgba(255, 255, 255,0.04) 0%, rgba(255, 255, 255,0) 42%), rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92));
+  border: var(--gfx-panel-border, 1px solid rgba(255, 255, 255,0.09));
   border-top: 3px solid var(--gfx-c1, #1ffaff);
   border-radius: var(--gfx-radius, 2px); overflow: hidden;
   box-shadow: 0 1.2vh 4.5vh rgba(0, 0, 0,0.45);

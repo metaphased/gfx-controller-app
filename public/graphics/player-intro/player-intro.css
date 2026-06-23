@@ -27,8 +27,8 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
    ═══════════════════════════════════════════════════════════════════════════ */
 .pi-panel-box {
   width: 80vw;
-  background: rgba(var(--gfx-c4-rgb, 6, 12, 20), 0.94);
-  border: 1px solid rgba(255, 255, 255,0.1);
+  background: var(--gfx-panel-bg, rgba(var(--gfx-c4-rgb, 6, 12, 20), 0.94));
+  border: var(--gfx-panel-border, 1px solid rgba(255, 255, 255,0.1));
   overflow: hidden;
 }
 
@@ -314,7 +314,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   height: 20vh;     /* fixed height so bar is consistent with/without data */
   display: flex;
   overflow: hidden;
-  background: rgba(var(--gfx-c4-rgb, 6, 12, 20), var(--pi-bar-alpha, 0.93));
+  background: var(--gfx-panel-bg, rgba(var(--gfx-c4-rgb, 6, 12, 20), var(--pi-bar-alpha, 0.93)));
   border-top: 1px solid rgba(255, 255, 255,0.1);
 }
 .pi-bar-band.has-rank { height: 23vh; }

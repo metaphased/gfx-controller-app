@@ -123,8 +123,8 @@ html, body {
 .ts-stage {
   flex: 1; min-width: 0;
   display: flex; flex-direction: column;
-  background: linear-gradient(180deg, rgba(255, 255, 255,0.035) 0%, rgba(255, 255, 255,0) 38%), rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92);
-  border: 1px solid rgba(255, 255, 255,0.09);
+  background: var(--gfx-panel-bg, linear-gradient(180deg, rgba(255, 255, 255,0.035) 0%, rgba(255, 255, 255,0) 38%), rgba(var(--gfx-c4-rgb, 5, 11, 16),0.92));
+  border: var(--gfx-panel-border, 1px solid rgba(255, 255, 255,0.09));
   border-top: 3px solid var(--ts-accent, rgba(255, 255, 255,0.2));
   border-radius: var(--gfx-radius, 2px); overflow: hidden;
   box-shadow: 0 1vh 4vh rgba(0, 0, 0,0.42);

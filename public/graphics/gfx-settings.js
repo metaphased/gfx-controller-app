@@ -97,19 +97,19 @@ window.GfxSettings = (function () {
     else if (corner === 'round') el.style.setProperty('--gfx-radius', '14px');
     else                         el.style.removeProperty('--gfx-radius');   // 'soft' / default
 
+    // Surface — overlays composite over OBS with no backdrop-filter, so "glass" is
+    // pure translucency. Default 'glass' leaves both tokens unset (each panel keeps
+    // its own surface); 'solid' = opaque, 'outline' = near-transparent fill + accent edge.
     var surf = st.surfaceStyle;
     if (surf === 'solid') {
       el.style.setProperty('--gfx-panel-bg', 'rgb(var(--gfx-c4-rgb, 7,15,18))');
-      el.style.setProperty('--gfx-panel-blur', 'none');
       el.style.removeProperty('--gfx-panel-border');
     } else if (surf === 'outline') {
-      el.style.setProperty('--gfx-panel-bg', 'rgba(var(--gfx-c4-rgb, 7,15,18), 0.32)');
-      el.style.setProperty('--gfx-panel-border', '1px solid rgba(var(--gfx-c1-rgb, 31,250,255), 0.55)');
-      el.style.setProperty('--gfx-panel-blur', 'none');
+      el.style.setProperty('--gfx-panel-bg', 'rgba(var(--gfx-c4-rgb, 7,15,18), 0.22)');
+      el.style.setProperty('--gfx-panel-border', '1px solid rgba(var(--gfx-c1-rgb, 31,250,255), 0.6)');
     } else {                                                                // 'glass' / default
       el.style.removeProperty('--gfx-panel-bg');
       el.style.removeProperty('--gfx-panel-border');
-      el.style.removeProperty('--gfx-panel-blur');
     }
 
     // Text case — global across every overlay (names + labels). Default 'upper'
