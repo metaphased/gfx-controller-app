@@ -53,6 +53,22 @@ Upload your own typeface to use across the overlays:
 
 Under the hood, the chosen families are injected as the `--gfx-font` (primary) and `--gfx-font-2` (secondary) CSS variables. Display text uses `var(--gfx-font, 'Barlow Condensed')`; label/meta text uses `var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed'))` — so an unset secondary falls back to the primary, and an unset primary to the default. Uploaded fonts are registered as `@font-face` rules built from `settings.customFonts` and served from `/uploads/fonts`.
 
+## Shape & surface
+
+The **Shape & Surface** card restyles the panel-based graphics (prizepool, bracket, group stage, tournament structure, player intro) structurally — saved per profile and inside a [Look](#looks):
+
+- **Corners** — **Sharp** (square), **Soft** (the default, lightly rounded), or **Round**. Circular elements (medal coins, role/seed badges) always stay round.
+- **Surface** — **Glass** (the default translucent dark panels), **Solid** (opaque), or **Outline** (near-transparent fill with an accent border). The bespoke/dramatic graphics (win screen, draft, spotlight, pre-show, head-to-head) keep their own designed surface.
+
+## Text case
+
+The **Text case** control (Typography card) sets how *all* overlay text reads:
+
+- **UPPERCASE** *(default)* — the standard broadcast look.
+- **Normal** — every name and label renders in its source case (e.g. "Aurora Vanguard" rather than "AURORA VANGUARD").
+
+Shape, Surface and Text case are pure CSS-variable overrides with literal fallbacks, so the defaults reproduce the standard design exactly and each choice travels inside a Look.
+
 ## Background
 
 Graphic overlays are **always transparent** — composite them over your scene in OBS/vMix. For a coloured or animated backdrop, use the dedicated **BG Output** source (its own tab: background mode Transparent / Solid / Image / Animated, plus animation type, base colour, speed and an optional fog layer) as a separate layer underneath the overlays.
@@ -98,7 +114,7 @@ This keeps `uploads/` small and your OBS/vMix browser sources fast — a 7 MB 40
 
 ## Looks
 
-A **Look** bundles the palette, accents, background, overlay font and full animation config (including per-graphic overrides) into a named, reusable visual identity. Looks are theme-only — applying one never touches teams, schedule or other tournament data, and the logo library is intentionally excluded.
+A **Look** bundles the palette, accents, background, overlay font, **shape & surface, text case** and full animation config (including per-graphic overrides) into a named, reusable visual identity. Looks are theme-only — applying one never touches teams, schedule or other tournament data, and the logo library is intentionally excluded.
 
 From the **Looks** card (top of Broadcast Theme):
 
@@ -106,5 +122,6 @@ From the **Looks** card (top of Broadcast Theme):
 - **Apply** — replace the current theme/animation with the Look's
 - **Update** — overwrite an existing Look with the current settings
 - **Rename** / **Delete**
+- **Export** / **Import** — download a Look as a portable `.metalook.json` file to carry a visual identity between events or installs, and import one a colleague shared (validated + sanitised on import).
 
-Three example Looks (Broadcast Clean, Neon Surge, Big Impact) are seeded on first run. Looks are stored in `data/looks.json`; the API lives at `GET/POST /api/looks*` (admin only).
+Five example Looks (Broadcast Clean, Neon Surge, Big Impact, Minimal Mono, Soft Rounded) are seeded on first run. Looks are stored in `data/looks.json`; the API lives at `GET/POST /api/looks*` (admin only).
