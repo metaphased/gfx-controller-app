@@ -1245,10 +1245,12 @@
       <!-- Looks: save / apply full visual identities -->
       <div class="card" style="margin-bottom:16px">
         <div class="card-title">Looks</div>
-        <p class="hint">A Look bundles the colour palette, accents, background and animation feel into a reusable visual identity. Apply one over any tournament — it never touches teams or schedule.</p>
+        <p class="hint">A Look bundles the colour palette, accents, background, shape &amp; surface, text case and animation feel into a reusable visual identity. Apply one over any tournament — it never touches teams or schedule. <strong>Export</strong> a Look to a file to carry it between events; <strong>Import</strong> one a colleague shared.</p>
         <div class="look-save-row">
           <input type="text" id="look-name-input" placeholder="Name this Look…" maxlength="40">
           <button class="btn btn-sm btn-primary" onclick="saveLook()">Save current as Look</button>
+          <button class="btn btn-sm" onclick="document.getElementById('look-import-file').click()" title="Import a Look from a .metalook.json file">Import…</button>
+          <input type="file" id="look-import-file" accept=".json,application/json" style="display:none" onchange="importLook(this)">
         </div>
         <div id="looks-list" class="looks-list"></div>
       </div>

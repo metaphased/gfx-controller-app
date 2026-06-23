@@ -757,10 +757,13 @@ function _seedLooks() {
     { name: 'Primary', hex: a }, { name: 'Secondary', hex: b }, { name: 'Light', hex: c }, { name: 'Dark', hex: d },
   ];
   const mk = (name, data) => ({ id: 'look_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), data });
+  const struct = (cornerStyle, surfaceStyle, textCase) => ({ cornerStyle, surfaceStyle, textCase });
   return [
-    mk('Broadcast Clean', { palette: pal('#1ffaff', '#a7a38e', '#F7F5F0', '#0a1b20'), blueAccent: '#1e6fff', redAccent: '#ff3b3b', bgType: 'transparent', bgColor: '#070f12', animation: mkAnim('medium', 'easeOutQuart', 'easeInQuart', 'easeInOutQuad') }),
-    mk('Neon Surge',      { palette: pal('#ff2bd1', '#19e3ff', '#fdf0ff', '#120018'), blueAccent: '#19e3ff', redAccent: '#ff2bd1', bgType: 'transparent', bgColor: '#0a0014', animation: mkAnim('fast', 'easeOutExpo', 'easeInExpo', 'easeInOutExpo') }),
-    mk('Big Impact',      { palette: pal('#ffc83d', '#ff5a3c', '#fff6e6', '#1a1208'), blueAccent: '#3d7bff', redAccent: '#ff5a3c', bgType: 'transparent', bgColor: '#120c04', animation: mkAnim('slow', 'easeOutBack', 'easeInBack', 'easeInOutQuint') }),
+    mk('Broadcast Clean', { palette: pal('#1ffaff', '#a7a38e', '#F7F5F0', '#0a1b20'), blueAccent: '#1e6fff', redAccent: '#ff3b3b', bgType: 'transparent', bgColor: '#070f12', animation: mkAnim('medium', 'easeOutQuart', 'easeInQuart', 'easeInOutQuad'), ...struct('soft', 'glass', 'upper') }),
+    mk('Neon Surge',      { palette: pal('#ff2bd1', '#19e3ff', '#fdf0ff', '#120018'), blueAccent: '#19e3ff', redAccent: '#ff2bd1', bgType: 'transparent', bgColor: '#0a0014', animation: mkAnim('fast', 'easeOutExpo', 'easeInExpo', 'easeInOutExpo'), ...struct('round', 'glass', 'upper') }),
+    mk('Big Impact',      { palette: pal('#ffc83d', '#ff5a3c', '#fff6e6', '#1a1208'), blueAccent: '#3d7bff', redAccent: '#ff5a3c', bgType: 'transparent', bgColor: '#120c04', animation: mkAnim('slow', 'easeOutBack', 'easeInBack', 'easeInOutQuint'), ...struct('sharp', 'solid', 'upper') }),
+    mk('Minimal Mono',    { palette: pal('#e8e8ea', '#9aa0a6', '#ffffff', '#0c0e11'), blueAccent: '#5b8cff', redAccent: '#ff5d5d', bgType: 'transparent', bgColor: '#0a0c0f', animation: mkAnim('fast', 'easeOutQuart', 'easeInQuart', 'easeInOutQuad'), ...struct('sharp', 'outline', 'normal') }),
+    mk('Soft Rounded',    { palette: pal('#5ad1c8', '#d8b98c', '#f4f6f5', '#101a1c'), blueAccent: '#3d8bff', redAccent: '#ff6b6b', bgType: 'transparent', bgColor: '#0a1416', animation: mkAnim('medium', 'easeOutBack', 'easeInQuart', 'easeInOutQuad'), ...struct('round', 'glass', 'upper') }),
   ];
 }
 function getLooks() {
@@ -2852,6 +2855,23 @@ app.post('/api/looks/save', requireAdmin, (req, res) => {
   const look = { id: 'look_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), name: name.trim(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), data };
   const looks = getLooks(); looks.unshift(look); saveLooks(looks);
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'save-look', look.name);
+  res.json({ ok: true, look });
+});
+
+// Import a Look from an exported .metalook.json ({name, data}). Keeps only known
+// theme fields and clamps the structural enums, so a hand-edited/foreign file
+// can't inject junk into state when later applied.
+app.post('/api/looks/import', requireAdmin, (req, res) => {
+  const { name, data } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Look name required' });
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return res.status(400).json({ error: 'Look data required' });
+  const clean = {};
+  LOOK_FIELDS.forEach(f => { if (data[f] !== undefined) clean[f] = JSON.parse(JSON.stringify(data[f])); });
+  sanitizeStructuralTheme(clean);
+  if (!Object.keys(clean).length) return res.status(400).json({ error: 'No recognisable Look fields in file' });
+  const look = { id: 'look_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), name: name.trim(), createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), data: clean };
+  const looks = getLooks(); looks.unshift(look); saveLooks(looks);
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'import-look', look.name);
   res.json({ ok: true, look });
 });
 
