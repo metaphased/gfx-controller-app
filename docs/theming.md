@@ -57,8 +57,18 @@ Under the hood, the chosen families are injected as the `--gfx-font` (primary) a
 
 The **Shape & Surface** card restyles the panel-based graphics (prizepool, bracket, group stage, tournament structure, player intro) structurally — saved per profile and inside a [Look](#looks):
 
-- **Corners** — **Sharp** (square), **Soft** (the default, lightly rounded), or **Round**. Circular elements (medal coins, role/seed badges) always stay round.
+- **Corners** — a slider from **0** (sharp right-angles) up to **20 px** (maximum curve); the default of 3 px is the standard, near-sharp broadcast look. Circular elements (medal coins, role/seed badges) always stay round.
 - **Surface** — **Glass** (the default translucent dark panels), **Solid** (opaque), or **Outline** (near-transparent fill with an accent border). The bespoke/dramatic graphics (win screen, draft, spotlight, pre-show, head-to-head) keep their own designed surface.
+
+![Shape & Surface controls on the Broadcast Theme tab](img/tool-shape-surface.jpg)
+
+The same panel at corner-radius 0 (sharp), 10, and 20 (max curve):
+
+![Corner radius — 0, 10 and 20 px](img/shape-corners.webp)
+
+The three surface styles — Glass, Solid, Outline:
+
+![Surface styles — glass, solid, outline](img/shape-surface.webp)
 
 ## Text case
 
