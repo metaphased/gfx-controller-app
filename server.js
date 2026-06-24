@@ -450,6 +450,7 @@ function makeDefaultSubs() {
 const makeDefault = () => ({
   tournament: {
     created:            false,        // false until the tournament is created (game then locks)
+    setupLocked:        false,        // admin lock: freezes tournament-setup edits during a show
     hasGroupStage:      false,
     playoffFormat:      'singleElim', // 'singleElim' | 'doubleElim'
     thirdPlaceMatch:    false,        // single elim only
@@ -2087,6 +2088,7 @@ app.post('/api/teams/delete', requireAdmin, (req, res) => {
 
 // ── Per-tournament competing-teams pool (subset of the global Teams DB) ──────────
 app.post('/api/tournament/pool/add', requireAdmin, (req, res) => {
+  if (setupIsLocked()) return res.status(423).json({ error: 'Tournament setup is locked' });
   const { teamId } = req.body;
   if (!teamId) return res.status(400).json({ error: 'teamId required' });
   if (!_teams.find(t => t.id === teamId)) return res.status(404).json({ error: 'Team not found' });
@@ -2096,6 +2098,7 @@ app.post('/api/tournament/pool/add', requireAdmin, (req, res) => {
   broadcast(); res.json({ ok: true, teamPool: state.tournament.teamPool });
 });
 app.post('/api/tournament/pool/remove', requireAdmin, (req, res) => {
+  if (setupIsLocked()) return res.status(423).json({ error: 'Tournament setup is locked' });
   const { teamId } = req.body;
   if (!teamId) return res.status(400).json({ error: 'teamId required' });
   _ensureTeamPool();
@@ -2236,6 +2239,15 @@ app.post('/api/assets/sync', requireAdmin, async (req, res) => {
 });
 
 // ── Tournament config ──────────────────────────────────────────────────────────
+// Admin setup lock: freeze tournament-setup edits during a show (separate from the game
+// lock). Does not block live operation (scores, bracket progression, graphics).
+app.post('/api/tournament/setup-lock', requireAdmin, (req, res) => {
+  if (!state.tournament) state.tournament = {};
+  state.tournament.setupLocked = !!req.body.locked;
+  broadcast(); res.json({ ok: true, setupLocked: state.tournament.setupLocked });
+});
+function setupIsLocked() { return !!(state.tournament && state.tournament.setupLocked); }
+
 // Create the tournament: commits the chosen game (which then locks) and marks it created.
 // Reset (/api/state/reset) is the only way back to an editable game.
 app.post('/api/tournament/create', requireAdmin, (req, res) => {
@@ -2249,6 +2261,7 @@ app.post('/api/tournament/create', requireAdmin, (req, res) => {
 });
 
 app.post('/api/tournament', requireAdmin, (req, res) => {
+  if (setupIsLocked()) return res.status(423).json({ error: 'Tournament setup is locked' });
   const { name, game, logo, sponsorLogos, ...rest } = req.body;
   // Game is locked once the tournament is created — ignore game changes thereafter.
   const gameLocked = !!(state.tournament && state.tournament.created);

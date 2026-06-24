@@ -101,6 +101,24 @@ async function resetTournament() {
   if (!confirm('Reset the entire tournament? This clears all teams, schedule, draft and game-specific data so you can choose a different game. This cannot be undone.')) return;
   await api('/api/state/reset', {});
 }
+function toggleSetupLock() {
+  const locked = !!(window._state && window._state.tournament && window._state.tournament.setupLocked);
+  api('/api/tournament/setup-lock', { locked: !locked });
+}
+// Admin setup lock: freeze the Tournament Setup tab once configured (robustness during a
+// show). Disables every input/button in the tab except the lock toggle itself.
+function applySetupLock() {
+  const t = (window._state && window._state.tournament) || {};
+  const created = !!t.created, locked = !!t.setupLocked;
+  const btn = g('setup-lock-btn');
+  if (btn) { btn.style.display = created ? '' : 'none'; btn.textContent = locked ? '🔓 Unlock Setup' : '🔒 Lock Setup'; btn.disabled = false; }
+  const banner = g('setup-lock-banner'); if (banner) banner.style.display = locked ? '' : 'none';
+  const tab = g('tab-tournament');
+  if (tab) tab.querySelectorAll('input,select,textarea,button').forEach(function(el){
+    if (el.id === 'setup-lock-btn') return; // keep the toggle usable
+    el.disabled = locked;
+  });
+}
 
 // ── External URL config ────────────────────────────────────────────────────────
 let _externalUrl  = null;
@@ -215,6 +233,7 @@ socket.on('state', async (state) => {
   syncUI(state);
   applyAdapterUI();
   applyTournamentCreateLock();
+  applySetupLock();
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
   // Debounced dirty check — runs 2 s after state settles
@@ -879,6 +898,13 @@ function syncUI(s) {
   setInpSafe('ts-name',  m.tournament);
   setInpSafe('ts-logo',  m.tournamentLogo);
   setInp('ts-game', m.game);
+  const tnHint = g('ts-name-hint');
+  if (tnHint) {
+    const prof = s.meta && s.meta.activeProfileName;
+    tnHint.textContent = prof
+      ? 'The on-air tournament title — separate from the loaded profile "' + prof + '" (top bar).'
+      : 'The on-air tournament title — separate from the saved profile (shown in the top bar).';
+  }
   syncTournamentStructure(t);
   renderCompetingTeams(s);
 
