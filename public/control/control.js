@@ -378,6 +378,7 @@ const GFX_PAGES = [
   ['Head to Head',  'graphics/head2head/'],
   ['Pre-show',      'graphics/pre-show/'],
   ['Draft',         'graphics/draft/'],
+  ['Map Veto',      'graphics/map-veto/'],
   ['Bracket',       'graphics/bracket/'],
   ['Group Stage',           'graphics/group-stage/'],
   ['Tournament Structure',  'graphics/tournament-structure/'],
@@ -392,7 +393,7 @@ const urlList = g('url-list');
 GFX_PAGES.forEach(([label, p]) => {
   const url = window.location.origin + '/' + p;
   const chip = document.createElement('div');
-  chip.className = 'url-chip' + (p.indexOf('draft/') !== -1 ? ' cap-champ-draft' : '');
+  chip.className = 'url-chip' + (p.indexOf('map-veto/') !== -1 ? ' cap-map-veto' : (p.indexOf('draft/') !== -1 ? ' cap-champ-draft' : ''));
   chip.title = 'Click to copy';
   chip.textContent = label;
   chip.addEventListener('click', () => {
@@ -3939,13 +3940,19 @@ const GRAPHIC_MAP = [
 ];
 
 // ── Map Veto (CS2 etc.) ──────────────────────────────────────────────────────
-// Map POOL lives on the tournament (set in Tournament Setup, covered by setup lock +
-// profiles). Veto DATA (Bo + steps) lives on state.mapVeto. The overlay look (title/logo)
-// also lives on state.mapVeto and is edited on the Map Veto GFX tab.
+// Map POOL lives on the tournament (set in Tournament Setup, setup-lock-guarded, in
+// profiles). The veto always covers every pool map — the server reconciles mapVeto.steps
+// to the pool, so the GAME tab just shows one row per map. Overlay look lives on mapVeto.
 function _mvState(){ return (window._state && window._state.mapVeto) || { steps:[] }; }
 function _mvPool(){ return (window._state && window._state.tournament && window._state.tournament.mapPool) || []; }
+function _mvDefaultPool(){
+  const game = currentGameId();
+  const saved = window._state && window._state.settings && window._state.settings.mapPoolDefaults && window._state.settings.mapPoolDefaults[game];
+  if (saved && saved.length) return saved.map(function(m){ return { name:m.name||'', image:m.image||'' }; });
+  const a=gameAdapter(); return ((a&&a.defaultMapPool)||[]).map(function(n){ return { name:n, image:'' }; });
+}
 
-// Map pool (Tournament Setup) — persisted on the tournament; setup-lock-guarded.
+// Map pool (Tournament Setup) — persisted on the tournament.
 function tmCommitMapPool(){
   const pool = [].slice.call(document.querySelectorAll('#tm-map-pool .mv-pool-row')).map(function(r){
     return { name:((r.querySelector('.mv-pm-name')||{}).value||'').trim(), image:((r.querySelector('.mv-pm-img')||{}).value||'').trim() };
@@ -3954,60 +3961,68 @@ function tmCommitMapPool(){
 }
 function tmAddMap(){ const p=_mvPool().slice(); p.push({name:'',image:''}); api('/api/tournament',{mapPool:p}); }
 function tmRemoveMap(i){ const p=_mvPool().slice(); p.splice(i,1); api('/api/tournament',{mapPool:p}); }
-function tmLoadDefaultPool(){ const a=gameAdapter(); const def=(a&&a.defaultMapPool)||[]; if(!def.length)return;
+function tmMoveMap(i,d){ const p=_mvPool().slice(); const j=i+d; if(j<0||j>=p.length)return; const t=p[i]; p[i]=p[j]; p[j]=t; api('/api/tournament',{mapPool:p}); }
+function tmLoadDefaultPool(){ const def=_mvDefaultPool(); if(!def.length)return;
   if(_mvPool().length && !confirm('Replace the current map pool with the default pool?'))return;
-  api('/api/tournament',{mapPool:def.map(function(n){return {name:n,image:''};})}); }
+  api('/api/tournament',{mapPool:def}); }
+function tmSetDefaultPool(){
+  const game=currentGameId(), pool=_mvPool();
+  if(!pool.length){ if(window.showAlert) showAlert('Add maps to the pool first.'); return; }
+  const d={}; d[game]=pool.map(function(m){ return { name:m.name, image:m.image||'' }; });
+  Promise.resolve(api('/api/settings',{mapPoolDefaults:d})).then(function(){
+    const b=g('tm-set-default-pool'); if(b){ const o=b.textContent; b.textContent='Saved ✓'; setTimeout(function(){ b.textContent=o; },1500); }
+  });
+}
 function tmRenderMapPool(state){
   const host=g('tm-map-pool'); if(!host) return;
   const pool=(state&&state.tournament&&state.tournament.mapPool)||[];
-  const a=gameAdapter(); const ld=g('tm-load-default-pool'); if(ld) ld.style.display=(a&&a.defaultMapPool&&a.defaultMapPool.length)?'':'none';
+  const hasDef=!!_mvDefaultPool().length;
+  const ld=g('tm-load-default-pool'); if(ld) ld.style.display=hasDef?'':'none';
+  const sd=g('tm-set-default-pool');  if(sd) sd.style.display=hasDef?'':'none';
   const sig=JSON.stringify(pool); if(sig===window._tmPoolSig) return; window._tmPoolSig=sig;
   host.innerHTML=(pool.map(function(p,i){
-    return '<div class="mv-pool-row" style="display:flex;gap:6px;margin-bottom:6px">'+
-      '<input class="mv-pm-name" placeholder="Map name" value="'+esc(p.name||'')+'" onchange="tmCommitMapPool()" style="flex:0 0 150px">'+
-      '<input class="mv-pm-img" placeholder="Image URL (optional)" value="'+esc(p.image||'')+'" onchange="tmCommitMapPool()" style="flex:1">'+
-      '<button class="btn btn-xs btn-danger" onclick="tmRemoveMap('+i+')">✕</button></div>';
+    return '<div class="mv-pool-row">'+
+      '<span class="mv-row-num">'+(i+1)+'</span>'+
+      '<input class="mv-pm-name" placeholder="Map name" value="'+esc(p.name||'')+'" onchange="tmCommitMapPool()">'+
+      '<input class="mv-pm-img" placeholder="Image URL (optional)" value="'+esc(p.image||'')+'" onchange="tmCommitMapPool()">'+
+      '<button class="btn btn-xs mv-rowbtn" title="Move up" onclick="tmMoveMap('+i+',-1)">↑</button>'+
+      '<button class="btn btn-xs mv-rowbtn" title="Move down" onclick="tmMoveMap('+i+',1)">↓</button>'+
+      '<button class="btn btn-xs btn-danger mv-rowbtn" title="Remove" onclick="tmRemoveMap('+i+')">✕</button></div>';
   }).join('')) || '<p class="hint">No maps yet. Click + Add Map or Load default pool.</p>';
 }
 
-// Veto data entry (GAME → Map Veto)
+// Veto data entry (GAME → Map Veto) — one row per pool map (server-reconciled).
 function mvCommitVeto(){
   const steps = [].slice.call(document.querySelectorAll('#mv-steps .mv-step-row')).map(function(r){
-    return { team:(r.querySelector('.mv-st-team')||{}).value||'', action:(r.querySelector('.mv-st-action')||{}).value||'ban',
-             map:(r.querySelector('.mv-st-map')||{}).value||'', side:(r.querySelector('.mv-st-side')||{}).value||'' };
+    return { map:r.getAttribute('data-map')||'', team:(r.querySelector('.mv-st-team')||{}).value||'',
+             action:(r.querySelector('.mv-st-action')||{}).value||'ban', side:(r.querySelector('.mv-st-side')||{}).value||'' };
   });
   api('/api/mapVeto', { steps:steps, bestOf:parseInt((g('mv-bestof')||{}).value)||3 });
 }
-function mvAddStep(){ const s=(_mvState().steps||[]).slice(); s.push({team:'',action:'ban',map:'',side:''}); api('/api/mapVeto',{steps:s}); }
-function mvRemoveStep(i){ const s=(_mvState().steps||[]).slice(); s.splice(i,1); api('/api/mapVeto',{steps:s}); }
 function mvMoveStep(i,d){ const s=(_mvState().steps||[]).slice(); const j=i+d; if(j<0||j>=s.length)return; const t=s[i]; s[i]=s[j]; s[j]=t; api('/api/mapVeto',{steps:s}); }
 function mvRenderVeto(state){
   const stepsEl=g('mv-steps'); if(!stepsEl) return;
   const mv=(state&&state.mapVeto)||{}, m=(state&&state.match)||{};
   const t1=(m.team1||{}).name||'Team 1', t2=(m.team2||{}).name||'Team 2';
-  const pool=(state&&state.tournament&&state.tournament.mapPool)||[];
   const bo=g('mv-bestof'); if(bo) bo.value=String(mv.bestOf||3);
-  const sig=JSON.stringify({s:mv.steps,bo:mv.bestOf,t1:t1,t2:t2,p:pool.map(function(p){return p.name;})});
+  const sig=JSON.stringify({s:mv.steps,bo:mv.bestOf,t1:t1,t2:t2});
   if(sig===window._mvVetoSig) return; window._mvVetoSig=sig;
-  const mapOpts=function(sel){ return '<option value="">— map —</option>'+pool.map(function(p){ return '<option'+(p.name===sel?' selected':'')+'>'+esc(p.name)+'</option>'; }).join(''); };
   stepsEl.innerHTML=((mv.steps||[]).map(function(s,i){
     const isDecider = s.action==='decider';
-    const sideLabel = isDecider ? 'decider start' : 'opp. start';
-    const sideOpts = '<option value="">— '+sideLabel+' —</option>'+
+    const sideOpts = '<option value="">— '+(isDecider?'decider start':'opp. start')+' —</option>'+
       ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(s.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+
       '<option value="knife"'+(s.side==='knife'?' selected':'')+'>Knife round</option>';
-    return '<div class="mv-step-row" style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'+
-      '<span style="width:16px;flex:0 0 16px;color:var(--text-dim);font-size:12px">'+(i+1)+'</span>'+
-      '<select class="mv-st-team" onchange="mvCommitVeto()" style="width:118px;flex:0 0 118px"><option value="">— team —</option>'+
+    return '<div class="mv-step-row" data-map="'+esc(s.map)+'">'+
+      '<span class="mv-row-num">'+(i+1)+'</span>'+
+      '<span class="mv-st-map-label">'+esc(s.map||'')+'</span>'+
+      '<select class="mv-st-team" onchange="mvCommitVeto()"><option value="">— team —</option>'+
         '<option value="team1"'+(s.team==='team1'?' selected':'')+'>'+esc(t1)+'</option>'+
         '<option value="team2"'+(s.team==='team2'?' selected':'')+'>'+esc(t2)+'</option></select>'+
-      '<select class="mv-st-action" onchange="mvCommitVeto()" style="width:96px;flex:0 0 96px">'+['ban','pick','decider'].map(function(a){return '<option'+(s.action===a?' selected':'')+'>'+a+'</option>';}).join('')+'</select>'+
-      '<select class="mv-st-map" onchange="mvCommitVeto()" style="width:auto;flex:1 1 auto;min-width:130px">'+mapOpts(s.map)+'</select>'+
-      '<select class="mv-st-side" onchange="mvCommitVeto()" style="width:120px;flex:0 0 120px">'+sideOpts+'</select>'+
-      '<button class="btn btn-xs" onclick="mvMoveStep('+i+',-1)">↑</button>'+
-      '<button class="btn btn-xs" onclick="mvMoveStep('+i+',1)">↓</button>'+
-      '<button class="btn btn-xs btn-danger" onclick="mvRemoveStep('+i+')">✕</button></div>';
-  }).join('')) || '<p class="hint">No veto steps yet. Click + Add Step.</p>';
+      '<select class="mv-st-action" onchange="mvCommitVeto()">'+['ban','pick','decider'].map(function(a){return '<option'+(s.action===a?' selected':'')+'>'+a+'</option>';}).join('')+'</select>'+
+      '<select class="mv-st-side" onchange="mvCommitVeto()">'+sideOpts+'</select>'+
+      '<button class="btn btn-xs mv-rowbtn" title="Move up" onclick="mvMoveStep('+i+',-1)">↑</button>'+
+      '<button class="btn btn-xs mv-rowbtn" title="Move down" onclick="mvMoveStep('+i+',1)">↓</button></div>';
+  }).join('')) || '<p class="hint">No maps in the pool yet — add maps in <a onclick="switchToTab(\'tournament\')" href="#" style="color:var(--primary)">Tournament Setup</a>.</p>';
 }
 
 // Overlay look (GRAPHICS → Map Veto)
@@ -4018,7 +4033,10 @@ function mvRenderGfx(state){
   setInpSafe('mv-logo-url', mv.logoUrl||'');
   const ls=g('mv-logo-scale'); if(ls && mv.logoScale!=null) ls.value=mv.logoScale;
   const pos=mv.logoPosition||'left'; const pr=document.querySelector('input[name="mv-logo-pos"][value="'+pos+'"]'); if(pr) pr.checked=true;
+  const scale=mv.scale||'normal';
+  document.querySelectorAll('#mv-scale-group [data-scale]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-scale')===scale); });
 }
+function mvCycleScale(){ const order=['normal','large','l3']; const cur=(_mvState().scale)||'normal'; const next=order[(order.indexOf(cur)+1)%order.length]; api('/api/mapVeto',{scale:next}); }
 
 // ── Draft GFX tab ─────────────────────────────────────────────────────────────
 

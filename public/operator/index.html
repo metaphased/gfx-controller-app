@@ -754,6 +754,12 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
             <span class="lbar-dot" id="ops-dot-mapVeto"></span>Map Veto
           </button>
         </div>
+        <div class="ops-ctrl-group" style="flex:1">
+          <span class="ops-ctrl-label">Scale</span>
+          <button class="mode-btn" id="ops-mv-scale-large"  onclick="api('/api/mapVeto',{scale:'large'})">Large</button>
+          <button class="mode-btn" id="ops-mv-scale-normal" onclick="api('/api/mapVeto',{scale:'normal'})">Normal</button>
+          <button class="mode-btn" id="ops-mv-scale-l3"     onclick="api('/api/mapVeto',{scale:'l3'})">Lower 3rd</button>
+        </div>
       </div>
 
       <!-- Bracket -->
@@ -976,6 +982,8 @@ socket.on('state', state => {
     const active = state[key] && state[key].visible;
     syncToggle(`ops-btn-${key}`, `ops-dot-${key}`, `ops-grp-${key}`, !!active);
   });
+  const mvScale = (state.mapVeto && state.mapVeto.scale) || 'normal';
+  ['large','normal','l3'].forEach(s => setModeActive(`ops-mv-scale-${s}`, mvScale === s));
 
   /* Player quick grid */
   renderPlayerGrid(state);

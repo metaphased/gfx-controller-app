@@ -538,7 +538,7 @@ const makeDefault = () => ({
   // map pool [{ name, image }] (seeded from the cs2 adapter on create; rotates over time).
   // steps are the ordered veto: { team:'team1'|'team2'|'', action:'ban'|'pick'|'decider',
   // map:'<name>', side:''|'CT'|'T' } (side = the OTHER team's side choice on a pick).
-  mapVeto:     { visible: false, title: 'MAP VETO', bestOf: 3, steps: [],
+  mapVeto:     { visible: false, title: 'MAP VETO', bestOf: 3, steps: [], scale: 'normal', // 'large' | 'normal' | 'l3'
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
@@ -601,6 +601,7 @@ const makeDefault = () => ({
       overrides:       {},              // { [graphicKey]: { enterEase?, exitEase?, moveEase?, speed? } }
     },
     logoSet: { logos: [] },        // [{ name: string, url: string }]
+    mapPoolDefaults: {},           // per-game default map pool, e.g. { cs2: [{name,image}] } — "Set as default"
     buses: [
       { id: 'busA', name: 'Bus A', assignments: [] },
       { id: 'busB', name: 'Bus B', assignments: [] },
@@ -849,6 +850,7 @@ let state = loadState();
 _teams = loadTeams(); // prime in-memory cache after state is ready
 _talent = loadTalent();
 _ensureTeamPool();    // migrate legacy tournaments to an explicit competing-teams pool
+reconcileMapVetoSteps(); // ensure veto steps cover the loaded map pool
 
 // ── Bus state (in-memory, not persisted) ───────────────────────────────────────
 let busState = {};
@@ -2259,6 +2261,19 @@ app.post('/api/tournament/setup-lock', requireAdmin, (req, res) => {
 });
 function setupIsLocked() { return !!(state.tournament && state.tournament.setupLocked); }
 
+// The map veto always covers every map in the pool — keep mapVeto.steps in sync with
+// tournament.mapPool: preserve existing assignments + order for maps still present, append
+// new maps (default ban), drop removed ones.
+function reconcileMapVetoSteps() {
+  if (!state.mapVeto) return;
+  const names = ((state.tournament && state.tournament.mapPool) || []).map(m => m.name).filter(Boolean);
+  const prev = state.mapVeto.steps || [];
+  const ordered = [];
+  prev.forEach(s => { if (s && names.includes(s.map) && !ordered.find(x => x.map === s.map)) ordered.push(s); });
+  names.forEach(n => { if (!ordered.find(x => x.map === n)) ordered.push({ map: n, team: '', action: 'ban', side: '' }); });
+  state.mapVeto.steps = ordered;
+}
+
 // Create the tournament: commits the chosen game (which then locks) and marks it created.
 // Reset (/api/state/reset) is the only way back to an editable game.
 app.post('/api/tournament/create', requireAdmin, (req, res) => {
@@ -2268,17 +2283,22 @@ app.post('/api/tournament/create', requireAdmin, (req, res) => {
   if (game !== undefined) { state.match.game = game; state.tournament.game = game; }
   if (name !== undefined) { state.match.tournament = name; state.tournament.name = name; }
   state.tournament.created = true;
-  // Seed the tournament map pool from the adapter's default pool when relevant + empty.
+  // Seed the tournament map pool when relevant + empty: saved per-game default wins,
+  // else the adapter's fallback pool.
   const adapter = games.resolveAdapter(state.match.game);
   if (adapter.defaultMapPool && (!state.tournament.mapPool || !state.tournament.mapPool.length)) {
-    state.tournament.mapPool = adapter.defaultMapPool.map(name => ({ name, image: '' }));
+    const saved = state.settings && state.settings.mapPoolDefaults && state.settings.mapPoolDefaults[state.match.game];
+    state.tournament.mapPool = (saved && saved.length)
+      ? saved.map(m => ({ name: m.name || '', image: m.image || '' }))
+      : adapter.defaultMapPool.map(name => ({ name, image: '' }));
   }
+  reconcileMapVetoSteps();
   broadcast(); res.json({ ok: true });
 });
 
 app.post('/api/tournament', requireAdmin, (req, res) => {
   if (setupIsLocked()) return res.status(423).json({ error: 'Tournament setup is locked' });
-  const { name, game, logo, sponsorLogos, ...rest } = req.body;
+  const { name, game, logo, sponsorLogos, mapPool, ...rest } = req.body;
   // Game is locked once the tournament is created — ignore game changes thereafter.
   const gameLocked = !!(state.tournament && state.tournament.created);
   if (name !== undefined) state.match.tournament = name;
@@ -2290,6 +2310,9 @@ app.post('/api/tournament', requireAdmin, (req, res) => {
   if (game !== undefined && !gameLocked) state.tournament.game = game;
   if (logo !== undefined) state.tournament.logo = logo;
   if (sponsorLogos !== undefined) state.tournament.sponsorLogos = sponsorLogos;
+  // Map pool is replaced wholesale (not deep-merged, so deletions take effect) + the veto
+  // steps reconcile to cover exactly the pool.
+  if (mapPool !== undefined) { state.tournament.mapPool = Array.isArray(mapPool) ? mapPool : []; reconcileMapVetoSteps(); }
   deepMerge(state.tournament, rest);
   // Keep bracket.type in sync with playoffFormat
   if (rest.playoffFormat !== undefined) {
@@ -2883,6 +2906,7 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
   // Pre-multi-game profiles have no game-lock flag — backfill it so a loaded tournament
   // with data comes in locked (same migration as state.json load).
   migrateGame(state);
+  reconcileMapVetoSteps(); // keep veto steps in sync with the loaded tournament's map pool
   if (d.players) deepMerge(state.players, d.players);
   if (d.prizepool) {
     const { entries, showLogo, logoScale, logoPosition } = d.prizepool;

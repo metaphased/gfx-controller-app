@@ -296,6 +296,7 @@
           <div style="display:flex;gap:8px">
             <button class="btn btn-sm" onclick="tmAddMap()">+ Add Map</button>
             <button class="btn btn-sm" id="tm-load-default-pool" onclick="tmLoadDefaultPool()" style="display:none">Load default pool</button>
+            <button class="btn btn-sm" id="tm-set-default-pool" onclick="tmSetDefaultPool()" style="display:none" title="Save this pool as the default for new tournaments of this game">Set as default</button>
           </div>
         </div>
         <p class="hint" style="margin-bottom:12px">The maps in <strong>this</strong> tournament's pool (used by the Map Veto). Editable — the active-duty pool rotates. Optional image URL per map (card background on-air).</p>
@@ -1545,10 +1546,9 @@
         <div class="field-row"><label>Best of</label>
           <select id="mv-bestof" onchange="mvCommitVeto()"><option value="1">Bo1</option><option value="3">Bo3</option><option value="5">Bo5</option></select>
         </div>
-        <div class="card-title" style="margin-top:16px">Veto Steps</div>
-        <p class="hint" style="margin-bottom:8px">Order matches the on-air strip (left → right). For a <strong>PICK</strong>, set the team that picked the map and the side the <strong>other</strong> team starts on. The <strong>decider</strong> is usually a <strong>knife round</strong>.</p>
+        <div class="card-title" style="margin-top:16px">Veto</div>
+        <p class="hint" style="margin-bottom:8px">Every pool map is here automatically (a map is always picked or banned). Set each map's <strong>action</strong> and <strong>team</strong>; for a <strong>pick</strong> set the side the <strong>other</strong> team starts on; the <strong>decider</strong> is usually a <strong>knife round</strong>. Reorder rows to match the on-air strip (left → right).</p>
         <div id="mv-steps"></div>
-        <button class="btn btn-sm" onclick="mvAddStep()" style="margin-top:8px">+ Add Step</button>
         <p class="hint" style="margin-top:12px">Maps come from the pool set in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a>.</p>
       </div>
     </section>
@@ -1574,6 +1574,14 @@
           <div class="card">
             <div class="card-title">Look</div>
             <div class="field-row"><label>Title</label><input type="text" id="mv-title" oninput="api('/api/mapVeto',{title:this.value})"></div>
+            <div class="field-row"><label>Scale</label>
+              <div class="btn-row" id="mv-scale-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-scale="large"  onclick="api('/api/mapVeto',{scale:'large'})">Large</button>
+                <button class="btn btn-sm" data-scale="normal" onclick="api('/api/mapVeto',{scale:'normal'})">Normal</button>
+                <button class="btn btn-sm" data-scale="l3"     onclick="api('/api/mapVeto',{scale:'l3'})">Lower Third</button>
+              </div>
+            </div>
+            <p class="hint" style="margin-top:2px">Cycle scales live from the operator view or the live bar.</p>
           </div>
           <div class="card">
             <div class="card-title">Logo</div>

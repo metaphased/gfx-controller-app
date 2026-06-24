@@ -17,7 +17,8 @@ module.exports = {
   },
   assets: { source: 'cs2-maps' },  // map-pool images (not DDragon champions)
   intel:  { provider: 'none' },    // FACEIT/HLTV is a later, optional data-only hook
-  // Default active-duty map pool — EDITABLE per tournament (the pool rotates over time);
-  // used to seed state.mapVeto.pool. Not authoritative on its own.
-  defaultMapPool: ['Mirage', 'Inferno', 'Nuke', 'Ancient', 'Anubis', 'Dust II', 'Train'],
+  // Fallback active-duty map pool — used to seed a tournament's pool when no saved default
+  // exists (settings.mapPoolDefaults.cs2 overrides this). The pool rotates over time, so
+  // it's editable per tournament + the default is settable ("Set as default").
+  defaultMapPool: ['Mirage', 'Inferno', 'Nuke', 'Ancient', 'Anubis', 'Dust II', 'Overpass'],
 };

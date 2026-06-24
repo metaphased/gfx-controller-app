@@ -9,13 +9,20 @@
   html, body { width:1920px; height:1080px; overflow:hidden; background:transparent; }
   body { font-family: var(--gfx-font, 'Barlow Condensed', sans-serif); }
   #mv-root {
-    position:absolute; inset:0; display:flex; flex-direction:column;
-    align-items:center; justify-content:center; gap:30px;
+    position:absolute; inset:0; display:flex;
+    align-items:center; justify-content:center;
     opacity:0; transform:translateY(22px);
     transition: opacity .5s var(--gfx-ease-enter, cubic-bezier(.22,1,.36,1)), transform .5s var(--gfx-ease-enter, cubic-bezier(.22,1,.36,1));
     text-transform: var(--gfx-text-transform, uppercase);
   }
   #mv-root.show { opacity:1; transform:none; }
+  #mv-stage { display:flex; flex-direction:column; align-items:center; gap:30px;
+    transition: transform .4s var(--gfx-ease-move, cubic-bezier(.4,0,.2,1)); transform-origin:center center; }
+  /* Scale variants */
+  #mv-root.scale-large  #mv-stage { transform: scale(1.18); }
+  #mv-root.scale-normal #mv-stage { transform: scale(1); }
+  #mv-root.scale-l3 { align-items:flex-end; padding-bottom:48px; }
+  #mv-root.scale-l3 #mv-stage { transform: scale(.6); transform-origin:center bottom; }
 
   /* Logo */
   #mv-logo-wrap { position:absolute; top:60px; width:100%; display:flex; pointer-events:none; }
@@ -75,12 +82,14 @@
 <body>
 <div id="mv-root">
   <div id="mv-logo-wrap"><img id="mv-logo" alt=""></div>
-  <div id="mv-head">
-    <div class="mv-team left"><img id="mv-t1-logo" alt=""><span class="nm" id="mv-t1-name">Team 1</span></div>
-    <div id="mv-center"><div id="mv-title">MAP VETO</div><div id="mv-vs">VS</div><div id="mv-bo">BEST OF 3</div></div>
-    <div class="mv-team right"><img id="mv-t2-logo" alt=""><span class="nm" id="mv-t2-name">Team 2</span></div>
+  <div id="mv-stage">
+    <div id="mv-head">
+      <div class="mv-team left"><img id="mv-t1-logo" alt=""><span class="nm" id="mv-t1-name">Team 1</span></div>
+      <div id="mv-center"><div id="mv-title">MAP VETO</div><div id="mv-vs">VS</div><div id="mv-bo">BEST OF 3</div></div>
+      <div class="mv-team right"><img id="mv-t2-logo" alt=""><span class="nm" id="mv-t2-name">Team 2</span></div>
+    </div>
+    <div id="mv-strip"></div>
   </div>
-  <div id="mv-strip"></div>
 </div>
 <script src="/socket.io/socket.io.js"></script>
 <script src="/graphics/gfx-settings.js"></script>
@@ -101,6 +110,8 @@
     var mv = state.mapVeto||{}, m = state.match||{};
     var pool = (state.tournament && state.tournament.mapPool) || [];
     var t1=m.team1||{}, t2=m.team2||{};
+    root.classList.remove('scale-large','scale-normal','scale-l3');
+    root.classList.add('scale-' + (mv.scale || 'normal'));
     document.getElementById('mv-title').textContent = mv.title || 'MAP VETO';
     document.getElementById('mv-bo').textContent = BO[mv.bestOf] || ('BEST OF ' + (mv.bestOf||3));
     document.getElementById('mv-t1-name').textContent = t1.name || 'Team 1';
@@ -144,7 +155,7 @@
 
   function hashState(state){
     var mv = state.mapVeto||{}, m = state.match||{};
-    return JSON.stringify({ s:mv.steps, p:(state.tournament&&state.tournament.mapPool), t:mv.title, bo:mv.bestOf,
+    return JSON.stringify({ s:mv.steps, p:(state.tournament&&state.tournament.mapPool), t:mv.title, bo:mv.bestOf, sc:mv.scale,
       lg:mv.showLogo, lu:mv.logoUrl, ls:mv.logoScale, lp:mv.logoPosition,
       t1:(m.team1||{}).name, t2:(m.team2||{}).name, l1:(m.team1||{}).logo, l2:(m.team2||{}).logo });
   }

@@ -1922,3 +1922,19 @@ input[type=search]::-webkit-search-decoration { display: none; }
   border-color: rgba(220,80,40,0.35);
 }
 
+/* ── Map veto: pool + veto rows ─────────────────────────────────────────────── */
+.mv-pool-row, .mv-step-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 8px; margin-bottom: 6px;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius, 3px);
+}
+.mv-row-num { flex: 0 0 22px; text-align: center; font-size: 12px; font-weight: 700; color: var(--text-dim); }
+.mv-pool-row .mv-pm-name { flex: 0 0 180px; }
+.mv-pool-row .mv-pm-img  { flex: 1 1 120px; }
+.mv-step-row .mv-st-map-label { flex: 1 1 auto; min-width: 110px; font-size: 15px; font-weight: 700; color: #fff; text-transform: none; }
+.mv-step-row .mv-st-team   { flex: 0 0 150px; }
+.mv-step-row .mv-st-action { flex: 0 0 110px; }
+.mv-step-row .mv-st-side   { flex: 0 0 150px; }
+.mv-rowbtn { flex: 0 0 auto; }
+.mv-pool-row input, .mv-step-row select { width: auto; }
+
