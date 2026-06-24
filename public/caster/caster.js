@@ -137,8 +137,22 @@ socket.on('state', async (s) => {
   }
   _state = s;
   _teams = s.teams || [];
+  applyCasterAdapterUI();
   renderAll();
 });
+
+// Hide game-irrelevant caster surfaces (e.g. the Draft tab) for non-champ-draft games.
+// Elements opt in by class; LoL keeps everything. If the active tab gets hidden, fall
+// back to the Roster tab.
+function applyCasterAdapterUI() {
+  const a = (_state && _state.adapter) || null;
+  const champDraft = a ? a.pregameKind === 'champ-draft' : true;
+  document.querySelectorAll('.cap-champ-draft').forEach(function(el){ el.style.display = champDraft ? '' : 'none'; });
+  if (!champDraft) {
+    const activeBtn = document.querySelector('.tab-btn.active[data-tab="draft"]');
+    if (activeBtn) { const r = document.querySelector('.tab-btn[data-tab="roster"]'); if (r) r.click(); }
+  }
+}
 
 socket.on('stats:invalidated', () => refreshTournamentStats());
 
