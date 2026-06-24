@@ -483,6 +483,7 @@ const makeDefault = () => ({
     showPatch:       false,
     hasPrizepool:    false,
     teamPool:        [],   // team IDs competing in THIS tournament (subset of global Teams DB)
+    mapPool:         [],   // CS2 etc. map pool [{ name, image }] — set in Tournament Setup; rotates
     groups: [],
     schedule: []
   },
@@ -537,7 +538,7 @@ const makeDefault = () => ({
   // map pool [{ name, image }] (seeded from the cs2 adapter on create; rotates over time).
   // steps are the ordered veto: { team:'team1'|'team2'|'', action:'ban'|'pick'|'decider',
   // map:'<name>', side:''|'CT'|'T' } (side = the OTHER team's side choice on a pick).
-  mapVeto:     { visible: false, title: 'MAP VETO', bestOf: 3, pool: [], steps: [],
+  mapVeto:     { visible: false, title: 'MAP VETO', bestOf: 3, steps: [],
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
@@ -2267,10 +2268,10 @@ app.post('/api/tournament/create', requireAdmin, (req, res) => {
   if (game !== undefined) { state.match.game = game; state.tournament.game = game; }
   if (name !== undefined) { state.match.tournament = name; state.tournament.name = name; }
   state.tournament.created = true;
-  // Seed the map-veto pool from the adapter's default pool when relevant + empty.
+  // Seed the tournament map pool from the adapter's default pool when relevant + empty.
   const adapter = games.resolveAdapter(state.match.game);
-  if (adapter.defaultMapPool && state.mapVeto && (!state.mapVeto.pool || !state.mapVeto.pool.length)) {
-    state.mapVeto.pool = adapter.defaultMapPool.map(name => ({ name, image: '' }));
+  if (adapter.defaultMapPool && (!state.tournament.mapPool || !state.tournament.mapPool.length)) {
+    state.tournament.mapPool = adapter.defaultMapPool.map(name => ({ name, image: '' }));
   }
   broadcast(); res.json({ ok: true });
 });

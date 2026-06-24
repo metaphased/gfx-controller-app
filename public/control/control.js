@@ -235,8 +235,10 @@ socket.on('state', async (state) => {
   syncUI(state);
   applyAdapterUI();
   applyTournamentCreateLock();
-  applySetupLock();
-  mvRenderConfig(state);
+  tmRenderMapPool(state);
+  mvRenderVeto(state);
+  mvRenderGfx(state);
+  applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
   // Debounced dirty check — runs 2 s after state settles
@@ -281,14 +283,14 @@ const TAB_LABELS = {
   players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
   preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
   h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
-  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', bracket:'Bracket', 'groups-gfx':'Group Stage',
+  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', bracket:'Bracket', 'groups-gfx':'Group Stage',
   'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
   win:'Win Screen', profiles:'Profiles', routing:'Routing', users:'Settings', log:'Log',
 };
 
 // Tab → claim page key (GFX ctrl-bar pages only)
 const GFX_TAB_CLAIM_KEY = {
-  'draft-gfx':'draft-gfx', 'map-veto':'map-veto', 'lowerthird':'lower-thirds', 'player-intro':'player-intro',
+  'draft-gfx':'draft-gfx', 'map-veto-gfx':'map-veto', 'lowerthird':'lower-thirds', 'player-intro':'player-intro',
   'win':'win-screen', 'break':'break-screen', 'preshow':'pre-show',
   'tournament-structure-gfx':'tournament-structure', 'groups-gfx':'standings',
   'bracket':'bracket', 'h2h':'h2h', 'ticker':'ticker', 'prizepool':'prizepool',
@@ -3925,7 +3927,7 @@ const GRAPHIC_MAP = [
   { key: 'headToHead',  tab: 'h2h',         label: 'Head to Head'},
   { key: 'playerIntro', tab: 'player-intro', label: 'Player Intro' },
   { key: 'draft',       tab: 'draft-gfx',   label: 'Draft'       },
-  { key: 'mapVeto',     tab: 'map-veto',    label: 'Map Veto'    },
+  { key: 'mapVeto',     tab: 'map-veto-gfx', label: 'Map Veto'   },
   { key: 'bracket',     tab: 'bracket',     label: 'Bracket'     },
   { key: 'groupStage',          tab: 'groups-gfx',               label: 'Group Stage'          },
   { key: 'tournamentStructure', tab: 'tournament-structure-gfx', label: 'Tournament Structure' },
@@ -3936,57 +3938,86 @@ const GRAPHIC_MAP = [
   { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
 ];
 
-// ── Map Veto (CS2 etc.) control ──────────────────────────────────────────────
-function _mvState(){ return (window._state && window._state.mapVeto) || { pool:[], steps:[] }; }
-function mvCommit(){
-  const pool = [].slice.call(document.querySelectorAll('#mv-pool .mv-pool-row')).map(function(r){
+// ── Map Veto (CS2 etc.) ──────────────────────────────────────────────────────
+// Map POOL lives on the tournament (set in Tournament Setup, covered by setup lock +
+// profiles). Veto DATA (Bo + steps) lives on state.mapVeto. The overlay look (title/logo)
+// also lives on state.mapVeto and is edited on the Map Veto GFX tab.
+function _mvState(){ return (window._state && window._state.mapVeto) || { steps:[] }; }
+function _mvPool(){ return (window._state && window._state.tournament && window._state.tournament.mapPool) || []; }
+
+// Map pool (Tournament Setup) — persisted on the tournament; setup-lock-guarded.
+function tmCommitMapPool(){
+  const pool = [].slice.call(document.querySelectorAll('#tm-map-pool .mv-pool-row')).map(function(r){
     return { name:((r.querySelector('.mv-pm-name')||{}).value||'').trim(), image:((r.querySelector('.mv-pm-img')||{}).value||'').trim() };
   }).filter(function(p){ return p.name; });
+  api('/api/tournament', { mapPool: pool });
+}
+function tmAddMap(){ const p=_mvPool().slice(); p.push({name:'',image:''}); api('/api/tournament',{mapPool:p}); }
+function tmRemoveMap(i){ const p=_mvPool().slice(); p.splice(i,1); api('/api/tournament',{mapPool:p}); }
+function tmLoadDefaultPool(){ const a=gameAdapter(); const def=(a&&a.defaultMapPool)||[]; if(!def.length)return;
+  if(_mvPool().length && !confirm('Replace the current map pool with the default pool?'))return;
+  api('/api/tournament',{mapPool:def.map(function(n){return {name:n,image:''};})}); }
+function tmRenderMapPool(state){
+  const host=g('tm-map-pool'); if(!host) return;
+  const pool=(state&&state.tournament&&state.tournament.mapPool)||[];
+  const a=gameAdapter(); const ld=g('tm-load-default-pool'); if(ld) ld.style.display=(a&&a.defaultMapPool&&a.defaultMapPool.length)?'':'none';
+  const sig=JSON.stringify(pool); if(sig===window._tmPoolSig) return; window._tmPoolSig=sig;
+  host.innerHTML=(pool.map(function(p,i){
+    return '<div class="mv-pool-row" style="display:flex;gap:6px;margin-bottom:6px">'+
+      '<input class="mv-pm-name" placeholder="Map name" value="'+esc(p.name||'')+'" onchange="tmCommitMapPool()" style="flex:0 0 150px">'+
+      '<input class="mv-pm-img" placeholder="Image URL (optional)" value="'+esc(p.image||'')+'" onchange="tmCommitMapPool()" style="flex:1">'+
+      '<button class="btn btn-xs btn-danger" onclick="tmRemoveMap('+i+')">✕</button></div>';
+  }).join('')) || '<p class="hint">No maps yet. Click + Add Map or Load default pool.</p>';
+}
+
+// Veto data entry (GAME → Map Veto)
+function mvCommitVeto(){
   const steps = [].slice.call(document.querySelectorAll('#mv-steps .mv-step-row')).map(function(r){
     return { team:(r.querySelector('.mv-st-team')||{}).value||'', action:(r.querySelector('.mv-st-action')||{}).value||'ban',
              map:(r.querySelector('.mv-st-map')||{}).value||'', side:(r.querySelector('.mv-st-side')||{}).value||'' };
   });
-  api('/api/mapVeto', { pool:pool, steps:steps, title:(g('mv-title')||{}).value||'', bestOf:parseInt((g('mv-bestof')||{}).value)||3 });
+  api('/api/mapVeto', { steps:steps, bestOf:parseInt((g('mv-bestof')||{}).value)||3 });
 }
-function mvAddPoolMap(){ const p=(_mvState().pool||[]).slice(); p.push({name:'',image:''}); api('/api/mapVeto',{pool:p}); }
-function mvLoadDefaultPool(){ const a=gameAdapter(); const def=(a&&a.defaultMapPool)||[]; if(!def.length)return;
-  if((_mvState().pool||[]).length && !confirm('Replace the current map pool with the default pool?'))return;
-  api('/api/mapVeto',{pool:def.map(function(n){return {name:n,image:''};})}); }
 function mvAddStep(){ const s=(_mvState().steps||[]).slice(); s.push({team:'',action:'ban',map:'',side:''}); api('/api/mapVeto',{steps:s}); }
-function mvRemovePoolMap(i){ const p=(_mvState().pool||[]).slice(); p.splice(i,1); api('/api/mapVeto',{pool:p}); }
 function mvRemoveStep(i){ const s=(_mvState().steps||[]).slice(); s.splice(i,1); api('/api/mapVeto',{steps:s}); }
 function mvMoveStep(i,d){ const s=(_mvState().steps||[]).slice(); const j=i+d; if(j<0||j>=s.length)return; const t=s[i]; s[i]=s[j]; s[j]=t; api('/api/mapVeto',{steps:s}); }
-function mvRenderConfig(state){
-  const tab=g('tab-map-veto'); if(!tab) return;
+function mvRenderVeto(state){
+  const stepsEl=g('mv-steps'); if(!stepsEl) return;
   const mv=(state&&state.mapVeto)||{}, m=(state&&state.match)||{};
   const t1=(m.team1||{}).name||'Team 1', t2=(m.team2||{}).name||'Team 2';
-  const a=gameAdapter(); const ldBtn=g('mv-load-default'); if(ldBtn) ldBtn.style.display=(a&&a.defaultMapPool&&a.defaultMapPool.length)?'':'none';
-  const sig=JSON.stringify({p:mv.pool,s:mv.steps,t:mv.title,bo:mv.bestOf,t1:t1,t2:t2});
-  if(sig===window._mvSig) return; window._mvSig=sig;
-  setInpSafe('mv-title', mv.title||'MAP VETO');
+  const pool=(state&&state.tournament&&state.tournament.mapPool)||[];
   const bo=g('mv-bestof'); if(bo) bo.value=String(mv.bestOf||3);
-  const poolEl=g('mv-pool');
-  if(poolEl) poolEl.innerHTML=((mv.pool||[]).map(function(p,i){
-    return '<div class="mv-pool-row" style="display:flex;gap:6px;margin-bottom:6px">'+
-      '<input class="mv-pm-name" placeholder="Map name" value="'+esc(p.name||'')+'" onchange="mvCommit()" style="flex:0 0 140px">'+
-      '<input class="mv-pm-img" placeholder="Image URL (optional)" value="'+esc(p.image||'')+'" onchange="mvCommit()" style="flex:1">'+
-      '<button class="btn btn-xs btn-danger" onclick="mvRemovePoolMap('+i+')">✕</button></div>';
-  }).join('')) || '<p class="hint">No maps in pool.</p>';
-  const mapOpts=function(sel){ return '<option value="">— map —</option>'+(mv.pool||[]).map(function(p){ return '<option'+(p.name===sel?' selected':'')+'>'+esc(p.name)+'</option>'; }).join(''); };
-  const stepsEl=g('mv-steps');
-  if(stepsEl) stepsEl.innerHTML=((mv.steps||[]).map(function(s,i){
+  const sig=JSON.stringify({s:mv.steps,bo:mv.bestOf,t1:t1,t2:t2,p:pool.map(function(p){return p.name;})});
+  if(sig===window._mvVetoSig) return; window._mvVetoSig=sig;
+  const mapOpts=function(sel){ return '<option value="">— map —</option>'+pool.map(function(p){ return '<option'+(p.name===sel?' selected':'')+'>'+esc(p.name)+'</option>'; }).join(''); };
+  stepsEl.innerHTML=((mv.steps||[]).map(function(s,i){
+    const isDecider = s.action==='decider';
+    const sideLabel = isDecider ? 'decider start' : 'opp. start';
+    const sideOpts = '<option value="">— '+sideLabel+' —</option>'+
+      ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(s.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+
+      '<option value="knife"'+(s.side==='knife'?' selected':'')+'>Knife round</option>';
     return '<div class="mv-step-row" style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'+
       '<span style="width:16px;flex:0 0 16px;color:var(--text-dim);font-size:12px">'+(i+1)+'</span>'+
-      '<select class="mv-st-team" onchange="mvCommit()" style="width:118px;flex:0 0 118px"><option value="">— team —</option>'+
+      '<select class="mv-st-team" onchange="mvCommitVeto()" style="width:118px;flex:0 0 118px"><option value="">— team —</option>'+
         '<option value="team1"'+(s.team==='team1'?' selected':'')+'>'+esc(t1)+'</option>'+
         '<option value="team2"'+(s.team==='team2'?' selected':'')+'>'+esc(t2)+'</option></select>'+
-      '<select class="mv-st-action" onchange="mvCommit()" style="width:96px;flex:0 0 96px">'+['ban','pick','decider'].map(function(a){return '<option'+(s.action===a?' selected':'')+'>'+a+'</option>';}).join('')+'</select>'+
-      '<select class="mv-st-map" onchange="mvCommit()" style="width:auto;flex:1 1 auto;min-width:130px">'+mapOpts(s.map)+'</select>'+
-      '<select class="mv-st-side" onchange="mvCommit()" style="width:90px;flex:0 0 90px"><option value="">— side —</option>'+['CT','T'].map(function(sd){return '<option'+(s.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+'</select>'+
+      '<select class="mv-st-action" onchange="mvCommitVeto()" style="width:96px;flex:0 0 96px">'+['ban','pick','decider'].map(function(a){return '<option'+(s.action===a?' selected':'')+'>'+a+'</option>';}).join('')+'</select>'+
+      '<select class="mv-st-map" onchange="mvCommitVeto()" style="width:auto;flex:1 1 auto;min-width:130px">'+mapOpts(s.map)+'</select>'+
+      '<select class="mv-st-side" onchange="mvCommitVeto()" style="width:120px;flex:0 0 120px">'+sideOpts+'</select>'+
       '<button class="btn btn-xs" onclick="mvMoveStep('+i+',-1)">↑</button>'+
       '<button class="btn btn-xs" onclick="mvMoveStep('+i+',1)">↓</button>'+
       '<button class="btn btn-xs btn-danger" onclick="mvRemoveStep('+i+')">✕</button></div>';
   }).join('')) || '<p class="hint">No veto steps yet. Click + Add Step.</p>';
+}
+
+// Overlay look (GRAPHICS → Map Veto)
+function mvRenderGfx(state){
+  const mv=(state&&state.mapVeto)||{};
+  setInpSafe('mv-title', mv.title||'MAP VETO');
+  const sl=g('mv-show-logo'); if(sl) sl.checked=!!mv.showLogo;
+  setInpSafe('mv-logo-url', mv.logoUrl||'');
+  const ls=g('mv-logo-scale'); if(ls && mv.logoScale!=null) ls.value=mv.logoScale;
+  const pos=mv.logoPosition||'left'; const pr=document.querySelector('input[name="mv-logo-pos"][value="'+pos+'"]'); if(pr) pr.checked=true;
 }
 
 // ── Draft GFX tab ─────────────────────────────────────────────────────────────
@@ -6500,7 +6531,7 @@ function playEasePreview(style) {
 const _GFX_ANIM_PAGES = {
   'lowerthird': ['lowerThird', 'Lower Third'],
   'player-intro': ['playerIntro', 'Player Intro'], 'h2h': ['headToHead', 'Head to Head'],
-  'draft-gfx': ['draft', 'Draft'], 'map-veto': ['mapVeto', 'Map Veto'], 'win': ['winScreen', 'Win Screen'],
+  'draft-gfx': ['draft', 'Draft'], 'map-veto-gfx': ['mapVeto', 'Map Veto'], 'win': ['winScreen', 'Win Screen'],
   'break': ['breakScreen', 'Break Screen'], 'preshow': ['preShow', 'Pre-show'],
   'bracket': ['bracket', 'Bracket'], 'groups-gfx': ['groupStage', 'Group Stage'],
   'tournament-structure-gfx': ['tournamentStructure', 'Tournament Structure'], 'prizepool': ['prizepool', 'Prizepool'],

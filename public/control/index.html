@@ -40,6 +40,7 @@
       <a class="nav-item" data-tab="game">Game Setup</a>
       <a class="nav-item" data-tab="players">Players / Rosters</a>
       <a class="nav-item cap-champ-draft" data-tab="draft">Draft</a>
+      <a class="nav-item cap-map-veto" data-tab="map-veto">Map Veto</a>
       <a class="nav-item cap-opgg" data-tab="intel">Match Intel</a>
 
       <div class="nav-section-label">GRAPHICS</div>
@@ -67,8 +68,8 @@
         <span id="nav-dot-draft-gfx" class="nav-status-dot"></span>
         Draft
       </a>
-      <a class="nav-item cap-map-veto" data-tab="map-veto">
-        <span id="nav-dot-map-veto" class="nav-status-dot"></span>
+      <a class="nav-item cap-map-veto" data-tab="map-veto-gfx">
+        <span id="nav-dot-map-veto-gfx" class="nav-status-dot"></span>
         Map Veto
       </a>
       <a class="nav-item" data-tab="bracket">
@@ -287,6 +288,18 @@
         <p class="hint" style="margin-bottom:12px">The teams playing in <strong>this</strong> tournament. Only these appear in the Schedule, Bracket, Groups and Game Setup pickers. Your full <strong>Teams Database</strong> stays separate.</p>
         <div id="pool-list"></div>
         <p class="hint" id="pool-empty" style="display:none;margin-top:8px">No competing teams yet. Click <strong>+ Add Team</strong> to pick from your Teams Database or create a new one.</p>
+      </div>
+
+      <div class="card cap-map-veto" style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div class="card-title" style="margin-bottom:0">Map Pool</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="tmAddMap()">+ Add Map</button>
+            <button class="btn btn-sm" id="tm-load-default-pool" onclick="tmLoadDefaultPool()" style="display:none">Load default pool</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-bottom:12px">The maps in <strong>this</strong> tournament's pool (used by the Map Veto). Editable — the active-duty pool rotates. Optional image URL per map (card background on-air).</p>
+        <div id="tm-map-pool"></div>
       </div>
 
       <div class="card" style="margin-top:16px">
@@ -1524,44 +1537,72 @@
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════
-         MAP VETO (CS2 etc.)
+         MAP VETO — data entry (GAME section)
     ══════════════════════════════════════════════════════════════════════════ -->
     <section class="tab" id="tab-map-veto">
       <div class="tab-header"><h1>Map Veto</h1></div>
+      <div class="card">
+        <div class="field-row"><label>Best of</label>
+          <select id="mv-bestof" onchange="mvCommitVeto()"><option value="1">Bo1</option><option value="3">Bo3</option><option value="5">Bo5</option></select>
+        </div>
+        <div class="card-title" style="margin-top:16px">Veto Steps</div>
+        <p class="hint" style="margin-bottom:8px">Order matches the on-air strip (left → right). For a <strong>PICK</strong>, set the team that picked the map and the side the <strong>other</strong> team starts on. The <strong>decider</strong> is usually a <strong>knife round</strong>.</p>
+        <div id="mv-steps"></div>
+        <button class="btn btn-sm" onclick="mvAddStep()" style="margin-top:8px">+ Add Step</button>
+        <p class="hint" style="margin-top:12px">Maps come from the pool set in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a>.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MAP VETO — overlay (GRAPHICS section)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-map-veto-gfx">
+      <div class="tab-header"><h1>Map Veto Overlay</h1></div>
       <div class="gfx-ctrl-bar">
-        <div class="gfx-ctrl-title">Map Veto Controls</div>
+        <div class="gfx-ctrl-title">Map Veto Overlay Controls</div>
         <div class="gfx-ctrl-row">
           <div class="gfx-ctrl-group" id="ctrlgrp-mapVeto">
             <span class="gfx-ctrl-section-label">Output</span>
             <button class="lbar-toggle" id="ctrlbtn-mapVeto" onclick="toggleGraphic('mapVeto')">
-              <span class="lbar-dot" id="ctrl-dot-mapVeto"></span>MAP VETO
+              <span class="lbar-dot" id="ctrl-dot-mapVeto"></span>MAP VETO OVERLAY
             </button>
           </div>
         </div>
       </div>
-      <div class="grid2">
-        <div class="card">
-          <div class="card-title">Veto</div>
-          <div class="field-row"><label>Title</label><input type="text" id="mv-title" onchange="mvCommit()"></div>
-          <div class="field-row"><label>Best of</label>
-            <select id="mv-bestof" onchange="mvCommit()"><option value="1">Bo1</option><option value="3">Bo3</option><option value="5">Bo5</option></select>
+      <div class="ps-two-col">
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Look</div>
+            <div class="field-row"><label>Title</label><input type="text" id="mv-title" oninput="api('/api/mapVeto',{title:this.value})"></div>
           </div>
-          <div class="card-title" style="margin-top:16px">Veto Steps</div>
-          <p class="hint" style="margin-bottom:8px">Order matches the on-air strip (left → right). Side = the other team's side choice on a pick.</p>
-          <div id="mv-steps"></div>
-          <button class="btn btn-sm" onclick="mvAddStep()" style="margin-top:8px">+ Add Step</button>
+          <div class="card">
+            <div class="card-title">Logo</div>
+            <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="mv-show-logo" onchange="api('/api/mapVeto',{showLogo:this.checked})"> <span style="font-size:13px">Show logo</span></label>
+            <div class="field-row"><label>Logo URL</label>
+              <div class="upload-row">
+                <input type="text" id="mv-logo-url" placeholder="URL or upload" oninput="api('/api/mapVeto',{logoUrl:this.value})">
+                <button class="btn btn-sm" onclick="triggerUpload('mv-logo-file',function(url){document.getElementById('mv-logo-url').value=url;api('/api/mapVeto',{logoUrl:url,showLogo:true});})">Upload</button>
+                <input type="file" id="mv-logo-file" accept="image/*" style="display:none">
+              </div>
+            </div>
+            <div class="field-row"><label>Scale</label><input type="range" id="mv-logo-scale" min="3" max="14" step="0.5" onchange="api('/api/mapVeto',{logoScale:Number(this.value)})"></div>
+            <div class="field-row"><label>Position</label>
+              <div class="radio-group">
+                <label><input type="radio" name="mv-logo-pos" value="left"   onchange="api('/api/mapVeto',{logoPosition:'left'})"> Left</label>
+                <label><input type="radio" name="mv-logo-pos" value="center" onchange="api('/api/mapVeto',{logoPosition:'center'})"> Center</label>
+                <label><input type="radio" name="mv-logo-pos" value="right"  onchange="api('/api/mapVeto',{logoPosition:'right'})"> Right</label>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="card">
-          <div class="card-title">Map Pool</div>
-          <p class="hint" style="margin-bottom:8px">Editable — the active-duty pool rotates over time. Optional image URL per map (used as the card background on-air).</p>
-          <div id="mv-pool"></div>
-          <div style="margin-top:8px;display:flex;gap:8px">
-            <button class="btn btn-sm" onclick="mvAddPoolMap()">+ Add Map</button>
-            <button class="btn btn-sm" id="mv-load-default" onclick="mvLoadDefaultPool()" style="display:none">Load default pool</button>
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Overlay</div>
+            <p class="hint">The veto content is entered in <a onclick="switchToTab('map-veto')" href="#" style="color:var(--primary)">GAME → Map Veto</a>; the map pool in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup</a>.</p>
+            <p class="hint" style="margin-top:6px">URL: <a href="/graphics/map-veto/" target="_blank" style="color:var(--primary)">/graphics/map-veto/</a></p>
           </div>
         </div>
       </div>
-      <p class="hint" style="margin-top:10px">URL: <a href="/graphics/map-veto/" target="_blank" style="color:var(--primary)">/graphics/map-veto/</a></p>
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════
@@ -2653,6 +2694,9 @@
     </div>
     <div class="lbar-group" id="lbar-group-draft">
       <button class="lbar-toggle cap-champ-draft" id="lbar-toggle-draft" onclick="toggleGraphic('draft')"><span class="lbar-dot" id="lbar-dot-draft"></span>DRAFT</button>
+    </div>
+    <div class="lbar-group cap-map-veto" id="lbar-group-mapVeto">
+      <button class="lbar-toggle" id="lbar-toggle-mapVeto" onclick="toggleGraphic('mapVeto')"><span class="lbar-dot" id="lbar-dot-mapVeto"></span>MAP VETO</button>
     </div>
 
     <div class="lbar-divider"></div>
