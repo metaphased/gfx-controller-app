@@ -4,11 +4,12 @@
 // adapter; core code reads capabilities from the resolved descriptor rather than
 // branching on the raw game id. See MULTI-GAME-SUPPORT-PLAN.md / PHASE-0-ADAPTER-PLAN.md.
 const lol     = require('./lol');
+const cs2     = require('./cs2');
 const generic = require('./generic');
 
-// Phase 0: only LoL is fully implemented. valorant / cs2 (and any unknown id) fall back
-// to the generic adapter until their phase lands.
-const ADAPTERS = { lol, generic };
+// dota2 / valorant / r6 (and any unknown id) fall back to the generic adapter until
+// their phase lands. LoL and CS2 are fully implemented.
+const ADAPTERS = { lol, cs2, generic };
 
 function resolveAdapter(gameId) {
   return ADAPTERS[gameId] || generic;

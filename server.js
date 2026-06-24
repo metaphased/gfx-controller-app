@@ -533,6 +533,12 @@ const makeDefault = () => ({
   },
   bracket:     { visible: false, title: 'TOURNAMENT BRACKET', type: 'single', logoUrl: '', logoScale: 7, logoPosition: 'left', showLogo: false, rounds: [] },
   groupStage:  { visible: false, mode: 'live', logoUrl: '', logoScale: 7, logoPosition: 'left', showLogo: false },
+  // CS2 (and similar) map veto — pre-game broadcast presentation. pool is the EDITABLE
+  // map pool [{ name, image }] (seeded from the cs2 adapter on create; rotates over time).
+  // steps are the ordered veto: { team:'team1'|'team2'|'', action:'ban'|'pick'|'decider',
+  // map:'<name>', side:''|'CT'|'T' } (side = the OTHER team's side choice on a pick).
+  mapVeto:     { visible: false, title: 'MAP VETO', bestOf: 3, pool: [], steps: [],
+                 showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
@@ -861,12 +867,14 @@ const GRAPHIC_PATHS = {
   prizepool: 'graphics/prizepool', winScreen: 'graphics/win-screen', breakScreen: 'graphics/break-screen',
   playerSpotlight: 'graphics/player-spotlight',
   bgOutput: 'graphics/bg-output',
+  mapVeto: 'graphics/map-veto',
 };
 const GRAPHIC_LABELS = {
   lowerThird: 'lower third', headToHead: 'head to head', playerIntro: 'player intro',
   preShow: 'pre-show', draft: 'draft', bracket: 'bracket', groupStage: 'group stage',
   tournamentStructure: 'tournament structure', prizepool: 'prize', winScreen: 'win screen',
   breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker', playerSpotlight: 'player spotlight',
+  mapVeto: 'map veto',
 };
 function _switcherByUrl(url) {
   if (!url) return null;
@@ -935,7 +943,7 @@ function broadcast() {
 
 // ── SSE (Server-Sent Events) for Companion / external integrations ─────────────
 const _sseClients = new Set();
-const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker'];
+const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto'];
 function buildSSEPayload() {
   const visibilities = {};
   SSE_GRAPHIC_KEYS.forEach(k => { if (state[k]) visibilities[k] = !!state[k].visible; });
@@ -1199,7 +1207,8 @@ const GRAPHIC_PAGE_KEYS = {
   draft: 'draft-gfx', bracket: 'bracket', breakScreen: 'break-screen',
   winScreen: 'win-screen', preShow: 'pre-show',
   tournamentStructure: 'tournament-structure', groupStage: 'standings',
-  prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight'
+  prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight',
+  mapVeto: 'map-veto'
 };
 
 function findBusForGraphic(graphicName) {
@@ -1730,6 +1739,7 @@ app.post('/api/playerIntro', (req, res) => { Object.assign(state.playerIntro, re
 app.post('/api/preShow',     (req, res) => { Object.assign(state.preShow,     req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/bracket',     requireAdmin, (req, res) => { deepMerge(state.bracket, req.body); deriveTodayGames(); broadcast(); res.json({ok:true}); });
 app.post('/api/groupStage',           requireAdmin, (req, res) => { Object.assign(state.groupStage,           req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/mapVeto',              requireAdmin, (req, res) => { Object.assign(state.mapVeto,             req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/tournamentStructure',  requireAdmin, (req, res) => { Object.assign(state.tournamentStructure,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/prizepool', requireAdmin, (req, res) => {
   const { entries, ...settings } = req.body;
@@ -2257,6 +2267,11 @@ app.post('/api/tournament/create', requireAdmin, (req, res) => {
   if (game !== undefined) { state.match.game = game; state.tournament.game = game; }
   if (name !== undefined) { state.match.tournament = name; state.tournament.name = name; }
   state.tournament.created = true;
+  // Seed the map-veto pool from the adapter's default pool when relevant + empty.
+  const adapter = games.resolveAdapter(state.match.game);
+  if (adapter.defaultMapPool && state.mapVeto && (!state.mapVeto.pool || !state.mapVeto.pool.length)) {
+    state.mapVeto.pool = adapter.defaultMapPool.map(name => ({ name, image: '' }));
+  }
   broadcast(); res.json({ ok: true });
 });
 

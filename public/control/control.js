@@ -46,6 +46,7 @@ const OPGG_REGIONS  = ['kr','euw','na','eune','jp','oce','br','las','lan','ru','
 function gameAdapter()      { return (window._state && window._state.adapter) || null; }
 function adapterRoles()     { const a = gameAdapter(); return (a && a.positions && a.positions.length) ? a.positions : DEFAULT_ROLES; }
 function isChampDraft()     { const a = gameAdapter(); return a ? a.pregameKind === 'champ-draft' : true; }
+function isMapVeto()        { const a = gameAdapter(); return a ? a.pregameKind === 'map-veto'    : false; }
 function supportsFearless() { const a = gameAdapter(); return a ? !!a.supportsFearless : true; }
 function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvider === 'opgg'  : true; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
@@ -64,6 +65,7 @@ function currentGameId(){ return (window._state && window._state.match && window
 function applyAdapterUI() {
   const caps = {
     'cap-champ-draft': isChampDraft(),
+    'cap-map-veto':    isMapVeto(),
     'cap-opgg':        supportsOpgg(),
     'cap-assets':      supportsAssets(),
     'cap-picks':       hasPickEntity(),
@@ -234,6 +236,7 @@ socket.on('state', async (state) => {
   applyAdapterUI();
   applyTournamentCreateLock();
   applySetupLock();
+  mvRenderConfig(state);
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
   // Debounced dirty check — runs 2 s after state settles
@@ -278,14 +281,14 @@ const TAB_LABELS = {
   players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
   preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
   h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
-  'draft-gfx':'Draft GFX', bracket:'Bracket', 'groups-gfx':'Group Stage',
+  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', bracket:'Bracket', 'groups-gfx':'Group Stage',
   'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
   win:'Win Screen', profiles:'Profiles', routing:'Routing', users:'Settings', log:'Log',
 };
 
 // Tab → claim page key (GFX ctrl-bar pages only)
 const GFX_TAB_CLAIM_KEY = {
-  'draft-gfx':'draft-gfx', 'lowerthird':'lower-thirds', 'player-intro':'player-intro',
+  'draft-gfx':'draft-gfx', 'map-veto':'map-veto', 'lowerthird':'lower-thirds', 'player-intro':'player-intro',
   'win':'win-screen', 'break':'break-screen', 'preshow':'pre-show',
   'tournament-structure-gfx':'tournament-structure', 'groups-gfx':'standings',
   'bracket':'bracket', 'h2h':'h2h', 'ticker':'ticker', 'prizepool':'prizepool',
@@ -3922,6 +3925,7 @@ const GRAPHIC_MAP = [
   { key: 'headToHead',  tab: 'h2h',         label: 'Head to Head'},
   { key: 'playerIntro', tab: 'player-intro', label: 'Player Intro' },
   { key: 'draft',       tab: 'draft-gfx',   label: 'Draft'       },
+  { key: 'mapVeto',     tab: 'map-veto',    label: 'Map Veto'    },
   { key: 'bracket',     tab: 'bracket',     label: 'Bracket'     },
   { key: 'groupStage',          tab: 'groups-gfx',               label: 'Group Stage'          },
   { key: 'tournamentStructure', tab: 'tournament-structure-gfx', label: 'Tournament Structure' },
@@ -3931,6 +3935,55 @@ const GRAPHIC_MAP = [
   { key: 'winScreen',   tab: 'win',         label: 'Win Screen'  },
   { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
 ];
+
+// ── Map Veto (CS2 etc.) control ──────────────────────────────────────────────
+function _mvState(){ return (window._state && window._state.mapVeto) || { pool:[], steps:[] }; }
+function mvCommit(){
+  const pool = [].slice.call(document.querySelectorAll('#mv-pool .mv-pool-row')).map(function(r){
+    return { name:((r.querySelector('.mv-pm-name')||{}).value||'').trim(), image:((r.querySelector('.mv-pm-img')||{}).value||'').trim() };
+  }).filter(function(p){ return p.name; });
+  const steps = [].slice.call(document.querySelectorAll('#mv-steps .mv-step-row')).map(function(r){
+    return { team:(r.querySelector('.mv-st-team')||{}).value||'', action:(r.querySelector('.mv-st-action')||{}).value||'ban',
+             map:(r.querySelector('.mv-st-map')||{}).value||'', side:(r.querySelector('.mv-st-side')||{}).value||'' };
+  });
+  api('/api/mapVeto', { pool:pool, steps:steps, title:(g('mv-title')||{}).value||'', bestOf:parseInt((g('mv-bestof')||{}).value)||3 });
+}
+function mvAddPoolMap(){ const p=(_mvState().pool||[]).slice(); p.push({name:'',image:''}); api('/api/mapVeto',{pool:p}); }
+function mvAddStep(){ const s=(_mvState().steps||[]).slice(); s.push({team:'',action:'ban',map:'',side:''}); api('/api/mapVeto',{steps:s}); }
+function mvRemovePoolMap(i){ const p=(_mvState().pool||[]).slice(); p.splice(i,1); api('/api/mapVeto',{pool:p}); }
+function mvRemoveStep(i){ const s=(_mvState().steps||[]).slice(); s.splice(i,1); api('/api/mapVeto',{steps:s}); }
+function mvMoveStep(i,d){ const s=(_mvState().steps||[]).slice(); const j=i+d; if(j<0||j>=s.length)return; const t=s[i]; s[i]=s[j]; s[j]=t; api('/api/mapVeto',{steps:s}); }
+function mvRenderConfig(state){
+  const tab=g('tab-map-veto'); if(!tab) return;
+  const mv=(state&&state.mapVeto)||{}, m=(state&&state.match)||{};
+  const t1=(m.team1||{}).name||'Team 1', t2=(m.team2||{}).name||'Team 2';
+  const sig=JSON.stringify({p:mv.pool,s:mv.steps,t:mv.title,bo:mv.bestOf,t1:t1,t2:t2});
+  if(sig===window._mvSig) return; window._mvSig=sig;
+  setInpSafe('mv-title', mv.title||'MAP VETO');
+  const bo=g('mv-bestof'); if(bo) bo.value=String(mv.bestOf||3);
+  const poolEl=g('mv-pool');
+  if(poolEl) poolEl.innerHTML=((mv.pool||[]).map(function(p,i){
+    return '<div class="mv-pool-row" style="display:flex;gap:6px;margin-bottom:6px">'+
+      '<input class="mv-pm-name" placeholder="Map name" value="'+esc(p.name||'')+'" onchange="mvCommit()" style="flex:0 0 140px">'+
+      '<input class="mv-pm-img" placeholder="Image URL (optional)" value="'+esc(p.image||'')+'" onchange="mvCommit()" style="flex:1">'+
+      '<button class="btn btn-xs btn-danger" onclick="mvRemovePoolMap('+i+')">✕</button></div>';
+  }).join('')) || '<p class="hint">No maps in pool.</p>';
+  const mapOpts=function(sel){ return '<option value="">— map —</option>'+(mv.pool||[]).map(function(p){ return '<option'+(p.name===sel?' selected':'')+'>'+esc(p.name)+'</option>'; }).join(''); };
+  const stepsEl=g('mv-steps');
+  if(stepsEl) stepsEl.innerHTML=((mv.steps||[]).map(function(s,i){
+    return '<div class="mv-step-row" style="display:flex;gap:6px;margin-bottom:6px;align-items:center">'+
+      '<span style="width:16px;flex:0 0 16px;color:var(--text-dim);font-size:12px">'+(i+1)+'</span>'+
+      '<select class="mv-st-team" onchange="mvCommit()" style="width:118px;flex:0 0 118px"><option value="">— team —</option>'+
+        '<option value="team1"'+(s.team==='team1'?' selected':'')+'>'+esc(t1)+'</option>'+
+        '<option value="team2"'+(s.team==='team2'?' selected':'')+'>'+esc(t2)+'</option></select>'+
+      '<select class="mv-st-action" onchange="mvCommit()" style="width:96px;flex:0 0 96px">'+['ban','pick','decider'].map(function(a){return '<option'+(s.action===a?' selected':'')+'>'+a+'</option>';}).join('')+'</select>'+
+      '<select class="mv-st-map" onchange="mvCommit()" style="width:auto;flex:1 1 auto;min-width:130px">'+mapOpts(s.map)+'</select>'+
+      '<select class="mv-st-side" onchange="mvCommit()" style="width:90px;flex:0 0 90px"><option value="">— side —</option>'+['CT','T'].map(function(sd){return '<option'+(s.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+'</select>'+
+      '<button class="btn btn-xs" onclick="mvMoveStep('+i+',-1)">↑</button>'+
+      '<button class="btn btn-xs" onclick="mvMoveStep('+i+',1)">↓</button>'+
+      '<button class="btn btn-xs btn-danger" onclick="mvRemoveStep('+i+')">✕</button></div>';
+  }).join('')) || '<p class="hint">No veto steps yet. Click + Add Step.</p>';
+}
 
 // ── Draft GFX tab ─────────────────────────────────────────────────────────────
 
@@ -6443,7 +6496,7 @@ function playEasePreview(style) {
 const _GFX_ANIM_PAGES = {
   'lowerthird': ['lowerThird', 'Lower Third'],
   'player-intro': ['playerIntro', 'Player Intro'], 'h2h': ['headToHead', 'Head to Head'],
-  'draft-gfx': ['draft', 'Draft'], 'win': ['winScreen', 'Win Screen'],
+  'draft-gfx': ['draft', 'Draft'], 'map-veto': ['mapVeto', 'Map Veto'], 'win': ['winScreen', 'Win Screen'],
   'break': ['breakScreen', 'Break Screen'], 'preshow': ['preShow', 'Pre-show'],
   'bracket': ['bracket', 'Bracket'], 'groups-gfx': ['groupStage', 'Group Stage'],
   'tournament-structure-gfx': ['tournamentStructure', 'Tournament Structure'], 'prizepool': ['prizepool', 'Prizepool'],

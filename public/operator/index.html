@@ -746,6 +746,16 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
         </div>
       </div>
 
+      <!-- Map Veto (CS2 etc.) -->
+      <div class="ops-ctrl-row cap-map-veto">
+        <div class="ops-ctrl-group" id="ops-grp-mapVeto">
+          <span class="ops-ctrl-label">Map Veto</span>
+          <button class="lbar-toggle" id="ops-btn-mapVeto" onclick="toggleGfx('mapVeto')">
+            <span class="lbar-dot" id="ops-dot-mapVeto"></span>Map Veto
+          </button>
+        </div>
+      </div>
+
       <!-- Bracket -->
       <div class="ops-ctrl-row">
         <div class="ops-ctrl-group" id="ops-grp-bracket">
@@ -829,6 +839,7 @@ function applyOpsAdapterUI() {
   const a = gameAdapter();
   const caps = {
     'cap-champ-draft': a ? a.pregameKind === 'champ-draft'            : true,
+    'cap-map-veto':    a ? a.pregameKind === 'map-veto'               : false,
     'cap-roles':       a ? (a.positions || []).some(function(p){return !!p;}) : true,
     'cap-opgg':        a ? a.intelProvider === 'opgg'                 : true,
     'cap-picks':       a ? a.pickEntity != null                       : true,
@@ -870,7 +881,7 @@ socket.on('presence:list', function(users) {
 });
 
 /* ── Graphic list for bulk sync ── */
-const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
+const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','mapVeto','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
 
 socket.on('state', state => {
   window._state = state;
