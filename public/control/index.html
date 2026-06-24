@@ -1555,7 +1555,10 @@
           <div class="card-title">Map Pool</div>
           <p class="hint" style="margin-bottom:8px">Editable — the active-duty pool rotates over time. Optional image URL per map (used as the card background on-air).</p>
           <div id="mv-pool"></div>
-          <button class="btn btn-sm" onclick="mvAddPoolMap()" style="margin-top:8px">+ Add Map</button>
+          <div style="margin-top:8px;display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="mvAddPoolMap()">+ Add Map</button>
+            <button class="btn btn-sm" id="mv-load-default" onclick="mvLoadDefaultPool()" style="display:none">Load default pool</button>
+          </div>
         </div>
       </div>
       <p class="hint" style="margin-top:10px">URL: <a href="/graphics/map-veto/" target="_blank" style="color:var(--primary)">/graphics/map-veto/</a></p>

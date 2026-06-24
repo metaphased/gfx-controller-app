@@ -30,6 +30,7 @@ function adapterDescriptor(gameId) {
     supportsFearless: !!a.pregame.fearless,
     assetSource:      a.assets.source,
     intelProvider:    a.intel.provider,
+    defaultMapPool:   a.defaultMapPool || null, // for "load default pool" in map-veto control
   };
 }
 

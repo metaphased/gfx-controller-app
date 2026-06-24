@@ -3949,6 +3949,9 @@ function mvCommit(){
   api('/api/mapVeto', { pool:pool, steps:steps, title:(g('mv-title')||{}).value||'', bestOf:parseInt((g('mv-bestof')||{}).value)||3 });
 }
 function mvAddPoolMap(){ const p=(_mvState().pool||[]).slice(); p.push({name:'',image:''}); api('/api/mapVeto',{pool:p}); }
+function mvLoadDefaultPool(){ const a=gameAdapter(); const def=(a&&a.defaultMapPool)||[]; if(!def.length)return;
+  if((_mvState().pool||[]).length && !confirm('Replace the current map pool with the default pool?'))return;
+  api('/api/mapVeto',{pool:def.map(function(n){return {name:n,image:''};})}); }
 function mvAddStep(){ const s=(_mvState().steps||[]).slice(); s.push({team:'',action:'ban',map:'',side:''}); api('/api/mapVeto',{steps:s}); }
 function mvRemovePoolMap(i){ const p=(_mvState().pool||[]).slice(); p.splice(i,1); api('/api/mapVeto',{pool:p}); }
 function mvRemoveStep(i){ const s=(_mvState().steps||[]).slice(); s.splice(i,1); api('/api/mapVeto',{steps:s}); }
@@ -3957,6 +3960,7 @@ function mvRenderConfig(state){
   const tab=g('tab-map-veto'); if(!tab) return;
   const mv=(state&&state.mapVeto)||{}, m=(state&&state.match)||{};
   const t1=(m.team1||{}).name||'Team 1', t2=(m.team2||{}).name||'Team 2';
+  const a=gameAdapter(); const ldBtn=g('mv-load-default'); if(ldBtn) ldBtn.style.display=(a&&a.defaultMapPool&&a.defaultMapPool.length)?'':'none';
   const sig=JSON.stringify({p:mv.pool,s:mv.steps,t:mv.title,bo:mv.bestOf,t1:t1,t2:t2});
   if(sig===window._mvSig) return; window._mvSig=sig;
   setInpSafe('mv-title', mv.title||'MAP VETO');
