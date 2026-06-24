@@ -1,10 +1,16 @@
 # Caster view
 
-A read-only dashboard for casters and analysts — rosters, the live draft, series history, standings, bracket and schedule — all in one page that updates in real time. It needs no account, just the graphics token, so you can share it with on-air talent who shouldn't touch the controls.
+A read-only dashboard for casters and analysts — team rosters, the live draft, series history, group standings, the playoff bracket and the schedule — all in one page that updates in real time. It needs no account, just the graphics token, so you can share it with on-air talent who shouldn't touch the controls.
 
 Open at **`/caster?token=XXXX`** (grab the full link from **Settings → Output URLs**).
 
 ![Caster view — Roster tab](img/caster-roster.jpg)
+
+### Time-to-live countdown
+
+When a [pre-show](pre-show.md) or [break](break-screen.md) countdown is running on air, a banner appears under the header — on **every tab** — so casters always know the time to air, or the time until the broadcast is back from a break:
+
+![Caster view — countdown banner](img/caster-countdown.jpg)
 
 Click any player to expand full prep detail — Riot ID, this-game draft pick with KDA/CS/KP stats, and their champion pool:
 
@@ -14,12 +20,19 @@ Click any player to expand full prep detail — Riot ID, this-game draft pick wi
 
 | Tab | What's there |
 |---|---|
-| **Roster** | Both teams' players with roles, ranks, Riot IDs and champion pools — with **op.gg** deep links for prep. |
+| **Roster** | The two teams on air, with each player's role, rank, Riot ID and champion pool — plus **op.gg** deep links for prep. |
+| **Teams** | Every team in the tournament — not just the two on air — with full rosters and substitutes, so casters can pull up any team on demand. |
 | **Series** | The current series: score, format, per-game results and draft history (incl. the **fearless** champion pool used so far). |
 | **Draft** | A live pick/ban board mirroring the [draft](draft.md) as it happens. |
-| **Standings** | Group-stage standings. |
-| **Bracket** | The playoff bracket. |
+| **Standings** | Group-stage standings, with advancing positions and the qualification cut-off marked. |
+| **Bracket** | The playoff bracket — single- or double-elimination, with scores and winners. |
 | **Schedule** | The broadcast schedule. |
+
+### Teams
+
+The **Teams** tab lists the whole competing-team pool with rosters and subs — handy for previewing an upcoming opponent who isn't on air yet. The two teams currently on broadcast are flagged **ON AIR**:
+
+![Caster view — Teams tab](img/caster-teams.jpg)
 
 ### Live draft
 
@@ -33,7 +46,11 @@ The remaining tabs give the casters the full tournament context without leaving 
 
 ![Caster view — Series tab](img/caster-series.jpg)
 
+Standings show each group with numbered positions; advancing slots are highlighted and a cut-off line marks where qualification ends:
+
 ![Caster view — Standings tab](img/caster-standings.jpg)
+
+The bracket splits into **Upper / Lower / Grand Final** for double-elimination, with team logos, scores and the winner of each match highlighted:
 
 ![Caster view — Bracket tab](img/caster-bracket.jpg)
 

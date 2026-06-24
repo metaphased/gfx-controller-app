@@ -136,7 +136,7 @@ npm run dev
 |---|---|---|---|
 | **Control panel** | `/control` | admin | Full tournament setup, match management, all graphic control, settings. |
 | **Operator view** | `/operator` | operator/admin | Streamlined live production: graphic toggles + ctrl-bar, score/series tracker, lower-third builder, drag-reorderable panels, on-air indicator. |
-| **Caster view** | `/caster?token=XXXX` | token | Read-only caster dashboard: roster, series, live draft, standings, bracket, schedule. |
+| **Caster view** | `/caster?token=XXXX` | token | Read-only caster dashboard: roster, teams, series, live draft, standings, bracket, schedule. |
 
 <table>
   <tr>
