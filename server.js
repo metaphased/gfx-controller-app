@@ -2851,6 +2851,9 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
                   'fearlessDraft','currentGameNum','seriesGames','scheduleDayId','scheduleGameId'];
     keep.forEach(k => { if (d.match[k] !== undefined) state.match[k] = d.match[k]; });
   }
+  // Pre-multi-game profiles have no game-lock flag — backfill it so a loaded tournament
+  // with data comes in locked (same migration as state.json load).
+  migrateGame(state);
   if (d.players) deepMerge(state.players, d.players);
   if (d.prizepool) {
     const { entries, showLogo, logoScale, logoPosition } = d.prizepool;
