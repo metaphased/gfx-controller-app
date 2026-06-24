@@ -680,7 +680,7 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
         </div>
       </div>
       <div class="ops-ctrl-row">
-        <div class="ops-ctrl-group" style="flex-wrap:wrap;gap:4px;padding:6px 10px;flex:1">
+        <div class="ops-ctrl-group cap-roles" style="flex-wrap:wrap;gap:4px;padding:6px 10px;flex:1">
           <span class="ops-ctrl-label" style="flex-basis:100%;margin-bottom:2px">Spotlight Role</span>
           <button class="mode-btn" id="h2h-role-0" onclick="setH2HRole(0)">Top</button>
           <button class="mode-btn" id="h2h-role-1" onclick="setH2HRole(1)">Jg</button>
@@ -735,7 +735,7 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
 
       <!-- Draft -->
       <div class="ops-ctrl-row">
-        <div class="ops-ctrl-group" id="ops-grp-draft">
+        <div class="ops-ctrl-group cap-champ-draft" id="ops-grp-draft">
           <span class="ops-ctrl-label">Draft</span>
           <button class="lbar-toggle" id="ops-btn-draft" onclick="toggleGfx('draft')">
             <span class="lbar-dot" id="ops-dot-draft"></span>Draft
@@ -821,6 +821,22 @@ window._state = {};
 let _breakTimerSetMs = 0;
 
 function g(id) { return document.getElementById(id); }
+
+// Active game adapter (broadcast as state.adapter) — hides game-irrelevant operator
+// controls. Elements opt in by class; LoL has all capabilities so nothing changes.
+function gameAdapter() { return (window._state && window._state.adapter) || null; }
+function applyOpsAdapterUI() {
+  const a = gameAdapter();
+  const caps = {
+    'cap-champ-draft': a ? a.pregameKind === 'champ-draft'            : true,
+    'cap-roles':       a ? (a.positions || []).some(function(p){return !!p;}) : true,
+    'cap-opgg':        a ? a.intelProvider === 'opgg'                 : true,
+    'cap-picks':       a ? a.pickEntity != null                       : true,
+  };
+  Object.keys(caps).forEach(function(cls){
+    document.querySelectorAll('.' + cls).forEach(function(el){ el.style.display = caps[cls] ? '' : 'none'; });
+  });
+}
 function api(url, body) {
   return fetch(url, {
     method: 'POST',
@@ -858,6 +874,7 @@ const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','bracket','g
 
 socket.on('state', state => {
   window._state = state;
+  applyOpsAdapterUI();
   const m = state.match;
 
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);

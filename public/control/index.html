@@ -39,8 +39,8 @@
       <div class="nav-section-label">GAME</div>
       <a class="nav-item" data-tab="game">Game Setup</a>
       <a class="nav-item" data-tab="players">Players / Rosters</a>
-      <a class="nav-item" data-tab="draft">Draft</a>
-      <a class="nav-item" data-tab="intel">Match Intel</a>
+      <a class="nav-item cap-champ-draft" data-tab="draft">Draft</a>
+      <a class="nav-item cap-opgg" data-tab="intel">Match Intel</a>
 
       <div class="nav-section-label">GRAPHICS</div>
       <a class="nav-item" data-tab="theme">Broadcast Theme</a>
@@ -63,7 +63,7 @@
         <span id="nav-dot-ticker" class="nav-status-dot"></span>
         Ticker
       </a>
-      <a class="nav-item" data-tab="draft-gfx">
+      <a class="nav-item cap-champ-draft" data-tab="draft-gfx">
         <span id="nav-dot-draft-gfx" class="nav-status-dot"></span>
         Draft
       </a>
@@ -230,16 +230,32 @@
          TOURNAMENT SETUP
     ══════════════════════════════════════════════════════════════════════════ -->
     <section class="tab" id="tab-tournament">
-      <div class="tab-header"><h1>Tournament Setup</h1></div>
+      <div class="tab-header"><h1>Tournament Setup</h1>
+        <button class="btn btn-sm" id="setup-lock-btn" style="margin-left:auto;display:none" onclick="toggleSetupLock()">🔒 Lock Setup</button>
+      </div>
+      <div id="setup-lock-banner" style="display:none;margin-bottom:14px;padding:10px 14px;border:1px solid var(--danger);border-radius:4px;background:rgba(255,59,59,0.08);color:var(--text);font-size:13px">
+        🔒 <strong>Setup locked.</strong> Editing is disabled to protect the live tournament. Click <strong>Unlock Setup</strong> to make changes.
+      </div>
 
       <div class="grid2">
         <div class="card">
           <div class="card-title">Tournament Info</div>
           <div class="field-row"><label>Tournament Name</label><input type="text" id="ts-name" placeholder="e.g. Summer Split 2025" oninput="patchTournamentInfo({name:this.value})"></div>
+          <p class="hint" id="ts-name-hint" style="margin:-4px 0 10px">The on-air tournament title — separate from the saved profile (shown in the top bar).</p>
           <div class="field-row"><label>Game</label>
-            <select id="ts-game" onchange="patchTournamentInfo({game:this.value})">
-              <option value="lol">League of Legends</option><option value="valorant">VALORANT</option><option value="cs2">CS2</option><option value="generic">Generic / Other</option>
-            </select>
+            <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <select id="ts-game" onchange="patchTournamentInfo({game:this.value})">
+                <option value="lol">League of Legends</option><option value="cs2">CS2</option><option value="dota2">Dota 2</option><option value="valorant">VALORANT</option><option value="r6">Rainbow Six Siege</option><option value="generic">Generic / Other</option>
+              </select>
+              <span id="ts-game-locked" style="display:none;font-weight:600"></span>
+              <span id="ts-game-lock-note" class="hint" style="display:none;margin:0">🔒 Fixed for this tournament — Reset to change</span>
+            </div>
+          </div>
+          <div class="field-row" id="ts-create-row" style="display:none"><label></label>
+            <button class="btn btn-primary" onclick="createTournament()">Create Tournament</button>
+          </div>
+          <div class="field-row" id="ts-reset-row" style="display:none"><label></label>
+            <button class="btn btn-sm btn-danger" onclick="resetTournament()">Reset Tournament</button>
           </div>
           <div class="field-row"><label>Tournament Logo</label>
             <div class="upload-row">
@@ -576,7 +592,7 @@
                 <option value="Bo1">Bo1</option><option value="Bo3">Bo3</option><option value="Bo5">Bo5</option>
               </select>
             </div>
-            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;white-space:nowrap">
+            <label id="gs-fearless-label" class="cap-champ-draft" style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;color:var(--text-dim);font-weight:400;text-transform:none;letter-spacing:0;white-space:nowrap">
               <input type="checkbox" id="gs-fearless" onchange="gsEditSave({fearlessDraft:this.checked})" disabled>
               Fearless Draft
             </label>
@@ -594,7 +610,11 @@
     <section class="tab" id="tab-teams">
       <div class="tab-header">
         <h1>Teams Database</h1>
-        <button class="btn btn-primary btn-sm" onclick="openTeamEditor(null)">+ New Team</button>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <label style="font-size:12px;color:var(--text-dim);text-transform:none;letter-spacing:0">Filter</label>
+          <select id="teams-filter-game" onchange="renderTeamsList()"></select>
+          <button class="btn btn-primary btn-sm" onclick="openTeamEditor(null)">+ New Team</button>
+        </div>
       </div>
       <div id="teams-list"></div>
       <p class="hint" id="teams-empty" style="display:none;margin-top:16px">No teams saved yet. Click + New Team to create one.</p>
@@ -605,6 +625,7 @@
           <div>
             <div class="field-row"><label>Team Name</label><input type="text" id="edit-team-name" placeholder="e.g. Cloud9"></div>
             <div class="field-row"><label>Tag</label><input type="text" id="edit-team-tag" maxlength="6" placeholder="e.g. C9"></div>
+            <div class="field-row"><label>Game</label><select id="edit-team-game"></select></div>
             <div class="field-row"><label>Logo</label>
               <div class="upload-row">
                 <input type="text" id="edit-team-logo" placeholder="URL or upload" oninput="updateEditLogoPreview(this.value)">
@@ -696,7 +717,7 @@
     ══════════════════════════════════════════════════════════════════════════ -->
     <section class="tab" id="tab-players">
       <div class="tab-header"><h1>Players / Rosters</h1></div>
-      <div class="card" style="margin-bottom:12px">
+      <div class="card cap-opgg" style="margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="refreshRanks()">↻ Refresh Ranks from Riot API</button>
           <button class="btn btn-primary" onclick="refreshChampPool()" style="margin-left:4px">↻ Refresh Champion Pools from op.gg</button>
@@ -873,7 +894,7 @@
           </div>
 
           <!-- Champion stats strip -->
-          <div class="card">
+          <div class="card cap-picks">
             <div class="card-title">Champion Stats Strip</div>
             <p class="hint" style="margin-bottom:10px">Fetched automatically when draft roles are committed. Shown in spotlight rows.</p>
             <label style="display:flex;align-items:center;gap:8px;margin-bottom:12px;cursor:pointer">
@@ -913,8 +934,8 @@
           <div class="gfx-ctrl-group">
             <span class="gfx-ctrl-section-label">Options</span>
             <button id="pi-toggle-logo"   class="btn btn-sm btn-dim" onclick="togglePlayerIntroLogo()">Logo: On</button>
-            <button id="pi-toggle-rank"   class="btn btn-sm btn-dim" onclick="togglePlayerIntroRank()">Rank: Off</button>
-            <button id="pi-toggle-champs" class="btn btn-sm btn-dim" onclick="togglePlayerIntroChamps()">Champs: Off</button>
+            <button id="pi-toggle-rank"   class="btn btn-sm btn-dim cap-opgg" onclick="togglePlayerIntroRank()">Rank: Off</button>
+            <button id="pi-toggle-champs" class="btn btn-sm btn-dim cap-picks" onclick="togglePlayerIntroChamps()">Champs: Off</button>
           </div>
           <div class="gfx-ctrl-group">
             <span class="gfx-ctrl-section-label">Animation</span>
@@ -2445,7 +2466,7 @@
         <!-- Right col: Champion Assets + Accounts -->
         <div class="ps-col">
           <!-- Champion Assets -->
-          <div class="card" style="margin-bottom:16px">
+          <div class="card cap-assets" style="margin-bottom:16px">
             <div class="card-title">Champion Assets</div>
             <p class="hint" style="margin-bottom:12px">Downloads champion tiles, centered images, and role icons from DDragon. Only missing files are fetched — existing files are never overwritten unless you force-update roles.</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -2586,7 +2607,7 @@
       <button class="lbar-toggle" id="lbar-toggle-playerIntro" onclick="toggleGraphic('playerIntro')"><span class="lbar-dot" id="lbar-dot-playerIntro"></span>PLAYERS</button>
     </div>
     <div class="lbar-group" id="lbar-group-draft">
-      <button class="lbar-toggle" id="lbar-toggle-draft" onclick="toggleGraphic('draft')"><span class="lbar-dot" id="lbar-dot-draft"></span>DRAFT</button>
+      <button class="lbar-toggle cap-champ-draft" id="lbar-toggle-draft" onclick="toggleGraphic('draft')"><span class="lbar-dot" id="lbar-dot-draft"></span>DRAFT</button>
     </div>
 
     <div class="lbar-divider"></div>
