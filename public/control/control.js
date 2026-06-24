@@ -38,8 +38,69 @@ window._state = {};
 let bracketRounds = [];
 let bracketType   = 'single';
 const _pickerContainers = {};
-const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
+const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support']; // LoL fallback (pre-state)
 const OPGG_REGIONS  = ['kr','euw','na','eune','jp','oce','br','las','lan','ru','tr'];
+
+// Active game adapter — broadcast by the server as state.adapter (single source of game
+// capabilities). Falls back to LoL behaviour before the first state arrives.
+function gameAdapter()      { return (window._state && window._state.adapter) || null; }
+function adapterRoles()     { const a = gameAdapter(); return (a && a.positions && a.positions.length) ? a.positions : DEFAULT_ROLES; }
+function isChampDraft()     { const a = gameAdapter(); return a ? a.pregameKind === 'champ-draft' : true; }
+function supportsFearless() { const a = gameAdapter(); return a ? !!a.supportsFearless : true; }
+function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvider === 'opgg'  : true; }
+function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
+function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
+function hasRoles()         { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
+
+// Game list (id + label) for tournament + team-game selectors. Mirrors the ts-game options.
+const GAMES = [['lol','League of Legends'],['cs2','CS2'],['dota2','Dota 2'],['valorant','VALORANT'],['r6','Rainbow Six Siege'],['generic','Generic / Other']];
+function gameLabel(id){ const f=GAMES.find(function(x){return x[0]===id;}); return f?f[1]:(id||''); }
+function gameOptionsHtml(sel){ return GAMES.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===sel?' selected':'')+'>'+x[1]+'</option>';}).join(''); }
+function currentGameId(){ return (window._state && window._state.match && window._state.match.game) || 'lol'; }
+
+// Show/hide game-specific UI based on the active adapter's capabilities. Elements opt in
+// by class (cap-champ-draft / cap-opgg / cap-assets / cap-picks); LoL has all capabilities
+// so everything stays visible. Before the first state arrives, default to showing all.
+function applyAdapterUI() {
+  const caps = {
+    'cap-champ-draft': isChampDraft(),
+    'cap-opgg':        supportsOpgg(),
+    'cap-assets':      supportsAssets(),
+    'cap-picks':       hasPickEntity(),
+    'cap-roles':       hasRoles(),
+  };
+  Object.keys(caps).forEach(function(cls){
+    document.querySelectorAll('.' + cls).forEach(function(el){ el.style.display = caps[cls] ? '' : 'none'; });
+  });
+}
+
+// Game type is fixed once a tournament is created — show an editable select + Create
+// button before creation, and a locked label + Reset button after. Reset is the only way
+// to change the game (it clears the tournament via /api/state/reset).
+function applyTournamentCreateLock() {
+  const created = !!(window._state && window._state.tournament && window._state.tournament.created);
+  const sel = g('ts-game'), lockedTxt = g('ts-game-locked'), lockNote = g('ts-game-lock-note');
+  const createRow = g('ts-create-row'), resetRow = g('ts-reset-row');
+  if (sel) sel.style.display = created ? 'none' : '';
+  if (lockedTxt) {
+    lockedTxt.style.display = created ? '' : 'none';
+    const a = gameAdapter();
+    const optText = sel && sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].text : '';
+    lockedTxt.textContent = (a && a.label) || optText || '';
+  }
+  if (lockNote)  lockNote.style.display  = created ? '' : 'none';
+  if (createRow) createRow.style.display = created ? 'none' : '';
+  if (resetRow)  resetRow.style.display  = created ? '' : 'none';
+}
+async function createTournament() {
+  const game = g('ts-game') ? g('ts-game').value : 'lol';
+  const name = g('ts-name') ? g('ts-name').value : '';
+  await api('/api/tournament/create', { game, name });
+}
+async function resetTournament() {
+  if (!confirm('Reset the entire tournament? This clears all teams, schedule, draft and game-specific data so you can choose a different game. This cannot be undone.')) return;
+  await api('/api/state/reset', {});
+}
 
 // ── External URL config ────────────────────────────────────────────────────────
 let _externalUrl  = null;
@@ -152,6 +213,8 @@ socket.on('state', async (state) => {
   }
   window._state = state;
   syncUI(state);
+  applyAdapterUI();
+  applyTournamentCreateLock();
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
   // Debounced dirty check — runs 2 s after state settles
@@ -305,7 +368,7 @@ const urlList = g('url-list');
 GFX_PAGES.forEach(([label, p]) => {
   const url = window.location.origin + '/' + p;
   const chip = document.createElement('div');
-  chip.className = 'url-chip';
+  chip.className = 'url-chip' + (p.indexOf('draft/') !== -1 ? ' cap-champ-draft' : '');
   chip.title = 'Click to copy';
   chip.textContent = label;
   chip.addEventListener('click', () => {
@@ -786,7 +849,7 @@ function renderDashboard(s) {
   if (gfxEl) {
     gfxEl.innerHTML = '<div class="card-title">Live Graphics</div>' +
       '<div class="dash-gfx-grid">' +
-        GRAPHIC_MAP.map(function(gfx) {
+        GRAPHIC_MAP.filter(function(gfx) { return gfx.key !== 'draft' || isChampDraft(); }).map(function(gfx) {
           var active = s[gfx.key] && s[gfx.key].visible;
           return '<div class="dash-gfx-item">' +
             '<div class="dash-gfx-dot' + (active ? ' is-live' : '') + '"></div>' +
@@ -3012,13 +3075,13 @@ function renderPlayerEditors(players) {
       let html = '<div class="roster-section-label">STARTING LINEUP</div>';
       html += list.map(function(p, i) {
         return '<div class="player-row-edit">' +
-          '<div><div class="player-num">'+DEFAULT_ROLES[i]+'</div>' +
+          '<div><div class="player-num cap-roles">'+adapterRoles()[i]+'</div>' +
             '<div style="display:flex;align-items:center;gap:5px">' +
               '<div class="player-val-display" data-index="'+i+'" data-field="handle"></div>' +
               '<a class="opgg-link" data-index="'+i+'" href="#" target="_blank" rel="noopener" style="display:none">op.gg ↗</a>' +
             '</div>' +
           '</div>' +
-          '<div><div class="player-num">Role</div>' +
+          '<div class="cap-roles"><div class="player-num">Role</div>' +
             '<div class="player-val-display" data-index="'+i+'" data-field="role"></div></div>' +
           '<div><div class="player-num">Swap Sub</div>' +
             '<select class="sub-swap-sel" data-team="'+team+'" data-player-index="'+i+'">' +
@@ -3062,7 +3125,7 @@ function renderPlayerEditors(players) {
         return '<div class="player-row-edit sub-row">' +
           '<div><div class="player-num">Sub '+(i+1)+'</div>' +
             '<div class="player-val-display"></div></div>' +
-          '<div><div class="player-num">Role</div>' +
+          '<div class="cap-roles"><div class="player-num">Role</div>' +
             '<div class="player-val-display"></div></div>' +
           '<div></div>' +
           '</div>';
@@ -3090,7 +3153,7 @@ function renderPlayerEditors(players) {
 
     starterSec.querySelectorAll('.opgg-link').forEach(function(link) {
       const p = list[parseInt(link.dataset.index)];
-      const url = p ? opggUrl(p.opggRegion, p.riotId) : '';
+      const url = (p && supportsOpgg()) ? opggUrl(p.opggRegion, p.riotId) : '';
       if (url) { link.href = url; link.style.display = ''; }
       else      { link.href = '#'; link.style.display = 'none'; }
     });
@@ -3477,7 +3540,7 @@ async function importBuildTeams(rows) {
     const teamName = entry.name;
     // Up to 5 starters; any overflow joins the imported subs.
     const starters = entry.players.slice(0, 5).map(function(p, i) {
-      return { handle: p.handle, name: p.name || '', role: p.role || DEFAULT_ROLES[i] || '', opggRegion: p.opggRegion, riotId: p.riotId, country: p.country };
+      return { handle: p.handle, name: p.name || '', role: p.role || adapterRoles()[i] || '', opggRegion: p.opggRegion, riotId: p.riotId, country: p.country };
     });
     const subs = entry.players.slice(5).concat(entry.subs).map(function(p) {
       return { handle: p.handle, name: p.name || '', role: p.role || '', opggRegion: p.opggRegion, riotId: p.riotId, country: p.country };
@@ -3512,8 +3575,17 @@ function showImportResult(id, msg, isError) {
 async function renderTeamsList() {
   const container=g('teams-list'), empty=g('teams-empty'); if(!container)return;
   const res=await fetch('/api/teams').then(r=>r.json()).catch(()=>({teams:[]}));
-  const teams=res.teams||[];
-  if(!teams.length){container.innerHTML='';if(empty)empty.style.display='block';return;}
+  const allTeams=res.teams||[];
+  // Populate the game filter once; default to the active tournament's game.
+  const filterSel=g('teams-filter-game');
+  if(filterSel && !filterSel.dataset.built){
+    filterSel.innerHTML='<option value="">All games</option>'+gameOptionsHtml('');
+    filterSel.value=currentGameId();
+    filterSel.dataset.built='1';
+  }
+  const filterGame=filterSel?filterSel.value:'';
+  const teams=filterGame?allTeams.filter(function(t){return (t.game||'lol')===filterGame;}):allTeams;
+  if(!teams.length){container.innerHTML='';if(empty){empty.style.display='block';empty.textContent=allTeams.length?'No teams for this game. Use the filter or + New Team.':'No teams saved yet. Click + New Team to create one.';}return;}
   if(empty)empty.style.display='none';
   container.innerHTML=teams.map(function(team){
     const logo=team.logo?'<img src="'+team.logo+'" style="width:44px;height:44px;object-fit:contain;flex-shrink:0">':'<div style="width:44px;height:44px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-dim);flex-shrink:0">LOGO</div>';
@@ -3523,7 +3595,8 @@ async function renderTeamsList() {
       '<div style="flex:1;min-width:0">'+
         '<div style="display:flex;align-items:center;gap:6px">'+
           '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:800;color:#fff;text-transform:uppercase">'+esc(team.name)+'</span>'+
-          '<span style="font-size:11px;color:var(--accent);letter-spacing:0.12em">'+esc(team.tag||'')+'</span></div>'+
+          '<span style="font-size:11px;color:var(--accent);letter-spacing:0.12em">'+esc(team.tag||'')+'</span>'+
+          '<span style="font-size:10px;color:var(--text-dim);border:1px solid var(--border);border-radius:3px;padding:1px 5px;text-transform:uppercase;letter-spacing:0.04em">'+esc(gameLabel(team.game||'lol'))+'</span></div>'+
         '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">'+pc+' player'+(pc!==1?'s':'')+' · '+sc+' sub'+(sc!==1?'s':'')+'</div>'+
       '</div>'+
       '<div style="display:flex;gap:8px;flex-shrink:0">'+
@@ -3554,12 +3627,15 @@ async function openTeamEditor(teamId) {
     title.textContent='Edit Team — '+team.name;
     g('edit-team-id').value=team.id; g('edit-team-name').value=team.name||''; g('edit-team-tag').value=team.tag||'';
     g('edit-team-logo').value=team.logo||''; updateEditLogoPreview(team.logo||'');
+    const gsel=g('edit-team-game'); if(gsel) gsel.innerHTML=gameOptionsHtml(team.game||'lol');
     renderEditPlayers(team.players||[], team.subs||[]);
     deleteBtn.style.display='block';
   } else {
     title.textContent='New Team';
     g('edit-team-id').value=''; g('edit-team-name').value=''; g('edit-team-tag').value='';
     g('edit-team-logo').value=''; updateEditLogoPreview('');
+    // New teams default to the active tournament's game so they show in its picker.
+    const gsel=g('edit-team-game'); if(gsel) gsel.innerHTML=gameOptionsHtml(currentGameId());
     renderEditPlayers([], []);
     deleteBtn.style.display='none';
   }
@@ -3592,17 +3668,20 @@ function renderEditPlayers(players, subs) {
 
   // Starting 5 with auto-roles
   let html='<div class="roster-section-label">STARTING LINEUP</div>';
-  html+=DEFAULT_ROLES.map(function(role,i){
+  const showOpgg = supportsOpgg();   // Region / Riot ID columns only for op.gg-intel games
+  const showRoles = hasRoles();      // Role column only for games with defined positions
+  html+=adapterRoles().map(function(role,i){
     const p=players[i]||{};
     return '<div class="player-row-edit">'+
-      '<div><div class="player-num">'+role+'</div><input type="text" class="ep-handle" data-index="'+i+'" placeholder="Handle / IGN" value="'+esc(p.handle||'')+'"></div>'+
-      '<div><div class="player-num">Role</div><input type="text" class="ep-role" data-index="'+i+'" value="'+esc(p.role||role)+'" placeholder="'+role+'"></div>'+
+      '<div><div class="player-num">'+(role||'')+'</div><input type="text" class="ep-handle" data-index="'+i+'" placeholder="Handle / IGN" value="'+esc(p.handle||'')+'"></div>'+
+      (showRoles ? '<div><div class="player-num">Role</div><input type="text" class="ep-role" data-index="'+i+'" value="'+esc(p.role||role)+'" placeholder="'+(role||'Role')+'"></div>' : '')+
+      (showOpgg ? (
       '<div><div class="player-num">Region</div>'+
         opggRegionSelect('ep-opgg-region','data-index="'+i+'"',p.opggRegion||'')+
       '</div>'+
       '<div><div class="player-num">Riot ID</div>'+
         '<input type="text" class="ep-riot-id" data-index="'+i+'" placeholder="Name#TAG" value="'+esc(p.riotId||'')+'">'+
-      '</div>'+
+      '</div>') : '')+
       '</div>';
   }).join('');
 
@@ -3622,12 +3701,12 @@ function renderEditPlayers(players, subs) {
 async function saveTeamEditor() {
   const name=(g('edit-team-name').value||'').trim();
   if (!name){showAlert('Team name is required.');return;}
-  const players=DEFAULT_ROLES.map(function(_,i){
+  const players=adapterRoles().map(function(_,i){
     const c=g('edit-team-players');
     return {
       handle:     (c.querySelector('.ep-handle[data-index="'+i+'"]')      ||{}).value||'',
       name:       '',
-      role:       (c.querySelector('.ep-role[data-index="'+i+'"]')        ||{}).value||DEFAULT_ROLES[i],
+      role:       (c.querySelector('.ep-role[data-index="'+i+'"]')        ||{}).value||adapterRoles()[i],
       opggRegion: (c.querySelector('.ep-opgg-region[data-index="'+i+'"]') ||{}).value||'',
       riotId:     (c.querySelector('.ep-riot-id[data-index="'+i+'"]')     ||{}).value||'',
     };
@@ -3640,7 +3719,8 @@ async function saveTeamEditor() {
     };
   });
   const idVal=g('edit-team-id').value;
-  const team={name,tag:(g('edit-team-tag').value||'').trim().toUpperCase(),logo:(g('edit-team-logo').value||'').trim(),players,subs};
+  const gameVal=(g('edit-team-game')&&g('edit-team-game').value)||currentGameId();
+  const team={name,tag:(g('edit-team-tag').value||'').trim().toUpperCase(),logo:(g('edit-team-logo').value||'').trim(),game:gameVal,players,subs};
   if(idVal)team.id=idVal;
   // When the editor was opened from the Competing Teams "+ Create New Team" flow,
   // add the new team to the active tournament's pool in the same save.
@@ -3758,14 +3838,16 @@ function renderPoolAddList() {
   const listEl = g('pool-add-list'); if (!listEl) return;
   const poolIds = new Set((window._state && window._state.tournament && window._state.tournament.teamPool) || []);
   const q = ((g('pool-add-search') || {}).value || '').trim().toLowerCase();
+  const tourGame = currentGameId();   // only same-game teams are eligible for this tournament
   const candidates = _allTeams().filter(function(t) {
     if (poolIds.has(t.id)) return false; // already in the pool
+    if ((t.game || 'lol') !== tourGame) return false; // wrong game for this tournament
     if (!q) return true;
     return (t.name || '').toLowerCase().indexOf(q) !== -1 || (t.tag || '').toLowerCase().indexOf(q) !== -1;
   });
   if (!candidates.length) {
     listEl.innerHTML = '<div style="color:var(--text-dim);font-size:13px;padding:20px;text-align:center">' +
-      (q ? 'No matching teams.' : 'All saved teams are already in this tournament.<br><br>Use <strong style="color:var(--text)">+ Create New Team</strong> to add a new one.') +
+      (q ? 'No matching ' + esc(gameLabel(tourGame)) + ' teams.' : 'No ' + esc(gameLabel(tourGame)) + ' teams available.<br><br>Use <strong style="color:var(--text)">+ Create New Team</strong> to add one.') +
       '</div>';
     return;
   }
@@ -5646,7 +5728,7 @@ function renderAddGameForm(dayId) {
   const stageDefs = getScheduleStageOptions(t);
   const stageOpts = stageDefs.map(function(d) { return '<option value="' + d.key + '">' + escHtml(d.label) + '</option>'; }).join('');
   const teamOpts  = teams.map(function(tm) { return '<option value="' + tm.id + '">' + escHtml(tm.name) + '</option>'; }).join('');
-  const isLol = !t || t.game === 'lol' || window._state.match.game === 'lol';
+  const isLol = supportsFearless();   // show Fearless Draft only for adapters that support it
   return '<div class="sadd-form">' +
     '<div class="sadd-row"><label>Stage</label><select id="sadd-stage-' + dayId + '" onchange="updateAddGameStage(\'' + dayId + '\',this.value)">' + stageOpts + '</select></div>' +
     '<div class="sadd-row" id="sadd-match-row-' + dayId + '" style="display:none"><label>Match</label>' +
@@ -5773,7 +5855,7 @@ function renderScheduleGameEditForm(dayId, game) {
   const poolTeams = poolFilter(allTeams);
   const t = window._state && window._state.tournament;
   const stageDefs = getScheduleStageOptions(t);
-  const isLol = !t || t.game === 'lol' || window._state.match.game === 'lol';
+  const isLol = supportsFearless();   // show Fearless Draft only for adapters that support it
   const gid   = game.id;
   const teamOpts = function(selectedId) {
     let opts = poolTeams.slice();
@@ -6750,7 +6832,7 @@ function renderSeriesTracker(s) {
     // Winner radio + confirm — edit mode only
     if (_gsEditMode) {
       html += '<div class="sg-field-row" style="margin-top:8px"><label>Winner</label><div class="radio-group"><label><input type="radio" name="sg-winner" value="team1"> ' + t1n + '</label><label><input type="radio" name="sg-winner" value="team2"> ' + t2n + '</label></div></div>';
-      if (fearless && m.game === 'lol') {
+      if (fearless && supportsFearless()) {
         html += '<div class="sg-picks-section"><div class="sg-picks-label">' + t1n + ' Picks</div><div class="sg-picks-row" id="sg-t1-picks">';
         for (let i = 0; i < 5; i++) html += '<div class="cs-picker-container" id="sg-t1-pick-' + i + '"></div>';
         html += '</div><div class="sg-picks-label">' + t2n + ' Picks</div><div class="sg-picks-row" id="sg-t2-picks">';
@@ -6805,7 +6887,7 @@ function renderSeriesTracker(s) {
   container.innerHTML = html;
 
   // Build champion pickers for fearless picks — only rendered when in edit mode
-  if (!seriesOver && fearless && m.game === 'lol' && _gsEditMode) {
+  if (!seriesOver && fearless && supportsFearless() && _gsEditMode) {
     const committed = { team1: draft.committedT1Picks || [], team2: draft.committedT2Picks || [] };
     ['team1','team2'].forEach(function(team) {
       const prefix = team === 'team1' ? 'sg-t1-pick-' : 'sg-t2-pick-';
@@ -6937,7 +7019,7 @@ function confirmGameResult() {
   const t2Side = blueSideTeam === 'team1' ? 'red'  : 'blue';
 
   const m = window._state && window._state.match;
-  const fearless = m && m.fearlessDraft && m.game === 'lol';
+  const fearless = m && m.fearlessDraft && supportsFearless();
   const t1RolePicks = (draft && draft.team1RolePicks) || [];
   const t2RolePicks = (draft && draft.team2RolePicks) || [];
   let t1Picks = [], t2Picks = [];

@@ -254,7 +254,7 @@ socket.on('state', function(s) {
   ['t2-tag','t2-tag2'].forEach(function(id) { document.getElementById(id).textContent = t2.tag || t2.name; });
 
   document.getElementById('phase-name').textContent = PHASE_LABELS[draft.phase] || '—';
-  document.getElementById('game-label').textContent = GAME_LABELS[s.match.game] || '';
+  document.getElementById('game-label').textContent = (s.adapter && s.adapter.label) || GAME_LABELS[s.match.game] || '';
 
   // Derive bans from the flat picks array (always draft-order)
   const blueBans = BLUE_BAN_IDX.map(function(i) { return picks[i] || ''; });

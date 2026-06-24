@@ -13,6 +13,7 @@ const session  = require('express-session');
 const bcrypt   = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 const switcher = require('./switcher');
+const games    = require('./games');   // game-adapter registry (multi-game support)
 
 const app    = express();
 const server = http.createServer(app);
@@ -20,7 +21,9 @@ const PORT   = process.env.PORT || 3000;
 const EXTERNAL_URL = process.env.EXTERNAL_URL || null;
 
 // ── Data paths ─────────────────────────────────────────────────────────────────
-const DATA_DIR    = path.join(__dirname, 'data');
+// DATA_DIR is overridable via env so an isolated test instance can run against a
+// throwaway data dir without touching the live one (default = ./data).
+const DATA_DIR    = process.env.DATA_DIR || path.join(__dirname, 'data');
 const DATA_FILE   = path.join(DATA_DIR, 'state.json');
 const TEAMS_FILE    = path.join(DATA_DIR, 'teams.json');
 const TALENT_FILE   = path.join(DATA_DIR, 'talent.json');
@@ -418,10 +421,12 @@ function singleUpload(mw) {
 }
 
 // ── State / defaults ───────────────────────────────────────────────────────────
-const DEFAULT_ROLES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
+// Default roster positions = the LoL adapter's positions (single source of truth, shared
+// with games/lol.js). makeDefaultPlayers accepts an override for non-LoL adapters.
+const DEFAULT_ROLES = games.resolveAdapter('lol').roster.positions;
 
-function makeDefaultPlayers() {
-  return DEFAULT_ROLES.map((role, i) => ({ name: '', handle: 'Player ' + (i+1), role, country: '', active: true }));
+function makeDefaultPlayers(positions) {
+  return (positions || DEFAULT_ROLES).map((role, i) => ({ name: '', handle: 'Player ' + (i+1), role, country: '', active: true }));
 }
 function makeDefaultSubs() {
   return [1,2,3].map(i => ({ name: '', handle: 'Sub ' + i, role: '', country: '', active: false }));
@@ -444,6 +449,7 @@ function makeDefaultSubs() {
 // ──────────────────────────────────────────────────────────────────────────────
 const makeDefault = () => ({
   tournament: {
+    created:            false,        // false until the tournament is created (game then locks)
     hasGroupStage:      false,
     playoffFormat:      'singleElim', // 'singleElim' | 'doubleElim'
     thirdPlaceMatch:    false,        // single elim only
@@ -694,6 +700,24 @@ function ltRecomputeVisible(lt) {
   lt.visible = (lt.outputs || []).some(o => Array.isArray(o.activeSetIds) && o.activeSetIds.length > 0);
 }
 
+// Ensure the game id exists on both match + tournament (default LoL). No-op for current
+// data; safety net for very old profiles/state. Adapter resolution keys off match.game.
+function migrateGame(st) {
+  if (!st) return;
+  if (!st.match) st.match = {};
+  if (!st.match.game) st.match.game = 'lol';
+  if (!st.tournament) st.tournament = {};
+  if (st.tournament.game === undefined) st.tournament.game = st.match.game;
+  // Lock pre-existing (non-empty) tournaments so a loaded show doesn't drop back to the
+  // create step. A truly empty/reset state stays created:false → create step shows.
+  if (!st.tournament.created) {
+    const t = st.tournament;
+    const hasData = !!(t.name || (t.teamPool && t.teamPool.length) || (t.schedule && t.schedule.length) ||
+      (t.groups && t.groups.length) || (st.match && (st.match.tournament || (st.match.seriesGames && st.match.seriesGames.length))));
+    if (hasData) st.tournament.created = true;
+  }
+}
+
 function loadState() {
   let st;
   try {
@@ -704,11 +728,20 @@ function loadState() {
   if (!st) st = makeDefault();
   migrateAnimationSettings(st);
   migrateLowerThird(st);
+  migrateGame(st);
   return st;
 }
 function saveState() { try { fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2)); } catch(e) { console.error(e); } }
 let _teams = [];
-function loadTeams() { try { if (fs.existsSync(TEAMS_FILE)) return JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf8')); } catch(e) {} return []; }
+function loadTeams() {
+  let teams = [];
+  try { if (fs.existsSync(TEAMS_FILE)) teams = JSON.parse(fs.readFileSync(TEAMS_FILE, 'utf8')); } catch(e) {}
+  // Migrate: tag any untagged team as LoL (the app was LoL-only before multi-game).
+  let changed = false;
+  teams.forEach(t => { if (t && !t.game) { t.game = 'lol'; changed = true; } });
+  if (changed) { try { fs.writeFileSync(TEAMS_FILE, JSON.stringify(teams, null, 2)); } catch(e) {} }
+  return teams;
+}
 function saveTeams(t) { _teams = t; try { fs.writeFileSync(TEAMS_FILE, JSON.stringify(t, null, 2)); } catch(e) { console.error(e); } }
 
 // Talent roster — a GLOBAL list of on-air people (hosts/casters/analysts/guests),
@@ -881,7 +914,7 @@ function broadcastSchedule() { io.emit('schedule', state.tournament.schedule || 
 // operators and graphics-token connections get it stripped.
 function buildStatePayload(includeToken) {
   const { schedule: _s, ...tournamentForBcast } = (state.tournament || {});
-  const payload = Object.assign({}, state, { tournament: tournamentForBcast, teams: _teams, talent: _talent, busState, switcher: switcher.getSnapshot() });
+  const payload = Object.assign({}, state, { tournament: tournamentForBcast, teams: _teams, talent: _talent, busState, switcher: switcher.getSnapshot(), adapter: games.adapterDescriptor(state.match && state.match.game) });
   if (!includeToken && payload.settings) {
     payload.settings = Object.assign({}, payload.settings); // clone so we don't mutate real state
     delete payload.settings.graphicsToken;
@@ -1101,8 +1134,9 @@ app.get('/api/config', (req, res) => res.json({ externalUrl: EXTERNAL_URL }));
 // ── State API ──────────────────────────────────────────────────────────────────
 app.get('/api/state', (req, res) => {
   const isAdmin = req.session && req.session.user && ['admin','superadmin'].includes(req.session.user.role);
-  if (isAdmin) return res.json(state);
-  const safe = Object.assign({}, state, { settings: Object.assign({}, state.settings) });
+  const adapter = games.adapterDescriptor(state.match && state.match.game);
+  if (isAdmin) return res.json(Object.assign({}, state, { adapter }));
+  const safe = Object.assign({}, state, { adapter, settings: Object.assign({}, state.settings) });
   delete safe.settings.graphicsToken;
   res.json(safe);
 });
@@ -1753,7 +1787,17 @@ const RIOT_REGION_MAP = {
   tr:   { platform: 'tr1',   routing: 'europe'   },
 };
 
+// Does the active game's adapter support a given capability? Used to scope LoL-specific
+// data endpoints (op.gg intel, DDragon assets) so non-LoL games skip them cleanly.
+function adapterSupports(kind) {
+  const d = games.adapterDescriptor(state.match && state.match.game);
+  if (kind === 'opgg')    return d.intelProvider === 'opgg';
+  if (kind === 'ddragon') return d.assetSource   === 'ddragon';
+  return true;
+}
+
 app.post('/api/ranks/refresh', requireAdmin, async (req, res) => {
+  if (!adapterSupports('opgg')) return res.json({ skipped: true, reason: 'Active game has no op.gg intel provider' });
   const key = process.env.RIOT_API_KEY;
   if (!key) {
     logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'ranks-refresh', 'FAILED: RIOT_API_KEY not set in .env');
@@ -1864,6 +1908,7 @@ function parseChampStatsForChamp(text, targetChamp) {
 }
 
 app.post('/api/champpool/refresh', requireAdmin, async (req, res) => {
+  if (!adapterSupports('opgg')) return res.json({ skipped: true, reason: 'Active game has no op.gg intel provider' });
   const updated = [], errors = [];
 
   for (const slot of ['team1', 'team2']) {
@@ -1899,6 +1944,7 @@ app.post('/api/champpool/refresh', requireAdmin, async (req, res) => {
 });
 
 app.post('/api/champstats/draft', requireAdmin, async (req, res) => {
+  if (!adapterSupports('opgg')) return res.json({ skipped: true, reason: 'Active game has no op.gg intel provider' });
   const t1Picks = state.draft.team1RolePicks || [];
   const t2Picks = state.draft.team2RolePicks || [];
   const updated = [], errors = [];
@@ -2158,6 +2204,7 @@ app.post('/api/import/gsheets', requireAdmin, async (req, res) => {
 const assetSync = require('./scripts/sync-assets');
 
 app.post('/api/assets/check', requireAdmin, async (req, res) => {
+  if (!adapterSupports('ddragon')) return res.json({ skipped: true, reason: 'Active game has no DDragon asset source' });
   try {
     const results = await assetSync.syncAll({ dryRun: true });
     res.json({ ok: true, results });
@@ -2167,6 +2214,7 @@ app.post('/api/assets/check', requireAdmin, async (req, res) => {
 });
 
 app.post('/api/assets/sync', requireAdmin, async (req, res) => {
+  if (!adapterSupports('ddragon')) return res.json({ skipped: true, reason: 'Active game has no DDragon asset source' });
   try {
     const targets = assetSync.TARGETS;
     io.emit('assets:progress', { phase: 'init', targets: targets.map(t => ({ key: t.key, label: t.label })) });
@@ -2188,15 +2236,29 @@ app.post('/api/assets/sync', requireAdmin, async (req, res) => {
 });
 
 // ── Tournament config ──────────────────────────────────────────────────────────
+// Create the tournament: commits the chosen game (which then locks) and marks it created.
+// Reset (/api/state/reset) is the only way back to an editable game.
+app.post('/api/tournament/create', requireAdmin, (req, res) => {
+  if (state.tournament && state.tournament.created) return res.status(400).json({ error: 'Tournament already created' });
+  if (!state.tournament) state.tournament = {};
+  const { name, game } = req.body;
+  if (game !== undefined) { state.match.game = game; state.tournament.game = game; }
+  if (name !== undefined) { state.match.tournament = name; state.tournament.name = name; }
+  state.tournament.created = true;
+  broadcast(); res.json({ ok: true });
+});
+
 app.post('/api/tournament', requireAdmin, (req, res) => {
   const { name, game, logo, sponsorLogos, ...rest } = req.body;
+  // Game is locked once the tournament is created — ignore game changes thereafter.
+  const gameLocked = !!(state.tournament && state.tournament.created);
   if (name !== undefined) state.match.tournament = name;
-  if (game !== undefined) state.match.game = game;
+  if (game !== undefined && !gameLocked) state.match.game = game;
   if (logo !== undefined) state.match.tournamentLogo = logo;
   if (sponsorLogos !== undefined) state.match.sponsorLogos = sponsorLogos;
   if (!state.tournament) state.tournament = {};
   if (name !== undefined) state.tournament.name = name;
-  if (game !== undefined) state.tournament.game = game;
+  if (game !== undefined && !gameLocked) state.tournament.game = game;
   if (logo !== undefined) state.tournament.logo = logo;
   if (sponsorLogos !== undefined) state.tournament.sponsorLogos = sponsorLogos;
   deepMerge(state.tournament, rest);
