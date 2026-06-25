@@ -3983,8 +3983,8 @@ function tmRenderMapPool(state){
   host.innerHTML=(pool.map(function(p,i){
     return '<div class="mv-pool-row">'+
       '<span class="mv-row-num">'+(i+1)+'</span>'+
-      '<input class="mv-pm-name" placeholder="Map name" value="'+esc(p.name||'')+'" onchange="tmCommitMapPool()">'+
-      '<input class="mv-pm-img" placeholder="Image URL (optional)" value="'+esc(p.image||'')+'" onchange="tmCommitMapPool()">'+
+      '<input type="text" class="mv-pm-name" placeholder="Map name" value="'+esc(p.name||'')+'" onchange="tmCommitMapPool()">'+
+      '<input type="text" class="mv-pm-img" placeholder="Image URL (optional)" value="'+esc(p.image||'')+'" onchange="tmCommitMapPool()">'+
       '<button class="btn btn-xs mv-rowbtn" title="Move up" onclick="tmMoveMap('+i+',-1)">↑</button>'+
       '<button class="btn btn-xs mv-rowbtn" title="Move down" onclick="tmMoveMap('+i+',1)">↓</button>'+
       '<button class="btn btn-xs btn-danger mv-rowbtn" title="Remove" onclick="tmRemoveMap('+i+')">✕</button></div>';
