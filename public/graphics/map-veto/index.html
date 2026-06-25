@@ -89,7 +89,10 @@
   #mv-root.show .mv-card { opacity:1; transform:none; }
   /* Slow Ken-Burns push on map images (all veto views — a bit of life on stills). */
   @keyframes mv-kb { 0% { transform:scale(1.03); } 100% { transform:scale(1.13); } }
-  .mv-card .img { position:absolute; inset:0; background-size:cover; background-position:center;
+  /* Real <img> (not a background-image) so the browser decodes/downsamples the large map
+     art to display size — a scaled background-image artifacts (no mipmaps), worse with the
+     greyscale filter. */
+  .mv-card .img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
     animation: mv-kb 19s ease-in-out infinite alternate; }
   .mv-card .scrim { position:absolute; inset:0; background:linear-gradient(180deg, rgba(6,10,15,.10) 0%, rgba(6,10,15,.5) 52%, rgba(6,10,15,.93) 100%); }
   .mv-order { position:absolute; top:12px; left:12px; z-index:3; width:34px; height:34px; border-radius:50%;
@@ -149,7 +152,7 @@
   .mv-acc-panel.focused .media { filter:none; }
   /* Ken-Burns push only on the focused IMAGE (div) media — the fallback when there's no
      clip; videos (their own motion) are left alone. */
-  .mv-acc-panel.focused div.media { animation: mv-kb 15s ease-in-out infinite alternate; }
+  .mv-acc-panel.focused img.media { animation: mv-kb 15s ease-in-out infinite alternate; }
   /* Flyby slideshow: two crossfading screenshot layers (sits above .media, below the
      scrim). The Ken-Burns zoom lives on the CONTAINER (one continuous oscillation), so
      swapping images crossfades OPACITY only — no per-image transform reset/jump. JS
@@ -298,7 +301,7 @@
           var e=poolEntry(pool,s.map), action=(s.action||'pending'), lbl=accLabel(m,s);
           var imgUrl=resolveMapImage(e, s.map), iconUrl=mapIconUrl(s.map);
           var media = (e&&e.video) ? '<video class="media" src="'+eH(e.video)+'" muted loop playsinline preload="auto"></video>'
-                    : imgUrl ? '<div class="media" style="background-image:url(\''+eH(imgUrl)+'\')"></div>'
+                    : imgUrl ? '<img class="media" src="'+eH(imgUrl)+'" alt="">'
                     : '<div class="media nomedia"></div>';
           var teamRow = lbl.teamKey ? '<div class="mv-acc-team">'+
               ((m[lbl.teamKey]||{}).logo ? '<img src="'+eH((m[lbl.teamKey]||{}).logo)+'" alt="">' : '')+
@@ -444,7 +447,7 @@
       else if (action==='decider'){ footHtml = '<div class="mv-action">DECIDER</div><div class="mv-sub">'+eH(sub1)+'</div>'; }
       var cIcon=mapIconUrl(s.map);
       return '<div class="mv-card '+action+(cIcon?' has-name-img':'')+'" style="--i:'+i+'">' +
-        (img ? '<div class="img" style="background-image:url(\''+eH(img)+'\')"></div>' : '') +
+        (img ? '<img class="img" src="'+eH(img)+'" alt="">' : '') +
         '<div class="scrim"></div>' + orderHtml +
         '<div class="mv-name">'+eH(s.map||'')+'</div>' +
         (cIcon?'<img class="mv-name-img" src="'+eH(cIcon)+'" alt="">':'') +
