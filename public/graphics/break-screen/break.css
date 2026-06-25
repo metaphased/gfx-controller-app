@@ -182,6 +182,47 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   text-transform: var(--gfx-text-transform, uppercase); color: rgba(255, 255, 255,0.65);
 }
 
+/* ── Per-map round scores (CS2 / map-veto games) ───────────────────────── */
+.break-maps {
+  display: flex; align-items: stretch; justify-content: center;
+  gap: 1.4vw; margin-top: 2.6vh;
+}
+.break-map {
+  display: flex; flex-direction: column; align-items: center; gap: 0.5vh;
+  padding: 1vh 1.6vw;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 2px solid rgba(255, 255, 255, 0.18);
+  min-width: 8vw;
+}
+.break-map.live { border-top-color: var(--gfx-c1); background: rgba(31, 250, 255, 0.06); }
+.break-map-name {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.5vh; font-weight: 700; letter-spacing: 0.22em;
+  text-transform: var(--gfx-text-transform, uppercase); color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+}
+.break-map-score {
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-size: 3.4vh; font-weight: 900; line-height: 1;
+  display: inline-flex; align-items: baseline; gap: 0.2vw;
+  font-variant-numeric: tabular-nums; color: rgba(255, 255, 255, 0.85);
+}
+.break-map-dash { color: rgba(255, 255, 255, 0.4); font-weight: 700; }
+.break-map-r.win { color: var(--gfx-c1); }
+.break-map-next {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 2.4vh; font-weight: 800; letter-spacing: 0.12em;
+  text-transform: var(--gfx-text-transform, uppercase); color: rgba(255, 255, 255, 0.5);
+  line-height: 1.25;
+}
+.break-map-live {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.1vh; font-weight: 800; letter-spacing: 0.18em;
+  text-transform: uppercase; color: var(--gfx-c1);
+}
+.break-map-sep { align-self: center; color: rgba(255, 255, 255, 0.25); font-size: 2.5vh; }
+
 /* ── Countdown timer ───────────────────────────────────────────────────── */
 .break-timer {
   display: flex; flex-direction: column; align-items: center; gap: 0.4vh;
