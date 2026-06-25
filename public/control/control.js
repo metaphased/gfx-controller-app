@@ -3142,7 +3142,7 @@ function renderPlayerEditors(players) {
           '</div>' +
           '<div class="cap-roles"><div class="player-num">Role</div>' +
             '<div class="player-val-display" data-index="'+i+'" data-field="role"></div></div>' +
-          '<div><div class="player-num">Swap Sub</div>' +
+          '<div>' +
             '<select class="sub-swap-sel" data-team="'+team+'" data-player-index="'+i+'">' +
               '<option value="">Swap sub...</option>' +
             '</select>' +
