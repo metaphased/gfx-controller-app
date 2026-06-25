@@ -52,6 +52,15 @@ function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvide
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
 function hasRoles()         { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
+// Map-veto games don't advance match.currentGameNum; the current game is the first map
+// not yet marked final (2 finals in a Bo3 → game 3). Falls back to currentGameNum for LoL.
+function currentGameNumFor(m) {
+  if (isChampDraft()) return (m && m.currentGameNum) || 1;
+  const results = ((m && m.mapResults) || []).filter(function(r){ return r && r.map; });
+  const finals  = results.filter(function(r){ return r.status === 'final'; }).length;
+  const fmtNum  = parseInt(String((m && m.format) || 'Bo3').replace(/Bo/i, '')) || 3;
+  return Math.min(finals + 1, fmtNum);
+}
 
 // Game list (id + label) for tournament + team-game selectors. Mirrors the ts-game options.
 const GAMES = [['lol','League of Legends'],['cs2','CS2'],['dota2','Dota 2'],['valorant','VALORANT'],['r6','Rainbow Six Siege'],['generic','Generic / Other']];
@@ -73,6 +82,10 @@ function applyAdapterUI() {
   };
   Object.keys(caps).forEach(function(cls){
     document.querySelectorAll('.' + cls).forEach(function(el){ el.style.display = caps[cls] ? '' : 'none'; });
+    // Inverse: `cap-not-<x>` shows only when capability <x> is absent (e.g. CS2 copy
+    // that should appear where the LoL `cap-<x>` copy is hidden).
+    var notCls = cls.replace('cap-', 'cap-not-');
+    document.querySelectorAll('.' + notCls).forEach(function(el){ el.style.display = caps[cls] ? 'none' : ''; });
   });
 }
 
@@ -772,8 +785,9 @@ function renderDashboard(s) {
     var stageLabel = currentTG ? currentTG.stage : '';
     var formatNum = parseInt((m.format || 'Bo3').replace(/[Bb][Oo]/,'')) || 3;
     var metaStr = (stageLabel ? escHtml(stageLabel) + ' &nbsp;–&nbsp; ' : '') + escHtml(m.format || '');
-    var gameProgress = (formatNum > 1 && m.currentGameNum > 1)
-      ? '<div class="dash-match-gamenum">GAME ' + m.currentGameNum + ' &nbsp;·&nbsp; ' + sc1 + '–' + sc2 + ' in series</div>'
+    var _curGame = currentGameNumFor(m);
+    var gameProgress = (formatNum > 1 && _curGame > 1)
+      ? '<div class="dash-match-gamenum">GAME ' + _curGame + ' &nbsp;·&nbsp; ' + sc1 + '–' + sc2 + ' in series</div>'
       : '';
     matchEl.innerHTML = '<div class="card-title">Active Match</div>' +
       (hasTeams
@@ -1414,10 +1428,11 @@ function renderLTQuickGrid(players, match) {
   const len = Math.max(t1.length, t2.length);
   for (let i = 0; i < len; i++) { if (t1[i]) all.push(t1[i]); if (t2[i]) all.push(t2[i]); }
   grid._players = all;
+  const showRole = hasRoles();   // games without fixed roles (CS2) have no lane to show
   grid.innerHTML = all.map((p,i) =>
     '<button class="player-quick-btn" onclick="quickLT('+i+')">' +
     '<span class="pqb-handle">'+esc(p.handle||p.name)+'</span>' +
-    '<span class="pqb-team">'+esc(p.teamTag||p.teamName)+(p.role?' · '+p.role:'')+'</span>' +
+    '<span class="pqb-team">'+esc(p.teamTag||p.teamName)+((showRole&&p.role)?' · '+p.role:'')+'</span>' +
     '</button>'
   ).join('');
 }
@@ -1431,7 +1446,7 @@ function quickLT(i) {
   let it = (s.items || []).find(x => x.id === _ltSelItem) || s.items[0];
   if (!it) { it = _ltNewItem(); s.items.push(it); _ltSelItem = it.id; }
   it.name = p.handle || p.name;
-  it.sub = (p.role ? p.role + ' · ' : '') + (p.teamName || '');
+  it.sub = ((hasRoles() && p.role) ? p.role + ' · ' : '') + (p.teamName || '');
   it.super = (window._state && window._state.match && window._state.match.tournament) || '';
   _ltTabFp = null;   // force the editor to re-render on the resulting broadcast (content-only change)
   patchLT({ sets, visible: true });
@@ -2586,11 +2601,11 @@ function syncPsOverrides(s) {
       }).join('');
       return '<div style="' + (idx === 1 ? 'margin-top:14px;padding-top:14px;border-top:1px solid var(--border)' : '') + '">' +
         '<div class="gfx-ctrl-section-label" style="margin-bottom:6px">Player ' + (idx === 0 ? 'A' : 'B') + '</div>' +
-        '<label class="hint" style="display:block;margin-bottom:3px">Featured champion</label>' +
-        '<select id="ps-champ-' + idx + '" onchange="patchPsSlot(' + idx + ',{champ:this.value})" style="margin-bottom:8px"><option value="">Auto (most-played)</option></select>' +
+        '<label class="hint cap-champ-draft" style="display:block;margin-bottom:3px">Featured champion</label>' +
+        '<select id="ps-champ-' + idx + '" onchange="patchPsSlot(' + idx + ',{champ:this.value})" class="cap-champ-draft" style="margin-bottom:8px"><option value="">Auto (most-played)</option></select>' +
         '<label class="hint" style="display:block;margin-bottom:3px">Caption</label>' +
         '<input type="text" id="ps-caption-' + idx + '" placeholder="optional caption…" oninput="setPsCaption(' + idx + ',this.value)" style="margin-bottom:8px">' +
-        '<label class="hint" style="display:block">Stats</label>' + rows + '</div>';
+        '<label class="hint cap-champ-draft" style="display:block">Stats</label><div class="cap-champ-draft">' + rows + '</div></div>';
     }).join('');
   }
 
@@ -4337,7 +4352,7 @@ function syncLiveBar(s) {
   const gameCtx = g('lbar-game-context');
   if (gameCtx) {
     const formatNum = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
-    gameCtx.textContent = 'GAME ' + (m.currentGameNum || 1) + ' OF ' + formatNum + ' · ' + t1label + ' VS ' + t2label;
+    gameCtx.textContent = 'GAME ' + currentGameNumFor(m) + ' OF ' + formatNum + ' · ' + t1label + ' VS ' + t2label;
   }
 
   // Win team quick-set buttons — show team tags, highlight active

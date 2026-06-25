@@ -981,7 +981,7 @@
           <div class="card">
             <div class="card-title">About Player Intro</div>
             <p class="hint">Pre-series graphic introducing both rosters. Three layouts: <strong>Nameplate</strong> (centred overlay panel), <strong>Team Stack</strong> (full-screen left/right split), <strong>Bar</strong> (bottom-anchored band).</p>
-            <p class="hint" style="margin-top:8px">Rank and champion data are optional — fetch them first in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel. Champs blends each player's <strong>top 3 most-played</strong> champions along their row (Nameplate &amp; Team Stack); players with no data fall back to a clean name. The Bar layout is always name-only. Disable to keep the focus on player names everywhere.</p>
+            <p class="hint cap-champ-draft" style="margin-top:8px">Rank and champion data are optional — fetch them first in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel. Champs blends each player's <strong>top 3 most-played</strong> champions along their row (Nameplate &amp; Team Stack); players with no data fall back to a clean name. The Bar layout is always name-only. Disable to keep the focus on player names everywhere.</p>
           </div>
         </div>
 
@@ -2324,7 +2324,7 @@
               </div>
             </label>
 
-            <div class="win-style-group-label">League of Legends</div>
+            <div class="win-style-group-label cap-champ-draft">League of Legends</div>
 
             <label class="win-style-option cap-champ-draft" id="win-style-comp">
               <input type="radio" name="win-style" value="comp" onchange="patchWin({style:'comp'})">
@@ -2367,7 +2367,8 @@
         <div class="ps-col">
           <div class="card">
             <div class="card-title">Players</div>
-            <p class="hint" style="margin-bottom:8px">Pick each player's team then name; their most-played champion and stats are pulled automatically. Player A sits screen-left, Player B screen-right.</p>
+            <p class="hint cap-champ-draft" style="margin-bottom:8px">Pick each player's team then name; their most-played champion and stats are pulled automatically. Player A sits screen-left, Player B screen-right.</p>
+            <p class="hint cap-not-champ-draft" style="margin-bottom:8px;display:none">Pick each player's team then name. Player A sits screen-left, Player B screen-right.</p>
 
             <!-- Player A -->
             <div class="gfx-ctrl-group" style="margin-bottom:6px">
@@ -2440,8 +2441,8 @@
             </div>
           </div>
           <div class="card">
-            <div class="card-title">Champion, Caption &amp; Stats</div>
-            <div class="comp-opt-row">
+            <div class="card-title">Caption &amp; Stats</div>
+            <div class="comp-opt-row cap-champ-draft">
               <span class="comp-opt-label">Stat source</span>
               <div class="gfx-ctrl-group" style="gap:6px">
                 <button class="btn btn-sm" id="ps-statsrc-both"       onclick="patchPlayerSpotlight({statSource:'both'})">Auto mix</button>
@@ -2449,7 +2450,8 @@
                 <button class="btn btn-sm" id="ps-statsrc-tournament" onclick="patchPlayerSpotlight({statSource:'tournament'})">Tournament</button>
               </div>
             </div>
-            <p class="hint" style="margin:6px 0 12px">Auto mix uses this event's record when available, otherwise op.gg. Override the featured champion, add a caption, and tick which stats to show — leave a stat's box blank to keep its automatic value, or type to override it.</p>
+            <p class="hint cap-champ-draft" style="margin:6px 0 12px">Auto mix uses this event's record when available, otherwise op.gg. Override the featured champion, add a caption, and tick which stats to show — leave a stat's box blank to keep its automatic value, or type to override it.</p>
+            <p class="hint cap-not-champ-draft" style="margin:6px 0 12px;display:none">Add an optional caption shown with each featured player.</p>
             <div id="ps-overrides"></div>
           </div>
         </div>
