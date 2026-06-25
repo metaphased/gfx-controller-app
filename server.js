@@ -2189,6 +2189,53 @@ app.get('/api/champions', (req, res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// ── Map art resize proxy ────────────────────────────────────────────────────────
+// CS2 map screenshots/icons live in the community MurkyYT/cs2-map-icons repo at 1920×1080
+// (screenshots) / 512² (icons). Browsers asked to shrink a 1920px image ~5× into a small
+// veto panel use the GPU's cheap single-pass bilinear filter (no mipmaps), which stair-steps
+// diagonal edges. We pre-resize here with sharp (high-quality Lanczos) so the browser only
+// downscales by a small ratio. Slug-only (no arbitrary URL) → no SSRF. Cached to disk.
+const MAP_ART_REMOTE = 'https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/';
+const MAPART_CACHE_DIR = path.join(DATA_DIR, 'cache', 'mapart');
+const MAPART_WIDTHS = [128, 256, 384, 512, 640, 768, 1024, 1280, 1600, 1920];
+const _mapartInflight = new Map();   // cacheKey → Promise<Buffer> (dedupe concurrent misses)
+app.get('/api/mapart', async (req, res) => {
+  try {
+    const slug = String(req.query.slug || '').toLowerCase();
+    if (!/^[a-z0-9_]{1,40}$/.test(slug)) return res.status(400).end();
+    const kind = req.query.kind === 'icon' ? 'icon' : 'thumb';
+    const v = parseInt(req.query.v);
+    const variant = (kind === 'thumb' && v >= 1 && v <= 5) ? v : 0;
+    let w = parseInt(req.query.w) || 768;
+    w = MAPART_WIDTHS.reduce((best, x) => Math.abs(x - w) < Math.abs(best - w) ? x : best, 768);
+    const remote = kind === 'icon'
+      ? MAP_ART_REMOTE + slug + '.png'
+      : MAP_ART_REMOTE + 'thumbs/' + slug + (variant ? '_' + variant : '') + '_png.png';
+    const cacheName = slug + '_' + kind + (variant ? '_v' + variant : '') + '_' + w + '.webp';
+    const cachePath = path.join(MAPART_CACHE_DIR, cacheName);
+    const sendFile = () => res.sendFile(cachePath, { headers: { 'Cache-Control': 'public, max-age=604800, immutable' } });
+    if (fs.existsSync(cachePath)) return sendFile();
+    if (!_mapartInflight.has(cachePath)) {
+      _mapartInflight.set(cachePath, (async () => {
+        const r = await fetch(remote);
+        if (!r.ok) throw new Error('upstream ' + r.status);
+        const buf = Buffer.from(await r.arrayBuffer());
+        const out = await sharp(buf)
+          .resize({ width: w, withoutEnlargement: true, kernel: 'lanczos3' })
+          .webp({ quality: 90 })
+          .toBuffer();
+        fs.mkdirSync(MAPART_CACHE_DIR, { recursive: true });
+        fs.writeFileSync(cachePath, out);
+        return out;
+      })().finally(() => _mapartInflight.delete(cachePath)));
+    }
+    await _mapartInflight.get(cachePath);
+    sendFile();
+  } catch (e) {
+    res.status(502).end();
+  }
+});
+
 // Upload / Import (admin only)
 // Every accepted image is normalised: downscaled to fit MAX_UPLOAD_DIM on the long
 // edge (never upscaled) and re-encoded to WebP — preserving transparency and GIF/WebP

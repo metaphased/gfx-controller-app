@@ -87,18 +87,14 @@
     transition-delay: calc(var(--i, 0) * 55ms);
   }
   #mv-root.show .mv-card { opacity:1; transform:none; }
-  /* Ken-Burns push that stays CRISP on downscaled art. We zoom by animating the image's
-     WIDTH/HEIGHT (a paint property) instead of transform:scale (a GPU compositor property).
-     transform-scale promotes the image to a GPU layer that downscales with cheap bilinear
-     (no mipmaps) → stair-stepped angled edges. Animating width/height makes the browser
-     re-downsample with its high-quality image path every frame, so the zoom stays clean.
-     The image is absolutely positioned, so the per-frame relayout doesn't reflow siblings. */
-  @keyframes mv-kb {
-    0%   { width:100%; height:100%; top:0;   left:0;   }
-    100% { width:116%; height:116%; top:-8%; left:-8%; }
-  }
-  .mv-card .img { position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; display:block;
-    animation: mv-kb 19s ease-in-out infinite alternate; }
+  /* Slow Ken-Burns push on map images (all veto views — a bit of life on stills). The
+     original transform:scale zoom (this) is the brilliant-feeling one; the width/height
+     rework that briefly replaced it shuddered (per-frame relayout) and is gone. Crispness is
+     handled at the SOURCE now — /api/mapart serves art near display size, so we never hand the
+     GPU a big down-scale to stair-step; a zoom-IN only upscales the box raster (never steps). */
+  @keyframes mv-kb { 0% { transform:scale(1.03); } 100% { transform:scale(1.13); } }
+  .mv-card .img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
+    will-change: transform; animation: mv-kb 19s ease-in-out infinite alternate; }
   .mv-card .scrim { position:absolute; inset:0; background:linear-gradient(180deg, rgba(6,10,15,.10) 0%, rgba(6,10,15,.5) 52%, rgba(6,10,15,.93) 100%); }
   .mv-order { position:absolute; top:12px; left:12px; z-index:3; width:34px; height:34px; border-radius:50%;
     background:rgba(8,12,18,.8); border:1px solid rgba(255,255,255,.18); color:#fff;
@@ -162,7 +158,7 @@
      scrim). The Ken-Burns zoom lives on the CONTAINER (one continuous oscillation), so
      swapping images crossfades OPACITY only — no per-image transform reset/jump. JS
      pauses the zoom when the panel loses focus so it freezes on its current image. */
-  .mv-flyby { position:absolute; inset:0; overflow:hidden; }
+  .mv-flyby { position:absolute; inset:0; overflow:hidden; will-change: transform; animation: mv-kb 11s ease-in-out infinite alternate; }
   .mv-flyby-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity 1.1s ease; }
   .mv-flyby-img.on { opacity:1; }
   /* Out of focus: desaturate the frozen flyby image just like .media. */
@@ -256,7 +252,15 @@
   // Auto-resolve map art from the map name's de_<slug> (community MurkyYT/cs2-map-icons):
   // thumbs/<slug>_png.png = map screenshot, <slug>.png = 512 square map icon. The per-map
   // image field (if set) overrides the screenshot. Custom (non de_*) names → no auto art.
-  var MAP_ART_BASE = 'https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/';
+  // Art is served through the server's /api/mapart resize proxy (sharp/Lanczos → WebP) so the
+  // browser only downscales a small ratio — a 1920px source shrunk ~5× by the GPU's bilinear
+  // filter stair-steps diagonal edges; pre-resizing to ~display size keeps them crisp.
+  // THUMB_W = small panels / slivers / full-draft (~140–270px on screen); FOCUS_W = the big
+  // focused panel + flyby (it fills most of the stage and Ken-Burns zooms in, so it needs a
+  // larger source or it goes soft). The focus loop swaps the focused panel up to FOCUS_W.
+  var THUMB_W = 768, FOCUS_W = 1280, ICON_W = 256;
+  // /api/mapart is behind requireAuth — pass the graphics token like the socket does.
+  var ART_TOK = token ? ('&token=' + encodeURIComponent(token)) : '';
   function mapSlug(name){
     var k=(name||'').toLowerCase().trim(); if(!k) return '';
     if(/^(de|cs|ar|dz)_/.test(k)) return k;
@@ -264,13 +268,23 @@
     if(k==='dustii'||k==='dust'||k==='dust2') return 'de_dust2';
     return k ? ('de_'+k) : '';
   }
-  function mapThumbUrl(name){ var s=mapSlug(name); return s ? (MAP_ART_BASE+'thumbs/'+s+'_png.png') : ''; }
-  // Candidate screenshot variants for a map (base + _1.._5). Missing ones 404 and are
-  // dropped at load time — used by the focused-panel "flyby" crossfade slideshow.
-  function mapThumbVariants(name){ var s=mapSlug(name); if(!s) return []; var b=MAP_ART_BASE+'thumbs/'+s; var out=[b+'_png.png']; for(var i=1;i<=5;i++) out.push(b+'_'+i+'_png.png'); return out; }
-  function mapIconUrl(name){ var s=mapSlug(name); return s ? (MAP_ART_BASE+s+'.png') : ''; }
-  function resolveMapImage(e, name){ return (e&&e.image) ? e.image : mapThumbUrl(name); }
+  function mapThumbUrl(name, w){ var s=mapSlug(name); return s ? ('/api/mapart?slug='+s+'&kind=thumb&w='+(w||THUMB_W)+ART_TOK) : ''; }
+  // Candidate screenshot variants for a map (base + _1.._5). Missing ones 404 upstream → the
+  // proxy returns an error, dropped at load time — used by the focused-panel "flyby" slideshow.
+  function mapThumbVariants(name, w){ var s=mapSlug(name); if(!s) return []; w=w||THUMB_W; var out=['/api/mapart?slug='+s+'&kind=thumb&w='+w+ART_TOK]; for(var i=1;i<=5;i++) out.push('/api/mapart?slug='+s+'&kind=thumb&v='+i+'&w='+w+ART_TOK); return out; }
+  function mapIconUrl(name){ var s=mapSlug(name); return s ? ('/api/mapart?slug='+s+'&kind=icon&w='+ICON_W+ART_TOK) : ''; }
+  function resolveMapImage(e, name, w){ return (e&&e.image) ? e.image : mapThumbUrl(name, w); }
   function poolImage(pool, name){ return resolveMapImage(poolEntry(pool, name), name); }
+  // Swap an <img>'s src without a flash: decode the new URL first, then assign. Guarded so we
+  // don't re-fetch when the wanted width hasn't changed (focus toggles re-run this).
+  function setMediaSrc(img, url){
+    if (!img || img.tagName !== 'IMG' || !url) return;
+    if (img.getAttribute('data-src') === url) return;
+    img.setAttribute('data-src', url);
+    var pre = new Image();
+    pre.onload = function(){ if (img.getAttribute('data-src') === url) img.src = url; };
+    pre.src = url;
+  }
   function teamLabel(m, key){ var t=m[key]||{}; return t.tag || t.name || (key==='team1'?'Team 1':'Team 2'); }
   function sideLabel(sd){ return sd==='knife' ? 'KNIFE ROUND' : (sd ? sd + ' START' : ''); }
 
@@ -331,6 +345,11 @@
       panels[i].classList.toggle('focused', isFocused);
       var v=panels[i].querySelector('video');
       if (v){ if(isFocused){ var pr=v.play(); if(pr&&pr.catch)pr.catch(function(){}); } else { v.pause(); } }
+      // Focused panel fills the stage → give it a larger source so the Ken-Burns zoom stays
+      // crisp; slivers/full-draft keep the small source (no big down-scale to stair-step).
+      var mimg = panels[i].querySelector('img.media');
+      if (mimg){ var es=poolEntry(pool, steps[i].map);
+        setMediaSrc(mimg, resolveMapImage(es, steps[i].map, isFocused ? FOCUS_W : THUMB_W)); }
     }
     // Flyby slideshow: while the option is on (not final view), the focused image map
     // crossfades through its screenshot set. A panel that loses focus FREEZES on its
@@ -340,7 +359,7 @@
       removeAllFlyby();
     } else {
       if (_flybyActive && _flybyActive !== fp) freezeFlyby();   // freeze the one we left
-      if (fp && fp.classList.contains('focused') && !(fEntry && fEntry.video) && mapSlug(fstep.map)) startFlyby(fp, fstep.map, resolveMapImage(fEntry, fstep.map));
+      if (fp && fp.classList.contains('focused') && !(fEntry && fEntry.video) && mapSlug(fstep.map)) startFlyby(fp, fstep.map, resolveMapImage(fEntry, fstep.map, FOCUS_W));
     }
   }
 
@@ -372,7 +391,7 @@
     }
     // Lead with the EXACT image the panel is already showing (base .media) so the overlay
     // appearing causes no instant swap — then cycle the rest of the screenshot set.
-    var cand = mapThumbVariants(name);
+    var cand = mapThumbVariants(name, FOCUS_W);
     if (baseImg) cand = [baseImg].concat(cand.filter(function(u){ return u !== baseImg; }));
     if (cand.length <= 1) return;
     var res = new Array(cand.length), done = 0;
