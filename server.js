@@ -544,6 +544,10 @@ const makeDefault = () => ({
   // steps are the ordered veto: { team:'team1'|'team2'|'', action:'ban'|'pick'|'decider',
   // map:'<name>', side:''|'CT'|'T' } (side = the OTHER team's side choice on a pick).
   mapVeto:     { visible: false, title: 'MAP VETO', bestOf: 3, teamA: 'team1', steps: [], scale: 'normal', // scale: 'large'|'normal'|'l3'
+                 // Accordion = a full-screen horizontal focus view (prototype): the focused
+                 // map expands + plays its clip/image in full colour, others compress +
+                 // desaturate (bans greyscale, picks low-sat). focusIndex = which map is up.
+                 accordion: false, focusIndex: 0,
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },

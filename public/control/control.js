@@ -3984,11 +3984,13 @@ function _mvDefaultPool(){
 // Map pool (Tournament Setup) — persisted on the tournament.
 function tmCommitMapPool(){
   const pool = [].slice.call(document.querySelectorAll('#tm-map-pool .mv-pool-row')).map(function(r){
-    return { name:((r.querySelector('.mv-pm-name')||{}).value||'').trim(), image:((r.querySelector('.mv-pm-img')||{}).value||'').trim() };
+    return { name:((r.querySelector('.mv-pm-name')||{}).value||'').trim(),
+             image:((r.querySelector('.mv-pm-img')||{}).value||'').trim(),
+             video:((r.querySelector('.mv-pm-vid')||{}).value||'').trim() };
   }).filter(function(p){ return p.name; });
   api('/api/tournament', { mapPool: pool });
 }
-function tmAddMap(){ const p=_mvPool().slice(); p.push({name:'',image:''}); api('/api/tournament',{mapPool:p}); }
+function tmAddMap(){ const p=_mvPool().slice(); p.push({name:'',image:'',video:''}); api('/api/tournament',{mapPool:p}); }
 function tmRemoveMap(i){ const p=_mvPool().slice(); p.splice(i,1); api('/api/tournament',{mapPool:p}); }
 function tmMoveMap(i,d){ const p=_mvPool().slice(); const j=i+d; if(j<0||j>=p.length)return; const t=p[i]; p[i]=p[j]; p[j]=t; api('/api/tournament',{mapPool:p}); }
 function tmLoadDefaultPool(){ const def=_mvDefaultPool(); if(!def.length)return;
@@ -4014,6 +4016,7 @@ function tmRenderMapPool(state){
       '<span class="mv-row-num">'+(i+1)+'</span>'+
       '<input type="text" class="mv-pm-name" placeholder="Map name" value="'+esc(p.name||'')+'" onchange="tmCommitMapPool()">'+
       '<input type="text" class="mv-pm-img" placeholder="Image URL (optional)" value="'+esc(p.image||'')+'" onchange="tmCommitMapPool()">'+
+      '<input type="text" class="mv-pm-vid" placeholder="Video URL (accordion, optional)" value="'+esc(p.video||'')+'" onchange="tmCommitMapPool()">'+
       '<button class="btn btn-xs mv-rowbtn" title="Move up" onclick="tmMoveMap('+i+',-1)">↑</button>'+
       '<button class="btn btn-xs mv-rowbtn" title="Move down" onclick="tmMoveMap('+i+',1)">↓</button>'+
       '<button class="btn btn-xs btn-danger mv-rowbtn" title="Remove" onclick="tmRemoveMap('+i+')">✕</button></div>';
@@ -4149,6 +4152,25 @@ function mvRenderGfx(state){
   const pos=mv.logoPosition||'left'; const pr=document.querySelector('input[name="mv-logo-pos"][value="'+pos+'"]'); if(pr) pr.checked=true;
   const scale=mv.scale||'normal';
   document.querySelectorAll('#mv-scale-group [data-scale]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-scale')===scale); });
+  // Accordion (prototype)
+  const acc=g('mv-accordion'); if(acc) acc.checked=!!mv.accordion;
+  const steps=_mvAccordionSteps(state);
+  const fi=Math.max(0, Math.min(mv.focusIndex||0, Math.max(0, steps.length-1)));
+  const fl=g('mv-focus-label');
+  if(fl){ const st=steps[fi]; fl.textContent = st ? ((fi+1)+'. '+(st.map||'—')+(st.action&&st.action!=='pending'?' ('+st.action.toUpperCase()+')':'')) : '—'; }
+}
+// Accordion steps = the veto steps if present, else the raw pool (pending), matching the graphic.
+function _mvAccordionSteps(state){
+  const mv=(state&&state.mapVeto)||{};
+  if(mv.steps&&mv.steps.length) return mv.steps;
+  const pool=((state&&state.tournament&&state.tournament.mapPool)||[]);
+  return pool.map(function(p){ return { action:'pending', map:p.name }; });
+}
+function mvFocusStep(d){
+  const steps=_mvAccordionSteps(window._state);
+  const cur=(_mvState().focusIndex)||0;
+  const next=Math.max(0, Math.min(cur+d, Math.max(0, steps.length-1)));
+  api('/api/mapVeto',{ focusIndex: next });
 }
 function mvCycleScale(){ const order=['normal','large','l3']; const cur=(_mvState().scale)||'normal'; const next=order[(order.indexOf(cur)+1)%order.length]; api('/api/mapVeto',{scale:next}); }
 

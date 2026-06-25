@@ -1929,8 +1929,9 @@ input[type=search]::-webkit-search-decoration { display: none; }
   background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius, 3px);
 }
 .mv-row-num { flex: 0 0 22px; text-align: center; font-size: 12px; font-weight: 700; color: var(--text-dim); }
-.mv-pool-row .mv-pm-name { flex: 0 0 180px; }
-.mv-pool-row .mv-pm-img  { flex: 1 1 120px; }
+.mv-pool-row .mv-pm-name { flex: 0 0 150px; }
+.mv-pool-row .mv-pm-img  { flex: 1 1 110px; }
+.mv-pool-row .mv-pm-vid  { flex: 1 1 110px; }
 .mv-rowbtn { flex: 0 0 auto; }
 .mv-pool-row input { width: auto; }
 
