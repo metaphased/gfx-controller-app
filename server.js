@@ -495,6 +495,11 @@ const makeDefault = () => ({
     fearlessDraft: false,
     currentGameNum: 1,
     seriesGames: [],
+    // Map-veto games (CS2 etc.): per-played-map ROUND scores, aligned to the veto's
+    // picked maps + decider (in veto order). Each: { map, t1Rounds, t2Rounds, winner:
+    // ''|'team1'|'team2', status: 'upcoming'|'live'|'final' }. The series (maps-won)
+    // score derives from these winners for map-veto games. LoL ignores this.
+    mapResults: [],
     scheduleDayId: null,
     scheduleGameId: null,
   },
@@ -830,9 +835,9 @@ function snapshotForProfile() {
     tournament: JSON.parse(JSON.stringify(state.tournament)),
     bracket: { title: state.bracket.title, rounds: JSON.parse(JSON.stringify(state.bracket.rounds)) },
     match: (({ team1, team2, game, format, tournament, tournamentLogo, sponsorLogos,
-                fearlessDraft, currentGameNum, seriesGames, scheduleDayId, scheduleGameId }) =>
+                fearlessDraft, currentGameNum, seriesGames, mapResults, scheduleDayId, scheduleGameId }) =>
       ({ team1, team2, game, format, tournament, tournamentLogo, sponsorLogos,
-         fearlessDraft, currentGameNum, seriesGames, scheduleDayId, scheduleGameId }))(state.match),
+         fearlessDraft, currentGameNum, seriesGames, mapResults, scheduleDayId, scheduleGameId }))(state.match),
     players: JSON.parse(JSON.stringify(state.players)),
     prizepool: { showLogo: pp.showLogo, logoScale: pp.logoScale, logoPosition: pp.logoPosition, entries: JSON.parse(JSON.stringify(pp.entries || [])) },
     // Lower-third content (reusable sets + output config) — but not the live
@@ -1742,7 +1747,7 @@ app.post('/api/playerIntro', (req, res) => { Object.assign(state.playerIntro, re
 app.post('/api/preShow',     (req, res) => { Object.assign(state.preShow,     req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/bracket',     requireAdmin, (req, res) => { deepMerge(state.bracket, req.body); deriveTodayGames(); broadcast(); res.json({ok:true}); });
 app.post('/api/groupStage',           requireAdmin, (req, res) => { Object.assign(state.groupStage,           req.body); broadcast(); res.json({ok:true}); });
-app.post('/api/mapVeto',              requireAdmin, (req, res) => { Object.assign(state.mapVeto,             req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/mapVeto',              requireAdmin, (req, res) => { Object.assign(state.mapVeto,             req.body); reconcileMapResults(); broadcast(); res.json({ok:true}); });
 app.post('/api/tournamentStructure',  requireAdmin, (req, res) => { Object.assign(state.tournamentStructure,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/prizepool', requireAdmin, (req, res) => {
   const { entries, ...settings } = req.body;
@@ -2268,7 +2273,53 @@ function reconcileMapVetoSteps() {
   if (!state.mapVeto) return;
   const names = ((state.tournament && state.tournament.mapPool) || []).map(m => m.name).filter(Boolean);
   state.mapVeto.steps = (state.mapVeto.steps || []).filter(s => s && names.includes(s.map));
+  reconcileMapResults();
 }
+
+// CS2-style map-veto games: keep match.mapResults aligned to the veto's PLAYED maps
+// (pick + decider steps that have a map chosen, in veto order). Preserve already-logged
+// round scores by map name; add new picked maps as 'upcoming'; drop maps no longer played.
+function reconcileMapResults() {
+  if (!state.match) return;
+  const played = ((state.mapVeto && state.mapVeto.steps) || [])
+    .filter(s => s && (s.action === 'pick' || s.action === 'decider') && s.map)
+    .map(s => s.map);
+  const prev = {};
+  (state.match.mapResults || []).forEach(r => { if (r && r.map) prev[r.map] = r; });
+  state.match.mapResults = played.map(map => prev[map]
+    || { map, t1Rounds: 0, t2Rounds: 0, winner: '', status: 'upcoming' });
+  applyMapResultsToSeries();
+}
+
+// For map-veto games, derive the series (maps-won) score from logged map winners so the
+// break / win screens read it. No-op for non-map-veto games (LoL drives score elsewhere).
+function applyMapResultsToSeries() {
+  if (!state.match) return;
+  if (games.resolveAdapter(state.match.game).pregame.kind !== 'map-veto') return;
+  let t1 = 0, t2 = 0;
+  (state.match.mapResults || []).forEach(r => {
+    if (r.winner === 'team1') t1++; else if (r.winner === 'team2') t2++;
+  });
+  if (state.match.team1) state.match.team1.score = t1;
+  if (state.match.team2) state.match.team2.score = t2;
+}
+
+// Log/update one map's round score (manual operator entry — the R1 baseline; MatchZy/GSI
+// ingest later writes the same shape as a SUGGESTED value the operator applies).
+app.post('/api/match/map-result', requireAdmin, (req, res) => {
+  const { map, t1Rounds, t2Rounds, winner, status } = req.body || {};
+  if (!map) return res.status(400).json({ error: 'map required' });
+  const r = (state.match.mapResults || []).find(x => x && x.map === map);
+  if (!r) return res.status(404).json({ error: 'map not in current veto results' });
+  if (t1Rounds !== undefined) r.t1Rounds = Math.max(0, parseInt(t1Rounds) || 0);
+  if (t2Rounds !== undefined) r.t2Rounds = Math.max(0, parseInt(t2Rounds) || 0);
+  if (winner   !== undefined) r.winner   = ['team1', 'team2', ''].includes(winner) ? winner : r.winner;
+  if (status   !== undefined) r.status   = ['upcoming', 'live', 'final'].includes(status) ? status : r.status;
+  applyMapResultsToSeries();
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'map-result',
+    map + ' ' + (r.t1Rounds || 0) + '-' + (r.t2Rounds || 0) + (r.winner ? ' (' + r.winner + ')' : ''));
+  broadcast(); res.json({ ok: true });
+});
 
 // Create the tournament: commits the chosen game (which then locks) and marks it created.
 // Reset (/api/state/reset) is the only way back to an editable game.

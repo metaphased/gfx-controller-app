@@ -237,6 +237,7 @@ socket.on('state', async (state) => {
   applyTournamentCreateLock();
   tmRenderMapPool(state);
   mvRenderVeto(state);
+  mvRenderScores(state);
   mvRenderGfx(state);
   applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
@@ -3916,6 +3917,8 @@ function openPoolCreateTeam() {
 
 // ── Utility ────────────────────────────────────────────────────────────────────
 function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// Escape a value for embedding inside a single-quoted JS string in an onclick attribute.
+function jsq(str) { return String(str||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 Champions.load();
@@ -4073,6 +4076,45 @@ function mvRenderVeto(state){
       ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+'</select>';
     return row+'</div>';
   }).join('');
+}
+
+// Map Scores (GAME → Map Veto) — per-played-map round scores. Rows derive from the
+// veto's picked maps + decider (server keeps state.match.mapResults aligned).
+function mvSetMapResult(map, patch){ api('/api/match/map-result', Object.assign({ map: map }, patch)); }
+function mvRenderScores(state){
+  const el=g('mv-scores'); if(!el) return;
+  const m=(state&&state.match)||{}, results=m.mapResults||[];
+  const t1n=((m.team1||{}).tag)||((m.team1||{}).name)||'Team 1';
+  const t2n=((m.team2||{}).tag)||((m.team2||{}).name)||'Team 2';
+  const sig=JSON.stringify({r:results,a:t1n,b:t2n});
+  if(sig===window._mvScoresSig) return; window._mvScoresSig=sig;
+  if(!results.length){ el.innerHTML='<p class="hint">No maps picked yet — fill the <strong>Veto Sequence</strong> above (picks + decider) and scored maps appear here.</p>'; return; }
+  const t1s=results.filter(function(r){return r.winner==='team1';}).length;
+  const t2s=results.filter(function(r){return r.winner==='team2';}).length;
+  el.innerHTML =
+    '<div class="mv-score-series">Series: <strong>'+esc(t1n)+' '+t1s+' — '+t2s+' '+esc(t2n)+'</strong></div>'+
+    results.map(function(r,i){
+      const me=esc(r.map), num=i+1;
+      const st=r.status||'upcoming';
+      const statusPills=['upcoming','live','final'].map(function(s){
+        return '<button type="button" class="mv-sc-status'+(st===s?' is-active '+s:'')+'" onclick="mvSetMapResult(\''+jsq(r.map)+'\',{status:\''+s+'\'})">'+s.toUpperCase()+'</button>';
+      }).join('');
+      const winPills=[['team1',t1n],['team2',t2n],['','—']].map(function(p){
+        const on=(r.winner||'')===p[0];
+        return '<button type="button" class="mv-sc-win'+(on?' is-active':'')+'" onclick="mvSetMapResult(\''+jsq(r.map)+'\',{winner:\''+p[0]+'\'})">'+esc(p[1])+'</button>';
+      }).join('');
+      return '<div class="mv-score-row">'+
+        '<span class="mv-row-num">'+num+'</span>'+
+        '<span class="mv-sc-map">'+me+'</span>'+
+        '<input type="number" class="mv-sc-rounds" min="0" value="'+(r.t1Rounds||0)+'" '+
+          'onchange="mvSetMapResult(\''+jsq(r.map)+'\',{t1Rounds:this.value})" title="'+esc(t1n)+' rounds">'+
+        '<span class="mv-sc-dash">–</span>'+
+        '<input type="number" class="mv-sc-rounds" min="0" value="'+(r.t2Rounds||0)+'" '+
+          'onchange="mvSetMapResult(\''+jsq(r.map)+'\',{t2Rounds:this.value})" title="'+esc(t2n)+' rounds">'+
+        '<span class="mv-sc-winlabel">Winner</span><span class="mv-sc-wingrp">'+winPills+'</span>'+
+        '<span class="mv-sc-statusgrp">'+statusPills+'</span>'+
+        '</div>';
+    }).join('');
 }
 
 // Overlay look (GRAPHICS → Map Veto)
