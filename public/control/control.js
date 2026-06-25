@@ -4157,9 +4157,10 @@ function mvRenderGfx(state){
   const steps=_mvAccordionSteps(state);
   const fi=Math.max(0, Math.min(mv.focusIndex||0, Math.max(0, steps.length-1)));
   const fl=g('mv-focus-label');
-  if(fl){ const st=steps[fi]; const tot=steps.length; const rev=Math.min(mv.revealedCount||0, tot);
+  if(fl){ const tot=steps.length; const rev=Math.min(mv.revealedCount||0, tot); const st=steps[fi];
     fl.textContent = mv.accordionFinal ? ('Full draft ('+tot+' maps)')
-      : (st ? ((fi+1)+'/'+tot+' · '+(st.map||'—')+(st.action&&st.action!=='pending'?' '+st.action.toUpperCase():'')+' · '+rev+' shown') : '—'); }
+      : (rev===0 ? ('Ready — Reveal to start (0/'+tot+')')
+      : (st ? ((fi+1)+'/'+tot+' · '+(st.map||'—')+(st.action&&st.action!=='pending'?' '+st.action.toUpperCase():'')+' · '+rev+' shown') : '—')); }
   const fdb=g('mv-fulldraft-btn'); if(fdb) fdb.classList.toggle('btn-primary', !!mv.accordionFinal);
 }
 // Accordion steps = the veto steps if present, else the raw pool (pending), matching the graphic.
@@ -4170,20 +4171,24 @@ function _mvAccordionSteps(state){
   return pool.map(function(p){ return { action:'pending', map:p.name }; });
 }
 function mvToggleAccordion(on){
-  // Enabling starts the reveal at the first map; disabling just turns it off.
-  if(on) api('/api/mapVeto',{ accordion:true, focusIndex:0, revealedCount:1, accordionFinal:false });
+  // Enabling starts a clean reveal draft — nothing shown until you click Reveal.
+  if(on) api('/api/mapVeto',{ accordion:true, focusIndex:0, revealedCount:0, accordionFinal:false });
   else   api('/api/mapVeto',{ accordion:false });
 }
 function mvFocusStep(d){
   const steps=_mvAccordionSteps(window._state);
+  const total=steps.length;
   const mv=_mvState();
-  const cur=mv.focusIndex||0;
-  const next=Math.max(0, Math.min(cur+d, Math.max(0, steps.length-1)));
-  // Revealing only advances (never un-reveals when stepping back); Reveal/Next exits the full view.
-  const revealed=Math.max(mv.revealedCount||0, next+1);
-  api('/api/mapVeto',{ focusIndex: next, revealedCount: revealed, accordionFinal:false });
+  let focus=mv.focusIndex||0, revealed=mv.revealedCount||0;
+  if(d>0){
+    if(revealed<total){ focus=revealed; revealed=revealed+1; }   // reveal the next hidden map + focus it
+    else              { focus=Math.min(focus+1, total-1); }       // all revealed → just move focus right
+  } else {
+    focus=Math.max(focus-1, 0);                                   // move focus back among revealed maps
+  }
+  api('/api/mapVeto',{ focusIndex:focus, revealedCount:revealed, accordionFinal:false });
 }
-function mvRestartReveal(){ api('/api/mapVeto',{ focusIndex:0, revealedCount:1, accordionFinal:false }); }
+function mvRestartReveal(){ api('/api/mapVeto',{ focusIndex:0, revealedCount:0, accordionFinal:false }); }
 function mvToggleFullDraft(){ api('/api/mapVeto',{ accordionFinal: !(_mvState().accordionFinal) }); }
 function mvCycleScale(){ const order=['normal','large','l3']; const cur=(_mvState().scale)||'normal'; const next=order[(order.indexOf(cur)+1)%order.length]; api('/api/mapVeto',{scale:next}); }
 

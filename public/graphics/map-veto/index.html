@@ -221,8 +221,8 @@
     var a=(s.action||'pending');
     if (a==='ban')  return { action:'BAN',  teamKey: s.team||'', sub:'' };
     if (a==='pick'){ var other=s.team==='team1'?'team2':(s.team==='team2'?'team1':'');
-      return { action:'PICK', teamKey: s.team||'', sub: (other&&s.side)? (teamLabel(m,other)+' '+sideLabel(s.side)) : '' }; }
-    if (a==='decider') return { action:'DECIDER', teamKey:'', sub:(s.side==='knife'||!s.side)?'KNIFE ROUND':((s.team?teamLabel(m,s.team)+' ':'')+sideLabel(s.side)) };
+      return { action:'PICK', teamKey: s.team||'', sub: (other&&s.side)? (fullTeamName(m,other)+' '+sideLabel(s.side)) : '' }; }
+    if (a==='decider') return { action:'DECIDER', teamKey:'', sub:(s.side==='knife'||!s.side)?'KNIFE ROUND':((s.team?fullTeamName(m,s.team)+' ':'')+sideLabel(s.side)) };
     return { action:'', teamKey:'', sub:'' };
   }
   function fullTeamName(m, key){ var t=m[key]||{}; return t.name || t.tag || (key==='team1'?'Team 1':'Team 2'); }
@@ -323,7 +323,7 @@
   function hashState(state){
     var mv = state.mapVeto||{}, m = state.match||{};
     return JSON.stringify({ s:mv.steps, p:(state.tournament&&state.tournament.mapPool), t:mv.title, bo:mv.bestOf, sc:mv.scale,
-      ac:mv.accordion, fi:mv.focusIndex,
+      ac:mv.accordion, fi:mv.focusIndex, rc:mv.revealedCount, af:mv.accordionFinal,
       lg:mv.showLogo, lu:mv.logoUrl, ls:mv.logoScale, lp:mv.logoPosition,
       t1:(m.team1||{}).name, t2:(m.team2||{}).name, l1:(m.team1||{}).logo, l2:(m.team2||{}).logo });
   }
