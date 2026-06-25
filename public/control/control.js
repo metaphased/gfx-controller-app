@@ -394,7 +394,7 @@ const urlList = g('url-list');
 GFX_PAGES.forEach(([label, p]) => {
   const url = window.location.origin + '/' + p;
   const chip = document.createElement('div');
-  chip.className = 'url-chip' + (p.indexOf('map-veto/') !== -1 ? ' cap-map-veto' : (p.indexOf('draft/') !== -1 ? ' cap-champ-draft' : ''));
+  chip.className = 'url-chip' + (p.indexOf('map-veto/') !== -1 ? ' cap-map-veto' : ((p.indexOf('draft/') !== -1 || p.indexOf('head2head/') !== -1) ? ' cap-champ-draft' : ''));
   chip.title = 'Click to copy';
   chip.textContent = label;
   chip.addEventListener('click', () => {
@@ -478,9 +478,10 @@ function confirmDestructive(triggerEl, label, callback) {
 const GFX_OUTPUTS = [
   { label: 'Caster View',           path: 'caster/' },
   { label: 'Player Intro',           path: 'graphics/player-intro/' },
-  { label: 'Head to Head',          path: 'graphics/head2head/' },
+  { label: 'Head to Head',          path: 'graphics/head2head/', cap: 'champ-draft' },
   { label: 'Pre-show',              path: 'graphics/pre-show/' },
-  { label: 'Draft Overlay',         path: 'graphics/draft/' },
+  { label: 'Draft Overlay',         path: 'graphics/draft/', cap: 'champ-draft' },
+  { label: 'Map Veto',              path: 'graphics/map-veto/', cap: 'map-veto' },
   { label: 'Bracket',               path: 'graphics/bracket/' },
   { label: 'Group Stage',           path: 'graphics/group-stage/' },
   { label: 'Tournament Structure',  path: 'graphics/tournament-structure/' },
@@ -587,6 +588,7 @@ function syncGfxToken(settings) {
   const _gtBuses = (window._state && window._state.settings && window._state.settings.buses) || [];
   const _gtLtOuts = (window._state && window._state.lowerThird && window._state.lowerThird.outputs) || [];
   if (!_sfp('gfxTokenList', { token, mode: _gfxUrlMode, ext: _externalUrl,
+        game: (window._state && window._state.match && window._state.match.game) || '',
         buses: _gtBuses.map(function(b){ return [b.id, b.name]; }),
         ltOuts: _gtLtOuts.map(function(o){ return [o.id, o.name]; }) })) return;
   const base    = (_gfxUrlMode === 'external' && _externalUrl ? _externalUrl : window.location.origin) + '/';
@@ -626,7 +628,10 @@ function syncGfxToken(settings) {
       '</div>'
     : '';
 
-  listEl.innerHTML = toggleHtml + GFX_OUTPUTS.map(o => urlRow(o.label, o.path)).join('') + ltRows + busRows;
+  const outputs = GFX_OUTPUTS.filter(o =>
+    o.cap === 'champ-draft' ? isChampDraft() :
+    o.cap === 'map-veto'    ? isMapVeto()    : true);
+  listEl.innerHTML = toggleHtml + outputs.map(o => urlRow(o.label, o.path)).join('') + ltRows + busRows;
 }
 
 // ── Bus config ─────────────────────────────────────────────────────────────────
@@ -875,7 +880,11 @@ function renderDashboard(s) {
   if (gfxEl) {
     gfxEl.innerHTML = '<div class="card-title">Live Graphics</div>' +
       '<div class="dash-gfx-grid">' +
-        GRAPHIC_MAP.filter(function(gfx) { return gfx.key !== 'draft' || isChampDraft(); }).map(function(gfx) {
+        GRAPHIC_MAP.filter(function(gfx) {
+          if (gfx.key === 'draft' || gfx.key === 'headToHead') return isChampDraft();
+          if (gfx.key === 'mapVeto') return isMapVeto();
+          return true;
+        }).map(function(gfx) {
           var active = s[gfx.key] && s[gfx.key].visible;
           return '<div class="dash-gfx-item">' +
             '<div class="dash-gfx-dot' + (active ? ' is-live' : '') + '"></div>' +
@@ -2705,13 +2714,16 @@ function syncWinTab(ws, match) {
     if (r) r.checked = style === v;
   });
 
-  // Winning draft picks — toggle, position, and "what will appear" preview
-  const showPicks = !!ws.showPicks;
+  // Winning draft picks — toggle, position, and "what will appear" preview.
+  // Champion picks are LoL-only; keep these rows hidden for non-champ-draft games
+  // (the card + COMP radio are also cap-champ-draft hidden via applyAdapterUI).
+  const champDraft = isChampDraft();
+  const showPicks = champDraft && !!ws.showPicks;
   const spChk = g('win-showpicks'); if (spChk) spChk.checked = showPicks;
   const posRow = g('win-picks-pos-row'); if (posRow) posRow.style.display = showPicks ? 'flex' : 'none';
   // Image shape applies to the picks whenever they show — COMP (always) or any
   // style with showPicks on — so it lives here, not gated behind loading COMP.
-  const shapeRow = g('win-shape-row'); if (shapeRow) shapeRow.style.display = (showPicks || style === 'comp') ? 'flex' : 'none';
+  const shapeRow = g('win-shape-row'); if (shapeRow) shapeRow.style.display = (champDraft && (showPicks || style === 'comp')) ? 'flex' : 'none';
   const picksPos = ws.picksPosition === 'bottom' ? 'bottom' : 'below';
   ['below','bottom'].forEach(v => {
     const r = document.querySelector('input[name="win-picks-pos"][value="' + v + '"]');
@@ -2719,9 +2731,9 @@ function syncWinTab(ws, match) {
   });
   renderWinPicksPreview(ws, match);
 
-  // COMP-only options (champion image shape + built-in background)
+  // COMP-only options (champion image shape + built-in background) — LoL only
   const compOpts = g('win-comp-options');
-  if (compOpts) compOpts.style.display = style === 'comp' ? 'block' : 'none';
+  if (compOpts) compOpts.style.display = (champDraft && style === 'comp') ? 'block' : 'none';
   const compShape = ws.compShape === 'angled' ? 'angled' : 'rect';
   const rectBtn = g('win-shape-rect'), angBtn = g('win-shape-angled');
   if (rectBtn) rectBtn.classList.toggle('btn-active', compShape === 'rect');

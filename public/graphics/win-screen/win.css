@@ -106,6 +106,28 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   color: rgba(255, 255, 255,0.25);
 }
 
+/* ── Per-map round scores (CS2 / map-veto games) ───────────────────────── */
+.ws-maps {
+  display: flex; align-items: center; gap: 0.7vw;
+  margin-top: 1.4vh; flex-wrap: wrap;
+}
+.ws-map {
+  display: inline-flex; align-items: baseline; gap: 0.45vw;
+}
+.ws-map-name {
+  font-size: 1.5vh; font-weight: 700; letter-spacing: 0.14em;
+  text-transform: uppercase; color: rgba(255, 255, 255, 0.55);
+}
+.ws-map-score {
+  font-size: 2vh; font-weight: 800; font-variant-numeric: tabular-nums;
+  color: rgba(255, 255, 255, 0.85); letter-spacing: 0.02em;
+}
+.ws-map-dash { color: rgba(255, 255, 255, 0.35); font-weight: 400; }
+.ws-map-r.win { color: var(--win-color); }
+.ws-map-sep { color: rgba(255, 255, 255, 0.2); font-size: 1.8vh; }
+/* COMP style hides the series row; also hide map list there (champ-only layout) */
+.style-comp .ws-maps { display: none !important; }
+
 /* ═══════════════════════════════════════════════════════════════
    BLADE — parallelogram band sweeps across
    ═══════════════════════════════════════════════════════════════ */

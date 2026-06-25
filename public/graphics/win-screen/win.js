@@ -241,7 +241,30 @@ function populateContent(ws, match) {
     }
   }
 
+  renderWinMaps(match, teamKey);
   buildCompRow(ws, match);
+}
+
+// Per-map round scores (CS2 / map-veto games). match.mapResults is only populated
+// for map-veto games, so its presence is the gate. Winner's round count in accent.
+function renderWinMaps(match, teamKey) {
+  const el = document.getElementById('ws-maps');
+  if (!el) return;
+  const results = (match && match.mapResults) || [];
+  const scored = results.filter(r => r && (r.winner || r.t1Rounds || r.t2Rounds));
+  if (!scored.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = scored.map(function(r) {
+    const t1cls = r.winner === 'team1' ? ' win' : '';
+    const t2cls = r.winner === 'team2' ? ' win' : '';
+    return '<span class="ws-map">' +
+      '<span class="ws-map-name">' + esc(r.map || '') + '</span>' +
+      '<span class="ws-map-score">' +
+        '<span class="ws-map-r' + t1cls + '">' + (r.t1Rounds || 0) + '</span>' +
+        '<span class="ws-map-dash">-</span>' +
+        '<span class="ws-map-r' + t2cls + '">' + (r.t2Rounds || 0) + '</span>' +
+      '</span></span>';
+  }).join('<span class="ws-map-sep">·</span>');
 }
 
 function setWinColor(hex) {
