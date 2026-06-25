@@ -79,7 +79,10 @@
     transition-delay: calc(var(--i, 0) * 55ms);
   }
   #mv-root.show .mv-card { opacity:1; transform:none; }
-  .mv-card .img { position:absolute; inset:0; background-size:cover; background-position:center; }
+  /* Slow Ken-Burns push on map images (all veto views — a bit of life on stills). */
+  @keyframes mv-kb { 0% { transform:scale(1.03); } 100% { transform:scale(1.13); } }
+  .mv-card .img { position:absolute; inset:0; background-size:cover; background-position:center;
+    animation: mv-kb 19s ease-in-out infinite alternate; }
   .mv-card .scrim { position:absolute; inset:0; background:linear-gradient(180deg, rgba(6,10,15,.10) 0%, rgba(6,10,15,.5) 52%, rgba(6,10,15,.93) 100%); }
   .mv-order { position:absolute; top:12px; left:12px; z-index:3; width:34px; height:34px; border-radius:50%;
     background:rgba(8,12,18,.8); border:1px solid rgba(255,255,255,.18); color:#fff;
@@ -100,11 +103,10 @@
   .mv-card.decider .mv-action { color:#ffd24a; }
   .mv-card.pending .mv-action { color:#8a929b; }
 
-  /* ── Accordion (full-screen focus view, prototype) ─────────────────────────── */
-  #mv-accordion { display:none; position:absolute; inset:0; flex-direction:column; padding:64px 56px 56px; gap:24px; }
+  /* ── Accordion (horizontal focus view, prototype) ──────────────────────────── */
+  #mv-accordion { display:none; position:absolute; inset:0; flex-direction:column; padding:60px 56px 56px; }
   #mv-root.mode-accordion #mv-stage     { display:none; }
   #mv-root.mode-accordion #mv-accordion { display:flex; }
-  .mv-acc-title { text-align:center; font-size:33px; font-weight:700; letter-spacing:.22em; color:var(--gfx-c1,#1ffaff); flex:0 0 auto; }
   .mv-acc-row { flex:1 1 auto; display:flex; gap:10px; min-height:0; }
   .mv-acc-panel {
     position:relative; flex:1 1 0; min-width:0; overflow:hidden;
@@ -124,10 +126,18 @@
   .mv-acc-panel.pick:not(.focused) .media,
   .mv-acc-panel.decider:not(.focused) .media { filter:saturate(.3) brightness(.62); }
   .mv-acc-panel.pending:not(.focused) .media { filter:saturate(.18) brightness(.5); }
-  .mv-acc-panel.focused .media { filter:none; transform:scale(1.04); }
-  .mv-acc-scrim { position:absolute; inset:0; background:linear-gradient(180deg, rgba(6,10,15,.04) 42%, rgba(6,10,15,.86) 100%); }
-  .mv-acc-foot { position:absolute; left:0; right:0; bottom:0; padding:16px 16px 22px; text-align:center; z-index:2; }
-  .mv-acc-action { font-size:23px; font-weight:900; letter-spacing:.12em; color:#8a929b; }
+  .mv-acc-panel.focused .media { filter:none; }
+  /* Ken-Burns push only on the focused IMAGE (div) media — the fallback when there's no
+     clip; videos (their own motion) are left alone. */
+  .mv-acc-panel.focused div.media { animation: mv-kb 15s ease-in-out infinite alternate; }
+  .mv-acc-scrim { position:absolute; inset:0; background:linear-gradient(180deg, rgba(6,10,15,.04) 40%, rgba(6,10,15,.86) 100%); }
+  .mv-acc-foot { position:absolute; left:0; right:0; bottom:0; padding:16px 14px 22px; text-align:center; z-index:2; }
+  .mv-acc-team { display:flex; align-items:center; justify-content:center; gap:9px; margin-bottom:7px; }
+  .mv-acc-team img { height:40px; width:40px; object-fit:contain; }
+  .mv-acc-team img:not([src]), .mv-acc-team img[src=""] { display:none; }
+  .mv-acc-team .nm { font-size:24px; font-weight:800; color:#fff; letter-spacing:.01em; }
+  .mv-acc-panel:not(.focused) .mv-acc-team { display:none; }   /* slivers: action + map only */
+  .mv-acc-action { font-size:22px; font-weight:900; letter-spacing:.12em; color:#8a929b; }
   .mv-acc-panel.ban     .mv-acc-action { color:#ff5a5a; }
   .mv-acc-panel.pick    .mv-acc-action { color:var(--gfx-c1,#1ffaff); }
   .mv-acc-panel.decider .mv-acc-action { color:#ffd24a; }
@@ -143,6 +153,34 @@
     display:flex; align-items:center; justify-content:center; font-size:20px; padding-left:3px;
   }
   .mv-acc-panel.focused .mv-acc-play { display:none; }
+  /* Reveal-draft cover: maps right of the reveal point hide their identity until focus
+     reaches them (then they stay revealed). */
+  .mv-acc-cover {
+    position:absolute; inset:0; z-index:4; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg, rgba(15,20,27,.97), rgba(8,11,16,.99)); color:#39414b;
+    font-size:54px; font-weight:900; transition:opacity .55s ease;
+  }
+  .mv-acc-panel.revealed .mv-acc-cover { opacity:0; pointer-events:none; }
+  .mv-acc-panel:not(.revealed) .media,
+  .mv-acc-panel:not(.revealed) .mv-acc-foot,
+  .mv-acc-panel:not(.revealed) .mv-acc-play { opacity:0; }
+  /* Whole-draft final view: equal-width columns, every map revealed, no single focus. */
+  #mv-root.mode-final .mv-acc-panel { flex-grow:1 !important; }
+  #mv-root.mode-final .mv-acc-panel .mv-acc-team { display:flex; }
+  #mv-root.mode-final .mv-acc-team .nm { font-size:18px; }
+  #mv-root.mode-final .mv-acc-team img { height:30px; width:30px; }
+  #mv-root.mode-final .mv-acc-map { font-size:23px; }
+  #mv-root.mode-final .mv-acc-sub { display:block; font-size:12px; }
+  #mv-root.mode-final .mv-acc-action { font-size:17px; }
+  /* Lower-third accordion: a bottom band that leaves the upper frame for cameras. */
+  #mv-root.scale-l3.mode-accordion #mv-accordion { top:auto; bottom:0; height:280px; padding:0 48px 38px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-team img { height:30px; width:30px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-team .nm { font-size:19px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-action { font-size:17px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-map { font-size:23px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-panel:not(.focused) .mv-acc-map { font-size:14px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-sub { font-size:12px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-foot { padding:10px 10px 14px; }
 </style>
 </head>
 <body>
@@ -178,43 +216,57 @@
   // Accordion (full-screen focus view). Built once per content change so the <video>
   // elements persist across focus changes (a focused clip resumes where it paused; an
   // unfocused one holds its current frame). Focus only toggles a class + play/pause.
+  // {action, sub, teamKey} — teamKey drives the logo + full team name shown on a segment.
   function accLabel(m, s){
     var a=(s.action||'pending');
-    if (a==='ban')  return { action:'BAN',     sub: s.team ? teamLabel(m, s.team) : '' };
+    if (a==='ban')  return { action:'BAN',  teamKey: s.team||'', sub:'' };
     if (a==='pick'){ var other=s.team==='team1'?'team2':(s.team==='team2'?'team1':'');
-      return { action:'PICK', sub: (s.team?teamLabel(m,s.team)+' PICK':'') + (other&&s.side?'  ·  '+teamLabel(m,other)+' '+sideLabel(s.side):'') }; }
-    if (a==='decider') return { action:'DECIDER', sub: (s.side==='knife'||!s.side)?'KNIFE ROUND':((s.team?teamLabel(m,s.team)+' ':'')+sideLabel(s.side)) };
-    return { action:'', sub:'' };
+      return { action:'PICK', teamKey: s.team||'', sub: (other&&s.side)? (teamLabel(m,other)+' '+sideLabel(s.side)) : '' }; }
+    if (a==='decider') return { action:'DECIDER', teamKey:'', sub:(s.side==='knife'||!s.side)?'KNIFE ROUND':((s.team?teamLabel(m,s.team)+' ':'')+sideLabel(s.side)) };
+    return { action:'', teamKey:'', sub:'' };
   }
+  function fullTeamName(m, key){ var t=m[key]||{}; return t.name || t.tag || (key==='team1'?'Team 1':'Team 2'); }
   function renderAccordion(state){
     var mv=state.mapVeto||{}, m=state.match||{};
     var pool=(state.tournament && state.tournament.mapPool) || [];
     var steps=(mv.steps&&mv.steps.length)?mv.steps:pool.map(function(p){return {action:'pending',map:p.name,team:'',side:''};});
     var focus=Math.max(0, Math.min(mv.focusIndex||0, Math.max(0, steps.length-1)));
+    var fin=!!mv.accordionFinal;
+    var revealed = fin ? steps.length : Math.max(0, Math.min(mv.revealedCount||0, steps.length));
+    // Structure hash EXCLUDES focus/reveal/final so those only toggle classes (videos persist).
     var sHash=JSON.stringify({ st:steps.map(function(s){return [s.action,s.map,s.team,s.side];}),
       md:steps.map(function(s){var e=poolEntry(pool,s.map);return [e&&e.video,e&&e.image];}),
-      t:mv.title, t1:teamLabel(m,'team1'), t2:teamLabel(m,'team2') });
+      t1:fullTeamName(m,'team1'), t2:fullTeamName(m,'team2'), l1:(m.team1||{}).logo, l2:(m.team2||{}).logo });
     if (acc._sHash !== sHash){
       acc._sHash = sHash;
-      acc.innerHTML = '<div class="mv-acc-title">'+eH(mv.title||'MAP VETO')+'</div><div class="mv-acc-row">'+
+      acc.innerHTML = '<div class="mv-acc-row">'+
         steps.map(function(s,i){
           var e=poolEntry(pool,s.map), action=(s.action||'pending'), lbl=accLabel(m,s);
           var media = (e&&e.video) ? '<video class="media" src="'+eH(e.video)+'" muted loop playsinline preload="auto"></video>'
                     : (e&&e.image) ? '<div class="media" style="background-image:url(\''+eH(e.image)+'\')"></div>'
                     : '<div class="media nomedia"></div>';
+          var teamRow = lbl.teamKey ? '<div class="mv-acc-team">'+
+              ((m[lbl.teamKey]||{}).logo ? '<img src="'+eH((m[lbl.teamKey]||{}).logo)+'" alt="">' : '')+
+              '<span class="nm">'+eH(fullTeamName(m, lbl.teamKey))+'</span></div>' : '';
           return '<div class="mv-acc-panel '+action+'" data-i="'+i+'">'+media+'<div class="mv-acc-scrim"></div>'+
             ((e&&e.video)?'<div class="mv-acc-play">▶</div>':'')+
-            '<div class="mv-acc-foot">'+(lbl.action?'<div class="mv-acc-action">'+lbl.action+'</div>':'')+
+            '<div class="mv-acc-foot">'+teamRow+(lbl.action?'<div class="mv-acc-action">'+lbl.action+'</div>':'')+
             '<div class="mv-acc-map">'+eH(s.map||'')+'</div>'+
-            (lbl.sub?'<div class="mv-acc-sub">'+eH(lbl.sub)+'</div>':'')+'</div></div>';
+            (lbl.sub?'<div class="mv-acc-sub">'+eH(lbl.sub)+'</div>':'')+'</div>'+
+            '<div class="mv-acc-cover">?</div></div>';
         }).join('')+'</div>';
     }
-    // Focus update only — never rebuilds, so videos keep their position.
+    root.classList.toggle('mode-final', fin);
+    // Focus / reveal / final are class toggles only — never rebuilds, so videos keep
+    // their position (a focused clip resumes; an unfocused one holds its current frame).
     var panels=acc.querySelectorAll('.mv-acc-panel');
     for (var i=0;i<panels.length;i++){
-      var on=(i===focus); panels[i].classList.toggle('focused', on);
+      var isRevealed = fin || i < revealed;
+      var isFocused  = !fin && isRevealed && (i===focus);
+      panels[i].classList.toggle('revealed', isRevealed);
+      panels[i].classList.toggle('focused', isFocused);
       var v=panels[i].querySelector('video');
-      if (v){ if(on){ var pr=v.play(); if(pr&&pr.catch)pr.catch(function(){}); } else { v.pause(); } }
+      if (v){ if(isFocused){ var pr=v.play(); if(pr&&pr.catch)pr.catch(function(){}); } else { v.pause(); } }
     }
   }
 

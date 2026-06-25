@@ -4157,7 +4157,10 @@ function mvRenderGfx(state){
   const steps=_mvAccordionSteps(state);
   const fi=Math.max(0, Math.min(mv.focusIndex||0, Math.max(0, steps.length-1)));
   const fl=g('mv-focus-label');
-  if(fl){ const st=steps[fi]; fl.textContent = st ? ((fi+1)+'. '+(st.map||'—')+(st.action&&st.action!=='pending'?' ('+st.action.toUpperCase()+')':'')) : '—'; }
+  if(fl){ const st=steps[fi]; const tot=steps.length; const rev=Math.min(mv.revealedCount||0, tot);
+    fl.textContent = mv.accordionFinal ? ('Full draft ('+tot+' maps)')
+      : (st ? ((fi+1)+'/'+tot+' · '+(st.map||'—')+(st.action&&st.action!=='pending'?' '+st.action.toUpperCase():'')+' · '+rev+' shown') : '—'); }
+  const fdb=g('mv-fulldraft-btn'); if(fdb) fdb.classList.toggle('btn-primary', !!mv.accordionFinal);
 }
 // Accordion steps = the veto steps if present, else the raw pool (pending), matching the graphic.
 function _mvAccordionSteps(state){
@@ -4166,12 +4169,22 @@ function _mvAccordionSteps(state){
   const pool=((state&&state.tournament&&state.tournament.mapPool)||[]);
   return pool.map(function(p){ return { action:'pending', map:p.name }; });
 }
+function mvToggleAccordion(on){
+  // Enabling starts the reveal at the first map; disabling just turns it off.
+  if(on) api('/api/mapVeto',{ accordion:true, focusIndex:0, revealedCount:1, accordionFinal:false });
+  else   api('/api/mapVeto',{ accordion:false });
+}
 function mvFocusStep(d){
   const steps=_mvAccordionSteps(window._state);
-  const cur=(_mvState().focusIndex)||0;
+  const mv=_mvState();
+  const cur=mv.focusIndex||0;
   const next=Math.max(0, Math.min(cur+d, Math.max(0, steps.length-1)));
-  api('/api/mapVeto',{ focusIndex: next });
+  // Revealing only advances (never un-reveals when stepping back); Reveal/Next exits the full view.
+  const revealed=Math.max(mv.revealedCount||0, next+1);
+  api('/api/mapVeto',{ focusIndex: next, revealedCount: revealed, accordionFinal:false });
 }
+function mvRestartReveal(){ api('/api/mapVeto',{ focusIndex:0, revealedCount:1, accordionFinal:false }); }
+function mvToggleFullDraft(){ api('/api/mapVeto',{ accordionFinal: !(_mvState().accordionFinal) }); }
 function mvCycleScale(){ const order=['normal','large','l3']; const cur=(_mvState().scale)||'normal'; const next=order[(order.indexOf(cur)+1)%order.length]; api('/api/mapVeto',{scale:next}); }
 
 // ── Draft GFX tab ─────────────────────────────────────────────────────────────

@@ -547,7 +547,9 @@ const makeDefault = () => ({
                  // Accordion = a full-screen horizontal focus view (prototype): the focused
                  // map expands + plays its clip/image in full colour, others compress +
                  // desaturate (bans greyscale, picks low-sat). focusIndex = which map is up.
-                 accordion: false, focusIndex: 0,
+                 // revealedCount = reveal-draft progress (maps right of it stay hidden until
+                 // focus reaches them, then stay revealed). accordionFinal = whole-draft view.
+                 accordion: false, focusIndex: 0, revealedCount: 0, accordionFinal: false,
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },

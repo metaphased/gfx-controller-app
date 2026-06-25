@@ -1592,13 +1592,18 @@
           <div class="card">
             <div class="card-title">Accordion View <span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text-dim)">· prototype</span></div>
             <p class="hint" style="margin-bottom:10px">Full-screen horizontal focus view: the focused map expands and plays its clip (or shows its image) in full colour; the rest compress and desaturate (bans go greyscale, picks stay low-sat). Add a per-map <strong>Video URL</strong> in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a> (falls back to the image).</p>
-            <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="mv-accordion" onchange="api('/api/mapVeto',{accordion:this.checked})"> <span style="font-size:13px">Enable accordion view</span></label>
-            <div class="field-row"><label>Focus map</label>
+            <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="mv-accordion" onchange="mvToggleAccordion(this.checked)"> <span style="font-size:13px">Enable accordion view</span></label>
+            <p class="hint" style="margin-bottom:8px">Reveal-draft: maps to the right of the focused one stay hidden until you reveal them with <strong>Next</strong> — once revealed they stay. <strong>Full draft</strong> shows the whole board at once.</p>
+            <div class="field-row"><label>Reveal / focus</label>
               <div class="btn-row" style="display:flex;gap:6px;align-items:center">
                 <button class="btn btn-sm" onclick="mvFocusStep(-1)">◀ Prev</button>
-                <span id="mv-focus-label" style="font-size:12px;color:var(--text-dim);min-width:120px;text-align:center">—</span>
-                <button class="btn btn-sm" onclick="mvFocusStep(1)">Next ▶</button>
+                <span id="mv-focus-label" style="font-size:12px;color:var(--text-dim);min-width:130px;text-align:center">—</span>
+                <button class="btn btn-sm btn-primary" onclick="mvFocusStep(1)">Reveal ▶</button>
               </div>
+            </div>
+            <div class="btn-row" style="display:flex;gap:6px;margin-top:8px">
+              <button class="btn btn-sm" onclick="mvRestartReveal()">⟲ Restart</button>
+              <button class="btn btn-sm" id="mv-fulldraft-btn" onclick="mvToggleFullDraft()">Full draft view</button>
             </div>
           </div>
           <div class="card">
