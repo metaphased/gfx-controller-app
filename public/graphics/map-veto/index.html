@@ -8,6 +8,11 @@
   * { margin:0; padding:0; box-sizing:border-box; }
   html, body { width:1920px; height:1080px; overflow:hidden; background:transparent; }
   body { font-family: var(--gfx-font, 'Barlow Condensed', sans-serif); }
+  /* Labels / meta use the SECONDARY broadcast font (falls back to primary, then literal);
+     display text (titles, team + map names) inherits the PRIMARY font from body. Both
+     come from Broadcast Theme → Typography via --gfx-font / --gfx-font-2. */
+  #mv-title, #mv-bo, #mv-vs, .mv-action, .mv-sub,
+  .mv-acc-action, .mv-acc-sub { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif; }
   #mv-root {
     position:absolute; inset:0; display:flex;
     align-items:center; justify-content:center;
@@ -60,6 +65,9 @@
   .mv-team img { width:74px; height:74px; object-fit:contain; }
   .mv-team img:not([src]), .mv-team img[src=""] { display:none; }
   .mv-team .nm { font-size:44px; font-weight:800; color:#fff; }
+  /* Logos-only option: hide team NAMES (header + accordion), keep logos. */
+  #mv-root.hide-team-names .mv-team .nm,
+  #mv-root.hide-team-names .mv-acc-team .nm { display:none; }
   #mv-center { display:flex; flex-direction:column; align-items:center; gap:5px; }
   #mv-title { font-size:30px; font-weight:700; letter-spacing:.22em; color: var(--gfx-c1, #1ffaff); }
   #mv-vs { font-size:22px; font-weight:900; color:#8a929b; letter-spacing:.2em; }
@@ -104,9 +112,13 @@
   .mv-card.pending .mv-action { color:#8a929b; }
 
   /* ── Accordion (horizontal focus view, prototype) ──────────────────────────── */
-  #mv-accordion { display:none; position:absolute; inset:0; flex-direction:column; padding:60px 56px 56px; }
+  #mv-accordion { display:none; position:absolute; inset:0; flex-direction:column; padding:56px; }
   #mv-root.mode-accordion #mv-stage     { display:none; }
   #mv-root.mode-accordion #mv-accordion { display:flex; }
+  /* Size by scale: Large = near full-screen; Normal = a contained mid-size block;
+     Lower Third = the bottom band (further down). */
+  #mv-root.scale-large.mode-accordion  #mv-accordion { padding:46px 52px; }
+  #mv-root.scale-normal.mode-accordion #mv-accordion { padding:215px 170px; }
   .mv-acc-row { flex:1 1 auto; display:flex; gap:10px; min-height:0; }
   .mv-acc-panel {
     position:relative; flex:1 1 0; min-width:0; overflow:hidden;
@@ -282,6 +294,7 @@
     root.classList.remove('scale-large','scale-normal','scale-l3');
     root.classList.add('scale-' + (mv.scale || 'normal'));
     root.classList.toggle('mode-accordion', !!mv.accordion);
+    root.classList.toggle('hide-team-names', mv.showTeamNames === false);
     if (mv.accordion) renderAccordion(state);
     document.getElementById('mv-title').textContent = mv.title || 'MAP VETO';
     document.getElementById('mv-bo').textContent = BO[mv.bestOf] || ('BEST OF ' + (mv.bestOf||3));
@@ -328,7 +341,7 @@
   function hashState(state){
     var mv = state.mapVeto||{}, m = state.match||{};
     return JSON.stringify({ s:mv.steps, p:(state.tournament&&state.tournament.mapPool), t:mv.title, bo:mv.bestOf, sc:mv.scale,
-      ac:mv.accordion, fi:mv.focusIndex, rc:mv.revealedCount, af:mv.accordionFinal,
+      ac:mv.accordion, fi:mv.focusIndex, rc:mv.revealedCount, af:mv.accordionFinal, stn:mv.showTeamNames,
       lg:mv.showLogo, lu:mv.logoUrl, ls:mv.logoScale, lp:mv.logoPosition,
       t1:(m.team1||{}).name, t2:(m.team2||{}).name, l1:(m.team1||{}).logo, l2:(m.team2||{}).logo });
   }
