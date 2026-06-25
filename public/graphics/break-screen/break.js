@@ -152,7 +152,9 @@ function renderTicker(ticker) {
 function _mapScoreChips(state) {
   const adapter = state.adapter || {};
   if (adapter.pregameKind !== 'map-veto') return null;
-  const results = (state.match && state.match.mapResults) || [];
+  // Only rows with a chosen map are real played maps (the model carries best-of rows,
+  // some of which may be unset/unplayed).
+  const results = ((state.match && state.match.mapResults) || []).filter(function(r){ return r && r.map; });
   if (!results.length) return null;
   // First not-yet-final map = "next" marker (only if it isn't already live).
   let nextIdx = -1;

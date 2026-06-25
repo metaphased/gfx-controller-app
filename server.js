@@ -1158,7 +1158,7 @@ app.get('/api/state', (req, res) => {
   res.json(safe);
 });
 app.post('/api/state/reset', requireAdmin, (req, res) => { state = makeDefault(); deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true }); });
-app.post('/api/match',  requireAdmin, (req, res) => { deepMerge(state.match, req.body); broadcast(); res.json({ ok: true }); });
+app.post('/api/match',  requireAdmin, (req, res) => { deepMerge(state.match, req.body); reconcileMapResults(); broadcast(); res.json({ ok: true }); });
 
 app.post('/api/score', (req, res) => {
   const { team, delta } = req.body;
@@ -2276,18 +2276,35 @@ function reconcileMapVetoSteps() {
   reconcileMapResults();
 }
 
-// CS2-style map-veto games: keep match.mapResults aligned to the veto's PLAYED maps
-// (pick + decider steps that have a map chosen, in veto order). Preserve already-logged
-// round scores by map name; add new picked maps as 'upcoming'; drop maps no longer played.
+// CS2-style map-veto games: maintain match.mapResults as a fixed list of best-of game
+// rows (Bo3 → 3 rows). Each row is operator-editable in Game Setup (map + round score +
+// winner). The veto's picked maps (picks + decider, in order) PRE-FILL empty rows so a
+// completed veto carries straight over, but the operator can set maps/scores directly
+// even without a veto — nothing is required first. Existing rows are preserved.
 function reconcileMapResults() {
   if (!state.match) return;
-  const played = ((state.mapVeto && state.mapVeto.steps) || [])
+  // Only map-veto games track per-map round scores; clear for everyone else (LoL).
+  if (games.resolveAdapter(state.match.game).pregame.kind !== 'map-veto') {
+    if ((state.match.mapResults || []).length) state.match.mapResults = [];
+    return;
+  }
+  const bestOf = parseInt(String(state.match.format || 'Bo3').replace(/Bo/i, '')) || 3;
+  const vetoMaps = ((state.mapVeto && state.mapVeto.steps) || [])
     .filter(s => s && (s.action === 'pick' || s.action === 'decider') && s.map)
     .map(s => s.map);
-  const prev = {};
-  (state.match.mapResults || []).forEach(r => { if (r && r.map) prev[r.map] = r; });
-  state.match.mapResults = played.map(map => prev[map]
-    || { map, t1Rounds: 0, t2Rounds: 0, winner: '', status: 'upcoming' });
+  const prev = state.match.mapResults || [];
+  const out = [];
+  for (let i = 0; i < bestOf; i++) {
+    const p = prev[i] || {};
+    out.push({
+      map:      p.map || vetoMaps[i] || '',
+      t1Rounds: p.t1Rounds || 0,
+      t2Rounds: p.t2Rounds || 0,
+      winner:   p.winner   || '',
+      status:   p.status   || 'upcoming',
+    });
+  }
+  state.match.mapResults = out;
   applyMapResultsToSeries();
 }
 
@@ -2304,20 +2321,24 @@ function applyMapResultsToSeries() {
   if (state.match.team2) state.match.team2.score = t2;
 }
 
-// Log/update one map's round score (manual operator entry — the R1 baseline; MatchZy/GSI
-// ingest later writes the same shape as a SUGGESTED value the operator applies).
+// Update one map row (by index) — map name + round score + winner + status. Manual
+// operator entry from Game Setup (the R1 baseline; MatchZy/GSI ingest later writes the
+// same shape as a SUGGESTED value the operator applies).
 app.post('/api/match/map-result', requireAdmin, (req, res) => {
-  const { map, t1Rounds, t2Rounds, winner, status } = req.body || {};
-  if (!map) return res.status(400).json({ error: 'map required' });
-  const r = (state.match.mapResults || []).find(x => x && x.map === map);
-  if (!r) return res.status(404).json({ error: 'map not in current veto results' });
+  const { index, map, t1Rounds, t2Rounds, winner, status } = req.body || {};
+  const i = parseInt(index);
+  if (isNaN(i) || !state.match.mapResults || !state.match.mapResults[i]) {
+    return res.status(404).json({ error: 'map row not found' });
+  }
+  const r = state.match.mapResults[i];
+  if (map      !== undefined) r.map      = String(map || '');
   if (t1Rounds !== undefined) r.t1Rounds = Math.max(0, parseInt(t1Rounds) || 0);
   if (t2Rounds !== undefined) r.t2Rounds = Math.max(0, parseInt(t2Rounds) || 0);
   if (winner   !== undefined) r.winner   = ['team1', 'team2', ''].includes(winner) ? winner : r.winner;
   if (status   !== undefined) r.status   = ['upcoming', 'live', 'final'].includes(status) ? status : r.status;
   applyMapResultsToSeries();
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'map-result',
-    map + ' ' + (r.t1Rounds || 0) + '-' + (r.t2Rounds || 0) + (r.winner ? ' (' + r.winner + ')' : ''));
+    'Map ' + (i + 1) + ' ' + (r.map || '') + ' ' + (r.t1Rounds || 0) + '-' + (r.t2Rounds || 0) + (r.winner ? ' (' + r.winner + ')' : ''));
   broadcast(); res.json({ ok: true });
 });
 
@@ -2568,6 +2589,7 @@ app.post('/api/match/edit-save', requireAdmin, (req, res) => {
   const { format, fearlessDraft } = req.body;
   if (format      !== undefined) state.match.format       = format;
   if (fearlessDraft !== undefined) state.match.fearlessDraft = !!fearlessDraft;
+  if (format !== undefined) reconcileMapResults(); // resize CS2 map rows to new best-of
   // Sync back to the schedule game entry so Schedule page stays consistent
   if (state.match.scheduleGameId && state.match.scheduleDayId) {
     const day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
@@ -2783,6 +2805,10 @@ app.post('/api/match/reset-series', (req, res) => {
     const _sg  = _day && _day.games.find(g => g.id === state.match.scheduleGameId);
     if (_sg) { _sg.result = null; _clearLinkedBracket(_sg); }
   }
+  // Reset per-map round scores too (map-veto games) — clear scores/winners but keep
+  // the best-of row count + any veto-prefilled maps.
+  (state.match.mapResults || []).forEach(r => { r.t1Rounds = 0; r.t2Rounds = 0; r.winner = ''; r.status = 'upcoming'; });
+  reconcileMapResults();
   invalidateStatsCache();
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'reset-series', '');
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true });

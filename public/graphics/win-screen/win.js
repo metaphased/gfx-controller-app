@@ -251,7 +251,7 @@ function renderWinMaps(match, teamKey) {
   const el = document.getElementById('ws-maps');
   if (!el) return;
   const results = (match && match.mapResults) || [];
-  const scored = results.filter(r => r && (r.winner || r.t1Rounds || r.t2Rounds));
+  const scored = results.filter(r => r && r.map && (r.winner || r.t1Rounds || r.t2Rounds));
   if (!scored.length) { el.style.display = 'none'; el.innerHTML = ''; return; }
   el.style.display = '';
   el.innerHTML = scored.map(function(r) {

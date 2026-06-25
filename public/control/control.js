@@ -237,7 +237,6 @@ socket.on('state', async (state) => {
   applyTournamentCreateLock();
   tmRenderMapPool(state);
   mvRenderVeto(state);
-  mvRenderScores(state);
   mvRenderGfx(state);
   applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
@@ -4090,43 +4089,39 @@ function mvRenderVeto(state){
   }).join('');
 }
 
-// Map Scores (GAME → Map Veto) — per-played-map round scores. Rows derive from the
-// veto's picked maps + decider (server keeps state.match.mapResults aligned).
-function mvSetMapResult(map, patch){ api('/api/match/map-result', Object.assign({ map: map }, patch)); }
-function mvRenderScores(state){
-  const el=g('mv-scores'); if(!el) return;
+// CS2 map scores — one row per best-of game (state.match.mapResults). Each row:
+// map dropdown (from tournament pool, pre-filled from the veto), round-score inputs,
+// winner pills, status. Edited by index. Rendered inside the Game Setup Series Tracker.
+function mvSetMapResult(index, patch){ api('/api/match/map-result', Object.assign({ index: index }, patch)); }
+function _mapScoreRowsHtml(state){
   const m=(state&&state.match)||{}, results=m.mapResults||[];
   const t1n=((m.team1||{}).tag)||((m.team1||{}).name)||'Team 1';
   const t2n=((m.team2||{}).tag)||((m.team2||{}).name)||'Team 2';
-  const sig=JSON.stringify({r:results,a:t1n,b:t2n});
-  if(sig===window._mvScoresSig) return; window._mvScoresSig=sig;
-  if(!results.length){ el.innerHTML='<p class="hint">No maps picked yet — fill the <strong>Veto Sequence</strong> above (picks + decider) and scored maps appear here.</p>'; return; }
-  const t1s=results.filter(function(r){return r.winner==='team1';}).length;
-  const t2s=results.filter(function(r){return r.winner==='team2';}).length;
-  el.innerHTML =
-    '<div class="mv-score-series">Series: <strong>'+esc(t1n)+' '+t1s+' — '+t2s+' '+esc(t2n)+'</strong></div>'+
-    results.map(function(r,i){
-      const me=esc(r.map), num=i+1;
-      const st=r.status||'upcoming';
-      const statusPills=['upcoming','live','final'].map(function(s){
-        return '<button type="button" class="mv-sc-status'+(st===s?' is-active '+s:'')+'" onclick="mvSetMapResult(\''+jsq(r.map)+'\',{status:\''+s+'\'})">'+s.toUpperCase()+'</button>';
-      }).join('');
-      const winPills=[['team1',t1n],['team2',t2n],['','—']].map(function(p){
-        const on=(r.winner||'')===p[0];
-        return '<button type="button" class="mv-sc-win'+(on?' is-active':'')+'" onclick="mvSetMapResult(\''+jsq(r.map)+'\',{winner:\''+p[0]+'\'})">'+esc(p[1])+'</button>';
-      }).join('');
-      return '<div class="mv-score-row">'+
-        '<span class="mv-row-num">'+num+'</span>'+
-        '<span class="mv-sc-map">'+me+'</span>'+
-        '<input type="number" class="mv-sc-rounds" min="0" value="'+(r.t1Rounds||0)+'" '+
-          'onchange="mvSetMapResult(\''+jsq(r.map)+'\',{t1Rounds:this.value})" title="'+esc(t1n)+' rounds">'+
-        '<span class="mv-sc-dash">–</span>'+
-        '<input type="number" class="mv-sc-rounds" min="0" value="'+(r.t2Rounds||0)+'" '+
-          'onchange="mvSetMapResult(\''+jsq(r.map)+'\',{t2Rounds:this.value})" title="'+esc(t2n)+' rounds">'+
-        '<span class="mv-sc-winlabel">Winner</span><span class="mv-sc-wingrp">'+winPills+'</span>'+
-        '<span class="mv-sc-statusgrp">'+statusPills+'</span>'+
-        '</div>';
+  const pool=((state&&state.tournament&&state.tournament.mapPool)||[]).map(function(p){return p.name;}).filter(Boolean);
+  if(!results.length) return '<p class="hint">No maps yet — set the match <strong>Format</strong> above (Bo1/Bo3/Bo5) to add map rows.</p>';
+  return results.map(function(r,i){
+    const st=r.status||'upcoming';
+    const mapOpts='<option value="">— map —</option>'+pool.map(function(n){ return '<option'+(r.map===n?' selected':'')+'>'+esc(n)+'</option>'; }).join('')+
+      ((r.map && pool.indexOf(r.map)===-1)?'<option selected>'+esc(r.map)+'</option>':'');
+    const statusPills=['upcoming','live','final'].map(function(s){
+      return '<button type="button" class="mv-sc-status'+(st===s?' is-active '+s:'')+'" onclick="mvSetMapResult('+i+',{status:\''+s+'\'})">'+s.toUpperCase()+'</button>';
     }).join('');
+    const winPills=[['team1',t1n],['team2',t2n],['','—']].map(function(p){
+      const on=(r.winner||'')===p[0];
+      return '<button type="button" class="mv-sc-win'+(on?' is-active':'')+'" onclick="mvSetMapResult('+i+',{winner:\''+p[0]+'\'})">'+esc(p[1])+'</button>';
+    }).join('');
+    return '<div class="mv-score-row">'+
+      '<span class="mv-row-num">'+(i+1)+'</span>'+
+      '<select class="mv-sc-mapsel" onchange="mvSetMapResult('+i+',{map:this.value})">'+mapOpts+'</select>'+
+      '<input type="number" class="mv-sc-rounds" min="0" value="'+(r.t1Rounds||0)+'" '+
+        'onchange="mvSetMapResult('+i+',{t1Rounds:this.value})" title="'+esc(t1n)+' rounds">'+
+      '<span class="mv-sc-dash">–</span>'+
+      '<input type="number" class="mv-sc-rounds" min="0" value="'+(r.t2Rounds||0)+'" '+
+        'onchange="mvSetMapResult('+i+',{t2Rounds:this.value})" title="'+esc(t2n)+' rounds">'+
+      '<span class="mv-sc-winlabel">Winner</span><span class="mv-sc-wingrp">'+winPills+'</span>'+
+      '<span class="mv-sc-statusgrp">'+statusPills+'</span>'+
+      '</div>';
+  }).join('');
 }
 
 // Overlay look (GRAPHICS → Map Veto)
@@ -6982,8 +6977,35 @@ function champNameFromUrl(v) {
   return v.split('/').pop().replace(/\.[^.]+$/, '').replace(/_\d+$/, '');
 }
 
+// CS2 / map-veto Series Tracker — per-map round scores + winners (no LoL draft/side
+// fields). Series (maps-won) score derives from winners on the server.
+function renderSeriesTrackerCS2(s, container) {
+  const m = s.match || {};
+  const format = m.format || 'Bo3';
+  const t1n = escHtml(m.team1.tag || m.team1.name || 'T1');
+  const t2n = escHtml(m.team2.tag || m.team2.name || 'T2');
+  const t1wins = m.team1.score || 0, t2wins = m.team2.score || 0;
+  const formatNum = parseInt(format.replace(/Bo/i, '')) || 3;
+  const seriesOver = t1wins >= Math.ceil(formatNum / 2) || t2wins >= Math.ceil(formatNum / 2);
+  const anyScored = (m.mapResults || []).some(function(r){ return r.winner || r.t1Rounds || r.t2Rounds; });
+
+  // Header buttons: enable Format, show Reset, hide LoL Edit-mode toggle.
+  const fmtEl = g('gs-format'); if (fmtEl) fmtEl.disabled = false;
+  const editBtn = g('gs-edit-btn'); if (editBtn) editBtn.style.display = 'none';
+  const resetBtn = g('gs-reset-series-btn'); if (resetBtn) resetBtn.style.display = anyScored ? '' : 'none';
+
+  let html = '<div class="series-header"><span class="series-score-disp">' +
+    t1n + ' <strong>' + t1wins + '</strong> — <strong>' + t2wins + '</strong> ' + t2n +
+    '</span><span class="series-game-disp">' + format + (seriesOver ? ' · Series Complete' : '') + '</span></div>';
+  html += '<p class="hint" style="margin:2px 0 12px">Pick each map and log its <strong>round score</strong>; set the <strong>winner</strong> to count the map toward the series. The break &amp; win screens read these.</p>';
+  html += _mapScoreRowsHtml(s);
+  container.innerHTML = html;
+}
+
 function renderSeriesTracker(s) {
   const container = g('gs-series-tracker'); if (!container) return;
+  // Map-veto games (CS2 etc.) track per-map ROUND scores, not a LoL draft/side flow.
+  if (!isChampDraft()) { renderSeriesTrackerCS2(s, container); return; }
   const m = s.match;
   const format = m.format || 'Bo3';
   const formatNum = parseInt(format.replace('Bo','')) || 3;
@@ -6995,6 +7017,9 @@ function renderSeriesTracker(s) {
   const currentGame = m.currentGameNum || 1;
   const fearless = !!m.fearlessDraft;
   const draft = s.draft || {};
+  // Restore the Edit button (the CS2 tracker hides it) and let edit mode govern format.
+  const _eb = g('gs-edit-btn'); if (_eb) _eb.style.display = '';
+  const _fmtEl = g('gs-format'); if (_fmtEl) _fmtEl.disabled = !_gsEditMode;
 
   // Collect used champion names for fearless (from all completed games)
   const usedChampNames = new Set();
