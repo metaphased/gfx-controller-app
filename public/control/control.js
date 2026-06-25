@@ -3978,7 +3978,7 @@ function _mvDefaultPool(){
   const game = currentGameId();
   const saved = window._state && window._state.settings && window._state.settings.mapPoolDefaults && window._state.settings.mapPoolDefaults[game];
   if (saved && saved.length) return saved.map(function(m){ return { name:m.name||'', image:m.image||'' }; });
-  const a=gameAdapter(); return ((a&&a.defaultMapPool)||[]).map(function(n){ return { name:n, image:'' }; });
+  const a=gameAdapter(); return ((a&&a.defaultMapPool)||[]).map(function(m){ return (typeof m==='string') ? { name:m, image:'' } : { name:m.name||'', image:m.image||'', video:m.video||'' }; });
 }
 
 // Map pool (Tournament Setup) — persisted on the tournament.

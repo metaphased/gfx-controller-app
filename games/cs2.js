@@ -19,6 +19,15 @@ module.exports = {
   intel:  { provider: 'none' },    // FACEIT/HLTV is a later, optional data-only hook
   // Fallback active-duty map pool — used to seed a tournament's pool when no saved default
   // exists (settings.mapPoolDefaults.cs2 overrides this). The pool rotates over time, so
-  // it's editable per tournament + the default is settable ("Set as default").
-  defaultMapPool: ['Mirage', 'Inferno', 'Nuke', 'Ancient', 'Anubis', 'Dust II', 'Overpass'],
+  // it's editable per tournament + the default is settable ("Set as default"). Images come
+  // from the community ghostcap-gaming/cs2-map-images repo (raw URLs; swap freely).
+  defaultMapPool: [
+    { name: 'Mirage',   image: 'https://raw.githubusercontent.com/ghostcap-gaming/cs2-map-images/main/cs2/de_mirage.png' },
+    { name: 'Inferno',  image: 'https://raw.githubusercontent.com/ghostcap-gaming/cs2-map-images/main/cs2/de_inferno.png' },
+    { name: 'Nuke',     image: 'https://raw.githubusercontent.com/ghostcap-gaming/cs2-map-images/main/cs2/de_nuke.png' },
+    { name: 'Ancient',  image: 'https://raw.githubusercontent.com/ghostcap-gaming/cs2-map-images/main/cs2/de_ancient.png' },
+    { name: 'Anubis',   image: 'https://raw.githubusercontent.com/ghostcap-gaming/cs2-map-images/main/cs2/de_anubis.png' },
+    { name: 'Dust II',  image: 'https://raw.githubusercontent.com/ghostcap-gaming/cs2-map-images/main/cs2/de_dust2.png' },
+    { name: 'Overpass', image: 'https://raw.githubusercontent.com/ghostcap-gaming/cs2-map-images/main/cs2/de_overpass.png' },
+  ],
 };

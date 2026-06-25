@@ -2364,7 +2364,7 @@ app.post('/api/tournament/create', requireAdmin, (req, res) => {
     const saved = state.settings && state.settings.mapPoolDefaults && state.settings.mapPoolDefaults[state.match.game];
     state.tournament.mapPool = (saved && saved.length)
       ? saved.map(m => ({ name: m.name || '', image: m.image || '' }))
-      : adapter.defaultMapPool.map(name => ({ name, image: '' }));
+      : adapter.defaultMapPool.map(m => (typeof m === 'string' ? { name: m, image: '' } : { name: m.name || '', image: m.image || '', video: m.video || '' }));
   }
   reconcileMapVetoSteps();
   broadcast(); res.json({ ok: true });
