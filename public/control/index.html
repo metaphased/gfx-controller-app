@@ -1595,6 +1595,7 @@
           <div class="card">
             <div class="card-title">Accordion View <span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text-dim)">· prototype</span></div>
             <p class="hint" style="margin-bottom:10px">Full-screen horizontal focus view: the focused map expands and plays its clip (or shows its image) in full colour; the rest compress and desaturate (bans go greyscale, picks stay low-sat). Add a per-map <strong>Video URL</strong> in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a> (falls back to the image).</p>
+            <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="mv-map-flyby" onchange="api('/api/mapVeto',{mapFlyby:this.checked})"> <span style="font-size:13px">Animate map images (flyby) when focused — crossfade the map's image set every 5s</span></label>
             <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="mv-accordion" onchange="mvToggleAccordion(this.checked)"> <span style="font-size:13px">Enable accordion view</span></label>
             <p class="hint" style="margin-bottom:8px">Reveal-draft: maps to the right of the focused one stay hidden until you reveal them with <strong>Next</strong> — once revealed they stay. <strong>Full draft</strong> shows the whole board at once.</p>
             <div class="field-row"><label>Reveal / focus</label>

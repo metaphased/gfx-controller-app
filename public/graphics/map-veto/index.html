@@ -150,6 +150,12 @@
   /* Ken-Burns push only on the focused IMAGE (div) media — the fallback when there's no
      clip; videos (their own motion) are left alone. */
   .mv-acc-panel.focused div.media { animation: mv-kb 15s ease-in-out infinite alternate; }
+  /* Flyby slideshow: two crossfading screenshot layers (sits above .media, below the
+     scrim) shown only on the focused panel when the map-flyby option is on. */
+  .mv-flyby { position:absolute; inset:0; overflow:hidden; }
+  .mv-flyby-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity 1.1s ease; }
+  .mv-flyby-img.on { opacity:1; }
+  .mv-flyby-img.kb { animation: mv-kb 7s ease-in-out infinite alternate; }
   .mv-acc-scrim { position:absolute; inset:0; background:linear-gradient(180deg, rgba(6,10,15,.04) 40%, rgba(6,10,15,.86) 100%); }
   .mv-acc-foot { position:absolute; left:0; right:0; bottom:0; padding:16px 14px 22px; text-align:center; z-index:2; }
   .mv-acc-team { display:flex; align-items:center; justify-content:center; gap:9px; margin-bottom:7px; }
@@ -246,6 +252,9 @@
     return k ? ('de_'+k) : '';
   }
   function mapThumbUrl(name){ var s=mapSlug(name); return s ? (MAP_ART_BASE+'thumbs/'+s+'_png.png') : ''; }
+  // Candidate screenshot variants for a map (base + _1.._5). Missing ones 404 and are
+  // dropped at load time — used by the focused-panel "flyby" crossfade slideshow.
+  function mapThumbVariants(name){ var s=mapSlug(name); if(!s) return []; var b=MAP_ART_BASE+'thumbs/'+s; var out=[b+'_png.png']; for(var i=1;i<=5;i++) out.push(b+'_'+i+'_png.png'); return out; }
   function mapIconUrl(name){ var s=mapSlug(name); return s ? (MAP_ART_BASE+s+'.png') : ''; }
   function resolveMapImage(e, name){ return (e&&e.image) ? e.image : mapThumbUrl(name); }
   function poolImage(pool, name){ return resolveMapImage(poolEntry(pool, name), name); }
@@ -309,6 +318,54 @@
       var v=panels[i].querySelector('video');
       if (v){ if(isFocused){ var pr=v.play(); if(pr&&pr.catch)pr.catch(function(){}); } else { v.pause(); } }
     }
+    // Flyby slideshow on the focused panel: only when the option is on, not in final
+    // view, the focused map has art and no video (a clip plays instead).
+    var fp = panels[focus], fstep = steps[focus] || {}, fEntry = poolEntry(pool, fstep.map);
+    var wantFlyby = !!mv.mapFlyby && !fin && fp && fp.classList.contains('focused') &&
+                    !(fEntry && fEntry.video) && mapSlug(fstep.map);
+    if (wantFlyby) { if (fp !== _flyby.panel) startFlyby(fp, fstep.map); }
+    else stopFlyby();
+  }
+
+  // ── Flyby slideshow ──────────────────────────────────────────────────────────
+  var FLYBY_MS = 5000;
+  var _flyby = { timer: null, panel: null };
+  function stopFlyby(){
+    if (_flyby.timer){ clearTimeout(_flyby.timer); _flyby.timer = null; }
+    if (_flyby.panel){ var f = _flyby.panel.querySelector('.mv-flyby'); if (f) f.remove(); _flyby.panel = null; }
+  }
+  function startFlyby(panel, name){
+    stopFlyby();
+    var cand = mapThumbVariants(name); if (cand.length <= 1) return;
+    _flyby.panel = panel;
+    // Validate which variants actually exist (404s dropped), preserving order.
+    var res = new Array(cand.length), done = 0;
+    cand.forEach(function(u, k){ var im = new Image();
+      im.onload  = function(){ res[k] = u; fin(); };
+      im.onerror = function(){ res[k] = null; fin(); };
+      im.src = u;
+    });
+    function fin(){
+      if (++done < cand.length) return;
+      if (_flyby.panel !== panel) return;            // focus moved on while loading
+      var urls = res.filter(function(x){ return x; });
+      if (urls.length <= 1) return;                  // nothing to animate
+      var fly = document.createElement('div'); fly.className = 'mv-flyby';
+      var a = document.createElement('img'), b = document.createElement('img');
+      a.className = 'mv-flyby-img'; b.className = 'mv-flyby-img';
+      fly.appendChild(a); fly.appendChild(b);
+      panel.insertBefore(fly, panel.querySelector('.mv-acc-scrim')); // above .media, below scrim
+      var idx = 0, curA = true;
+      a.src = urls[0]; a.classList.add('on', 'kb');
+      _flyby.timer = setTimeout(swap, FLYBY_MS);
+      function swap(){
+        idx = (idx + 1) % urls.length;
+        var show = curA ? b : a, hide = curA ? a : b;
+        show.onload = function(){ show.classList.remove('kb'); void show.offsetWidth; show.classList.add('on', 'kb'); hide.classList.remove('on', 'kb'); curA = !curA; };
+        show.src = urls[idx];
+        _flyby.timer = setTimeout(swap, FLYBY_MS);
+      }
+    }
   }
 
   function render(state){
@@ -320,7 +377,7 @@
     root.classList.toggle('mode-accordion', !!mv.accordion);
     root.classList.toggle('hide-team-names', mv.showTeamNames === false);
     root.classList.toggle('show-map-name-img', !!mv.mapNameImages);
-    if (mv.accordion) renderAccordion(state);
+    if (mv.accordion) renderAccordion(state); else stopFlyby();
     document.getElementById('mv-title').textContent = mv.title || 'MAP VETO';
     document.getElementById('mv-bo').textContent = BO[mv.bestOf] || ('BEST OF ' + (mv.bestOf||3));
     document.getElementById('mv-t1-name').textContent = t1.name || 'Team 1';
@@ -368,7 +425,7 @@
   function hashState(state){
     var mv = state.mapVeto||{}, m = state.match||{};
     return JSON.stringify({ s:mv.steps, p:(state.tournament&&state.tournament.mapPool), t:mv.title, bo:mv.bestOf, sc:mv.scale,
-      ac:mv.accordion, fi:mv.focusIndex, rc:mv.revealedCount, af:mv.accordionFinal, stn:mv.showTeamNames, mni:mv.mapNameImages,
+      ac:mv.accordion, fi:mv.focusIndex, rc:mv.revealedCount, af:mv.accordionFinal, stn:mv.showTeamNames, mni:mv.mapNameImages, fb:mv.mapFlyby,
       lg:mv.showLogo, lu:mv.logoUrl, ls:mv.logoScale, lp:mv.logoPosition,
       t1:(m.team1||{}).name, t2:(m.team2||{}).name, l1:(m.team1||{}).logo, l2:(m.team2||{}).logo });
   }
@@ -381,10 +438,10 @@
       if (!_visible || h !== _hash){ render(state); _hash = h; }
       if (!_visible){ _visible = true; requestAnimationFrame(function(){ root.classList.add('show'); }); }
     } else if (_visible){
-      _visible = false; root.classList.remove('show');
+      _visible = false; root.classList.remove('show'); stopFlyby();
     }
   });
-  socket.on('connect', function(){ _visible = false; root.classList.remove('show'); });
+  socket.on('connect', function(){ _visible = false; root.classList.remove('show'); stopFlyby(); });
 })();
 </script>
 </body>
