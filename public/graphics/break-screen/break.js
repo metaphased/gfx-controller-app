@@ -191,6 +191,24 @@ function renderMapScores(state) {
   el.innerHTML = chips;
 }
 
+// CS2 / map-veto series info derived from played maps (NOT currentGameNum). A map
+// counts as played once marked final, so the next game = finals + 1 (2 finals in a
+// Bo3 → game 3). Returns null for non-map-veto games or when no maps are set.
+function _cs2BreakInfo(state) {
+  const adapter = state.adapter || {};
+  if (adapter.pregameKind !== 'map-veto') return null;
+  const results = ((state.match && state.match.mapResults) || []).filter(function(r){ return r && r.map; });
+  if (!results.length) return null;
+  const total = results.length;
+  let finalCount = 0, nextMap = '';
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].status === 'final') finalCount++;
+    else if (!nextMap) nextMap = results[i].map;
+  }
+  return { total: total, finalCount: finalCount, nextMap: nextMap,
+           gameNum: Math.min(finalCount + 1, total), seriesOver: finalCount >= total };
+}
+
 // ── Next Up — auto-derived from today's schedule, manual bs.nextMatch overrides ──
 function renderNextUp(bs, todayGames) {
   const wrapEl = $('break-next');
@@ -322,13 +340,27 @@ function renderPipBottom(state) {
 
   var pipFmtEl  = $('break-pip-format');
   var pipGameEl = $('break-pip-game');
-  if (pipFmtEl) {
-    pipFmtEl.style.display = isBo1 ? '' : 'none';
-    pipFmtEl.textContent   = fmt;
-  }
-  if (pipGameEl) {
-    pipGameEl.style.display = isBo1 ? 'none' : '';
-    pipGameEl.textContent   = seriesOver ? 'SERIES COMPLETE' : 'GAME ' + gameNum + ' OF ' + fmtNum;
+  // CS2: PIP has no map-chip row, so surface the NEXT MAP by the score instead of a
+  // game counter ("NEXT" label + map name; or SERIES COMPLETE).
+  var cs2 = _cs2BreakInfo(state);
+  if (cs2) {
+    if (pipFmtEl) {
+      pipFmtEl.style.display = (!cs2.seriesOver && cs2.nextMap) ? '' : 'none';
+      pipFmtEl.textContent   = 'NEXT';
+    }
+    if (pipGameEl) {
+      pipGameEl.style.display = '';
+      pipGameEl.textContent   = cs2.seriesOver ? 'SERIES COMPLETE' : (cs2.nextMap || '');
+    }
+  } else {
+    if (pipFmtEl) {
+      pipFmtEl.style.display = isBo1 ? '' : 'none';
+      pipFmtEl.textContent   = fmt;
+    }
+    if (pipGameEl) {
+      pipGameEl.style.display = isBo1 ? 'none' : '';
+      pipGameEl.textContent   = seriesOver ? 'SERIES COMPLETE' : 'GAME ' + gameNum + ' OF ' + fmtNum;
+    }
   }
 
   // Upcoming in the bottom bar — manual override takes priority, same as renderNextUp
@@ -452,15 +484,18 @@ function renderAll(state) {
     t2ScoreEl.style.color   = (!isBo1 && seriesOver && t2wins > t1wins) ? 'var(--gfx-c1)' : '';
   }
 
-  // Centre: BO1 shows format label; BO3+ shows game progress
+  // Centre: BO1 shows format label; BO3+ shows game progress. For CS2 the map-score
+  // chips below already convey which map is next, so drop the centre game counter —
+  // the side scores ("1 — 1") read fine on their own.
+  const cs2Norm  = _cs2BreakInfo(state);
   const formatEl = $('break-series-format');
   const gameEl   = $('break-series-game');
   if (formatEl) {
-    formatEl.style.display = isBo1 ? '' : 'none';
+    formatEl.style.display = (!cs2Norm && isBo1) ? '' : 'none';
     formatEl.textContent   = fmt;
   }
   if (gameEl) {
-    gameEl.style.display = isBo1 ? 'none' : '';
+    gameEl.style.display = (!cs2Norm && !isBo1) ? '' : 'none';
     gameEl.textContent   = seriesOver ? 'SERIES COMPLETE' : 'GAME ' + gameNum + ' OF ' + fmtNum;
   }
 

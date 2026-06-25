@@ -84,6 +84,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 /* In PIP mode the bottom bar carries its own countdown, so hide the centred timer
    (runTimer() shows #break-timer unconditionally) — otherwise the timer appears twice. */
 #break-root.pip-mode #break-timer { display: none !important; }
+/* Map-score chips belong to the full-frame layout only; the PIP bar surfaces the next
+   map by the score instead. Hide robustly (JS timing can leave them shown on a fresh
+   load directly into PIP). */
+#break-root.pip-mode #break-maps { display: none !important; }
 
 /* ── Tournament logo + name ────────────────────────────────────────────── */
 .break-tourn-logo {
