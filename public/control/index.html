@@ -1589,6 +1589,8 @@
             </div>
             <p class="hint" style="margin-top:2px">Cycle scales live from the operator view or the live bar.</p>
             <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="mv-show-team-names" onchange="api('/api/mapVeto',{showTeamNames:this.checked})"> <span style="font-size:13px">Show team names (off = logos only)</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="mv-map-name-images" onchange="api('/api/mapVeto',{mapNameImages:this.checked})"> <span style="font-size:13px">Use official map icons instead of map names</span></label>
+            <p class="hint" style="margin-top:6px">Map art (screenshot background + the official icon) is auto-resolved from each map name's <code>de_*</code> slug. Set a per-map <strong>Image URL</strong> in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a> to override the screenshot.</p>
           </div>
           <div class="card">
             <div class="card-title">Accordion View <span style="font-size:10px;font-weight:700;letter-spacing:.08em;color:var(--text-dim)">· prototype</span></div>

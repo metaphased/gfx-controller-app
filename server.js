@@ -553,6 +553,7 @@ const makeDefault = () => ({
                  accordion: false, focusIndex: 0, revealedCount: 0, accordionFinal: false,
                  autoStepMs: 2500, autoRevealing: false,
                  showTeamNames: true, // false = logos only (where a team has a logo)
+                 mapNameImages: false, // true = show the official 512 map icon instead of map text
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },

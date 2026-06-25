@@ -4153,6 +4153,7 @@ function mvRenderGfx(state){
   const scale=mv.scale||'normal';
   document.querySelectorAll('#mv-scale-group [data-scale]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-scale')===scale); });
   const stn=g('mv-show-team-names'); if(stn) stn.checked = mv.showTeamNames !== false;
+  const mni=g('mv-map-name-images'); if(mni) mni.checked = !!mv.mapNameImages;
   // Accordion (prototype)
   const acc=g('mv-accordion'); if(acc) acc.checked=!!mv.accordion;
   const steps=_mvAccordionSteps(state);
