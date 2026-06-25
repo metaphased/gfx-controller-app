@@ -70,7 +70,9 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   letter-spacing: 0.04em;
   color: var(--gfx-c3, #ffffff);
   line-height: 0.95;
-  text-shadow: 0 0 5vw var(--win-col-a70);
+  /* No box behind the text now — a dark drop-shadow keeps it legible over the style art,
+     plus the accent glow for drama. */
+  text-shadow: 0 0.3vh 1.6vh rgba(0,0,0,0.62), 0 0 5vw var(--win-col-a70);
 }
 
 .ws-message { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
@@ -78,9 +80,15 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-weight: 700;
   letter-spacing: 0.25em;
   text-transform: var(--gfx-text-transform, uppercase);
-  color: rgba(255, 255, 255,0.6);
+  color: rgba(255, 255, 255,0.78);
   margin-top: 0.7vh;
+  text-shadow: 0 0.2vh 1vh rgba(0,0,0,0.6);
 }
+
+.ws-tag { text-shadow: 0 0.2vh 0.9vh rgba(0,0,0,0.55); }
+
+/* Hype, not data: win screens never show series / per-map scores now. */
+.ws-score-row, .ws-maps { display: none !important; }
 
 .ws-score-row {
   display: flex;
@@ -250,9 +258,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: 58vw;
   max-width: 900px;
   padding: 4vh 4vw;
-  background: rgba(var(--gfx-c4-rgb, 8, 16, 24), 0.75);
-  border: 1px solid var(--win-col-a30);
-  box-shadow: 0 0 8vw var(--win-col-a12), inset 0 0 4vw var(--win-col-a06);
+  /* box background removed — text floats over the burst rays (hype, not a panel) */
 }
 .style-burst .ws-logo {
   width: 16vh; height: 16vh;
@@ -312,9 +318,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: 58vw;
   max-width: 900px;
   padding: 4vh 4vw;
-  background: rgba(var(--gfx-c4-rgb, 8, 16, 24), 0.75);
-  border: 1px solid var(--win-col-a30);
-  box-shadow: 0 0 8vw var(--win-col-a12), inset 0 0 4vw var(--win-col-a06);
+  /* box background removed — text floats (hype, not a panel) */
 }
 .style-slam .ws-logo {
   width: 16vh; height: 16vh;
