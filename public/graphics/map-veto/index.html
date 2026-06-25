@@ -18,11 +18,33 @@
   #mv-root.show { opacity:1; transform:none; }
   #mv-stage { display:flex; flex-direction:column; align-items:center; gap:30px;
     transition: transform .4s var(--gfx-ease-move, cubic-bezier(.4,0,.2,1)); transform-origin:center center; }
-  /* Scale variants */
-  #mv-root.scale-large  #mv-stage { transform: scale(1.18); }
+  /* Scale variants — large/normal are the same centred layout at different sizes. */
+  #mv-root.scale-large  #mv-stage { transform: scale(1.2); }
   #mv-root.scale-normal #mv-stage { transform: scale(1); }
-  #mv-root.scale-l3 { align-items:flex-end; padding-bottom:48px; }
-  #mv-root.scale-l3 #mv-stage { transform: scale(.6); transform-origin:center bottom; }
+
+  /* Lower-third variant: a bottom-anchored compact band that leaves the upper frame
+     free for caster/host cameras. Short wide map chips (not the tall full-screen cards)
+     in a single row; same ban/pick/decider info, sized for a lower third. */
+  #mv-root.scale-l3 { align-items:flex-end; justify-content:center; padding:0 0 46px; }
+  #mv-root.scale-l3 #mv-stage { transform:none; gap:14px; width:auto; max-width:1820px; }
+  #mv-root.scale-l3 #mv-head  { gap:22px; }
+  #mv-root.scale-l3 .mv-team  { min-width:0; gap:10px; }
+  #mv-root.scale-l3 .mv-team img { width:44px; height:44px; }
+  #mv-root.scale-l3 .mv-team .nm { font-size:26px; }
+  #mv-root.scale-l3 #mv-title { font-size:21px; letter-spacing:.2em; }
+  #mv-root.scale-l3 #mv-vs    { font-size:15px; }
+  #mv-root.scale-l3 #mv-bo    { font-size:12px; }
+  #mv-root.scale-l3 #mv-strip { gap:12px; }
+  #mv-root.scale-l3 .mv-card  { width:176px; height:150px; justify-content:flex-end; }
+  #mv-root.scale-l3 .mv-card .scrim { background:linear-gradient(180deg, rgba(6,10,15,.15) 0%, rgba(6,10,15,.6) 45%, rgba(6,10,15,.95) 100%); }
+  #mv-root.scale-l3 .mv-order { width:26px; height:26px; font-size:14px; top:8px; left:8px; }
+  #mv-root.scale-l3 .mv-name  { font-size:23px; padding:0 12px 3px; }
+  #mv-root.scale-l3 .mv-foot  { padding:5px 12px 10px; gap:2px; }
+  #mv-root.scale-l3 .mv-action{ font-size:16px; }
+  #mv-root.scale-l3 .mv-sub   { font-size:12px; }
+  /* Event logo would float into the camera area at the top — pin it just above the
+     band in the lower-third variant. */
+  #mv-root.scale-l3 #mv-logo-wrap { top:auto; bottom:236px; }
 
   /* Logo */
   #mv-logo-wrap { position:absolute; top:60px; width:100%; display:flex; pointer-events:none; }
