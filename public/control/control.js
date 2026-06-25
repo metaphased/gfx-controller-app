@@ -3991,38 +3991,88 @@ function tmRenderMapPool(state){
   }).join('')) || '<p class="hint">No maps yet. Click + Add Map or Load default pool.</p>';
 }
 
-// Veto data entry (GAME → Map Veto) — one row per pool map (server-reconciled).
-function mvCommitVeto(){
-  const steps = [].slice.call(document.querySelectorAll('#mv-steps .mv-step-row')).map(function(r){
-    return { map:r.getAttribute('data-map')||'', team:(r.querySelector('.mv-st-team')||{}).value||'',
-             action:(r.querySelector('.mv-st-action')||{}).value||'ban', side:(r.querySelector('.mv-st-side')||{}).value||'' };
-  });
-  api('/api/mapVeto', { steps:steps, bestOf:parseInt((g('mv-bestof')||{}).value)||3 });
+// Veto data entry (GAME → Map Veto) — guided sequence following the official Bo1/Bo3/Bo5
+// veto order. Best-of comes from the loaded match; the admin sets Team A and fills each
+// ban/pick slot (no map can be used twice); the decider is the auto-remaining map.
+function _mvBestOf(){ const f=(window._state&&window._state.match&&window._state.match.format)||'Bo3'; const n=parseInt(String(f).replace(/\D/g,''),10); return (n===1||n===5)?n:3; }
+function _mvTeamA(){ return (_mvState().teamA)==='team2' ? 'team2' : 'team1'; }
+// Ordered veto slots (one per map). pick slots carry the side-picking team; decider is auto.
+function _vetoSlots(bo, A, poolSize){
+  const B = A==='team1'?'team2':'team1', opp=function(x){ return x===A?B:A; }, s=[];
+  if(bo===1){
+    let a=A; for(let i=0;i<Math.max(1,poolSize-1);i++){ s.push({type:'ban',team:a}); a=opp(a); }
+    const finalBanner=((poolSize-1)%2===1)?A:B; s.push({type:'decider', sideTeam:opp(finalBanner)}); return s;
+  }
+  if(bo===5){
+    s.push({type:'ban',team:A},{type:'ban',team:B}); let p=A;
+    for(let i=0;i<4;i++){ s.push({type:'pick',team:p,sideTeam:opp(p)}); p=opp(p); }
+    let a=A; for(let i=0;i<Math.max(0,poolSize-7);i++){ s.push({type:'ban',team:a}); a=opp(a); }
+    s.push({type:'decider', knife:true}); return s;
+  }
+  // Bo3
+  s.push({type:'ban',team:A},{type:'ban',team:B},{type:'pick',team:A,sideTeam:B},{type:'pick',team:B,sideTeam:A});
+  let a=A; for(let i=0;i<Math.max(0,poolSize-5);i++){ s.push({type:'ban',team:a}); a=opp(a); }
+  s.push({type:'decider', knife:true}); return s;
 }
-function mvMoveStep(i,d){ const s=(_mvState().steps||[]).slice(); const j=i+d; if(j<0||j>=s.length)return; const t=s[i]; s[i]=s[j]; s[j]=t; api('/api/mapVeto',{steps:s}); }
+function mvSetTeamA(team){ api('/api/mapVeto', { teamA: team, steps: [] }); }   // changing A clears the veto
+function mvCommitVeto(){
+  const pool=((window._state&&window._state.tournament&&window._state.tournament.mapPool)||[]).map(function(p){return p.name;}).filter(Boolean);
+  const A=_mvTeamA(), bo=_mvBestOf(), slots=_vetoSlots(bo,A,pool.length);
+  const steps=slots.map(function(sl,i){
+    const mapSel=document.querySelector('.mv-vm-map[data-i="'+i+'"]');
+    const sideSel=document.querySelector('.mv-vm-side[data-i="'+i+'"]')||document.querySelector('.mv-vd-side[data-i="'+i+'"]');
+    if(sl.type==='decider') return { map:'', action:'decider', team:(sl.sideTeam||''), side: sl.knife?'knife':((sideSel||{}).value||'') };
+    return { map:(mapSel||{}).value||'', action:sl.type, team:sl.team, side:(sl.type==='pick'?((sideSel||{}).value||''):'') };
+  });
+  const chosen={}; steps.forEach(function(st){ if(st.action!=='decider'&&st.map) chosen[st.map]=1; });
+  const rem=pool.filter(function(n){ return !chosen[n]; });
+  steps.forEach(function(st){ if(st.action==='decider') st.map = rem.length===1?rem[0]:''; });
+  api('/api/mapVeto', { steps:steps, bestOf:bo, teamA:A });
+}
 function mvRenderVeto(state){
   const stepsEl=g('mv-steps'); if(!stepsEl) return;
   const mv=(state&&state.mapVeto)||{}, m=(state&&state.match)||{};
-  const t1=(m.team1||{}).name||'Team 1', t2=(m.team2||{}).name||'Team 2';
-  const bo=g('mv-bestof'); if(bo) bo.value=String(mv.bestOf||3);
-  const sig=JSON.stringify({s:mv.steps,bo:mv.bestOf,t1:t1,t2:t2});
+  const pool=((state&&state.tournament&&state.tournament.mapPool)||[]).map(function(p){return p.name;}).filter(Boolean);
+  const A=_mvTeamA(), bo=_mvBestOf();
+  const tn=function(k){ return ((m[k]||{}).tag)||((m[k]||{}).name)||(k==='team1'?'Team 1':'Team 2'); };
+  // Header: match info + Team A radios + Bo label (always refresh, outside the fingerprint).
+  const mi=g('mv-match-info'); if(mi) mi.innerHTML=(m.tournament?esc(m.tournament)+' — ':'')+'<strong style="color:var(--text)">'+esc((m.team1||{}).name||'Team 1')+'</strong> vs <strong style="color:var(--text)">'+esc((m.team2||{}).name||'Team 2')+'</strong> · <strong style="color:var(--primary)">'+esc(m.format||('Bo'+bo))+'</strong>';
+  const t1r=document.querySelector('input[name="mv-teamA"][value="team1"]'); if(t1r) t1r.checked=(A==='team1');
+  const t2r=document.querySelector('input[name="mv-teamA"][value="team2"]'); if(t2r) t2r.checked=(A==='team2');
+  const e1=g('mv-tA-t1'); if(e1) e1.textContent=(m.team1||{}).name||'Team 1';
+  const e2=g('mv-tA-t2'); if(e2) e2.textContent=(m.team2||{}).name||'Team 2';
+  const bol=g('mv-bo-label'); if(bol) bol.textContent='Best of '+bo;
+
+  const slots=_vetoSlots(bo,A,pool.length);
+  const steps=(mv.bestOf===bo) ? (mv.steps||[]) : [];   // ignore prefill from a different Bo
+  const sig=JSON.stringify({slots:slots,steps:steps,pool:pool,A:A,bo:bo});
   if(sig===window._mvVetoSig) return; window._mvVetoSig=sig;
-  stepsEl.innerHTML=((mv.steps||[]).map(function(s,i){
-    const isDecider = s.action==='decider';
-    const sideOpts = '<option value="">— '+(isDecider?'decider start':'opp. start')+' —</option>'+
-      ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(s.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+
-      '<option value="knife"'+(s.side==='knife'?' selected':'')+'>Knife round</option>';
-    return '<div class="mv-step-row" data-map="'+esc(s.map)+'">'+
-      '<span class="mv-row-num">'+(i+1)+'</span>'+
-      '<span class="mv-st-map-label">'+esc(s.map||'')+'</span>'+
-      '<select class="mv-st-team" onchange="mvCommitVeto()"><option value="">— team —</option>'+
-        '<option value="team1"'+(s.team==='team1'?' selected':'')+'>'+esc(t1)+'</option>'+
-        '<option value="team2"'+(s.team==='team2'?' selected':'')+'>'+esc(t2)+'</option></select>'+
-      '<select class="mv-st-action" onchange="mvCommitVeto()">'+['ban','pick','decider'].map(function(a){return '<option'+(s.action===a?' selected':'')+'>'+a+'</option>';}).join('')+'</select>'+
-      '<select class="mv-st-side" onchange="mvCommitVeto()">'+sideOpts+'</select>'+
-      '<button class="btn btn-xs mv-rowbtn" title="Move up" onclick="mvMoveStep('+i+',-1)">↑</button>'+
-      '<button class="btn btn-xs mv-rowbtn" title="Move down" onclick="mvMoveStep('+i+',1)">↓</button></div>';
-  }).join('')) || '<p class="hint">No maps in the pool yet — add maps in <a onclick="switchToTab(\'tournament\')" href="#" style="color:var(--primary)">Tournament Setup</a>.</p>';
+  if(!pool.length){ stepsEl.innerHTML='<p class="hint">No maps in the pool — add maps in <a onclick="switchToTab(\'tournament\')" href="#" style="color:var(--primary)">Tournament Setup</a>.</p>'; return; }
+  const chosen={}; slots.forEach(function(sl,i){ if(sl.type!=='decider'){ const st=steps[i]; if(st&&st.map) chosen[st.map]=1; } });
+  const remaining=pool.filter(function(n){ return !chosen[n]; });
+  const deciderMap = remaining.length===1 ? remaining[0] : (remaining.length ? ('('+remaining.length+' maps remaining)') : '—');
+
+  stepsEl.innerHTML = slots.map(function(sl,i){
+    const st=steps[i]||{}, num=i+1;
+    if(sl.type==='decider'){
+      const side = sl.knife ? '<span class="mv-decider-side">Knife round</span>'
+        : '<select class="mv-vd-side" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">— '+esc(tn(sl.sideTeam))+' side —</option>'+
+          ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+esc(tn(sl.sideTeam))+' '+sd+'</option>';}).join('')+'</select>';
+      return '<div class="mv-veto-row decider"><span class="mv-row-num">'+num+'</span>'+
+        '<span class="mv-veto-act decider">DECIDER</span>'+
+        '<span class="mv-veto-map auto">'+esc(deciderMap)+'</span>'+side+'</div>';
+    }
+    const usedOther={}; slots.forEach(function(o,j){ if(j!==i && o.type!=='decider'){ const os=steps[j]; if(os&&os.map) usedOther[os.map]=1; } });
+    const opts='<option value="">— select map —</option>'+pool.map(function(n){ return usedOther[n] ? '' : '<option'+(st.map===n?' selected':'')+'>'+esc(n)+'</option>'; }).join('');
+    let row='<div class="mv-veto-row '+sl.type+'"><span class="mv-row-num">'+num+'</span>'+
+      '<span class="mv-veto-team">'+esc(tn(sl.team))+'</span>'+
+      '<span class="mv-veto-act '+sl.type+'">'+(sl.type==='ban'?'BAN':'PICK')+'</span>'+
+      '<select class="mv-vm-map" data-i="'+i+'" onchange="mvCommitVeto()">'+opts+'</select>';
+    if(sl.type==='pick') row+='<span class="mv-veto-side-label">'+esc(tn(sl.sideTeam))+' side</span>'+
+      '<select class="mv-vm-side" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">—</option>'+
+      ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+'</select>';
+    return row+'</div>';
+  }).join('');
 }
 
 // Overlay look (GRAPHICS → Map Veto)

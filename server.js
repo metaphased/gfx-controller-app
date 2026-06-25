@@ -538,7 +538,7 @@ const makeDefault = () => ({
   // map pool [{ name, image }] (seeded from the cs2 adapter on create; rotates over time).
   // steps are the ordered veto: { team:'team1'|'team2'|'', action:'ban'|'pick'|'decider',
   // map:'<name>', side:''|'CT'|'T' } (side = the OTHER team's side choice on a pick).
-  mapVeto:     { visible: false, title: 'MAP VETO', bestOf: 3, steps: [], scale: 'normal', // 'large' | 'normal' | 'l3'
+  mapVeto:     { visible: false, title: 'MAP VETO', bestOf: 3, teamA: 'team1', steps: [], scale: 'normal', // scale: 'large'|'normal'|'l3'
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
@@ -2261,17 +2261,13 @@ app.post('/api/tournament/setup-lock', requireAdmin, (req, res) => {
 });
 function setupIsLocked() { return !!(state.tournament && state.tournament.setupLocked); }
 
-// The map veto always covers every map in the pool — keep mapVeto.steps in sync with
-// tournament.mapPool: preserve existing assignments + order for maps still present, append
-// new maps (default ban), drop removed ones.
+// The veto sequence is built (in official Bo1/Bo3/Bo5 order) on the control side; here we
+// only drop any veto steps whose map is no longer in the pool, so a pool edit can't leave
+// stale maps in the veto. The control re-derives the remaining slots from the template.
 function reconcileMapVetoSteps() {
   if (!state.mapVeto) return;
   const names = ((state.tournament && state.tournament.mapPool) || []).map(m => m.name).filter(Boolean);
-  const prev = state.mapVeto.steps || [];
-  const ordered = [];
-  prev.forEach(s => { if (s && names.includes(s.map) && !ordered.find(x => x.map === s.map)) ordered.push(s); });
-  names.forEach(n => { if (!ordered.find(x => x.map === n)) ordered.push({ map: n, team: '', action: 'ban', side: '' }); });
-  state.mapVeto.steps = ordered;
+  state.mapVeto.steps = (state.mapVeto.steps || []).filter(s => s && names.includes(s.map));
 }
 
 // Create the tournament: commits the chosen game (which then locks) and marks it created.

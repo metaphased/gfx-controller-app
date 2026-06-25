@@ -1922,8 +1922,8 @@ input[type=search]::-webkit-search-decoration { display: none; }
   border-color: rgba(220,80,40,0.35);
 }
 
-/* ── Map veto: pool + veto rows ─────────────────────────────────────────────── */
-.mv-pool-row, .mv-step-row {
+/* ── Map veto: pool rows ────────────────────────────────────────────────────── */
+.mv-pool-row, .mv-veto-row {
   display: flex; align-items: center; gap: 8px;
   padding: 6px 8px; margin-bottom: 6px;
   background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius, 3px);
@@ -1931,10 +1931,19 @@ input[type=search]::-webkit-search-decoration { display: none; }
 .mv-row-num { flex: 0 0 22px; text-align: center; font-size: 12px; font-weight: 700; color: var(--text-dim); }
 .mv-pool-row .mv-pm-name { flex: 0 0 180px; }
 .mv-pool-row .mv-pm-img  { flex: 1 1 120px; }
-.mv-step-row .mv-st-map-label { flex: 1 1 auto; min-width: 110px; font-size: 15px; font-weight: 700; color: #fff; text-transform: none; }
-.mv-step-row .mv-st-team   { flex: 0 0 150px; }
-.mv-step-row .mv-st-action { flex: 0 0 110px; }
-.mv-step-row .mv-st-side   { flex: 0 0 150px; }
 .mv-rowbtn { flex: 0 0 auto; }
-.mv-pool-row input, .mv-step-row select { width: auto; }
+.mv-pool-row input { width: auto; }
+
+/* ── Map veto: guided sequence rows ─────────────────────────────────────────── */
+.mv-veto-row .mv-veto-team { flex: 0 0 110px; font-weight: 700; color: #fff; text-transform: none; font-size: 14px; }
+.mv-veto-row .mv-veto-act  { flex: 0 0 64px; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+.mv-veto-row .mv-veto-act.ban     { color: #ff5a5a; }
+.mv-veto-row .mv-veto-act.pick    { color: var(--primary); }
+.mv-veto-row .mv-veto-act.decider { color: #ffd24a; }
+.mv-veto-row .mv-vm-map  { flex: 1 1 auto; min-width: 130px; width: auto; }
+.mv-veto-row .mv-veto-map.auto { flex: 1 1 auto; min-width: 130px; font-size: 15px; font-weight: 700; color: #fff; text-transform: none; }
+.mv-veto-row .mv-veto-side-label { flex: 0 0 auto; font-size: 12px; color: var(--text-dim); }
+.mv-veto-row .mv-vm-side, .mv-veto-row .mv-vd-side { flex: 0 0 130px; width: auto; }
+.mv-veto-row .mv-decider-side { flex: 0 0 auto; font-size: 13px; font-weight: 700; color: #ffd24a; }
+.mv-veto-row.decider { border-color: rgba(255,210,74,.4); }
 

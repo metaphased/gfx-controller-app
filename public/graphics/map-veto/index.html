@@ -139,7 +139,8 @@
         var other = s.team==='team1' ? 'team2' : (s.team==='team2' ? 'team1' : '');
         if (other && s.side) sub2 = teamLabel(m, other) + ' ' + sideLabel(s.side); // other team's start side
       }
-      else if (action==='decider'){ actLabel='DECIDER'; sub1 = sideLabel(s.side) || 'KNIFE ROUND'; }
+      else if (action==='decider'){ actLabel='DECIDER';
+        sub1 = (s.side==='knife' || !s.side) ? 'KNIFE ROUND' : ((s.team?teamLabel(m,s.team)+' ':'') + sideLabel(s.side)); }
       // sub1 styling: for pick the action line already says PICK, so show picker as sub
       var footHtml='';
       if (action==='ban'){ footHtml = '<div class="mv-action">BAN</div>' + (sub1?'<div class="mv-sub dim">'+eH(sub1)+'</div>':''); }
