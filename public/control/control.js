@@ -4162,6 +4162,13 @@ function mvRenderGfx(state){
       : (rev===0 ? ('Ready — Reveal to start (0/'+tot+')')
       : (st ? ((fi+1)+'/'+tot+' · '+(st.map||'—')+(st.action&&st.action!=='pending'?' '+st.action.toUpperCase():'')+' · '+rev+' shown') : '—')); }
   const fdb=g('mv-fulldraft-btn'); if(fdb) fdb.classList.toggle('btn-primary', !!mv.accordionFinal);
+  const asEl=g('mv-auto-step'); if(asEl && document.activeElement!==asEl) asEl.value=((mv.autoStepMs||2500)/1000);
+  const ab=g('mv-auto-btn'); if(ab){ ab.textContent = mv.autoRevealing ? '■ Stop auto' : '▶ Auto reveal'; ab.classList.toggle('btn-primary', !!mv.autoRevealing); }
+}
+function mvAutoReveal(){
+  const mv=_mvState();
+  if(mv.autoRevealing) api('/api/mapVeto/auto-stop',{});
+  else api('/api/mapVeto/auto-reveal',{ stepMs: mv.autoStepMs||2500 });
 }
 // Accordion steps = the veto steps if present, else the raw pool (pending), matching the graphic.
 function _mvAccordionSteps(state){
@@ -4394,6 +4401,11 @@ function syncLiveBar(s) {
     const formatNum = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
     gameCtx.textContent = 'GAME ' + currentGameNumFor(m) + ' OF ' + formatNum + ' · ' + t1label + ' VS ' + t2label;
   }
+
+  // Map-veto accordion live-bar buttons
+  const _mv = s.mapVeto || {};
+  const lfull = g('lbar-mv-full'); if (lfull) lfull.classList.toggle('is-on', !!_mv.accordionFinal);
+  const lauto = g('lbar-mv-auto'); if (lauto) { lauto.classList.toggle('is-on', !!_mv.autoRevealing); lauto.textContent = _mv.autoRevealing ? 'STOP' : 'AUTO'; }
 
   // Win team quick-set buttons — show team tags, highlight active
   const wt = s.winScreen && s.winScreen.team;

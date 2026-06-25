@@ -1605,6 +1605,14 @@
               <button class="btn btn-sm" onclick="mvRestartReveal()">⟲ Restart</button>
               <button class="btn btn-sm" id="mv-fulldraft-btn" onclick="mvToggleFullDraft()">Full draft view</button>
             </div>
+            <div class="field-row" style="margin-top:10px"><label>Auto reveal</label>
+              <div class="btn-row" style="display:flex;gap:6px;align-items:center">
+                <button class="btn btn-sm" id="mv-auto-btn" onclick="mvAutoReveal()">▶ Auto reveal</button>
+                <input type="number" id="mv-auto-step" min="0.6" step="0.5" style="width:64px" onchange="api('/api/mapVeto',{autoStepMs:Math.max(600,Math.round(Number(this.value)*1000))})">
+                <span style="font-size:11px;color:var(--text-dim)">sec / map</span>
+              </div>
+            </div>
+            <p class="hint" style="margin-top:6px">Auto reveal steps through each map at the pace above, then settles on the full-draft view.</p>
           </div>
           <div class="card">
             <div class="card-title">Logo</div>
@@ -2730,6 +2738,11 @@
     </div>
     <div class="lbar-group cap-map-veto" id="lbar-group-mapVeto">
       <button class="lbar-toggle" id="lbar-toggle-mapVeto" onclick="toggleGraphic('mapVeto')"><span class="lbar-dot" id="lbar-dot-mapVeto"></span>MAP VETO</button>
+      <button class="lbar-timer-btn" onclick="mvFocusStep(-1)" title="Reveal: previous">◀</button>
+      <button class="lbar-timer-btn" onclick="mvFocusStep(1)" title="Reveal: next map">▶</button>
+      <button class="lbar-timer-btn" id="lbar-mv-full" onclick="mvToggleFullDraft()" title="Full draft view">FULL</button>
+      <button class="lbar-timer-btn" onclick="mvRestartReveal()" title="Restart reveal">⟲</button>
+      <button class="lbar-timer-btn" id="lbar-mv-auto" onclick="mvAutoReveal()" title="Auto reveal">AUTO</button>
     </div>
 
     <div class="lbar-divider"></div>

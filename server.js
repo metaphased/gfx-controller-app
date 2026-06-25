@@ -549,7 +549,9 @@ const makeDefault = () => ({
                  // desaturate (bans greyscale, picks low-sat). focusIndex = which map is up.
                  // revealedCount = reveal-draft progress (maps right of it stay hidden until
                  // focus reaches them, then stay revealed). accordionFinal = whole-draft view.
+                 // autoStepMs = per-step time for the auto-reveal; autoRevealing = timer live.
                  accordion: false, focusIndex: 0, revealedCount: 0, accordionFinal: false,
+                 autoStepMs: 2500, autoRevealing: false,
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
@@ -1753,7 +1755,46 @@ app.post('/api/playerIntro', (req, res) => { Object.assign(state.playerIntro, re
 app.post('/api/preShow',     (req, res) => { Object.assign(state.preShow,     req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/bracket',     requireAdmin, (req, res) => { deepMerge(state.bracket, req.body); deriveTodayGames(); broadcast(); res.json({ok:true}); });
 app.post('/api/groupStage',           requireAdmin, (req, res) => { Object.assign(state.groupStage,           req.body); broadcast(); res.json({ok:true}); });
-app.post('/api/mapVeto',              requireAdmin, (req, res) => { Object.assign(state.mapVeto,             req.body); reconcileMapResults(); broadcast(); res.json({ok:true}); });
+app.post('/api/mapVeto',              requireAdmin, (req, res) => {
+  // Any manual reveal/focus/mode change cancels an in-progress auto-reveal.
+  if (['focusIndex','revealedCount','accordionFinal','accordion'].some(k => k in (req.body||{}))) stopMapVetoAuto();
+  Object.assign(state.mapVeto, req.body); reconcileMapResults(); broadcast(); res.json({ok:true});
+});
+
+// Auto-reveal: a server timer steps the reveal draft segment-by-segment, then settles on
+// the whole-draft view. Server-driven so every output (graphic/operator/control) stays in
+// sync and it survives the triggering page closing. Manual control (above) cancels it.
+let _mapVetoAutoTimer = null;
+function stopMapVetoAuto() {
+  if (_mapVetoAutoTimer) { clearInterval(_mapVetoAutoTimer); _mapVetoAutoTimer = null; }
+  if (state.mapVeto && state.mapVeto.autoRevealing) state.mapVeto.autoRevealing = false;
+}
+function mapVetoStepCount() {
+  const mv = state.mapVeto || {};
+  if (mv.steps && mv.steps.length) return mv.steps.length;
+  return ((state.tournament && state.tournament.mapPool) || []).length;
+}
+app.post('/api/mapVeto/auto-reveal', requireAdmin, (req, res) => {
+  stopMapVetoAuto();
+  const stepMs = Math.max(600, parseInt((req.body || {}).stepMs) || state.mapVeto.autoStepMs || 2500);
+  const total = mapVetoStepCount();
+  if (!total) return res.status(400).json({ error: 'no maps to reveal' });
+  // Start from a clean slate in accordion mode.
+  Object.assign(state.mapVeto, { accordion: true, accordionFinal: false, focusIndex: 0, revealedCount: 0, autoStepMs: stepMs, autoRevealing: true });
+  broadcast();
+  _mapVetoAutoTimer = setInterval(() => {
+    const mv = state.mapVeto;
+    if ((mv.revealedCount || 0) < total) {
+      mv.focusIndex = mv.revealedCount; mv.revealedCount = (mv.revealedCount || 0) + 1; broadcast();
+    } else {
+      mv.accordionFinal = true; broadcast();   // settle on the whole-draft view, then stop
+      stopMapVetoAuto(); broadcast();
+    }
+  }, stepMs);
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'mapveto-auto-reveal', stepMs + 'ms/step');
+  res.json({ ok: true });
+});
+app.post('/api/mapVeto/auto-stop', requireAdmin, (req, res) => { stopMapVetoAuto(); broadcast(); res.json({ ok: true }); });
 app.post('/api/tournamentStructure',  requireAdmin, (req, res) => { Object.assign(state.tournamentStructure,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/prizepool', requireAdmin, (req, res) => {
   const { entries, ...settings } = req.body;

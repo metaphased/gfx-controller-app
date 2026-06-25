@@ -164,8 +164,13 @@
   .mv-acc-panel:not(.revealed) .media,
   .mv-acc-panel:not(.revealed) .mv-acc-foot,
   .mv-acc-panel:not(.revealed) .mv-acc-play { opacity:0; }
-  /* Whole-draft final view: equal-width columns, every map revealed, no single focus. */
+  /* Whole-draft final view: equal-width columns, every map revealed, no single focus.
+     Picked maps (+ decider) come up to FULL colour (the .media filter transition makes
+     it a smooth fade, not a snap); bans stay greyscale. No knife-round text here. */
   #mv-root.mode-final .mv-acc-panel { flex-grow:1 !important; }
+  #mv-root.mode-final .mv-acc-panel.pick .media,
+  #mv-root.mode-final .mv-acc-panel.decider .media { filter:none; }
+  #mv-root.mode-final .mv-acc-panel.decider .mv-acc-sub { display:none; }
   #mv-root.mode-final .mv-acc-panel .mv-acc-team { display:flex; }
   #mv-root.mode-final .mv-acc-team .nm { font-size:18px; }
   #mv-root.mode-final .mv-acc-team img { height:30px; width:30px; }
