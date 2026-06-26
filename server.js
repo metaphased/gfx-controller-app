@@ -2198,42 +2198,92 @@ app.get('/api/champions', (req, res) => {
 const MAP_ART_REMOTE = 'https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/';
 const MAPART_CACHE_DIR = path.join(DATA_DIR, 'cache', 'mapart');
 const MAPART_WIDTHS = [128, 256, 384, 512, 640, 768, 1024, 1280, 1600, 1920];
-const _mapartInflight = new Map();   // cacheKey → Promise<Buffer> (dedupe concurrent misses)
+const _mapartInflight = new Map();   // cachePath → Promise<path> (dedupe concurrent misses)
+function mapartSnapW(w) { w = parseInt(w) || 768; return MAPART_WIDTHS.reduce((best, x) => Math.abs(x - w) < Math.abs(best - w) ? x : best, 768); }
+// Resolve a cached, resized map-art file — generating (fetch remote → sharp Lanczos → WebP →
+// disk) once and reusing it forever after. Used by the /api/mapart endpoint AND the pool
+// pre-warm, so map art is written to disk when the pool is set, not regenerated per request.
+async function ensureMapArt(slug, kind, variant, w) {
+  kind = kind === 'icon' ? 'icon' : 'thumb';
+  variant = (kind === 'thumb' && variant >= 1 && variant <= 5) ? variant : 0;
+  w = mapartSnapW(w);
+  const cachePath = path.join(MAPART_CACHE_DIR, slug + '_' + kind + (variant ? '_v' + variant : '') + '_' + w + '.webp');
+  if (fs.existsSync(cachePath)) return cachePath;
+  if (!_mapartInflight.has(cachePath)) {
+    const remote = kind === 'icon'
+      ? MAP_ART_REMOTE + slug + '.png'
+      : MAP_ART_REMOTE + 'thumbs/' + slug + (variant ? '_' + variant : '') + '_png.png';
+    _mapartInflight.set(cachePath, (async () => {
+      const r = await fetch(remote);
+      if (!r.ok) throw new Error('upstream ' + r.status);
+      const out = await sharp(Buffer.from(await r.arrayBuffer()))
+        .resize({ width: w, withoutEnlargement: true, kernel: 'lanczos3' })
+        .webp({ quality: 90 })
+        .toBuffer();
+      fs.mkdirSync(MAPART_CACHE_DIR, { recursive: true });
+      fs.writeFileSync(cachePath, out);
+      return cachePath;
+    })().finally(() => _mapartInflight.delete(cachePath)));
+  }
+  return _mapartInflight.get(cachePath);
+}
 app.get('/api/mapart', async (req, res) => {
   try {
     const slug = String(req.query.slug || '').toLowerCase();
     if (!/^[a-z0-9_]{1,40}$/.test(slug)) return res.status(400).end();
-    const kind = req.query.kind === 'icon' ? 'icon' : 'thumb';
-    const v = parseInt(req.query.v);
-    const variant = (kind === 'thumb' && v >= 1 && v <= 5) ? v : 0;
-    let w = parseInt(req.query.w) || 768;
-    w = MAPART_WIDTHS.reduce((best, x) => Math.abs(x - w) < Math.abs(best - w) ? x : best, 768);
-    const remote = kind === 'icon'
-      ? MAP_ART_REMOTE + slug + '.png'
-      : MAP_ART_REMOTE + 'thumbs/' + slug + (variant ? '_' + variant : '') + '_png.png';
-    const cacheName = slug + '_' + kind + (variant ? '_v' + variant : '') + '_' + w + '.webp';
-    const cachePath = path.join(MAPART_CACHE_DIR, cacheName);
-    const sendFile = () => res.sendFile(cachePath, { headers: { 'Cache-Control': 'public, max-age=604800, immutable' } });
-    if (fs.existsSync(cachePath)) return sendFile();
-    if (!_mapartInflight.has(cachePath)) {
-      _mapartInflight.set(cachePath, (async () => {
-        const r = await fetch(remote);
-        if (!r.ok) throw new Error('upstream ' + r.status);
-        const buf = Buffer.from(await r.arrayBuffer());
-        const out = await sharp(buf)
-          .resize({ width: w, withoutEnlargement: true, kernel: 'lanczos3' })
-          .webp({ quality: 90 })
-          .toBuffer();
-        fs.mkdirSync(MAPART_CACHE_DIR, { recursive: true });
-        fs.writeFileSync(cachePath, out);
-        return out;
-      })().finally(() => _mapartInflight.delete(cachePath)));
-    }
-    await _mapartInflight.get(cachePath);
-    sendFile();
+    const cachePath = await ensureMapArt(slug, req.query.kind, parseInt(req.query.v), req.query.w);
+    res.sendFile(cachePath, { headers: { 'Cache-Control': 'public, max-age=604800, immutable' } });
   } catch (e) {
     res.status(502).end();
   }
+});
+
+// Pre-warm the cache for a map pool so the FIRST focus during a show is instant (no cold
+// generation). Fires in the background when the pool is set; idempotent (skips files that
+// already exist) and tolerant of maps without art (custom names / per-map image overrides).
+// Mirrors the widths the map-veto graphic requests: thumb 768 (slivers) + 1280 (focused/flyby
+// base + variants), icon 256. Sequential to stay gentle on the upstream + CPU.
+function mapArtSlug(name) {
+  let k = String(name || '').toLowerCase().trim(); if (!k) return '';
+  if (/^(de|cs|ar|dz)_/.test(k)) return k;
+  k = k.replace(/[^a-z0-9]/g, '');
+  if (k === 'dustii' || k === 'dust' || k === 'dust2') return 'de_dust2';
+  return k ? ('de_' + k) : '';
+}
+let _warmToken = 0;
+async function warmMapPool(pool) {
+  const myToken = ++_warmToken;   // a newer pool edit supersedes an in-flight warm
+  const slugs = [...new Set((pool || [])
+    .filter(m => m && !m.image)   // per-map image overrides aren't served via the proxy
+    .map(m => mapArtSlug(m.name))
+    .filter(Boolean))];
+  for (const slug of slugs) {
+    if (myToken !== _warmToken) return;   // superseded — stop
+    const jobs = [['icon', 0, 256], ['thumb', 0, 768], ['thumb', 0, 1280]];
+    for (let v = 1; v <= 5; v++) jobs.push(['thumb', v, 1280]);   // flyby variants (some 404 → skipped)
+    for (const [kind, v, w] of jobs) {
+      try { await ensureMapArt(slug, kind, v, w); } catch (e) { /* missing variant / offline — fine */ }
+    }
+  }
+}
+
+// Manual "re-acquire map images" — deletes the current pool's cached files so they regenerate
+// fresh (for upstream art updates / corrupted files), bumps settings.mapArtRev so the graphic
+// busts its browser/OBS cache (art URLs carry &rev), then re-warms in the background. Returns
+// immediately; the graphic re-fetches fresh art as soon as the rev broadcast lands.
+app.post('/api/mapart/refresh', requireAdmin, (req, res) => {
+  const pool = (state.tournament && state.tournament.mapPool) || [];
+  const slugs = [...new Set(pool.filter(m => m && !m.image).map(m => mapArtSlug(m.name)).filter(Boolean))];
+  try {
+    const files = fs.existsSync(MAPART_CACHE_DIR) ? fs.readdirSync(MAPART_CACHE_DIR) : [];
+    for (const f of files) if (slugs.some(s => f.startsWith(s + '_'))) { try { fs.unlinkSync(path.join(MAPART_CACHE_DIR, f)); } catch (e) {} }
+  } catch (e) {}
+  if (!state.settings) state.settings = {};
+  state.settings.mapArtRev = (state.settings.mapArtRev || 0) + 1;
+  warmMapPool(pool);   // regenerate in the background; lazy proxy also remakes on demand
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'mapart-refresh', slugs.length + ' maps');
+  broadcast();
+  res.json({ ok: true, rev: state.settings.mapArtRev, maps: slugs.length });
 });
 
 // Upload / Import (admin only)
@@ -2456,6 +2506,7 @@ app.post('/api/tournament/create', requireAdmin, (req, res) => {
     state.tournament.mapPool = (saved && saved.length)
       ? saved.map(m => ({ name: m.name || '', image: m.image || '' }))
       : adapter.defaultMapPool.map(m => (typeof m === 'string' ? { name: m, image: '' } : { name: m.name || '', image: m.image || '', video: m.video || '' }));
+    warmMapPool(state.tournament.mapPool);   // pre-fetch/resize art so the first focus is instant
   }
   reconcileMapVetoSteps();
   broadcast(); res.json({ ok: true });
@@ -2477,7 +2528,7 @@ app.post('/api/tournament', requireAdmin, (req, res) => {
   if (sponsorLogos !== undefined) state.tournament.sponsorLogos = sponsorLogos;
   // Map pool is replaced wholesale (not deep-merged, so deletions take effect) + the veto
   // steps reconcile to cover exactly the pool.
-  if (mapPool !== undefined) { state.tournament.mapPool = Array.isArray(mapPool) ? mapPool : []; reconcileMapVetoSteps(); }
+  if (mapPool !== undefined) { state.tournament.mapPool = Array.isArray(mapPool) ? mapPool : []; reconcileMapVetoSteps(); warmMapPool(state.tournament.mapPool); }
   deepMerge(state.tournament, rest);
   // Keep bracket.type in sync with playoffFormat
   if (rest.playoffFormat !== undefined) {
@@ -3400,4 +3451,6 @@ io.on('connection', socket => {
 
 server.listen(PORT, () => {
   console.log('\n  Esports GFX -> http://localhost:' + PORT + '/\n');
+  // Pre-warm map art for the already-loaded pool so a restart leaves the cache ready.
+  if (state.tournament && state.tournament.mapPool && state.tournament.mapPool.length) warmMapPool(state.tournament.mapPool);
 });

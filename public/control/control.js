@@ -428,6 +428,16 @@ async function api(path, body) {
   } catch (e) { console.error('Fetch error', path, e); }
 }
 
+// Re-acquire map art: server force-regenerates the current pool's cached images and bumps the
+// art revision so on-air graphics re-fetch. Inline button feedback (no toast system here).
+async function mvRefreshImages(btn) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Refreshing…';
+  const r = await api('/api/mapart/refresh', {});
+  btn.textContent = (r && r.ok) ? ('Updated ✓ (' + (r.maps || 0) + ')') : 'Failed';
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
+}
+
 // Clipboard copy with execCommand fallback for non-localhost HTTP (remote users)
 function copyText(str) {
   if (navigator.clipboard && window.isSecureContext) {
