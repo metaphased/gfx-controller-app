@@ -260,7 +260,7 @@
   // THUMB_W = small panels / slivers / full-draft (~140–270px on screen); FOCUS_W = the big
   // focused panel + flyby (it fills most of the stage and Ken-Burns zooms in, so it needs a
   // larger source or it goes soft). The focus loop swaps the focused panel up to FOCUS_W.
-  var THUMB_W = 768, FOCUS_W = 1280, ICON_W = 256;
+  var THUMB_W = 768, FOCUS_W = 1920, ICON_W = 256;
   // /api/mapart is behind requireAuth — pass the graphics token like the socket does.
   var ART_TOK = token ? ('&token=' + encodeURIComponent(token)) : '';
   // Cache-bust rev (settings.mapArtRev) — bumped by the "refresh map images" action so OBS
@@ -444,9 +444,17 @@
       var fly = panel.querySelector('.mv-flyby'); if (!fly) return;
       var imgs = fly.querySelectorAll('.mv-flyby-img'), a = imgs[0], b = imgs[1];
       var urls = panel._flyUrls; panel._flyIdx = (panel._flyIdx + 1) % urls.length;
-      var show = panel._flyCurA ? b : a, hide = panel._flyCurA ? a : b;
-      show.onload = function(){ show.classList.add('on'); hide.classList.remove('on'); panel._flyCurA = !panel._flyCurA; };
-      show.src = urls[panel._flyIdx];          // opacity-only crossfade; zoom is on the container
+      // Fade the incoming image IN, ON TOP of the outgoing one which stays fully opaque
+      // underneath — so the base .media never bleeds through mid-crossfade (the old
+      // simultaneous fade dipped both layers to ~50%, most visible on the big focused panel).
+      // The covered outgoing becomes next round's incoming, reset to 0 invisibly behind the top.
+      var inc = panel._flyCurA ? b : a, cur = panel._flyCurA ? a : b;
+      inc.style.transition = 'none'; inc.classList.remove('on');   // snap to 0 (hidden under cur)
+      inc.style.zIndex = '2'; cur.style.zIndex = '1';              // incoming always on top
+      inc.onload = function(){ requestAnimationFrame(function(){
+        inc.style.transition = ''; requestAnimationFrame(function(){ inc.classList.add('on'); }); }); };
+      inc.src = urls[panel._flyIdx];
+      panel._flyCurA = !panel._flyCurA;
       scheduleFlyby(panel);
     }, FLYBY_MS);
   }

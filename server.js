@@ -2218,7 +2218,7 @@ async function ensureMapArt(slug, kind, variant, w) {
       if (!r.ok) throw new Error('upstream ' + r.status);
       const out = await sharp(Buffer.from(await r.arrayBuffer()))
         .resize({ width: w, withoutEnlargement: true, kernel: 'lanczos3' })
-        .webp({ quality: 90 })
+        .webp({ quality: 92 })
         .toBuffer();
       fs.mkdirSync(MAPART_CACHE_DIR, { recursive: true });
       fs.writeFileSync(cachePath, out);
@@ -2259,8 +2259,8 @@ async function warmMapPool(pool) {
     .filter(Boolean))];
   for (const slug of slugs) {
     if (myToken !== _warmToken) return;   // superseded — stop
-    const jobs = [['icon', 0, 256], ['thumb', 0, 768], ['thumb', 0, 1280]];
-    for (let v = 1; v <= 5; v++) jobs.push(['thumb', v, 1280]);   // flyby variants (some 404 → skipped)
+    const jobs = [['icon', 0, 256], ['thumb', 0, 768], ['thumb', 0, 1920]];
+    for (let v = 1; v <= 5; v++) jobs.push(['thumb', v, 1920]);   // flyby variants (some 404 → skipped)
     for (const [kind, v, w] of jobs) {
       try { await ensureMapArt(slug, kind, v, w); } catch (e) { /* missing variant / offline — fine */ }
     }
