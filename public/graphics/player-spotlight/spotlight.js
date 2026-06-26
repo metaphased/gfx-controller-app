@@ -133,10 +133,56 @@ function statTokenValue(key, e) {
   return null;
 }
 
+// ── CS2 player stats (live-data) ────────────────────────────────────────────────
+// Match the featured player to live / accumulated CS stats by in-game name (fallback
+// steamid). normName lowercases + strips spaces so a clan-prefixed handle still lines up.
+function normName(s) { return String(s || '').toLowerCase().replace(/\s+/g, '').trim(); }
+function csLiveForPlayer(state, player) {
+  var lp = (state.live && state.live.players) || {}, key = normName(player && (player.handle || player.name));
+  if (!key && !(player && player.steamid)) return null;
+  for (var sid in lp) { var p = lp[sid];
+    if ((player && player.steamid && p.steamid === player.steamid) || (key && normName(p.name) === key)) return p; }
+  return null;
+}
+// Aggregate this player's accumulated lines (whole tournament) from state.tournament.csStats.
+function csAggForPlayer(state, player) {
+  var lines = (state.tournament && state.tournament.csStats) || [];
+  if (!lines.length || !player) return null;
+  var key = normName(player.handle || player.name), a = { maps: 0, kills: 0, deaths: 0, assists: 0, mvps: 0, _adr: 0 }, hit = false;
+  lines.forEach(function (l) {
+    if ((player.steamid && l.steamid === player.steamid) || (key && normName(l.name) === key)) {
+      hit = true; a.maps++; a.kills += l.kills | 0; a.deaths += l.deaths | 0; a.assists += l.assists | 0; a.mvps += l.mvps | 0; a._adr += l.adr | 0;
+    }
+  });
+  if (!hit) return null;
+  a.adr = a.maps ? Math.round(a._adr / a.maps) : 0; a.kd = (a.kills / Math.max(1, a.deaths)).toFixed(2);
+  return a;
+}
+// CS stat chips: tournament-so-far (K/D · ADR · Maps) if any maps are logged, else the live
+// current-map line (K/D/A · ADR). Returns [] when there's no data (just the name shows).
+function buildCsStats(player, state) {
+  var agg = csAggForPlayer(state, player), out = [];
+  if (agg && agg.maps) {
+    out.push({ label: 'K / D', val: agg.kd });
+    if (agg.adr) out.push({ label: 'ADR', val: String(agg.adr) });
+    out.push({ label: 'Maps', val: String(agg.maps) });
+    return out;
+  }
+  var live = csLiveForPlayer(state, player);
+  if (live) {
+    out.push({ label: 'K / D / A', val: (live.kills | 0) + ' / ' + (live.deaths | 0) + ' / ' + (live.assists | 0) });
+    if (live.adr) out.push({ label: 'ADR', val: String(live.adr) });
+  }
+  return out;
+}
+
 // Build the stat chips for a slot: walk the token list in order, honour the slot's
 // statTokens (empty = all) and statOverrides (manual text wins over the auto value).
 function buildStats(player, champName, slot, state) {
   var ps = (state && state.playerSpotlight) || {};
+  var adapter = (state && state.adapter) || {};
+  // No champion pick entity (CS2 etc.) → show CS live-data stats instead of champ W/L.
+  if (adapter.pickEntity != null && adapter.pickEntity !== 'champion') return buildCsStats(player, state);
   var entry = statSourceEntry(player, champName, ps.statSource || 'both');
   var overrides = (slot && slot.statOverrides) || {};
   var tokens = (slot && slot.statTokens && slot.statTokens.length)
@@ -184,9 +230,11 @@ function slotFp(state, idx) {
   var team = slot.team || (idx === 0 ? 'team1' : 'team2');
   var adapter = state.adapter || {};
   var teamLogo = (state.match && state.match[team] && state.match[team].logo) || '';
+  var csSig = (adapter.pickEntity != null && adapter.pickEntity !== 'champion')
+    ? JSON.stringify(csAggForPlayer(state, player)) + JSON.stringify(csLiveForPlayer(state, player)) : '';
   return [team, player && player.handle, featuredChamp(player, slot),
     player && player.rank, normRole(player && player.role), resolveAccent(state, team), slot.caption,
-    ps.statSource, slot.statTokens, slot.statOverrides, adapter.pickEntity, adapter.positions, teamLogo];
+    ps.statSource, slot.statTokens, slot.statOverrides, adapter.pickEntity, adapter.positions, teamLogo, csSig];
 }
 
 // Fill one slot's suffixed elements + its own accent + hero art.
