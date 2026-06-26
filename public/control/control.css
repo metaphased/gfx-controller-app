@@ -1986,3 +1986,11 @@ input[type=search]::-webkit-search-decoration { display: none; }
   border: 1px solid var(--border, rgba(255,255,255,0.1)); border-radius: var(--radius, 6px); }
 .ld-sug-row > b { font-variant-numeric: tabular-nums; }
 .ld-sug-row .ld-sug-meta { margin-left: auto; color: var(--text-dim); font-size: 11px; }
+.ld-pcols { display: flex; gap: 12px; }
+.ld-pcol { flex: 1 1 0; min-width: 0; }
+.ld-pcol-h { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px; }
+.ld-prow { display: flex; align-items: center; gap: 8px; padding: 3px 8px; font-size: 13px;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,0.06)); }
+.ld-prow > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ld-prow > b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.ld-prow .ld-padr { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }

@@ -347,18 +347,48 @@ function liveIngestScore(s) {
   state.live.suggested[slug].ts = Date.now();
   return changed;
 }
-// Map GSI's CT/T scores to our team1/team2: prefer matching the GSI team name to our team
-// name/tag (handles half-time side swaps automatically); else fall back to liveData.ctTeam.
+// Which of our teams is on CT right now — prefer matching the GSI CT team name to our team
+// name/tag (auto-tracks half-time side swaps); else fall back to liveData.ctTeam.
+function gsiCtTeam(b) {
+  const ct = (b.map && b.map.team_ct) || {};
+  const m1 = (state.match && state.match.team1) || {}, m2 = (state.match && state.match.team2) || {};
+  const norm = x => String(x || '').toLowerCase().trim(), n = norm(ct.name);
+  if (n && (n === norm(m1.name) || n === norm(m1.tag))) return 'team1';
+  if (n && (n === norm(m2.name) || n === norm(m2.tag))) return 'team2';
+  return liveCfg().ctTeam === 'team2' ? 'team2' : 'team1';
+}
 function gsiTeamScores(b) {
   const ct = (b.map && b.map.team_ct) || {}, t = (b.map && b.map.team_t) || {};
-  const m1 = (state.match && state.match.team1) || {}, m2 = (state.match && state.match.team2) || {};
-  const norm = x => String(x || '').toLowerCase().trim();
-  const match = name => { const n = norm(name); if (!n) return null;
-    if (n === norm(m1.name) || n === norm(m1.tag)) return 'team1';
-    if (n === norm(m2.name) || n === norm(m2.tag)) return 'team2'; return null; };
-  const ctTeam = match(ct.name) || (liveCfg().ctTeam === 'team2' ? 'team2' : 'team1');
-  const cs = (ct.score | 0), ts = (t.score | 0);
+  const ctTeam = gsiCtTeam(b), cs = (ct.score | 0), ts = (t.score | 0);
   return ctTeam === 'team1' ? { t1: cs, t2: ts } : { t1: ts, t2: cs };
+}
+// Per-player live stats from GSI allplayers (spectator/GOTV) → keyed by steamid, assigned to
+// team1/team2 via the current CT side. GSI gives K/A/D/MVP/score (no ADR). Returns {} if the
+// observer isn't sending allplayers (e.g. POV, not GOTV).
+function gsiPlayers(b) {
+  const all = b.allplayers; if (!all || typeof all !== 'object') return null;
+  const ctTeam = gsiCtTeam(b), other = ctTeam === 'team1' ? 'team2' : 'team1', out = {};
+  for (const sid of Object.keys(all)) {
+    const p = all[sid] || {}, ms = p.match_stats || {};
+    out[sid] = { steamid: sid, name: p.name || '', team: p.team === 'CT' ? ctTeam : other, side: p.team || '',
+      kills: ms.kills | 0, deaths: ms.deaths | 0, assists: ms.assists | 0, mvps: ms.mvps | 0, score: ms.score | 0, adr: 0, source: 'gsi' };
+  }
+  return Object.keys(out).length ? out : null;
+}
+// Best-effort per-player stats from a MatchZy payload (modern releases carry richer stats incl.
+// ADR). Shapes vary by version — look for team{1,2}.players[] with steamid + kills/deaths/etc.
+function mzPlayers(b) {
+  const out = {};
+  ['team1', 'team2'].forEach(tk => {
+    const arr = b[tk] && b[tk].players; if (!Array.isArray(arr)) return;
+    arr.forEach(p => {
+      const sid = p && (p.steamid || p.steamid64 || p.steam_id || p.steamId); if (!sid) return;
+      out[String(sid)] = { steamid: String(sid), name: p.name || '', team: tk, side: '',
+        kills: p.kills | 0, deaths: p.deaths | 0, assists: p.assists | 0, mvps: p.mvps | 0,
+        score: p.score | 0, adr: Math.round(Number(p.adr || p.damage_per_round || p.average_damage_per_round || 0)) || 0, source: 'matchzy' };
+    });
+  });
+  return Object.keys(out).length ? out : null;
 }
 
 let _gsiSig = '', _gsiLastBcast = 0;
@@ -378,7 +408,8 @@ app.post('/api/live/gsi', (req, res) => {
     const winner = fin ? (sc.t1 > sc.t2 ? 'team1' : (sc.t2 > sc.t1 ? 'team2' : '')) : '';
     changed = liveIngestScore({ map: g.map, t1Rounds: sc.t1, t2Rounds: sc.t2, winner, status: fin ? 'final' : 'live', source: 'gsi' });
   }
-  // Phase C will derive per-player stats here (b.allplayers).
+  const gp = gsiPlayers(b);   // live K/D/A (carried out on the next throttled broadcast, not per kill)
+  if (gp) state.live.players = gp;
   const sig = [g.map, g.phase, g.round, g.ctScore, g.tScore].join('|');
   const now = Date.now();
   if (changed || sig !== _gsiSig || now - _gsiLastBcast > 3000) { _gsiSig = sig; _gsiLastBcast = now; broadcast(); }
@@ -407,6 +438,8 @@ app.post('/api/live/matchzy', (req, res) => {
   if (map && (t1r != null || t2r != null)) {
     changed = liveIngestScore({ map, t1Rounds: t1r, t2Rounds: t2r, winner: fin ? winner : '', status: fin ? 'final' : 'live', source: 'matchzy' });
   }
+  const mp = mzPlayers(b);   // MatchZy player stats (incl. ADR) when present — prefer over GSI
+  if (mp) { state.live.players = mp; changed = true; }
   if (changed || ev) broadcast();
   res.json({ ok: true });
 });

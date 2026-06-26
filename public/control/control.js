@@ -489,6 +489,23 @@ function ldRender(state) {
         rows + (keys.length > 1 ? '<button class="btn btn-sm btn-primary" style="margin-top:6px" onclick="ldApply()">Apply all</button>' : '');
     } else { sx.innerHTML = ''; }
   }
+  // Live players readout (K/D/A, by team) — proves the per-player ingest is flowing.
+  const px = document.getElementById('ld-players');
+  if (px) {
+    const lp = (live.players) || {}, ids = Object.keys(lp);
+    if (!ids.length) { px.innerHTML = ''; }
+    else {
+      const m = (state.match) || {}, names = { team1: (m.team1 && m.team1.name) || 'Team 1', team2: (m.team2 && m.team2.name) || 'Team 2' };
+      const by = { team1: [], team2: [] };
+      ids.forEach(id => { const p = lp[id]; (by[p.team] || by.team1).push(p); });
+      const sortK = (a, b) => (b.kills | 0) - (a.kills | 0);
+      const col = tk => '<div class="ld-pcol"><div class="ld-pcol-h">' + esc(names[tk]) + '</div>' +
+        by[tk].sort(sortK).map(p => '<div class="ld-prow"><span>' + esc(p.name || '?') + '</span>' +
+          '<b>' + (p.kills | 0) + '/' + (p.deaths | 0) + '/' + (p.assists | 0) + '</b>' +
+          (p.adr ? '<span class="ld-padr">' + (p.adr | 0) + ' adr</span>' : '') + '</div>').join('') + '</div>';
+      px.innerHTML = '<div class="hint" style="margin:8px 0 4px">Live players (K / D / A):</div><div class="ld-pcols">' + col('team1') + col('team2') + '</div>';
+    }
+  }
 }
 async function ldApply(slug) { await api('/api/live/apply', slug ? { slug: slug } : {}); }
 async function ldSetEnabled(src, on) { await api('/api/live/config', src === 'gsi' ? { gsiEnabled: on } : { matchzyEnabled: on }); }
