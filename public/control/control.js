@@ -49,6 +49,7 @@ function isChampDraft()     { const a = gameAdapter(); return a ? a.pregameKind 
 function isMapVeto()        { const a = gameAdapter(); return a ? a.pregameKind === 'map-veto'    : false; }
 function supportsFearless() { const a = gameAdapter(); return a ? !!a.supportsFearless : true; }
 function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvider === 'opgg'  : true; }
+function supportsSteamId()  { const a = gameAdapter(); return a ? a.rosterIds === 'steam'     : false; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
 function hasRoles()         { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
@@ -1148,7 +1149,7 @@ function syncUI(s) {
   syncBgoTab(s.bgOutput || {});
 
   if (_sfp('sponsors', m.sponsorLogos)) renderSponsors(m.sponsorLogos || []);
-  if (_sfp('players', { t1: (p.team1||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId];}), t1s: p.team1subs, t2: (p.team2||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId];}), t2s: p.team2subs })) renderPlayerEditors(p);
+  if (_sfp('players', { t1: (p.team1||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId,x.hltvUrl];}), t1s: p.team1subs, t2: (p.team2||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId,x.hltvUrl];}), t2s: p.team2subs })) renderPlayerEditors(p);
   renderIntelPanel(s);
   if (_sfp('ltGrid', { t1: m.team1.name+m.team1.tag, t2: m.team2.name+m.team2.tag, p1: (p.team1||[]).map(function(x){return x.handle||x.name;}), p2: (p.team2||[]).map(function(x){return x.handle||x.name;}) })) renderLTQuickGrid(p, m);
   syncTalent(s);
@@ -3251,6 +3252,7 @@ function renderPlayerEditors(players) {
             '<div style="display:flex;align-items:center;gap:5px">' +
               '<div class="player-val-display" data-index="'+i+'" data-field="handle"></div>' +
               '<a class="opgg-link" data-index="'+i+'" href="#" target="_blank" rel="noopener" style="display:none">op.gg ↗</a>' +
+              '<a class="hltv-link" data-index="'+i+'" href="#" target="_blank" rel="noopener" style="display:none">HLTV ↗</a>' +
             '</div>' +
           '</div>' +
           '<div class="cap-roles"><div class="player-num">Role</div>' +
@@ -3326,6 +3328,13 @@ function renderPlayerEditors(players) {
     starterSec.querySelectorAll('.opgg-link').forEach(function(link) {
       const p = list[parseInt(link.dataset.index)];
       const url = (p && supportsOpgg()) ? opggUrl(p.opggRegion, p.riotId) : '';
+      if (url) { link.href = url; link.style.display = ''; }
+      else      { link.href = '#'; link.style.display = 'none'; }
+    });
+
+    starterSec.querySelectorAll('.hltv-link').forEach(function(link) {
+      const p = list[parseInt(link.dataset.index)];
+      const url = (p && supportsSteamId()) ? hltvUrlOf(p.hltvUrl) : '';
       if (url) { link.href = url; link.style.display = ''; }
       else      { link.href = '#'; link.style.display = 'none'; }
     });
@@ -3826,6 +3835,14 @@ function opggUrl(region, riotId) {
   if (parts.length !== 2 || !parts[0] || !parts[1]) return '';
   return 'https://www.op.gg/summoners/' + region + '/' + encodeURIComponent(parts[0]) + '-' + encodeURIComponent(parts[1]);
 }
+// Normalize a manually-entered HLTV link: add https:// if missing, reject unsafe schemes.
+// Permissive about the host (operator pastes the player's HLTV page) — it's just a shortcut.
+function hltvUrlOf(raw) {
+  const v = (raw || '').trim();
+  if (!v) return '';
+  if (/^(javascript|data|vbscript):/i.test(v)) return '';
+  return /^https?:\/\//i.test(v) ? v : 'https://' + v;
+}
 function opggRegionSelect(cls, dataAttr, selected) {
   return '<select class="' + cls + '" ' + dataAttr + '>' +
     '<option value="">Region</option>' +
@@ -3842,6 +3859,7 @@ function renderEditPlayers(players, subs) {
   let html='<div class="roster-section-label">STARTING LINEUP</div>';
   const showOpgg = supportsOpgg();   // Region / Riot ID columns only for op.gg-intel games
   const showRoles = hasRoles();      // Role column only for games with defined positions
+  const showSteam = supportsSteamId(); // Steam ID / HLTV columns only for CS2-style rosters
   html+=adapterRoles().map(function(role,i){
     const p=players[i]||{};
     return '<div class="player-row-edit">'+
@@ -3853,6 +3871,15 @@ function renderEditPlayers(players, subs) {
       '</div>'+
       '<div><div class="player-num">Riot ID</div>'+
         '<input type="text" class="ep-riot-id" data-index="'+i+'" placeholder="Name#TAG" value="'+esc(p.riotId||'')+'">'+
+      '</div>') : '')+
+      (showSteam ? (
+      // Steam ID = optional live-data match override (matching is by in-game name otherwise);
+      // HLTV URL = manual link only (no scraping) surfaced as an operator shortcut.
+      '<div><div class="player-num">Steam ID</div>'+
+        '<input type="text" class="ep-steamid" data-index="'+i+'" placeholder="765… (optional)" value="'+esc(p.steamid||'')+'">'+
+      '</div>'+
+      '<div><div class="player-num">HLTV URL</div>'+
+        '<input type="text" class="ep-hltv" data-index="'+i+'" placeholder="hltv.org/… (optional)" value="'+esc(p.hltvUrl||'')+'">'+
       '</div>') : '')+
       '</div>';
   }).join('');
@@ -3881,6 +3908,8 @@ async function saveTeamEditor() {
       role:       (c.querySelector('.ep-role[data-index="'+i+'"]')        ||{}).value||adapterRoles()[i],
       opggRegion: (c.querySelector('.ep-opgg-region[data-index="'+i+'"]') ||{}).value||'',
       riotId:     (c.querySelector('.ep-riot-id[data-index="'+i+'"]')     ||{}).value||'',
+      steamid:    ((c.querySelector('.ep-steamid[data-index="'+i+'"]')    ||{}).value||'').trim(),
+      hltvUrl:    ((c.querySelector('.ep-hltv[data-index="'+i+'"]')       ||{}).value||'').trim(),
     };
   });
   const subs=[0,1,2].map(function(i){

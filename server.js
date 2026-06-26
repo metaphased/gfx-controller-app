@@ -1538,13 +1538,13 @@ app.post('/api/match/load-team', requireAdmin, (req, res) => {
   const tp = team.players || [];
   DEFAULT_ROLES.forEach((role, i) => {
     const p = tp[i] || {};
-    state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'' };
+    state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'', steamid: p.steamid||'', hltvUrl: p.hltvUrl||'' };
   });
   const subsKey = slot + 'subs';
   const ts = team.subs || [];
   state.players[subsKey] = [0,1,2].map(i => {
     const s = ts[i] || {};
-    return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'' };
+    return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'', steamid: s.steamid||'', hltvUrl: s.hltvUrl||'' };
   });
   broadcast(); res.json({ ok: true });
 });
@@ -2455,13 +2455,13 @@ app.post('/api/teams/save', requireAdmin, (req, res) => {
       const tp = inc.players || [];
       DEFAULT_ROLES.forEach((role, i) => {
         const p = tp[i] || {};
-        state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'' };
+        state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'', steamid: p.steamid||'', hltvUrl: p.hltvUrl||'' };
       });
       const subsKey = slot + 'subs';
       const ts = inc.subs || [];
       state.players[subsKey] = [0,1,2].map(i => {
         const s = ts[i] || {};
-        return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'' };
+        return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'', steamid: s.steamid||'', hltvUrl: s.hltvUrl||'' };
       });
       synced = true;
     });
@@ -2998,12 +2998,12 @@ app.post('/api/match/load-schedule-game', (req, res) => {
     const tp = t.players || [];
     DEFAULT_ROLES.forEach((role, i) => {
       const p = tp[i] || {};
-      state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'' };
+      state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'', steamid: p.steamid||'', hltvUrl: p.hltvUrl||'' };
     });
     const subsKey = slot + 'subs';
     state.players[subsKey] = [0,1,2].map(i => {
       const s = (t.subs||[])[i] || {};
-      return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'' };
+      return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'', steamid: s.steamid||'', hltvUrl: s.hltvUrl||'' };
     });
   };
   loadTeamIntoSlot(sg.team1Id, 'team1');

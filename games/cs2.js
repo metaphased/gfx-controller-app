@@ -9,6 +9,7 @@ module.exports = {
     positions: ['', '', '', '', ''], // 5 slots, no fixed roles
     teamSize:  5,
     hasSubs:   true,
+    idScheme:  'steam',  // roster carries optional Steam ID (live-data match override) + HLTV link
   },
   pregame: {
     kind:       'map-veto',  // shown as a broadcast scene; operator-entered

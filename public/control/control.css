@@ -1005,7 +1005,7 @@ input[type=checkbox]:checked::after {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.opgg-link {
+.opgg-link, .hltv-link {
   display: inline-flex;
   align-items: center;
   align-self: stretch;
@@ -1023,6 +1023,9 @@ input[type=checkbox]:checked::after {
   transition: opacity 0.15s, background 0.15s;
 }
 .opgg-link:hover { opacity: 1; background: rgba(var(--opgg-rgb),0.12); }
+/* HLTV shortcut reuses the op.gg pill shape but the app accent (no HLTV brand token) */
+.hltv-link { border-color: var(--accent); color: var(--accent); }
+.hltv-link:hover { opacity: 1; background: rgba(var(--accent-rgb),0.12); }
 .player-num {
   font-family: var(--ui-font), sans-serif;
   font-size: 12px;
