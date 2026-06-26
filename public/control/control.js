@@ -489,25 +489,42 @@ function ldRender(state) {
         rows + (keys.length > 1 ? '<button class="btn btn-sm btn-primary" style="margin-top:6px" onclick="ldApply()">Apply all</button>' : '');
     } else { sx.innerHTML = ''; }
   }
-  // Live players readout (K/D/A, by team) — proves the per-player ingest is flowing.
-  const px = document.getElementById('ld-players');
-  if (px) {
-    const lp = (live.players) || {}, ids = Object.keys(lp);
-    if (!ids.length) { px.innerHTML = ''; }
-    else {
-      const m = (state.match) || {}, names = { team1: (m.team1 && m.team1.name) || 'Team 1', team2: (m.team2 && m.team2.name) || 'Team 2' };
-      const by = { team1: [], team2: [] };
-      ids.forEach(id => { const p = lp[id]; (by[p.team] || by.team1).push(p); });
-      const sortK = (a, b) => (b.kills | 0) - (a.kills | 0);
-      const col = tk => '<div class="ld-pcol"><div class="ld-pcol-h">' + esc(names[tk]) + '</div>' +
-        by[tk].sort(sortK).map(p => '<div class="ld-prow"><span>' + esc(p.name || '?') + '</span>' +
-          '<b>' + (p.kills | 0) + '/' + (p.deaths | 0) + '/' + (p.assists | 0) + '</b>' +
-          (p.adr ? '<span class="ld-padr">' + (p.adr | 0) + ' adr</span>' : '') + '</div>').join('') + '</div>';
-      px.innerHTML = '<div class="hint" style="margin:8px 0 4px">Live players (K / D / A):</div><div class="ld-pcols">' + col('team1') + col('team2') + '</div>';
-    }
-  }
+  ldRenderPlayers(state);
 }
 async function ldApply(slug) { await api('/api/live/apply', slug ? { slug: slug } : {}); }
+
+// Player stats readout — Live (current map, from state.live.players) OR accumulated Series /
+// Tournament totals (from /api/cs-stats, Phase C2). _ldCs caches the aggregate fetch.
+let _ldView = 'live', _ldCs = null;
+async function ldFetchCs() { try { _ldCs = await (await fetch('/api/cs-stats')).json(); } catch (e) { _ldCs = null; } }
+async function ldSetView(v) { _ldView = v; if (v !== 'live') await ldFetchCs(); if (window._state) ldRender(window._state); }
+function ldRenderPlayers(state) {
+  const live = state.live || {}, px = document.getElementById('ld-players'), pv = document.getElementById('ld-pview');
+  if (!px) return;
+  const liveIds = Object.keys(live.players || {}), csP = (_ldCs && _ldCs.players) || {}, csIds = Object.keys(csP);
+  const hasAny = liveIds.length || csIds.length;
+  if (pv) { pv.style.display = hasAny ? 'flex' : 'none'; pv.querySelectorAll('[data-pv]').forEach(b => b.classList.toggle('btn-primary', b.getAttribute('data-pv') === _ldView)); }
+  if (!hasAny) { px.innerHTML = ''; return; }
+  const m = (state.match) || {}, names = { team1: (m.team1 && m.team1.name) || 'Team 1', team2: (m.team2 && m.team2.name) || 'Team 2' };
+  if (_ldView === 'live') {
+    if (!liveIds.length) { px.innerHTML = '<p class="hint" style="margin:6px 0 0">No live players yet (needs GSI allplayers / GOTV, or MatchZy).</p>'; return; }
+    const by = { team1: [], team2: [] }; liveIds.forEach(id => { const p = live.players[id]; (by[p.team] || by.team1).push(p); });
+    const col = tk => '<div class="ld-pcol"><div class="ld-pcol-h">' + esc(names[tk]) + '</div>' +
+      by[tk].sort((a, b) => (b.kills | 0) - (a.kills | 0)).map(p => '<div class="ld-prow"><span>' + esc(p.name || '?') + '</span>' +
+        '<b>' + (p.kills | 0) + '/' + (p.deaths | 0) + '/' + (p.assists | 0) + '</b>' + (p.adr ? '<span class="ld-padr">' + (p.adr | 0) + ' adr</span>' : '') + '</div>').join('') + '</div>';
+    px.innerHTML = '<div class="hint" style="margin:8px 0 4px">Live (K / D / A):</div><div class="ld-pcols">' + col('team1') + col('team2') + '</div>';
+  } else {
+    if (!csIds.length) { px.innerHTML = '<p class="hint" style="margin:6px 0 0">No completed maps logged yet.</p>'; return; }
+    const by = { team1: [], team2: [] }; csIds.forEach(id => { const p = csP[id]; (by[p.team] || by.team1).push(p); });
+    const col = tk => '<div class="ld-pcol"><div class="ld-pcol-h">' + esc(names[tk]) + '</div>' +
+      by[tk].map(p => ({ p, a: p[_ldView] })).filter(x => x.a && x.a.maps).sort((x, y) => y.a.kills - x.a.kills).map(x => {
+        const a = x.a;
+        return '<div class="ld-prow"><span>' + esc(x.p.name || '?') + '</span><span class="ld-pmeta">' + a.maps + 'm</span>' +
+          '<b>' + a.kills + '/' + a.deaths + '/' + a.assists + '</b><span class="ld-padr">' + a.kd + ' kd' + (a.adr ? ' · ' + a.adr + ' adr' : '') + '</span></div>';
+      }).join('') + '</div>';
+    px.innerHTML = '<div class="hint" style="margin:8px 0 4px">' + (_ldView === 'series' ? 'This series' : 'Tournament') + ' (maps · K/D/A · KD):</div><div class="ld-pcols">' + col('team1') + col('team2') + '</div>';
+  }
+}
 async function ldSetEnabled(src, on) { await api('/api/live/config', src === 'gsi' ? { gsiEnabled: on } : { matchzyEnabled: on }); }
 async function ldSetCt(team) { await api('/api/live/config', { ctTeam: team }); }
 async function ldSetAuto(on) { await api('/api/live/config', { autoApplyScores: on }); }
@@ -521,8 +538,8 @@ function ldCopy(src, btn) {
     const o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => { btn.textContent = o; }, 1500);
   });
 }
-// Decay status to idle without a fresh broadcast (posts stop emitting once values settle).
-setInterval(() => { if (window._state) ldRender(window._state); }, 5000);
+// Decay status to idle + refresh accumulated stats (when shown) without a fresh broadcast.
+setInterval(async () => { if (!window._state) return; if (_ldView !== 'live') await ldFetchCs(); ldRender(window._state); }, 5000);
 
 // Clipboard copy with execCommand fallback for non-localhost HTTP (remote users)
 function copyText(str) {

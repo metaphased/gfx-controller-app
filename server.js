@@ -391,6 +391,57 @@ function mzPlayers(b) {
   return Object.keys(out).length ? out : null;
 }
 
+// ── Tournament stat accumulation (Phase C2) ─────────────────────────────────────
+// When a map FINALIZES, snapshot the live players as that map's final stat line into
+// state.tournament.csStats (keyed by series+map+steamid so re-finalizing updates, not
+// duplicates). Aggregated per map / current series / whole tournament via GET /api/cs-stats.
+function csSeriesKey() {
+  const m = state.match || {};
+  if (m.scheduleGameId) return 'sg:' + m.scheduleGameId;
+  const norm = x => String(x || '').toLowerCase().trim();
+  return 'tm:' + [norm((m.team1 || {}).name), norm((m.team2 || {}).name)].sort().join('__');
+}
+function csMapDisplayName(mapName) {
+  const i = liveFindMapRow(mapName);
+  return (i >= 0 && state.match.mapResults[i].map) ? state.match.mapResults[i].map : mapName;
+}
+function recordMapStats(mapName) {
+  const slug = mapArtSlug(mapName); if (!slug) return false;
+  const lp = state.live.players || {}; if (!Object.keys(lp).length) return false;
+  const sk = csSeriesKey(), disp = csMapDisplayName(mapName);
+  if (!state.tournament) state.tournament = {};
+  const log = state.tournament.csStats || (state.tournament.csStats = []);
+  const sig = l => [l.kills, l.deaths, l.assists, l.mvps, l.adr, l.name].join('|');
+  let changed = false;
+  Object.keys(lp).forEach(sid => {
+    const p = lp[sid]; if (!p || !p.steamid) return;
+    const key = sk + ':' + slug + ':' + sid;
+    const next = { key, seriesKey: sk, steamid: sid, name: p.name || '', team: p.team || '', map: disp, slug,
+      kills: p.kills | 0, deaths: p.deaths | 0, assists: p.assists | 0, mvps: p.mvps | 0, adr: p.adr | 0, score: p.score | 0, ts: Date.now() };
+    const i = log.findIndex(l => l.key === key);
+    if (i < 0) { log.push(next); changed = true; }
+    else if (sig(log[i]) !== sig(next)) { log[i] = next; changed = true; }
+  });
+  return changed;
+}
+// Aggregate the log → per-player tournament + current-series totals + per-map lines.
+function buildCsStats() {
+  const log = (state.tournament && state.tournament.csStats) || [], sk = csSeriesKey();
+  const zero = () => ({ maps: 0, kills: 0, deaths: 0, assists: 0, mvps: 0, _adr: 0 });
+  const add = (a, l) => { a.maps++; a.kills += l.kills | 0; a.deaths += l.deaths | 0; a.assists += l.assists | 0; a.mvps += l.mvps | 0; a._adr += l.adr | 0; };
+  const fin = a => { a.kd = +(a.kills / Math.max(1, a.deaths)).toFixed(2); a.adr = a.maps ? Math.round(a._adr / a.maps) : 0; delete a._adr; return a; };
+  const players = {};
+  log.forEach(l => {
+    const p = players[l.steamid] || (players[l.steamid] = { steamid: l.steamid, name: l.name, team: l.team, tournament: zero(), series: zero(), byMap: {} });
+    p.name = l.name || p.name; p.team = l.team || p.team;
+    add(p.tournament, l);
+    if (l.seriesKey === sk) add(p.series, l);
+    p.byMap[l.map] = { kills: l.kills | 0, deaths: l.deaths | 0, assists: l.assists | 0, mvps: l.mvps | 0, adr: l.adr | 0, kd: +((l.kills | 0) / Math.max(1, l.deaths | 0)).toFixed(2) };
+  });
+  Object.values(players).forEach(p => { fin(p.tournament); fin(p.series); });
+  return { seriesKey: sk, players };
+}
+
 let _gsiSig = '', _gsiLastBcast = 0;
 app.post('/api/live/gsi', (req, res) => {
   if (!liveAuthed(req)) return res.status(403).end();
@@ -410,6 +461,7 @@ app.post('/api/live/gsi', (req, res) => {
   }
   const gp = gsiPlayers(b);   // live K/D/A (carried out on the next throttled broadcast, not per kill)
   if (gp) state.live.players = gp;
+  if (g.phase === 'gameover' && g.map && recordMapStats(g.map)) changed = true;   // final → tournament log
   const sig = [g.map, g.phase, g.round, g.ctScore, g.tScore].join('|');
   const now = Date.now();
   if (changed || sig !== _gsiSig || now - _gsiLastBcast > 3000) { _gsiSig = sig; _gsiLastBcast = now; broadcast(); }
@@ -440,6 +492,7 @@ app.post('/api/live/matchzy', (req, res) => {
   }
   const mp = mzPlayers(b);   // MatchZy player stats (incl. ADR) when present — prefer over GSI
   if (mp) { state.live.players = mp; changed = true; }
+  if (fin && map && recordMapStats(map)) changed = true;   // map_result → tournament log
   if (changed || ev) broadcast();
   res.json({ ok: true });
 });
@@ -635,6 +688,7 @@ const makeDefault = () => ({
     hasPrizepool:    false,
     teamPool:        [],   // team IDs competing in THIS tournament (subset of global Teams DB)
     mapPool:         [],   // CS2 etc. map pool [{ name, image }] — set in Tournament Setup; rotates
+    csStats:         [],   // CS2 per-map player stat lines accumulated over the event (live-data Phase C2)
     groups: [],
     schedule: []
   },
@@ -1378,6 +1432,15 @@ app.post('/api/live/apply', requireAdmin, (req, res) => {
     broadcast();
   }
   res.json({ ok: true, applied });
+});
+// Accumulated CS2 player stats — per-player tournament + current-series totals + per-map lines.
+// requireAuth (global) lets the caster view / graphics read it via session or ?token=.
+app.get('/api/cs-stats', (req, res) => res.json(buildCsStats()));
+// Clear the accumulated tournament stat log (admin) — for a fresh event / mistaken entries.
+app.post('/api/cs-stats/clear', requireAdmin, (req, res) => {
+  if (state.tournament) state.tournament.csStats = [];
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'cs-stats-clear', '');
+  broadcast(); res.json({ ok: true });
 });
 // Everything the control "Live Data" card needs to show setup instructions (admin only —
 // includes the secret token + the ready-to-paste URLs/cfg).

@@ -1994,3 +1994,4 @@ input[type=search]::-webkit-search-decoration { display: none; }
 .ld-prow > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ld-prow > b { margin-left: auto; font-variant-numeric: tabular-nums; }
 .ld-prow .ld-padr { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ld-prow .ld-pmeta { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }

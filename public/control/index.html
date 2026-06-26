@@ -334,7 +334,13 @@
         <p class="hint" style="margin-top:2px">Which team is currently on CT — so GSI's CT/T scores map to the right team. (MatchZy reports teams directly.)</p>
         <label class="ld-toggle" style="margin-top:10px"><input type="checkbox" id="ld-autoapply" onchange="ldSetAuto(this.checked)"> <span>Auto-apply scores (otherwise scores are suggested for you to apply)</span></label>
         <div id="ld-suggestions" style="margin-top:10px"></div>
-        <div id="ld-players" style="margin-top:8px"></div>
+        <div id="ld-pview" class="btn-row" style="display:none;gap:6px;margin-top:10px;align-items:center">
+          <span class="hint">Player stats:</span>
+          <button class="btn btn-sm" data-pv="live" onclick="ldSetView('live')">Live</button>
+          <button class="btn btn-sm" data-pv="series" onclick="ldSetView('series')">This series</button>
+          <button class="btn btn-sm" data-pv="tournament" onclick="ldSetView('tournament')">Tournament</button>
+        </div>
+        <div id="ld-players" style="margin-top:6px"></div>
 
         <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
           <span class="hint">Ingest token (shared by GSI/MatchZy):</span>
