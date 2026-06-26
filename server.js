@@ -308,6 +308,59 @@ function liveTokenFromReq(req) {
 }
 function liveCfg() { return (state.settings && state.settings.liveData) || {}; }
 function liveAuthed(req) { const t = liveCfg().liveToken; return !!t && liveTokenFromReq(req) === t; }
+
+// ── Live score derivation (Phase B) ─────────────────────────────────────────────
+// Ingested per-map round scores land as SUGGESTIONS (state.live.suggested[slug]) the operator
+// applies — unless liveData.autoApplyScores writes them straight into match.mapResults.
+function liveFindMapRow(mapName) {
+  const slug = mapArtSlug(mapName); if (!slug) return -1;
+  const rows = (state.match && state.match.mapResults) || [];
+  for (let i = 0; i < rows.length; i++) if (rows[i] && mapArtSlug(rows[i].map) === slug) return i;
+  return -1;
+}
+function liveApplyToRow(i, s) {
+  const r = state.match.mapResults[i];
+  if (s.t1Rounds != null) r.t1Rounds = Math.max(0, s.t1Rounds | 0);
+  if (s.t2Rounds != null) r.t2Rounds = Math.max(0, s.t2Rounds | 0);
+  if (s.winner && ['team1', 'team2', ''].includes(s.winner)) r.winner = s.winner;
+  if (s.status && ['upcoming', 'live', 'final'].includes(s.status)) r.status = s.status;
+  applyMapResultsToSeries();
+}
+// Returns true if state changed (→ caller broadcasts). s = {map, t1Rounds, t2Rounds, winner, status, source}.
+function liveIngestScore(s) {
+  if (!s || !s.map) return false;
+  const i = liveFindMapRow(s.map); if (i < 0) return false;   // no matching mapResults row → can't use it
+  const slug = mapArtSlug(s.map), r = state.match.mapResults[i];
+  if (liveCfg().autoApplyScores) {
+    const before = JSON.stringify([r.t1Rounds, r.t2Rounds, r.winner, r.status]);
+    liveApplyToRow(i, s);
+    if (state.live.suggested[slug]) delete state.live.suggested[slug];
+    return before !== JSON.stringify([r.t1Rounds, r.t2Rounds, r.winner, r.status]);
+  }
+  // Suggestion mode — only keep it while it differs from what's already applied.
+  const same = (r.t1Rounds | 0) === (s.t1Rounds | 0) && (r.t2Rounds | 0) === (s.t2Rounds | 0) && (r.winner || '') === (s.winner || '');
+  if (same) { if (state.live.suggested[slug]) { delete state.live.suggested[slug]; return true; } return false; }
+  const prev = JSON.stringify(state.live.suggested[slug] || null);
+  state.live.suggested[slug] = { row: i, map: r.map || s.map, t1Rounds: s.t1Rounds | 0, t2Rounds: s.t2Rounds | 0, winner: s.winner || '', status: s.status || 'live', source: s.source || '', ts: Date.now() };
+  delete state.live.suggested[slug].ts;   // exclude volatile ts from the change check below
+  const changed = prev !== JSON.stringify(state.live.suggested[slug]);
+  state.live.suggested[slug].ts = Date.now();
+  return changed;
+}
+// Map GSI's CT/T scores to our team1/team2: prefer matching the GSI team name to our team
+// name/tag (handles half-time side swaps automatically); else fall back to liveData.ctTeam.
+function gsiTeamScores(b) {
+  const ct = (b.map && b.map.team_ct) || {}, t = (b.map && b.map.team_t) || {};
+  const m1 = (state.match && state.match.team1) || {}, m2 = (state.match && state.match.team2) || {};
+  const norm = x => String(x || '').toLowerCase().trim();
+  const match = name => { const n = norm(name); if (!n) return null;
+    if (n === norm(m1.name) || n === norm(m1.tag)) return 'team1';
+    if (n === norm(m2.name) || n === norm(m2.tag)) return 'team2'; return null; };
+  const ctTeam = match(ct.name) || (liveCfg().ctTeam === 'team2' ? 'team2' : 'team1');
+  const cs = (ct.score | 0), ts = (t.score | 0);
+  return ctTeam === 'team1' ? { t1: cs, t2: ts } : { t1: ts, t2: cs };
+}
+
 let _gsiSig = '', _gsiLastBcast = 0;
 app.post('/api/live/gsi', (req, res) => {
   if (!liveAuthed(req)) return res.status(403).end();
@@ -319,10 +372,16 @@ app.post('/api/live/gsi', (req, res) => {
   g.round = (map.round != null ? map.round : ((b.round && b.round.round) || 0)) | 0;
   g.ctScore = ((map.team_ct && map.team_ct.score) || 0) | 0;
   g.tScore  = ((map.team_t  && map.team_t.score)  || 0) | 0;
-  // Phase B/C will derive suggested scores + per-player stats here.
+  let changed = false;
+  if (g.map && ['live', 'gameover', 'intermission'].includes(g.phase)) {
+    const sc = gsiTeamScores(b), fin = g.phase === 'gameover';
+    const winner = fin ? (sc.t1 > sc.t2 ? 'team1' : (sc.t2 > sc.t1 ? 'team2' : '')) : '';
+    changed = liveIngestScore({ map: g.map, t1Rounds: sc.t1, t2Rounds: sc.t2, winner, status: fin ? 'final' : 'live', source: 'gsi' });
+  }
+  // Phase C will derive per-player stats here (b.allplayers).
   const sig = [g.map, g.phase, g.round, g.ctScore, g.tScore].join('|');
   const now = Date.now();
-  if (sig !== _gsiSig || now - _gsiLastBcast > 3000) { _gsiSig = sig; _gsiLastBcast = now; broadcast(); }
+  if (changed || sig !== _gsiSig || now - _gsiLastBcast > 3000) { _gsiSig = sig; _gsiLastBcast = now; broadcast(); }
   res.json({ ok: true });
 });
 app.post('/api/live/matchzy', (req, res) => {
@@ -331,10 +390,24 @@ app.post('/api/live/matchzy', (req, res) => {
   const b = req.body || {};
   const mz = state.live.matchzy;
   mz.lastSeen = Date.now();
-  mz.event = b.event || b.eventType || '';
-  mz.map = b.map_name || b.map || (b.mapName) || '';
-  // Phase B/C will derive suggested map/series scores + player stats from MatchZy events here.
-  broadcast();
+  const ev = String(b.event || b.eventType || '').toLowerCase();
+  mz.event = ev;
+  const map = b.map_name || b.map || b.mapName || mz.map || '';
+  mz.map = map;
+  // Best-effort score parse — MatchZy payload fields vary by version; teams are reported
+  // directly (no side mapping needed). Round scores: team{1,2}.score | *_score | map_score.
+  const T1 = b.team1 || {}, T2 = b.team2 || {};
+  const num = (...xs) => { for (const x of xs) if (x != null && x !== '' && !isNaN(x)) return x | 0; return null; };
+  const t1r = num(T1.score, T1.map_score, b.team1_score, b.t1_score);
+  const t2r = num(T2.score, T2.map_score, b.team2_score, b.t2_score);
+  let winner = typeof b.winner === 'string' ? b.winner : (b.winner && b.winner.team) || '';
+  winner = (winner === 'team1' || winner === 'team2') ? winner : '';
+  const fin = ev.includes('map_result') || ev.includes('map_end');
+  let changed = false;
+  if (map && (t1r != null || t2r != null)) {
+    changed = liveIngestScore({ map, t1Rounds: t1r, t2Rounds: t2r, winner: fin ? winner : '', status: fin ? 'final' : 'live', source: 'matchzy' });
+  }
+  if (changed || ev) broadcast();
   res.json({ ok: true });
 });
 
@@ -1256,6 +1329,22 @@ app.post('/api/live/config', requireAdmin, (req, res) => {
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'live-config',
     'gsi=' + ld.gsiEnabled + ' matchzy=' + ld.matchzyEnabled + (b.regenerateToken ? ' (token rotated)' : ''));
   broadcast(); res.json({ ok: true });
+});
+// Apply a live SCORE suggestion into match.mapResults — one map (by slug) or all pending.
+app.post('/api/live/apply', requireAdmin, (req, res) => {
+  const sug = state.live.suggested || {};
+  const keys = req.body && req.body.slug ? [req.body.slug] : Object.keys(sug);
+  let applied = 0;
+  keys.forEach(slug => {
+    const s = sug[slug]; if (!s) return;
+    const i = liveFindMapRow(s.map); if (i < 0) return;
+    liveApplyToRow(i, s); delete sug[slug]; applied++;
+  });
+  if (applied) {
+    logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'live-apply', applied + ' map score(s)');
+    broadcast();
+  }
+  res.json({ ok: true, applied });
 });
 // Everything the control "Live Data" card needs to show setup instructions (admin only —
 // includes the secret token + the ready-to-paste URLs/cfg).

@@ -471,7 +471,26 @@ function ldRender(state) {
   if (b1) b1.classList.toggle('btn-primary', ct === 'team1');
   if (b2) b2.classList.toggle('btn-primary', ct === 'team2');
   ldStatusEl('gsi', ld.gsiEnabled, live.gsi); ldStatusEl('matchzy', ld.matchzyEnabled, live.matchzy);
+  // Live score suggestions (when auto-apply is off) → Apply buttons.
+  const sx = document.getElementById('ld-suggestions');
+  if (sx) {
+    const m = (state.match) || {}, t1 = (m.team1 && (m.team1.tag || m.team1.name)) || 'T1', t2 = (m.team2 && (m.team2.tag || m.team2.name)) || 'T2';
+    const sug = (live.suggested) || {}, keys = Object.keys(sug);
+    if (ld.autoApplyScores) {
+      sx.innerHTML = '<p class="hint" style="margin:0;color:#7ee2a8">⟳ Live scores auto-apply to the map results.</p>';
+    } else if (keys.length) {
+      const rows = keys.map(function (k) {
+        const s = sug[k], win = s.winner === 'team1' ? ' · ' + esc(t1) + ' win' : s.winner === 'team2' ? ' · ' + esc(t2) + ' win' : '';
+        return '<div class="ld-sug-row"><span>' + esc(s.map) + '</span><b>' + (s.t1Rounds | 0) + '–' + (s.t2Rounds | 0) + '</b>' +
+          '<span class="ld-sug-meta">' + esc(s.source) + win + '</span>' +
+          '<button class="btn btn-sm" onclick="ldApply(\'' + esc(k) + '\')">Apply</button></div>';
+      }).join('');
+      sx.innerHTML = '<div class="hint" style="margin:0 0 6px">Live score' + (keys.length > 1 ? 's' : '') + ' — review &amp; apply (' + esc(t1) + ' – ' + esc(t2) + '):</div>' +
+        rows + (keys.length > 1 ? '<button class="btn btn-sm btn-primary" style="margin-top:6px" onclick="ldApply()">Apply all</button>' : '');
+    } else { sx.innerHTML = ''; }
+  }
 }
+async function ldApply(slug) { await api('/api/live/apply', slug ? { slug: slug } : {}); }
 async function ldSetEnabled(src, on) { await api('/api/live/config', src === 'gsi' ? { gsiEnabled: on } : { matchzyEnabled: on }); }
 async function ldSetCt(team) { await api('/api/live/config', { ctTeam: team }); }
 async function ldSetAuto(on) { await api('/api/live/config', { autoApplyScores: on }); }
