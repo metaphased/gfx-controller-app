@@ -445,15 +445,18 @@
       var imgs = fly.querySelectorAll('.mv-flyby-img'), a = imgs[0], b = imgs[1];
       var urls = panel._flyUrls; panel._flyIdx = (panel._flyIdx + 1) % urls.length;
       // Fade the incoming image IN, ON TOP of the outgoing one which stays fully opaque
-      // underneath — so the base .media never bleeds through mid-crossfade (the old
-      // simultaneous fade dipped both layers to ~50%, most visible on the big focused panel).
-      // The covered outgoing becomes next round's incoming, reset to 0 invisibly behind the top.
-      var inc = panel._flyCurA ? b : a, cur = panel._flyCurA ? a : b;
-      inc.style.transition = 'none'; inc.classList.remove('on');   // snap to 0 (hidden under cur)
-      inc.style.zIndex = '2'; cur.style.zIndex = '1';              // incoming always on top
-      inc.onload = function(){ requestAnimationFrame(function(){
-        inc.style.transition = ''; requestAnimationFrame(function(){ inc.classList.add('on'); }); }); };
-      inc.src = urls[panel._flyIdx];
+      // underneath — so the base .media never bleeds through mid-crossfade (a simultaneous
+      // fade dipped both to ~50%, most visible on the big focused panel). The outgoing is
+      // dropped only AFTER the fade: invisible (covered by the now-opaque incoming) and left
+      // at opacity 0, ready to be the next incoming. No transition toggling — that raced with
+      // onload once images were cached and made it SNAP. Assumes FLYBY_MS > the ~1.1s fade.
+      var show = panel._flyCurA ? b : a, hide = panel._flyCurA ? a : b;
+      show.style.zIndex = '2'; hide.style.zIndex = '1';
+      show.onload = function(){
+        show.classList.add('on');                                  // opacity 0 → 1 (CSS 1.1s)
+        setTimeout(function(){ hide.classList.remove('on'); }, 1150);
+      };
+      show.src = urls[panel._flyIdx];
       panel._flyCurA = !panel._flyCurA;
       scheduleFlyby(panel);
     }, FLYBY_MS);

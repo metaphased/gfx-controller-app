@@ -727,8 +727,21 @@ function ltRecomputeVisible(lt) {
 
 // Ensure the game id exists on both match + tournament (default LoL). No-op for current
 // data; safety net for very old profiles/state. Adapter resolution keys off match.game.
+// An early CS2 build auto-seeded each map's `image` with a ghostcap cs2-map-images URL.
+// Those are raw in-game screenshots WITH the HUD crosshair baked in (visible dead-centre,
+// e.g. Anubis) and they bypass the resize proxy. The app now auto-resolves crosshair-free,
+// properly-sized art from the map name, so strip these auto-seeded overrides → revert to auto.
+// User-chosen images (uploads / other hosts) are left untouched.
+function migrateMapPoolArt(st) {
+  const pool = st && st.tournament && st.tournament.mapPool;
+  if (!Array.isArray(pool)) return;
+  pool.forEach(m => {
+    if (m && typeof m.image === 'string' && /\/\/raw\.githubusercontent\.com\/ghostcap-gaming\/cs2-map-images\//.test(m.image)) m.image = '';
+  });
+}
 function migrateGame(st) {
   if (!st) return;
+  migrateMapPoolArt(st);
   if (!st.match) st.match = {};
   if (!st.match.game) st.match.game = 'lol';
   if (!st.tournament) st.tournament = {};
