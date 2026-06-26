@@ -53,7 +53,7 @@ const sessionMiddleware = session({
   }
 });
 app.use(sessionMiddleware);
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));   // CS2 GSI allplayers payloads exceed the 100kb default
 
 // ── Socket.io (shares express session) ────────────────────────────────────────
 const io = new Server(server, { cors: { origin: '*' } });
@@ -293,6 +293,51 @@ app.get('/', (req, res) => {
   res.redirect(['admin','superadmin'].includes(req.session.user.role) ? '/control/' : '/operator/');
 });
 
+// ── CS2 live-data ingest (auth-EXEMPT — external tools can't hold a session) ────
+// GSI (CS2 observer client) and MatchZy (game server) POST here. Gated by liveData.liveToken
+// (a separate secret from graphicsToken), accepted via ?token=, an Authorization header, or
+// the GSI body's auth.token. DATA-ONLY: records what the game reports; never triggers graphics.
+// MUST be registered BEFORE the protected-static + /api auth middleware so it bypasses them.
+// (Admin config + the GSI .cfg download live further down, behind requireAdmin.)
+function liveTokenFromReq(req) {
+  if (req.query && req.query.token) return String(req.query.token);
+  const h = req.headers && req.headers.authorization;
+  if (h) return h.replace(/^Bearer\s+/i, '').trim();
+  if (req.body && req.body.auth && req.body.auth.token) return String(req.body.auth.token);
+  return '';
+}
+function liveCfg() { return (state.settings && state.settings.liveData) || {}; }
+function liveAuthed(req) { const t = liveCfg().liveToken; return !!t && liveTokenFromReq(req) === t; }
+let _gsiSig = '', _gsiLastBcast = 0;
+app.post('/api/live/gsi', (req, res) => {
+  if (!liveAuthed(req)) return res.status(403).end();
+  if (!liveCfg().gsiEnabled) return res.json({ ignored: true });   // source turned off — drop quietly
+  const b = req.body || {}, map = b.map || {};
+  const g = state.live.gsi;
+  g.lastSeen = Date.now();
+  g.map = map.name || ''; g.phase = map.phase || '';
+  g.round = (map.round != null ? map.round : ((b.round && b.round.round) || 0)) | 0;
+  g.ctScore = ((map.team_ct && map.team_ct.score) || 0) | 0;
+  g.tScore  = ((map.team_t  && map.team_t.score)  || 0) | 0;
+  // Phase B/C will derive suggested scores + per-player stats here.
+  const sig = [g.map, g.phase, g.round, g.ctScore, g.tScore].join('|');
+  const now = Date.now();
+  if (sig !== _gsiSig || now - _gsiLastBcast > 3000) { _gsiSig = sig; _gsiLastBcast = now; broadcast(); }
+  res.json({ ok: true });
+});
+app.post('/api/live/matchzy', (req, res) => {
+  if (!liveAuthed(req)) return res.status(403).end();
+  if (!liveCfg().matchzyEnabled) return res.json({ ignored: true });
+  const b = req.body || {};
+  const mz = state.live.matchzy;
+  mz.lastSeen = Date.now();
+  mz.event = b.event || b.eventType || '';
+  mz.map = b.map_name || b.map || (b.mapName) || '';
+  // Phase B/C will derive suggested map/series scores + player stats from MatchZy events here.
+  broadcast();
+  res.json({ ok: true });
+});
+
 // ── Static — protected ─────────────────────────────────────────────────────────
 app.use('/control',  requireAuth, requireAdmin, express.static(path.join(__dirname, 'public', 'control')));
 app.use('/operator', requireAuth, express.static(path.join(__dirname, 'public', 'operator')));
@@ -503,6 +548,17 @@ const makeDefault = () => ({
     scheduleDayId: null,
     scheduleGameId: null,
   },
+  // CS2 live-data ingest (optional). Populated by GSI (observer client) and/or MatchZy
+  // (game server) POSTs. DATA-ONLY: it records what the game reports + derives SUGGESTED
+  // scores/stats; the operator still triggers every graphic manually. lastSeen = epoch ms
+  // of the last accepted post (the UI shows "connected" if recent). suggested/players are
+  // filled in later phases (scores / per-player stats).
+  live: {
+    gsi:     { lastSeen: 0, map: '', phase: '', round: 0, ctScore: 0, tScore: 0 },
+    matchzy: { lastSeen: 0, event: '', map: '' },
+    suggested: {},   // phase B: { mapResults?, seriesScore? } awaiting operator Apply
+    players: {},     // phase C: per-steamid live stats { [steamid]: { name, team, kills, deaths, assists, mvps } }
+  },
   players: {
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),
     team1subs: makeDefaultSubs(), team2subs: makeDefaultSubs()
@@ -618,6 +674,16 @@ const makeDefault = () => ({
     },
     logoSet: { logos: [] },        // [{ name: string, url: string }]
     mapPoolDefaults: {},           // per-game default map pool, e.g. { cs2: [{name,image}] } — "Set as default"
+    // CS2 live-data ingest config (optional; both sources independent). liveToken is a
+    // SEPARATE secret from graphicsToken (carried by the GSI cfg / MatchZy plugin) and is
+    // stripped from the graphics payload. autoApplyScores=false → ingest only suggests.
+    liveData: {
+      gsiEnabled:      false,
+      matchzyEnabled:  false,
+      liveToken:       require('crypto').randomBytes(16).toString('hex'),
+      autoApplyScores: false,
+      ctTeam:          'team1',   // which of our teams is currently on CT (maps GSI CT/T → team1/2)
+    },
     buses: [
       { id: 'busA', name: 'Bus A', assignments: [] },
       { id: 'busB', name: 'Bus B', assignments: [] },
@@ -959,6 +1025,10 @@ function buildStatePayload(includeToken) {
   if (!includeToken && payload.settings) {
     payload.settings = Object.assign({}, payload.settings); // clone so we don't mutate real state
     delete payload.settings.graphicsToken;
+    if (payload.settings.liveData) {            // hide the live-ingest secret from graphics/operators
+      payload.settings.liveData = Object.assign({}, payload.settings.liveData);
+      delete payload.settings.liveData.liveToken;
+    }
     if (payload.settings.switcher) {            // hide switcher creds/config from non-admins
       payload.settings = Object.assign({}, payload.settings);
       delete payload.settings.switcher;
@@ -1172,6 +1242,66 @@ deriveTodayGames();
 // ── Config API (public) ────────────────────────────────────────────────────────
 app.get('/api/config', (req, res) => res.json({ externalUrl: EXTERNAL_URL }));
 
+// ── CS2 live-data: admin config + setup helpers (the ingest endpoints are above, pre-auth) ──
+function liveBaseUrl(req) { return EXTERNAL_URL || (req.protocol + '://' + req.get('host')); }
+// Toggle sources / options + optionally rotate the ingest token.
+app.post('/api/live/config', requireAdmin, (req, res) => {
+  const ld = state.settings.liveData || (state.settings.liveData = {});
+  const b = req.body || {};
+  if (b.gsiEnabled      !== undefined) ld.gsiEnabled      = !!b.gsiEnabled;
+  if (b.matchzyEnabled  !== undefined) ld.matchzyEnabled  = !!b.matchzyEnabled;
+  if (b.autoApplyScores !== undefined) ld.autoApplyScores = !!b.autoApplyScores;
+  if (b.ctTeam          !== undefined) ld.ctTeam          = (b.ctTeam === 'team2' ? 'team2' : 'team1');
+  if (b.regenerateToken) ld.liveToken = require('crypto').randomBytes(16).toString('hex');
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'live-config',
+    'gsi=' + ld.gsiEnabled + ' matchzy=' + ld.matchzyEnabled + (b.regenerateToken ? ' (token rotated)' : ''));
+  broadcast(); res.json({ ok: true });
+});
+// Everything the control "Live Data" card needs to show setup instructions (admin only —
+// includes the secret token + the ready-to-paste URLs/cfg).
+app.get('/api/live/info', requireAdmin, (req, res) => {
+  const ld = state.settings.liveData || {};
+  const base = liveBaseUrl(req), token = ld.liveToken || '';
+  res.json({
+    token, base,
+    gsiUrl:     base + '/api/live/gsi?token=' + encodeURIComponent(token),
+    matchzyUrl: base + '/api/live/matchzy?token=' + encodeURIComponent(token),
+    cfgUrl:     '/api/live/gsi.cfg',
+    note: 'The URL must be reachable from the CS2 PC / game server — set EXTERNAL_URL (or use this machine\'s LAN IP), not localhost, for a separate machine.',
+  });
+});
+// Downloadable GSI config — drop in ...\\Counter-Strike Global Offensive\\game\\csgo\\cfg\\
+app.get('/api/live/gsi.cfg', requireAdmin, (req, res) => {
+  const ld = state.settings.liveData || {};
+  const uri = liveBaseUrl(req) + '/api/live/gsi?token=' + encodeURIComponent(ld.liveToken || '');
+  const cfg =
+`"MetaGFX Live"
+{
+ "uri"       "${uri}"
+ "timeout"   "5.0"
+ "buffer"    "0.1"
+ "throttle"  "0.5"
+ "heartbeat" "10.0"
+ "auth"      { "token" "${ld.liveToken || ''}" }
+ "data"
+ {
+  "provider"               "1"
+  "map"                    "1"
+  "round"                  "1"
+  "player_id"              "1"
+  "player_state"           "1"
+  "player_match_stats"     "1"
+  "allplayers_id"          "1"
+  "allplayers_state"       "1"
+  "allplayers_match_stats" "1"
+ }
+}
+`;
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.set('Content-Disposition', 'attachment; filename="gamestate_integration_metagfx.cfg"');
+  res.send(cfg);
+});
+
 // ── State API ──────────────────────────────────────────────────────────────────
 app.get('/api/state', (req, res) => {
   const isAdmin = req.session && req.session.user && ['admin','superadmin'].includes(req.session.user.role);
@@ -1179,6 +1309,7 @@ app.get('/api/state', (req, res) => {
   if (isAdmin) return res.json(Object.assign({}, state, { adapter }));
   const safe = Object.assign({}, state, { adapter, settings: Object.assign({}, state.settings) });
   delete safe.settings.graphicsToken;
+  if (safe.settings.liveData) { safe.settings.liveData = Object.assign({}, safe.settings.liveData); delete safe.settings.liveData.liveToken; }
   res.json(safe);
 });
 app.post('/api/state/reset', requireAdmin, (req, res) => { state = makeDefault(); deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true }); });

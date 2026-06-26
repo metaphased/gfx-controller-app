@@ -249,6 +249,7 @@ socket.on('state', async (state) => {
   applyAdapterUI();
   applyTournamentCreateLock();
   tmRenderMapPool(state);
+  ldRender(state);
   mvRenderVeto(state);
   mvRenderGfx(state);
   applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
@@ -437,6 +438,55 @@ async function mvRefreshImages(btn) {
   btn.textContent = (r && r.ok) ? ('Updated ✓ (' + (r.maps || 0) + ')') : 'Failed';
   setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
 }
+
+// ── Live Data (CS2 GSI / MatchZy ingest) ────────────────────────────────────────
+// _ldInfo holds the admin-only token + ready-to-paste URLs (fetched from /api/live/info);
+// enabled flags + connection status come from the broadcast state (state.settings.liveData +
+// state.live). Status decays to "idle" via a periodic re-render since posts stop broadcasting.
+let _ldInfo = null;
+async function ldFetchInfo() {
+  try { const r = await fetch('/api/live/info'); if (r.ok) _ldInfo = await r.json(); } catch (e) {}
+  const t = document.getElementById('ld-token');
+  if (t) t.textContent = (_ldInfo && _ldInfo.token) ? (_ldInfo.token.slice(0, 6) + '…' + _ldInfo.token.slice(-4)) : '—';
+}
+function ldAgo(ms) { const s = Math.round(ms / 1000); if (s < 60) return s + 's'; const m = Math.round(s / 60); if (m < 60) return m + 'm'; return Math.round(m / 60) + 'h'; }
+function ldStatusEl(src, enabled, info) {
+  const e = document.getElementById('ld-' + src + '-status'); if (!e) return;
+  const lastSeen = (info && info.lastSeen) || 0, age = Date.now() - lastSeen;
+  if (!enabled) { e.className = 'ld-status'; e.textContent = 'off'; return; }
+  if (lastSeen && age < 15000) {
+    e.className = 'ld-status on';
+    e.textContent = src === 'gsi'
+      ? ('live · ' + (info.map || '?') + (info.round ? ' R' + info.round : '') + '  ' + info.ctScore + '–' + info.tScore)
+      : ('live' + (info.event ? ' · ' + info.event : ''));
+  } else if (lastSeen) { e.className = 'ld-status idle'; e.textContent = 'idle (' + ldAgo(age) + ')'; }
+  else { e.className = 'ld-status idle'; e.textContent = 'waiting…'; }
+}
+function ldRender(state) {
+  const ld = (state.settings && state.settings.liveData) || {}, live = state.live || {};
+  const set = (id, on) => { const e = document.getElementById(id); if (e) e.checked = !!on; };
+  set('ld-gsi-enabled', ld.gsiEnabled); set('ld-matchzy-enabled', ld.matchzyEnabled); set('ld-autoapply', ld.autoApplyScores);
+  const ct = ld.ctTeam === 'team2' ? 'team2' : 'team1';
+  const b1 = document.getElementById('ld-ct-team1'), b2 = document.getElementById('ld-ct-team2');
+  if (b1) b1.classList.toggle('btn-primary', ct === 'team1');
+  if (b2) b2.classList.toggle('btn-primary', ct === 'team2');
+  ldStatusEl('gsi', ld.gsiEnabled, live.gsi); ldStatusEl('matchzy', ld.matchzyEnabled, live.matchzy);
+}
+async function ldSetEnabled(src, on) { await api('/api/live/config', src === 'gsi' ? { gsiEnabled: on } : { matchzyEnabled: on }); }
+async function ldSetCt(team) { await api('/api/live/config', { ctTeam: team }); }
+async function ldSetAuto(on) { await api('/api/live/config', { autoApplyScores: on }); }
+async function ldRegenToken(btn) {
+  if (!confirm('Rotate the ingest token? You must re-download the GSI config and update MatchZy with the new URL.')) return;
+  btn.disabled = true; await api('/api/live/config', { regenerateToken: true }); await ldFetchInfo(); btn.disabled = false;
+}
+function ldCopy(src, btn) {
+  if (!_ldInfo) return;
+  copyText(src === 'gsi' ? _ldInfo.gsiUrl : _ldInfo.matchzyUrl).then(() => {
+    const o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => { btn.textContent = o; }, 1500);
+  });
+}
+// Decay status to idle without a fresh broadcast (posts stop emitting once values settle).
+setInterval(() => { if (window._state) ldRender(window._state); }, 5000);
 
 // Clipboard copy with execCommand fallback for non-localhost HTTP (remote users)
 function copyText(str) {
@@ -4950,6 +5000,7 @@ function closeProfileLoadModal() {
 document.addEventListener('DOMContentLoaded', function() {
   const m = g('profile-load-modal');
   if (m) m.addEventListener('click', function(e) { if (e.target === m) closeProfileLoadModal(); });
+  ldFetchInfo();   // load the live-data token + setup URLs (admin only)
 
   // Autofill suppression — readonly trick for both text and password inputs
   ['ts-gfx-display-title', 'win-msg', 'chpw-new', 'chpw-confirm', 'nu-password'].forEach(function(id) {
