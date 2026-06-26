@@ -107,6 +107,24 @@ function getPlayerByRole(players, roleKey) {
   return (players || []).find(function(p) { return normalizeRole(p.role) === roleKey; }) || {};
 }
 
+// True for games with no fixed roster roles (CS2 etc.) — read from the adapter.
+function piNoRoles(state) {
+  var a = state.adapter || {};
+  return a.positions ? !a.positions.some(function(p) { return !!p; }) : false;
+}
+
+// Player slots for a team: role-based (LoL) gives a fixed top→support order with role
+// icons; role-less games (CS2) list players in roster order with no role icon.
+// Returns [{ player, roleKey }] — roleKey '' means "no role icon".
+function piSlots(state, players) {
+  if (piNoRoles(state)) {
+    return (players || [])
+      .filter(function(p) { return p && (p.handle || p.name); })
+      .map(function(p) { return { player: p, roleKey: '' }; });
+  }
+  return ROLES.map(function(r) { return { player: getPlayerByRole(players, r), roleKey: r }; });
+}
+
 function rankText(rank) {
   if (!rank || !rank.tier) return '';
   var tier = rank.tier.charAt(0).toUpperCase() + rank.tier.slice(1).toLowerCase();
@@ -260,7 +278,7 @@ function buildPanelRowHtml(player, roleKey, side, showRank, showChamps) {
   var rowCls  = 'pi-pnl-row' + (isRight ? ' pi-pnl-row-right' : '');
 
   var strip  = showChamps ? champStripHtml(player.champPool, side, 'panel') : '';
-  var roleEl = '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>';
+  var roleEl = roleKey ? '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>' : '';
   var textEl = (
     '<span class="pi-pnl-text">' +
       '<span class="pi-pnl-handle">' + esc(handle) + '</span>' +
@@ -300,15 +318,16 @@ function renderPanel(state) {
   function fillRows(elId, players, side) {
     var el = $(elId);
     if (!el) return;
-    var key = ROLES.map(function(r) {
-      var p = getPlayerByRole(players, r);
-      return [p.handle||'', showRank, rankText(p.rank||null), showChamps,
+    var slots = piSlots(state, players);
+    var key = slots.map(function(sl) {
+      var p = sl.player;
+      return [p.handle||'', sl.roleKey, showRank, rankText(p.rank||null), showChamps,
         (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(',')].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
       el.dataset.key = key;
-      el.innerHTML = ROLES.map(function(r) {
-        return buildPanelRowHtml(getPlayerByRole(players, r), r, side, showRank, showChamps);
+      el.innerHTML = slots.map(function(sl) {
+        return buildPanelRowHtml(sl.player, sl.roleKey, side, showRank, showChamps);
       }).join('');
     }
   }
@@ -327,7 +346,7 @@ function buildStackPlayerHtml(player, roleKey, showRank, showChamps, side) {
   return (
     '<div class="pi-stk-player">' +
       strip +
-      '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' +
+      (roleKey ? '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' : '') +
       '<span class="pi-stk-handle">' + esc(handle) + '</span>' +
       (rank      ? '<span class="pi-stk-rank">' + rank + '</span>' : '') +
     '</div>'
@@ -358,15 +377,16 @@ function renderStack(state) {
   function fillPlayers(elId, players, side) {
     var el = $(elId);
     if (!el) return;
-    var key = ROLES.map(function(r) {
-      var p = getPlayerByRole(players, r);
-      return [p.handle||'', showRank, rankText(p.rank||null), showChamps,
+    var slots = piSlots(state, players);
+    var key = slots.map(function(sl) {
+      var p = sl.player;
+      return [p.handle||'', sl.roleKey, showRank, rankText(p.rank||null), showChamps,
         (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(',')].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
       el.dataset.key = key;
-      el.innerHTML = ROLES.map(function(r) {
-        return buildStackPlayerHtml(getPlayerByRole(players, r), r, showRank, showChamps, side);
+      el.innerHTML = slots.map(function(sl) {
+        return buildStackPlayerHtml(sl.player, sl.roleKey, showRank, showChamps, side);
       }).join('');
     }
   }
@@ -386,7 +406,7 @@ function buildBarPlayerHtml(player, roleKey, showRank) {
 
   return (
     '<div class="pi-bar-player">' +
-      '<span class="pi-bar-role" style="background-image:url(' + icon + ')"></span>' +
+      (roleKey ? '<span class="pi-bar-role" style="background-image:url(' + icon + ')"></span>' : '') +
       '<span class="pi-bar-text">' +
         '<span class="pi-bar-handle">' + esc(handle) + '</span>' +
         (rank ? '<span class="pi-bar-rank">' + rank + '</span>' : '') +
@@ -423,14 +443,15 @@ function renderBar(state) {
   function fillPlayers(elId, players) {
     var el = $(elId);
     if (!el) return;
-    var key = ROLES.map(function(r) {
-      var p = getPlayerByRole(players, r);
-      return [p.handle||'', showRank, rankText(p.rank||null)].join(':');
+    var slots = piSlots(state, players);
+    var key = slots.map(function(sl) {
+      var p = sl.player;
+      return [p.handle||'', sl.roleKey, showRank, rankText(p.rank||null)].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
       el.dataset.key = key;
-      el.innerHTML = ROLES.map(function(r) {
-        return buildBarPlayerHtml(getPlayerByRole(players, r), r, showRank);
+      el.innerHTML = slots.map(function(sl) {
+        return buildBarPlayerHtml(sl.player, sl.roleKey, showRank);
       }).join('');
     }
   }

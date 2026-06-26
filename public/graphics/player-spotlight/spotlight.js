@@ -182,9 +182,11 @@ function slotFp(state, idx) {
   var slot = (ps.players && ps.players[idx]) || {};
   var player = resolveSlotPlayer(state, slot);
   var team = slot.team || (idx === 0 ? 'team1' : 'team2');
+  var adapter = state.adapter || {};
+  var teamLogo = (state.match && state.match[team] && state.match[team].logo) || '';
   return [team, player && player.handle, featuredChamp(player, slot),
     player && player.rank, normRole(player && player.role), resolveAccent(state, team), slot.caption,
-    ps.statSource, slot.statTokens, slot.statOverrides];
+    ps.statSource, slot.statTokens, slot.statOverrides, adapter.pickEntity, adapter.positions, teamLogo];
 }
 
 // Fill one slot's suffixed elements + its own accent + hero art.
@@ -199,13 +201,33 @@ function populateSlot(state, idx) {
   var stats = buildStats(player, champName, slot, state);
   var design = ps.design || 'showcase';
 
+  // Games without a champion pick entity (CS2 etc.) have no champion splash art and
+  // no fixed roles — swap the hero art for a team-colour wash + faint team-logo
+  // watermark, and hide the role row. Driven by the resolved adapter descriptor.
+  var adapter = state.adapter || {};
+  var noChamp = adapter.pickEntity != null && adapter.pickEntity !== 'champion';
+  var noRoles = adapter.positions ? !adapter.positions.some(function (p) { return !!p; }) : false;
+
   var slotEl = $('ps-slot-' + idx);
-  if (slotEl) applyAccentVars(slotEl, resolveAccent(state, team));
+  if (slotEl) {
+    applyAccentVars(slotEl, resolveAccent(state, team));
+    slotEl.classList.toggle('ps-nochamp', noChamp);
+  }
   applyHeroSrc(idx, champName, design, ps.format || 'full');
+
+  // Team-logo watermark (only used in the no-champ wash; harmless otherwise).
+  var heroLogo = $('ps-hero-logo-' + idx);
+  if (heroLogo) {
+    var teamLogo = (state.match && state.match[team] && state.match[team].logo) || '';
+    if (noChamp && teamLogo) { heroLogo.src = teamLogo; }
+    else { heroLogo.removeAttribute('src'); }
+  }
 
   setTxt('ps-team-' + idx, (teamName || '').toUpperCase());
   setTxt('ps-handle-' + idx, (player && player.handle ? player.handle : '').toUpperCase());
 
+  var roleEl = $('ps-role-' + idx);
+  if (roleEl) roleEl.style.display = (noChamp || noRoles) ? 'none' : '';
   var roleIcon = $('ps-role-icon-' + idx);
   if (roleIcon) { if (ROLE_ICONS[role]) roleIcon.src = ROLE_ICONS[role]; else roleIcon.removeAttribute('src'); }
   setTxt('ps-role-label-' + idx, ROLE_LABELS[role] || '');

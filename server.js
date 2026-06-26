@@ -483,6 +483,7 @@ const makeDefault = () => ({
     showPatch:       false,
     hasPrizepool:    false,
     teamPool:        [],   // team IDs competing in THIS tournament (subset of global Teams DB)
+    mapPool:         [],   // CS2 etc. map pool [{ name, image }] — set in Tournament Setup; rotates
     groups: [],
     schedule: []
   },
@@ -494,6 +495,11 @@ const makeDefault = () => ({
     fearlessDraft: false,
     currentGameNum: 1,
     seriesGames: [],
+    // Map-veto games (CS2 etc.): per-played-map ROUND scores, aligned to the veto's
+    // picked maps + decider (in veto order). Each: { map, t1Rounds, t2Rounds, winner:
+    // ''|'team1'|'team2', status: 'upcoming'|'live'|'final' }. The series (maps-won)
+    // score derives from these winners for map-veto games. LoL ignores this.
+    mapResults: [],
     scheduleDayId: null,
     scheduleGameId: null,
   },
@@ -533,6 +539,23 @@ const makeDefault = () => ({
   },
   bracket:     { visible: false, title: 'TOURNAMENT BRACKET', type: 'single', logoUrl: '', logoScale: 7, logoPosition: 'left', showLogo: false, rounds: [] },
   groupStage:  { visible: false, mode: 'live', logoUrl: '', logoScale: 7, logoPosition: 'left', showLogo: false },
+  // CS2 (and similar) map veto — pre-game broadcast presentation. pool is the EDITABLE
+  // map pool [{ name, image }] (seeded from the cs2 adapter on create; rotates over time).
+  // steps are the ordered veto: { team:'team1'|'team2'|'', action:'ban'|'pick'|'decider',
+  // map:'<name>', side:''|'CT'|'T' } (side = the OTHER team's side choice on a pick).
+  mapVeto:     { visible: false, title: 'MAP VETO', bestOf: 3, teamA: 'team1', steps: [], scale: 'normal', // scale: 'large'|'normal'|'l3'
+                 // Accordion = a full-screen horizontal focus view (prototype): the focused
+                 // map expands + plays its clip/image in full colour, others compress +
+                 // desaturate (bans greyscale, picks low-sat). focusIndex = which map is up.
+                 // revealedCount = reveal-draft progress (maps right of it stay hidden until
+                 // focus reaches them, then stay revealed). accordionFinal = whole-draft view.
+                 // autoStepMs = per-step time for the auto-reveal; autoRevealing = timer live.
+                 accordion: false, focusIndex: 0, revealedCount: 0, accordionFinal: false,
+                 autoStepMs: 2500, autoRevealing: false,
+                 showTeamNames: true, // false = logos only (where a team has a logo)
+                 mapNameImages: false, // true = show the official 512 map icon instead of map text
+                 mapFlyby: false,      // true = focused accordion map crossfades through its image set
+                 showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
@@ -594,6 +617,7 @@ const makeDefault = () => ({
       overrides:       {},              // { [graphicKey]: { enterEase?, exitEase?, moveEase?, speed? } }
     },
     logoSet: { logos: [] },        // [{ name: string, url: string }]
+    mapPoolDefaults: {},           // per-game default map pool, e.g. { cs2: [{name,image}] } — "Set as default"
     buses: [
       { id: 'busA', name: 'Bus A', assignments: [] },
       { id: 'busB', name: 'Bus B', assignments: [] },
@@ -822,9 +846,9 @@ function snapshotForProfile() {
     tournament: JSON.parse(JSON.stringify(state.tournament)),
     bracket: { title: state.bracket.title, rounds: JSON.parse(JSON.stringify(state.bracket.rounds)) },
     match: (({ team1, team2, game, format, tournament, tournamentLogo, sponsorLogos,
-                fearlessDraft, currentGameNum, seriesGames, scheduleDayId, scheduleGameId }) =>
+                fearlessDraft, currentGameNum, seriesGames, mapResults, scheduleDayId, scheduleGameId }) =>
       ({ team1, team2, game, format, tournament, tournamentLogo, sponsorLogos,
-         fearlessDraft, currentGameNum, seriesGames, scheduleDayId, scheduleGameId }))(state.match),
+         fearlessDraft, currentGameNum, seriesGames, mapResults, scheduleDayId, scheduleGameId }))(state.match),
     players: JSON.parse(JSON.stringify(state.players)),
     prizepool: { showLogo: pp.showLogo, logoScale: pp.logoScale, logoPosition: pp.logoPosition, entries: JSON.parse(JSON.stringify(pp.entries || [])) },
     // Lower-third content (reusable sets + output config) — but not the live
@@ -842,6 +866,7 @@ let state = loadState();
 _teams = loadTeams(); // prime in-memory cache after state is ready
 _talent = loadTalent();
 _ensureTeamPool();    // migrate legacy tournaments to an explicit competing-teams pool
+reconcileMapVetoSteps(); // ensure veto steps cover the loaded map pool
 
 // ── Bus state (in-memory, not persisted) ───────────────────────────────────────
 let busState = {};
@@ -861,12 +886,14 @@ const GRAPHIC_PATHS = {
   prizepool: 'graphics/prizepool', winScreen: 'graphics/win-screen', breakScreen: 'graphics/break-screen',
   playerSpotlight: 'graphics/player-spotlight',
   bgOutput: 'graphics/bg-output',
+  mapVeto: 'graphics/map-veto',
 };
 const GRAPHIC_LABELS = {
   lowerThird: 'lower third', headToHead: 'head to head', playerIntro: 'player intro',
   preShow: 'pre-show', draft: 'draft', bracket: 'bracket', groupStage: 'group stage',
   tournamentStructure: 'tournament structure', prizepool: 'prize', winScreen: 'win screen',
   breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker', playerSpotlight: 'player spotlight',
+  mapVeto: 'map veto',
 };
 function _switcherByUrl(url) {
   if (!url) return null;
@@ -935,7 +962,7 @@ function broadcast() {
 
 // ── SSE (Server-Sent Events) for Companion / external integrations ─────────────
 const _sseClients = new Set();
-const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker'];
+const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto'];
 function buildSSEPayload() {
   const visibilities = {};
   SSE_GRAPHIC_KEYS.forEach(k => { if (state[k]) visibilities[k] = !!state[k].visible; });
@@ -1142,7 +1169,7 @@ app.get('/api/state', (req, res) => {
   res.json(safe);
 });
 app.post('/api/state/reset', requireAdmin, (req, res) => { state = makeDefault(); deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true }); });
-app.post('/api/match',  requireAdmin, (req, res) => { deepMerge(state.match, req.body); broadcast(); res.json({ ok: true }); });
+app.post('/api/match',  requireAdmin, (req, res) => { deepMerge(state.match, req.body); reconcileMapResults(); broadcast(); res.json({ ok: true }); });
 
 app.post('/api/score', (req, res) => {
   const { team, delta } = req.body;
@@ -1199,7 +1226,8 @@ const GRAPHIC_PAGE_KEYS = {
   draft: 'draft-gfx', bracket: 'bracket', breakScreen: 'break-screen',
   winScreen: 'win-screen', preShow: 'pre-show',
   tournamentStructure: 'tournament-structure', groupStage: 'standings',
-  prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight'
+  prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight',
+  mapVeto: 'map-veto'
 };
 
 function findBusForGraphic(graphicName) {
@@ -1730,6 +1758,46 @@ app.post('/api/playerIntro', (req, res) => { Object.assign(state.playerIntro, re
 app.post('/api/preShow',     (req, res) => { Object.assign(state.preShow,     req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/bracket',     requireAdmin, (req, res) => { deepMerge(state.bracket, req.body); deriveTodayGames(); broadcast(); res.json({ok:true}); });
 app.post('/api/groupStage',           requireAdmin, (req, res) => { Object.assign(state.groupStage,           req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/mapVeto',              requireAdmin, (req, res) => {
+  // Any manual reveal/focus/mode change cancels an in-progress auto-reveal.
+  if (['focusIndex','revealedCount','accordionFinal','accordion'].some(k => k in (req.body||{}))) stopMapVetoAuto();
+  Object.assign(state.mapVeto, req.body); reconcileMapResults(); broadcast(); res.json({ok:true});
+});
+
+// Auto-reveal: a server timer steps the reveal draft segment-by-segment, then settles on
+// the whole-draft view. Server-driven so every output (graphic/operator/control) stays in
+// sync and it survives the triggering page closing. Manual control (above) cancels it.
+let _mapVetoAutoTimer = null;
+function stopMapVetoAuto() {
+  if (_mapVetoAutoTimer) { clearInterval(_mapVetoAutoTimer); _mapVetoAutoTimer = null; }
+  if (state.mapVeto && state.mapVeto.autoRevealing) state.mapVeto.autoRevealing = false;
+}
+function mapVetoStepCount() {
+  const mv = state.mapVeto || {};
+  if (mv.steps && mv.steps.length) return mv.steps.length;
+  return ((state.tournament && state.tournament.mapPool) || []).length;
+}
+app.post('/api/mapVeto/auto-reveal', requireAdmin, (req, res) => {
+  stopMapVetoAuto();
+  const stepMs = Math.max(600, parseInt((req.body || {}).stepMs) || state.mapVeto.autoStepMs || 2500);
+  const total = mapVetoStepCount();
+  if (!total) return res.status(400).json({ error: 'no maps to reveal' });
+  // Start from a clean slate in accordion mode.
+  Object.assign(state.mapVeto, { accordion: true, accordionFinal: false, focusIndex: 0, revealedCount: 0, autoStepMs: stepMs, autoRevealing: true });
+  broadcast();
+  _mapVetoAutoTimer = setInterval(() => {
+    const mv = state.mapVeto;
+    if ((mv.revealedCount || 0) < total) {
+      mv.focusIndex = mv.revealedCount; mv.revealedCount = (mv.revealedCount || 0) + 1; broadcast();
+    } else {
+      mv.accordionFinal = true; broadcast();   // settle on the whole-draft view, then stop
+      stopMapVetoAuto(); broadcast();
+    }
+  }, stepMs);
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'mapveto-auto-reveal', stepMs + 'ms/step');
+  res.json({ ok: true });
+});
+app.post('/api/mapVeto/auto-stop', requireAdmin, (req, res) => { stopMapVetoAuto(); broadcast(); res.json({ ok: true }); });
 app.post('/api/tournamentStructure',  requireAdmin, (req, res) => { Object.assign(state.tournamentStructure,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/prizepool', requireAdmin, (req, res) => {
   const { entries, ...settings } = req.body;
@@ -2121,6 +2189,103 @@ app.get('/api/champions', (req, res) => {
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 
+// ── Map art resize proxy ────────────────────────────────────────────────────────
+// CS2 map screenshots/icons live in the community MurkyYT/cs2-map-icons repo at 1920×1080
+// (screenshots) / 512² (icons). Browsers asked to shrink a 1920px image ~5× into a small
+// veto panel use the GPU's cheap single-pass bilinear filter (no mipmaps), which stair-steps
+// diagonal edges. We pre-resize here with sharp (high-quality Lanczos) so the browser only
+// downscales by a small ratio. Slug-only (no arbitrary URL) → no SSRF. Cached to disk.
+const MAP_ART_REMOTE = 'https://raw.githubusercontent.com/MurkyYT/cs2-map-icons/main/images/';
+const MAPART_CACHE_DIR = path.join(DATA_DIR, 'cache', 'mapart');
+const MAPART_WIDTHS = [128, 256, 384, 512, 640, 768, 1024, 1280, 1600, 1920];
+const _mapartInflight = new Map();   // cachePath → Promise<path> (dedupe concurrent misses)
+function mapartSnapW(w) { w = parseInt(w) || 768; return MAPART_WIDTHS.reduce((best, x) => Math.abs(x - w) < Math.abs(best - w) ? x : best, 768); }
+// Resolve a cached, resized map-art file — generating (fetch remote → sharp Lanczos → WebP →
+// disk) once and reusing it forever after. Used by the /api/mapart endpoint AND the pool
+// pre-warm, so map art is written to disk when the pool is set, not regenerated per request.
+async function ensureMapArt(slug, kind, variant, w) {
+  kind = kind === 'icon' ? 'icon' : 'thumb';
+  variant = (kind === 'thumb' && variant >= 1 && variant <= 5) ? variant : 0;
+  w = mapartSnapW(w);
+  const cachePath = path.join(MAPART_CACHE_DIR, slug + '_' + kind + (variant ? '_v' + variant : '') + '_' + w + '.webp');
+  if (fs.existsSync(cachePath)) return cachePath;
+  if (!_mapartInflight.has(cachePath)) {
+    const remote = kind === 'icon'
+      ? MAP_ART_REMOTE + slug + '.png'
+      : MAP_ART_REMOTE + 'thumbs/' + slug + (variant ? '_' + variant : '') + '_png.png';
+    _mapartInflight.set(cachePath, (async () => {
+      const r = await fetch(remote);
+      if (!r.ok) throw new Error('upstream ' + r.status);
+      const out = await sharp(Buffer.from(await r.arrayBuffer()))
+        .resize({ width: w, withoutEnlargement: true, kernel: 'lanczos3' })
+        .webp({ quality: 92 })
+        .toBuffer();
+      fs.mkdirSync(MAPART_CACHE_DIR, { recursive: true });
+      fs.writeFileSync(cachePath, out);
+      return cachePath;
+    })().finally(() => _mapartInflight.delete(cachePath)));
+  }
+  return _mapartInflight.get(cachePath);
+}
+app.get('/api/mapart', async (req, res) => {
+  try {
+    const slug = String(req.query.slug || '').toLowerCase();
+    if (!/^[a-z0-9_]{1,40}$/.test(slug)) return res.status(400).end();
+    const cachePath = await ensureMapArt(slug, req.query.kind, parseInt(req.query.v), req.query.w);
+    res.sendFile(cachePath, { headers: { 'Cache-Control': 'public, max-age=604800, immutable' } });
+  } catch (e) {
+    res.status(502).end();
+  }
+});
+
+// Pre-warm the cache for a map pool so the FIRST focus during a show is instant (no cold
+// generation). Fires in the background when the pool is set; idempotent (skips files that
+// already exist) and tolerant of maps without art (custom names / per-map image overrides).
+// Mirrors the widths the map-veto graphic requests: thumb 768 (slivers) + 1280 (focused/flyby
+// base + variants), icon 256. Sequential to stay gentle on the upstream + CPU.
+function mapArtSlug(name) {
+  let k = String(name || '').toLowerCase().trim(); if (!k) return '';
+  if (/^(de|cs|ar|dz)_/.test(k)) return k;
+  k = k.replace(/[^a-z0-9]/g, '');
+  if (k === 'dustii' || k === 'dust' || k === 'dust2') return 'de_dust2';
+  return k ? ('de_' + k) : '';
+}
+let _warmToken = 0;
+async function warmMapPool(pool) {
+  const myToken = ++_warmToken;   // a newer pool edit supersedes an in-flight warm
+  const slugs = [...new Set((pool || [])
+    .filter(m => m && !m.image)   // per-map image overrides aren't served via the proxy
+    .map(m => mapArtSlug(m.name))
+    .filter(Boolean))];
+  for (const slug of slugs) {
+    if (myToken !== _warmToken) return;   // superseded — stop
+    const jobs = [['icon', 0, 256], ['thumb', 0, 768], ['thumb', 0, 1920]];
+    for (let v = 1; v <= 5; v++) jobs.push(['thumb', v, 1920]);   // flyby variants (some 404 → skipped)
+    for (const [kind, v, w] of jobs) {
+      try { await ensureMapArt(slug, kind, v, w); } catch (e) { /* missing variant / offline — fine */ }
+    }
+  }
+}
+
+// Manual "re-acquire map images" — deletes the current pool's cached files so they regenerate
+// fresh (for upstream art updates / corrupted files), bumps settings.mapArtRev so the graphic
+// busts its browser/OBS cache (art URLs carry &rev), then re-warms in the background. Returns
+// immediately; the graphic re-fetches fresh art as soon as the rev broadcast lands.
+app.post('/api/mapart/refresh', requireAdmin, (req, res) => {
+  const pool = (state.tournament && state.tournament.mapPool) || [];
+  const slugs = [...new Set(pool.filter(m => m && !m.image).map(m => mapArtSlug(m.name)).filter(Boolean))];
+  try {
+    const files = fs.existsSync(MAPART_CACHE_DIR) ? fs.readdirSync(MAPART_CACHE_DIR) : [];
+    for (const f of files) if (slugs.some(s => f.startsWith(s + '_'))) { try { fs.unlinkSync(path.join(MAPART_CACHE_DIR, f)); } catch (e) {} }
+  } catch (e) {}
+  if (!state.settings) state.settings = {};
+  state.settings.mapArtRev = (state.settings.mapArtRev || 0) + 1;
+  warmMapPool(pool);   // regenerate in the background; lazy proxy also remakes on demand
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'mapart-refresh', slugs.length + ' maps');
+  broadcast();
+  res.json({ ok: true, rev: state.settings.mapArtRev, maps: slugs.length });
+});
+
 // Upload / Import (admin only)
 // Every accepted image is normalised: downscaled to fit MAX_UPLOAD_DIM on the long
 // edge (never upscaled) and re-encoded to WebP — preserving transparency and GIF/WebP
@@ -2248,6 +2413,82 @@ app.post('/api/tournament/setup-lock', requireAdmin, (req, res) => {
 });
 function setupIsLocked() { return !!(state.tournament && state.tournament.setupLocked); }
 
+// The veto sequence is built (in official Bo1/Bo3/Bo5 order) on the control side; here we
+// only drop any veto steps whose map is no longer in the pool, so a pool edit can't leave
+// stale maps in the veto. The control re-derives the remaining slots from the template.
+function reconcileMapVetoSteps() {
+  if (!state.mapVeto) return;
+  const names = ((state.tournament && state.tournament.mapPool) || []).map(m => m.name).filter(Boolean);
+  state.mapVeto.steps = (state.mapVeto.steps || []).filter(s => s && names.includes(s.map));
+  reconcileMapResults();
+}
+
+// CS2-style map-veto games: maintain match.mapResults as a fixed list of best-of game
+// rows (Bo3 → 3 rows). Each row is operator-editable in Game Setup (map + round score +
+// winner). The veto's picked maps (picks + decider, in order) PRE-FILL empty rows so a
+// completed veto carries straight over, but the operator can set maps/scores directly
+// even without a veto — nothing is required first. Existing rows are preserved.
+function reconcileMapResults() {
+  if (!state.match) return;
+  // Only map-veto games track per-map round scores; clear for everyone else (LoL).
+  if (games.resolveAdapter(state.match.game).pregame.kind !== 'map-veto') {
+    if ((state.match.mapResults || []).length) state.match.mapResults = [];
+    return;
+  }
+  const bestOf = parseInt(String(state.match.format || 'Bo3').replace(/Bo/i, '')) || 3;
+  const vetoMaps = ((state.mapVeto && state.mapVeto.steps) || [])
+    .filter(s => s && (s.action === 'pick' || s.action === 'decider') && s.map)
+    .map(s => s.map);
+  const prev = state.match.mapResults || [];
+  const out = [];
+  for (let i = 0; i < bestOf; i++) {
+    const p = prev[i] || {};
+    out.push({
+      map:      p.map || vetoMaps[i] || '',
+      t1Rounds: p.t1Rounds || 0,
+      t2Rounds: p.t2Rounds || 0,
+      winner:   p.winner   || '',
+      status:   p.status   || 'upcoming',
+    });
+  }
+  state.match.mapResults = out;
+  applyMapResultsToSeries();
+}
+
+// For map-veto games, derive the series (maps-won) score from logged map winners so the
+// break / win screens read it. No-op for non-map-veto games (LoL drives score elsewhere).
+function applyMapResultsToSeries() {
+  if (!state.match) return;
+  if (games.resolveAdapter(state.match.game).pregame.kind !== 'map-veto') return;
+  let t1 = 0, t2 = 0;
+  (state.match.mapResults || []).forEach(r => {
+    if (r.winner === 'team1') t1++; else if (r.winner === 'team2') t2++;
+  });
+  if (state.match.team1) state.match.team1.score = t1;
+  if (state.match.team2) state.match.team2.score = t2;
+}
+
+// Update one map row (by index) — map name + round score + winner + status. Manual
+// operator entry from Game Setup (the R1 baseline; MatchZy/GSI ingest later writes the
+// same shape as a SUGGESTED value the operator applies).
+app.post('/api/match/map-result', requireAdmin, (req, res) => {
+  const { index, map, t1Rounds, t2Rounds, winner, status } = req.body || {};
+  const i = parseInt(index);
+  if (isNaN(i) || !state.match.mapResults || !state.match.mapResults[i]) {
+    return res.status(404).json({ error: 'map row not found' });
+  }
+  const r = state.match.mapResults[i];
+  if (map      !== undefined) r.map      = String(map || '');
+  if (t1Rounds !== undefined) r.t1Rounds = Math.max(0, parseInt(t1Rounds) || 0);
+  if (t2Rounds !== undefined) r.t2Rounds = Math.max(0, parseInt(t2Rounds) || 0);
+  if (winner   !== undefined) r.winner   = ['team1', 'team2', ''].includes(winner) ? winner : r.winner;
+  if (status   !== undefined) r.status   = ['upcoming', 'live', 'final'].includes(status) ? status : r.status;
+  applyMapResultsToSeries();
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'map-result',
+    'Map ' + (i + 1) + ' ' + (r.map || '') + ' ' + (r.t1Rounds || 0) + '-' + (r.t2Rounds || 0) + (r.winner ? ' (' + r.winner + ')' : ''));
+  broadcast(); res.json({ ok: true });
+});
+
 // Create the tournament: commits the chosen game (which then locks) and marks it created.
 // Reset (/api/state/reset) is the only way back to an editable game.
 app.post('/api/tournament/create', requireAdmin, (req, res) => {
@@ -2257,12 +2498,23 @@ app.post('/api/tournament/create', requireAdmin, (req, res) => {
   if (game !== undefined) { state.match.game = game; state.tournament.game = game; }
   if (name !== undefined) { state.match.tournament = name; state.tournament.name = name; }
   state.tournament.created = true;
+  // Seed the tournament map pool when relevant + empty: saved per-game default wins,
+  // else the adapter's fallback pool.
+  const adapter = games.resolveAdapter(state.match.game);
+  if (adapter.defaultMapPool && (!state.tournament.mapPool || !state.tournament.mapPool.length)) {
+    const saved = state.settings && state.settings.mapPoolDefaults && state.settings.mapPoolDefaults[state.match.game];
+    state.tournament.mapPool = (saved && saved.length)
+      ? saved.map(m => ({ name: m.name || '', image: m.image || '' }))
+      : adapter.defaultMapPool.map(m => (typeof m === 'string' ? { name: m, image: '' } : { name: m.name || '', image: m.image || '', video: m.video || '' }));
+    warmMapPool(state.tournament.mapPool);   // pre-fetch/resize art so the first focus is instant
+  }
+  reconcileMapVetoSteps();
   broadcast(); res.json({ ok: true });
 });
 
 app.post('/api/tournament', requireAdmin, (req, res) => {
   if (setupIsLocked()) return res.status(423).json({ error: 'Tournament setup is locked' });
-  const { name, game, logo, sponsorLogos, ...rest } = req.body;
+  const { name, game, logo, sponsorLogos, mapPool, ...rest } = req.body;
   // Game is locked once the tournament is created — ignore game changes thereafter.
   const gameLocked = !!(state.tournament && state.tournament.created);
   if (name !== undefined) state.match.tournament = name;
@@ -2274,6 +2526,9 @@ app.post('/api/tournament', requireAdmin, (req, res) => {
   if (game !== undefined && !gameLocked) state.tournament.game = game;
   if (logo !== undefined) state.tournament.logo = logo;
   if (sponsorLogos !== undefined) state.tournament.sponsorLogos = sponsorLogos;
+  // Map pool is replaced wholesale (not deep-merged, so deletions take effect) + the veto
+  // steps reconcile to cover exactly the pool.
+  if (mapPool !== undefined) { state.tournament.mapPool = Array.isArray(mapPool) ? mapPool : []; reconcileMapVetoSteps(); warmMapPool(state.tournament.mapPool); }
   deepMerge(state.tournament, rest);
   // Keep bracket.type in sync with playoffFormat
   if (rest.playoffFormat !== undefined) {
@@ -2482,6 +2737,7 @@ app.post('/api/match/edit-save', requireAdmin, (req, res) => {
   const { format, fearlessDraft } = req.body;
   if (format      !== undefined) state.match.format       = format;
   if (fearlessDraft !== undefined) state.match.fearlessDraft = !!fearlessDraft;
+  if (format !== undefined) reconcileMapResults(); // resize CS2 map rows to new best-of
   // Sync back to the schedule game entry so Schedule page stays consistent
   if (state.match.scheduleGameId && state.match.scheduleDayId) {
     const day = (state.tournament.schedule || []).find(d => d.id === state.match.scheduleDayId);
@@ -2697,6 +2953,10 @@ app.post('/api/match/reset-series', (req, res) => {
     const _sg  = _day && _day.games.find(g => g.id === state.match.scheduleGameId);
     if (_sg) { _sg.result = null; _clearLinkedBracket(_sg); }
   }
+  // Reset per-map round scores too (map-veto games) — clear scores/winners but keep
+  // the best-of row count + any veto-prefilled maps.
+  (state.match.mapResults || []).forEach(r => { r.t1Rounds = 0; r.t2Rounds = 0; r.winner = ''; r.status = 'upcoming'; });
+  reconcileMapResults();
   invalidateStatsCache();
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'reset-series', '');
   deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true });
@@ -2867,6 +3127,7 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
   // Pre-multi-game profiles have no game-lock flag — backfill it so a loaded tournament
   // with data comes in locked (same migration as state.json load).
   migrateGame(state);
+  reconcileMapVetoSteps(); // keep veto steps in sync with the loaded tournament's map pool
   if (d.players) deepMerge(state.players, d.players);
   if (d.prizepool) {
     const { entries, showLogo, logoScale, logoPosition } = d.prizepool;
@@ -3190,4 +3451,6 @@ io.on('connection', socket => {
 
 server.listen(PORT, () => {
   console.log('\n  Esports GFX -> http://localhost:' + PORT + '/\n');
+  // Pre-warm map art for the already-loaded pool so a restart leaves the cache ready.
+  if (state.tournament && state.tournament.mapPool && state.tournament.mapPool.length) warmMapPool(state.tournament.mapPool);
 });

@@ -41,6 +41,21 @@
   background: var(--gfx-c4, #05080d);
 }
 
+/* ── No-champion games (CS2 etc.): team-colour wash + faint logo watermark ──── */
+.ps-hero-logo {
+  position: absolute; left: 50%; top: 46%; transform: translate(-50%, -50%);
+  width: 58%; height: 58%; object-fit: contain;
+  opacity: 0.14; display: none; pointer-events: none;
+  filter: drop-shadow(0 0 1vh rgba(0,0,0,0.4));
+}
+.ps-slot.ps-nochamp .ps-hero-img { display: none; }
+.ps-slot.ps-nochamp .ps-hero {
+  background:
+    radial-gradient(120% 120% at 30% 20%, var(--ps-acc-a30, rgba(31,250,255,0.3)) 0%, var(--ps-acc-a00, rgba(31,250,255,0)) 55%),
+    linear-gradient(135deg, rgba(255,255,255,0.05) 0%, var(--gfx-c4, #05080d) 70%);
+}
+.ps-slot.ps-nochamp .ps-hero-logo { display: block; }
+
 /* ── Info column ───────────────────────────────────────────────────────────── */
 .ps-info { position: absolute; display: flex; flex-direction: column; z-index: 2; }
 .ps-team { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;

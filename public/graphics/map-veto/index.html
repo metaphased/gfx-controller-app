@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { width:1920px; height:1080px; overflow:hidden; background:transparent; }
+  body { font-family: var(--gfx-font, 'Barlow Condensed', sans-serif); }
+  /* Labels / meta use the SECONDARY broadcast font (falls back to primary, then literal);
+     display text (titles, team + map names) inherits the PRIMARY font from body. Both
+     come from Broadcast Theme → Typography via --gfx-font / --gfx-font-2. */
+  #mv-title, #mv-bo, #mv-vs, .mv-action, .mv-sub,
+  .mv-acc-action, .mv-acc-sub { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif; }
+  #mv-root {
+    position:absolute; inset:0; display:flex;
+    align-items:center; justify-content:center;
+    opacity:0; transform:translateY(22px);
+    transition: opacity .5s var(--gfx-ease-enter, cubic-bezier(.22,1,.36,1)), transform .5s var(--gfx-ease-enter, cubic-bezier(.22,1,.36,1));
+    text-transform: var(--gfx-text-transform, uppercase);
+  }
+  #mv-root.show { opacity:1; transform:none; }
+  #mv-stage { display:flex; flex-direction:column; align-items:center; gap:30px;
+    transition: transform .4s var(--gfx-ease-move, cubic-bezier(.4,0,.2,1)); transform-origin:center center; }
+  /* Scale variants — large/normal are the same centred layout at different sizes. */
+  #mv-root.scale-large  #mv-stage { transform: scale(1.2); }
+  #mv-root.scale-normal #mv-stage { transform: scale(1); }
+
+  /* Lower-third variant: a bottom-anchored compact band that leaves the upper frame
+     free for caster/host cameras. Short wide map chips (not the tall full-screen cards)
+     in a single row; same ban/pick/decider info, sized for a lower third. */
+  #mv-root.scale-l3 { align-items:flex-end; justify-content:center; padding:0 0 46px; }
+  #mv-root.scale-l3 #mv-stage { transform:none; gap:14px; width:auto; max-width:1820px; }
+  #mv-root.scale-l3 #mv-head  { gap:22px; }
+  #mv-root.scale-l3 .mv-team  { min-width:0; gap:10px; }
+  #mv-root.scale-l3 .mv-team img { width:44px; height:44px; }
+  #mv-root.scale-l3 .mv-team .nm { font-size:26px; }
+  #mv-root.scale-l3 #mv-title { font-size:21px; letter-spacing:.2em; }
+  #mv-root.scale-l3 #mv-vs    { font-size:15px; }
+  #mv-root.scale-l3 #mv-bo    { font-size:12px; }
+  #mv-root.scale-l3 #mv-strip { gap:12px; }
+  #mv-root.scale-l3 .mv-card  { width:176px; height:150px; justify-content:flex-end; }
+  #mv-root.scale-l3 .mv-card .scrim { background:linear-gradient(180deg, rgba(6,10,15,.15) 0%, rgba(6,10,15,.6) 45%, rgba(6,10,15,.95) 100%); }
+  #mv-root.scale-l3 .mv-order { width:26px; height:26px; font-size:14px; top:8px; left:8px; }
+  #mv-root.scale-l3 .mv-name  { font-size:23px; padding:0 12px 3px; }
+  #mv-root.scale-l3 .mv-foot  { padding:5px 12px 10px; gap:2px; }
+  #mv-root.scale-l3 .mv-action{ font-size:16px; }
+  #mv-root.scale-l3 .mv-sub   { font-size:12px; }
+  /* Event logo would float into the camera area at the top — pin it just above the
+     band in the lower-third variant. */
+  #mv-root.scale-l3 #mv-logo-wrap { top:auto; bottom:236px; }
+
+  /* Logo */
+  #mv-logo-wrap { position:absolute; top:60px; width:100%; display:flex; pointer-events:none; }
+  #mv-logo-wrap.left   { justify-content:flex-start; padding-left:90px; }
+  #mv-logo-wrap.center { justify-content:center; }
+  #mv-logo-wrap.right  { justify-content:flex-end; padding-right:90px; }
+  #mv-logo { display:none; object-fit:contain; }
+
+  /* Header */
+  #mv-head { display:flex; align-items:center; gap:44px; }
+  .mv-team { display:flex; align-items:center; gap:16px; min-width:330px; }
+  .mv-team.right { flex-direction:row-reverse; text-align:right; }
+  .mv-team img { width:74px; height:74px; object-fit:contain; }
+  .mv-team img:not([src]), .mv-team img[src=""] { display:none; }
+  .mv-team .nm { font-size:44px; font-weight:800; color:#fff; }
+  /* Logos-only option: hide team NAMES (header + accordion), keep logos. */
+  #mv-root.hide-team-names .mv-team .nm,
+  #mv-root.hide-team-names .mv-acc-team .nm { display:none; }
+  #mv-center { display:flex; flex-direction:column; align-items:center; gap:5px; }
+  #mv-title { font-size:30px; font-weight:700; letter-spacing:.22em; color: var(--gfx-c1, #1ffaff); }
+  #mv-vs { font-size:22px; font-weight:900; color:#8a929b; letter-spacing:.2em; }
+  #mv-bo { font-size:15px; font-weight:700; letter-spacing:.28em; color:#cfd6dd; opacity:.85; }
+
+  /* Strip */
+  #mv-strip { display:flex; gap:18px; }
+  .mv-card {
+    width:208px; height:438px; position:relative; overflow:hidden;
+    border-radius: var(--gfx-radius, 4px);
+    background: var(--gfx-panel-bg, linear-gradient(180deg, rgba(20,28,38,.92), rgba(8,12,18,.96)));
+    border: 1px solid var(--gfx-panel-border, rgba(255,255,255,.10));
+    display:flex; flex-direction:column; justify-content:flex-end;
+    box-shadow: 0 12px 34px rgba(0,0,0,.45);
+    opacity:0; transform:translateY(26px);
+    transition: opacity .42s var(--gfx-ease-enter, cubic-bezier(.22,1,.36,1)), transform .42s var(--gfx-ease-enter, cubic-bezier(.22,1,.36,1));
+    transition-delay: calc(var(--i, 0) * 55ms);
+  }
+  #mv-root.show .mv-card { opacity:1; transform:none; }
+  /* Slow Ken-Burns push on map images (all veto views — a bit of life on stills). The
+     original transform:scale zoom (this) is the brilliant-feeling one; the width/height
+     rework that briefly replaced it shuddered (per-frame relayout) and is gone. Crispness is
+     handled at the SOURCE now — /api/mapart serves art near display size, so we never hand the
+     GPU a big down-scale to stair-step; a zoom-IN only upscales the box raster (never steps). */
+  @keyframes mv-kb { 0% { transform:scale(1.03); } 100% { transform:scale(1.13); } }
+  .mv-card .img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:block;
+    will-change: transform; animation: mv-kb 19s ease-in-out infinite alternate; }
+  .mv-card .scrim { position:absolute; inset:0; background:linear-gradient(180deg, rgba(6,10,15,.10) 0%, rgba(6,10,15,.5) 52%, rgba(6,10,15,.93) 100%); }
+  .mv-order { position:absolute; top:12px; left:12px; z-index:3; width:34px; height:34px; border-radius:50%;
+    background:rgba(8,12,18,.8); border:1px solid rgba(255,255,255,.18); color:#fff;
+    font-size:18px; font-weight:800; display:flex; align-items:center; justify-content:center; }
+  .mv-name { position:relative; z-index:2; padding:0 16px 6px; font-size:30px; font-weight:800; color:#fff; line-height:1.05; }
+  /* Optional: show the official 512 map ICON instead of the map-name text (toggle). */
+  .mv-name-img { position:relative; z-index:2; display:none; height:84px; object-fit:contain; padding:0 16px 6px; }
+  #mv-root.show-map-name-img .mv-card.has-name-img .mv-name { display:none; }
+  #mv-root.show-map-name-img .mv-card.has-name-img .mv-name-img { display:block; }
+  .mv-acc-map-img { display:none; height:60px; object-fit:contain; margin:4px auto 0; }
+  .mv-acc-panel:not(.focused) .mv-acc-map-img { height:36px; }
+  #mv-root.show-map-name-img .mv-acc-panel.has-name-img .mv-acc-map { display:none; }
+  #mv-root.show-map-name-img .mv-acc-panel.has-name-img .mv-acc-map-img { display:block; }
+  .mv-foot { position:relative; z-index:2; padding:10px 16px 16px; display:flex; flex-direction:column; gap:3px; }
+  .mv-action { font-size:23px; font-weight:900; letter-spacing:.1em; }
+  .mv-sub { font-size:16px; font-weight:700; color:#e6eaef; letter-spacing:.03em; }
+  .mv-sub.dim { color:#aab2bb; }
+
+  .mv-card.ban .img { filter:grayscale(1) brightness(.42); }
+  .mv-card.ban      { opacity:0; }
+  #mv-root.show .mv-card.ban { opacity:.6; }
+  .mv-card.ban .mv-action { color:#ff5a5a; }
+  .mv-card.pick     { border-color: var(--gfx-c1, #1ffaff); box-shadow:0 0 0 2px var(--gfx-c1, #1ffaff), 0 12px 34px rgba(0,0,0,.5); }
+  .mv-card.pick .mv-action { color: var(--gfx-c1, #1ffaff); }
+  .mv-card.decider  { border-color:#ffd24a; box-shadow:0 0 0 2px #ffd24a, 0 12px 38px rgba(0,0,0,.55); }
+  .mv-card.decider .mv-action { color:#ffd24a; }
+  .mv-card.pending .mv-action { color:#8a929b; }
+
+  /* ── Accordion (horizontal focus view, prototype) ──────────────────────────── */
+  #mv-accordion { display:none; position:absolute; inset:0; flex-direction:column; padding:56px; }
+  #mv-root.mode-accordion #mv-stage     { display:none; }
+  #mv-root.mode-accordion #mv-accordion { display:flex; }
+  /* Size by scale: Large = near full-screen; Normal = a contained mid-size block;
+     Lower Third = the bottom band (further down). */
+  #mv-root.scale-large.mode-accordion  #mv-accordion { padding:46px 52px; }
+  #mv-root.scale-normal.mode-accordion #mv-accordion { padding:215px 170px; }
+  .mv-acc-row { flex:1 1 auto; display:flex; gap:10px; min-height:0; }
+  .mv-acc-panel {
+    position:relative; flex:1 1 0; min-width:0; overflow:hidden;
+    border-radius: var(--gfx-radius, 6px); border:1px solid rgba(255,255,255,.10);
+    box-shadow:0 12px 34px rgba(0,0,0,.45); flex-grow:1;
+    transition: flex-grow .6s cubic-bezier(.22,1,.36,1), border-color .4s ease, box-shadow .4s ease;
+  }
+  .mv-acc-panel.focused { flex-grow:6.2; }
+  .mv-acc-panel .media {
+    position:absolute; inset:0; width:100%; height:100%; object-fit:cover;
+    transition: filter .6s ease;   /* desaturation crossfade on focus; zoom is the mv-kb animation */
+  }
+  .mv-acc-panel .media.nomedia { background:linear-gradient(180deg, rgba(20,28,38,.92), rgba(8,12,18,.96)); }
+  /* Out of focus: bans go FULL greyscale; picks/decider stay LOW saturation. In focus: full colour. */
+  .mv-acc-panel.ban:not(.focused) .media { filter:grayscale(1) brightness(.45); }
+  .mv-acc-panel.pick:not(.focused) .media,
+  .mv-acc-panel.decider:not(.focused) .media { filter:saturate(.3) brightness(.62); }
+  .mv-acc-panel.pending:not(.focused) .media { filter:saturate(.18) brightness(.5); }
+  .mv-acc-panel.focused .media { filter:none; }
+  /* Ken-Burns zoom on the focused IMAGE media only (videos have their own motion). */
+  .mv-acc-panel.focused img.media { animation: mv-kb 15s ease-in-out infinite alternate; }
+  /* Flyby slideshow: two crossfading screenshot layers (sits above .media, below the
+     scrim). The Ken-Burns zoom lives on the CONTAINER (one continuous oscillation), so
+     swapping images crossfades OPACITY only — no per-image transform reset/jump. JS
+     pauses the zoom when the panel loses focus so it freezes on its current image. */
+  .mv-flyby { position:absolute; inset:0; overflow:hidden; will-change: transform; animation: mv-kb 11s ease-in-out infinite alternate; }
+  .mv-flyby-img { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transition:opacity 1.1s ease; }
+  .mv-flyby-img.on { opacity:1; }
+  /* Out of focus: desaturate the frozen flyby image just like .media. */
+  .mv-acc-panel.ban:not(.focused) .mv-flyby-img { filter:grayscale(1) brightness(.45); }
+  .mv-acc-panel.pick:not(.focused) .mv-flyby-img,
+  .mv-acc-panel.decider:not(.focused) .mv-flyby-img { filter:saturate(.3) brightness(.62); }
+  .mv-acc-scrim { position:absolute; inset:0; background:linear-gradient(180deg, rgba(6,10,15,.04) 40%, rgba(6,10,15,.86) 100%); }
+  .mv-acc-foot { position:absolute; left:0; right:0; bottom:0; padding:16px 14px 22px; text-align:center; z-index:2; }
+  .mv-acc-team { display:flex; align-items:center; justify-content:center; gap:9px; margin-bottom:7px; }
+  .mv-acc-team img { height:40px; width:40px; object-fit:contain; }
+  .mv-acc-team img:not([src]), .mv-acc-team img[src=""] { display:none; }
+  .mv-acc-team .nm { font-size:24px; font-weight:800; color:#fff; letter-spacing:.01em; }
+  .mv-acc-panel:not(.focused) .mv-acc-team { display:none; }   /* slivers: action + map only */
+  .mv-acc-action { font-size:22px; font-weight:900; letter-spacing:.12em; color:#8a929b; }
+  .mv-acc-panel.ban     .mv-acc-action { color:#ff5a5a; }
+  .mv-acc-panel.pick    .mv-acc-action { color:var(--gfx-c1,#1ffaff); }
+  .mv-acc-panel.decider .mv-acc-action { color:#ffd24a; }
+  .mv-acc-map { font-size:30px; font-weight:800; color:#fff; line-height:1.04; }
+  .mv-acc-panel:not(.focused) .mv-acc-map { font-size:17px; }
+  .mv-acc-sub { font-size:15px; font-weight:700; color:#e6eaef; margin-top:3px; }
+  .mv-acc-panel:not(.focused) .mv-acc-sub { display:none; }
+  .mv-acc-panel.focused.pick    { border-color:var(--gfx-c1,#1ffaff); box-shadow:0 0 0 2px var(--gfx-c1,#1ffaff), 0 14px 40px rgba(0,0,0,.5); }
+  .mv-acc-panel.focused.decider { border-color:#ffd24a; box-shadow:0 0 0 2px #ffd24a, 0 14px 40px rgba(0,0,0,.55); }
+  .mv-acc-play {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:52px; height:52px; border-radius:50%;
+    background:rgba(8,12,18,.55); border:1px solid rgba(255,255,255,.42); color:#fff; z-index:2;
+    display:flex; align-items:center; justify-content:center; font-size:20px; padding-left:3px;
+  }
+  .mv-acc-panel.focused .mv-acc-play { display:none; }
+  /* Reveal-draft cover: maps right of the reveal point hide their identity until focus
+     reaches them (then they stay revealed). */
+  .mv-acc-cover {
+    position:absolute; inset:0; z-index:4; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(180deg, rgba(15,20,27,.97), rgba(8,11,16,.99)); color:#39414b;
+    font-size:54px; font-weight:900; transition:opacity .55s ease;
+  }
+  .mv-acc-panel.revealed .mv-acc-cover { opacity:0; pointer-events:none; }
+  .mv-acc-panel:not(.revealed) .media,
+  .mv-acc-panel:not(.revealed) .mv-acc-foot,
+  .mv-acc-panel:not(.revealed) .mv-acc-play { opacity:0; }
+  /* Whole-draft final view: equal-width columns, every map revealed, no single focus.
+     Picked maps (+ decider) come up to FULL colour (the .media filter transition makes
+     it a smooth fade, not a snap); bans stay greyscale. No knife-round text here. */
+  #mv-root.mode-final .mv-acc-panel { flex-grow:1 !important; }
+  /* Full colour for picks/decider in full-draft — must also clear the frozen flyby overlay
+     (it sits on top of .media and keeps its out-of-focus desaturation otherwise). */
+  #mv-root.mode-final .mv-acc-panel.pick .media,
+  #mv-root.mode-final .mv-acc-panel.pick .mv-flyby-img,
+  #mv-root.mode-final .mv-acc-panel.decider .media,
+  #mv-root.mode-final .mv-acc-panel.decider .mv-flyby-img { filter:none; }
+  #mv-root.mode-final .mv-acc-panel.decider .mv-acc-sub { display:none; }
+  #mv-root.mode-final .mv-acc-panel .mv-acc-team { display:flex; }
+  #mv-root.mode-final .mv-acc-team .nm { font-size:18px; }
+  #mv-root.mode-final .mv-acc-team img { height:30px; width:30px; }
+  #mv-root.mode-final .mv-acc-map { font-size:23px; }
+  #mv-root.mode-final .mv-acc-sub { display:block; font-size:12px; }
+  #mv-root.mode-final .mv-acc-action { font-size:17px; }
+  /* Lower-third accordion: a bottom band that leaves the upper frame for cameras. */
+  #mv-root.scale-l3.mode-accordion #mv-accordion { top:auto; bottom:0; height:280px; padding:0 48px 38px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-team img { height:30px; width:30px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-team .nm { font-size:19px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-action { font-size:17px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-map { font-size:23px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-panel:not(.focused) .mv-acc-map { font-size:14px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-sub { font-size:12px; }
+  #mv-root.scale-l3.mode-accordion .mv-acc-foot { padding:10px 10px 14px; }
+</style>
+</head>
+<body>
+<div id="mv-root">
+  <div id="mv-logo-wrap"><img id="mv-logo" alt=""></div>
+  <div id="mv-stage">
+    <div id="mv-head">
+      <div class="mv-team left"><img id="mv-t1-logo" alt=""><span class="nm" id="mv-t1-name">Team 1</span></div>
+      <div id="mv-center"><div id="mv-title">MAP VETO</div><div id="mv-vs">VS</div><div id="mv-bo">BEST OF 3</div></div>
+      <div class="mv-team right"><img id="mv-t2-logo" alt=""><span class="nm" id="mv-t2-name">Team 2</span></div>
+    </div>
+    <div id="mv-strip"></div>
+  </div>
+  <div id="mv-accordion"></div>
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="/graphics/gfx-settings.js"></script>
+<script>
+(function(){
+  var token = new URLSearchParams(location.search).get('token') || '';
+  var socket = io({ auth:{ token:token }, query:{ token:token } });
+  var root = document.getElementById('mv-root');
+  var strip = document.getElementById('mv-strip');
+  var acc = document.getElementById('mv-accordion');
+  var _visible = false, _hash = '';
+  function eH(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  var BO = { 1:'BEST OF 1', 3:'BEST OF 3', 5:'BEST OF 5' };
+  function poolEntry(pool, name){ return (pool||[]).find(function(p){return (p.name||'')===name;}) || null; }
+  // Auto-resolve map art from the map name's de_<slug> (community MurkyYT/cs2-map-icons):
+  // thumbs/<slug>_png.png = map screenshot, <slug>.png = 512 square map icon. The per-map
+  // image field (if set) overrides the screenshot. Custom (non de_*) names → no auto art.
+  // Art is served through the server's /api/mapart resize proxy (sharp/Lanczos → WebP) so the
+  // browser only downscales a small ratio — a 1920px source shrunk ~5× by the GPU's bilinear
+  // filter stair-steps diagonal edges; pre-resizing to ~display size keeps them crisp.
+  // THUMB_W = small panels / slivers / full-draft (~140–270px on screen); FOCUS_W = the big
+  // focused panel + flyby (it fills most of the stage and Ken-Burns zooms in, so it needs a
+  // larger source or it goes soft). The focus loop swaps the focused panel up to FOCUS_W.
+  var THUMB_W = 768, FOCUS_W = 1920, ICON_W = 256;
+  // /api/mapart is behind requireAuth — pass the graphics token like the socket does.
+  var ART_TOK = token ? ('&token=' + encodeURIComponent(token)) : '';
+  // Cache-bust rev (settings.mapArtRev) — bumped by the "refresh map images" action so OBS
+  // re-fetches regenerated art despite the proxy's immutable cache header. Set each render.
+  var ART_REV = 0;
+  function artRev(){ return ART_REV ? ('&rev=' + ART_REV) : ''; }
+  function mapSlug(name){
+    var k=(name||'').toLowerCase().trim(); if(!k) return '';
+    if(/^(de|cs|ar|dz)_/.test(k)) return k;
+    k=k.replace(/[^a-z0-9]/g,'');
+    if(k==='dustii'||k==='dust'||k==='dust2') return 'de_dust2';
+    return k ? ('de_'+k) : '';
+  }
+  function mapThumbUrl(name, w){ var s=mapSlug(name); return s ? ('/api/mapart?slug='+s+'&kind=thumb&w='+(w||THUMB_W)+ART_TOK+artRev()) : ''; }
+  // Candidate screenshot variants for a map (base + _1.._5). Missing ones 404 upstream → the
+  // proxy returns an error, dropped at load time — used by the focused-panel "flyby" slideshow.
+  function mapThumbVariants(name, w){ var s=mapSlug(name); if(!s) return []; w=w||THUMB_W; var out=['/api/mapart?slug='+s+'&kind=thumb&w='+w+ART_TOK+artRev()]; for(var i=1;i<=5;i++) out.push('/api/mapart?slug='+s+'&kind=thumb&v='+i+'&w='+w+ART_TOK+artRev()); return out; }
+  function mapIconUrl(name){ var s=mapSlug(name); return s ? ('/api/mapart?slug='+s+'&kind=icon&w='+ICON_W+ART_TOK+artRev()) : ''; }
+  function resolveMapImage(e, name, w){ return (e&&e.image) ? e.image : mapThumbUrl(name, w); }
+  function poolImage(pool, name){ return resolveMapImage(poolEntry(pool, name), name); }
+  // Swap an <img>'s src without a flash: decode the new URL first, then assign. Guarded so we
+  // don't re-fetch when the wanted width hasn't changed (focus toggles re-run this).
+  function setMediaSrc(img, url){
+    if (!img || img.tagName !== 'IMG' || !url) return;
+    if (img.getAttribute('data-src') === url) return;
+    img.setAttribute('data-src', url);
+    var pre = new Image();
+    pre.onload = function(){ if (img.getAttribute('data-src') === url) img.src = url; };
+    pre.src = url;
+  }
+  function teamLabel(m, key){ var t=m[key]||{}; return t.tag || t.name || (key==='team1'?'Team 1':'Team 2'); }
+  function sideLabel(sd){ return (sd && sd !== 'knife') ? sd + ' START' : ''; }
+
+  // Accordion (full-screen focus view). Built once per content change so the <video>
+  // elements persist across focus changes (a focused clip resumes where it paused; an
+  // unfocused one holds its current frame). Focus only toggles a class + play/pause.
+  // {action, sub, teamKey} — teamKey drives the logo + full team name shown on a segment.
+  function accLabel(m, s){
+    var a=(s.action||'pending');
+    if (a==='ban')  return { action:'BAN',  teamKey: s.team||'', sub:'' };
+    if (a==='pick'){ var other=s.team==='team1'?'team2':(s.team==='team2'?'team1':'');
+      return { action:'PICK', teamKey: s.team||'', sub: (other&&s.side)? (fullTeamName(m,other)+' '+sideLabel(s.side)) : '' }; }
+    if (a==='decider') return { action:'DECIDER', teamKey:'', sub:(s.side==='knife'||!s.side)?'':((s.team?fullTeamName(m,s.team)+' ':'')+sideLabel(s.side)) };
+    return { action:'', teamKey:'', sub:'' };
+  }
+  function fullTeamName(m, key){ var t=m[key]||{}; return t.name || t.tag || (key==='team1'?'Team 1':'Team 2'); }
+  function renderAccordion(state){
+    var mv=state.mapVeto||{}, m=state.match||{};
+    var pool=(state.tournament && state.tournament.mapPool) || [];
+    var steps=(mv.steps&&mv.steps.length)?mv.steps:pool.map(function(p){return {action:'pending',map:p.name,team:'',side:''};});
+    var focus=Math.max(0, Math.min(mv.focusIndex||0, Math.max(0, steps.length-1)));
+    var fin=!!mv.accordionFinal;
+    var revealed = fin ? steps.length : Math.max(0, Math.min(mv.revealedCount||0, steps.length));
+    // Structure hash EXCLUDES focus/reveal/final so those only toggle classes (videos persist).
+    var sHash=JSON.stringify({ st:steps.map(function(s){return [s.action,s.map,s.team,s.side];}),
+      md:steps.map(function(s){var e=poolEntry(pool,s.map);return [e&&e.video,resolveMapImage(e,s.map),mapIconUrl(s.map)];}),
+      t1:fullTeamName(m,'team1'), t2:fullTeamName(m,'team2'), l1:(m.team1||{}).logo, l2:(m.team2||{}).logo });
+    if (acc._sHash !== sHash){
+      acc._sHash = sHash;
+      clearFlybyTimer(); _flybyActive = null;   // old panels (+ their flyby) are about to be wiped
+      acc.innerHTML = '<div class="mv-acc-row">'+
+        steps.map(function(s,i){
+          var e=poolEntry(pool,s.map), action=(s.action||'pending'), lbl=accLabel(m,s);
+          var imgUrl=resolveMapImage(e, s.map), iconUrl=mapIconUrl(s.map);
+          var media = (e&&e.video) ? '<video class="media" src="'+eH(e.video)+'" muted loop playsinline preload="auto"></video>'
+                    : imgUrl ? '<img class="media" src="'+eH(imgUrl)+'" alt="">'
+                    : '<div class="media nomedia"></div>';
+          var teamRow = lbl.teamKey ? '<div class="mv-acc-team">'+
+              ((m[lbl.teamKey]||{}).logo ? '<img src="'+eH((m[lbl.teamKey]||{}).logo)+'" alt="">' : '')+
+              '<span class="nm">'+eH(fullTeamName(m, lbl.teamKey))+'</span></div>' : '';
+          var nameImg = iconUrl ? '<img class="mv-acc-map-img" src="'+eH(iconUrl)+'" alt="">' : '';
+          return '<div class="mv-acc-panel '+action+(iconUrl?' has-name-img':'')+'" data-i="'+i+'">'+media+'<div class="mv-acc-scrim"></div>'+
+            ((e&&e.video)?'<div class="mv-acc-play">▶</div>':'')+
+            '<div class="mv-acc-foot">'+teamRow+(lbl.action?'<div class="mv-acc-action">'+lbl.action+'</div>':'')+
+            '<div class="mv-acc-map">'+eH(s.map||'')+'</div>'+nameImg+
+            (lbl.sub?'<div class="mv-acc-sub">'+eH(lbl.sub)+'</div>':'')+'</div>'+
+            '<div class="mv-acc-cover">?</div></div>';
+        }).join('')+'</div>';
+    }
+    root.classList.toggle('mode-final', fin);
+    // Focus / reveal / final are class toggles only — never rebuilds, so videos keep
+    // their position (a focused clip resumes; an unfocused one holds its current frame).
+    var panels=acc.querySelectorAll('.mv-acc-panel');
+    for (var i=0;i<panels.length;i++){
+      var isRevealed = fin || i < revealed;
+      var isFocused  = !fin && isRevealed && (i===focus);
+      panels[i].classList.toggle('revealed', isRevealed);
+      panels[i].classList.toggle('focused', isFocused);
+      var v=panels[i].querySelector('video');
+      if (v){ if(isFocused){ var pr=v.play(); if(pr&&pr.catch)pr.catch(function(){}); } else { v.pause(); } }
+      // Focused panel fills the stage → give it a larger source so the Ken-Burns zoom stays
+      // crisp; slivers/full-draft keep the small source (no big down-scale to stair-step).
+      var mimg = panels[i].querySelector('img.media');
+      if (mimg){ var es=poolEntry(pool, steps[i].map);
+        setMediaSrc(mimg, resolveMapImage(es, steps[i].map, isFocused ? FOCUS_W : THUMB_W)); }
+    }
+    // Flyby slideshow: while the option is on (not final view), the focused image map
+    // crossfades through its screenshot set. A panel that loses focus FREEZES on its
+    // current image (zoom paused) rather than cutting back to the base image.
+    var fp = panels[focus], fstep = steps[focus] || {}, fEntry = poolEntry(pool, fstep.map);
+    if (!mv.mapFlyby) {
+      removeAllFlyby();
+    } else if (fin) {
+      // Collapsing to full-draft: FREEZE the overlays where they are (keep each panel's
+      // current screenshot) instead of removing them — removing snaps the image back to its
+      // base/starter mid-collapse, which reads as a glitchy reset.
+      freezeAllFlyby();
+    } else {
+      if (_flybyActive && _flybyActive !== fp) freezeFlyby();   // freeze the one we left
+      if (fp && fp.classList.contains('focused') && !(fEntry && fEntry.video) && mapSlug(fstep.map)) startFlyby(fp, fstep.map, resolveMapImage(fEntry, fstep.map, FOCUS_W));
+    }
+  }
+
+  // ── Flyby slideshow ──────────────────────────────────────────────────────────
+  // Each focused image map builds a persistent overlay; only ONE animates at a time.
+  // Losing focus pauses (freezes) it on its current image; it's removed only on a full
+  // reset (flyby off / final view / hide / structure rebuild).
+  var FLYBY_MS = 2500;   // dwell per image before crossfading to the next (+ ~1.1s fade)
+  var _flybyTimer = null, _flybyActive = null;
+  function clearFlybyTimer(){ if (_flybyTimer){ clearTimeout(_flybyTimer); _flybyTimer = null; } }
+  function freezeFlyby(){
+    clearFlybyTimer();
+    if (_flybyActive){ var f = _flybyActive.querySelector('.mv-flyby'); if (f) f.style.animationPlayState = 'paused'; }
+    _flybyActive = null;
+  }
+  function removeAllFlyby(){
+    clearFlybyTimer(); _flybyActive = null;
+    var fs = acc.querySelectorAll('.mv-flyby'); for (var i = 0; i < fs.length; i++) fs[i].remove();
+  }
+  // Pause every overlay (stop cycling + freeze the zoom) but keep them in the DOM, so each
+  // panel holds its current image rather than snapping back to base. Used for the full-draft
+  // collapse; flyby resumes normal focus handling when we leave the final view.
+  function freezeAllFlyby(){
+    clearFlybyTimer(); _flybyActive = null;
+    var fs = acc.querySelectorAll('.mv-flyby'); for (var i = 0; i < fs.length; i++) fs[i].style.animationPlayState = 'paused';
+  }
+  function startFlyby(panel, name, baseImg){
+    if (_flybyActive === panel) return;          // already animating this one
+    freezeFlyby();                               // freeze whatever we left
+    _flybyActive = panel;
+    var existing = panel.querySelector('.mv-flyby');
+    if (existing){                               // built before — just resume zoom + cycling
+      existing.style.animationPlayState = 'running';
+      if (panel._flyUrls && panel._flyUrls.length > 1) scheduleFlyby(panel);
+      return;
+    }
+    // Lead with the EXACT image the panel is already showing (base .media) so the overlay
+    // appearing causes no instant swap. Build + show it + start the dwell timer NOW — don't
+    // wait for the whole set to preload (cold-cache 1280px WebP generation made the FIRST
+    // transition take ~5-6s while later ones were 2.5s). Variants stream in as they load.
+    var cand = mapThumbVariants(name, FOCUS_W);
+    if (baseImg) cand = [baseImg].concat(cand.filter(function(u){ return u !== baseImg; }));
+    if (cand.length <= 1) return;
+    var fly = document.createElement('div'); fly.className = 'mv-flyby';
+    var a = document.createElement('img'), b = document.createElement('img');
+    a.className = 'mv-flyby-img'; b.className = 'mv-flyby-img';
+    fly.appendChild(a); fly.appendChild(b);
+    panel.insertBefore(fly, panel.querySelector('.mv-acc-scrim')); // above .media, below scrim
+    panel._flyUrls = [cand[0]]; panel._flyIdx = 0; panel._flyCurA = true;
+    panel._flyPending = cand.length - 1;       // variants still loading (drives the wait-poll)
+    a.src = cand[0]; a.classList.add('on');
+    cand.slice(1).forEach(function(u){ var im = new Image();
+      im.onload  = function(){ panel._flyPending--; if (_flybyActive === panel && panel._flyUrls.indexOf(u) < 0) panel._flyUrls.push(u); };
+      im.onerror = function(){ panel._flyPending--; };
+      im.src = u;
+    });
+    scheduleFlyby(panel);
+  }
+  // Dwell FLYBY_MS on the current image, then crossfade to the next. If the next variant isn't
+  // loaded yet (cold cache), poll briefly rather than overshooting — so the first transition is
+  // ~FLYBY_MS, not FLYBY_MS + full-set preload time. Stops if no more images are coming.
+  function scheduleFlyby(panel){
+    clearFlybyTimer();
+    _flybyTimer = setTimeout(function run(){
+      if (_flybyActive !== panel) return;
+      if (!(panel._flyUrls && panel._flyUrls.length > 1)){
+        if (panel._flyPending <= 0) return;    // nothing left to cycle to — give up quietly
+        _flybyTimer = setTimeout(run, 400);    // images still loading — re-check soon
+        return;
+      }
+      var fly = panel.querySelector('.mv-flyby'); if (!fly) return;
+      var imgs = fly.querySelectorAll('.mv-flyby-img'), a = imgs[0], b = imgs[1];
+      var urls = panel._flyUrls; panel._flyIdx = (panel._flyIdx + 1) % urls.length;
+      // Fade the incoming image IN, ON TOP of the outgoing one which stays fully opaque
+      // underneath — so the base .media never bleeds through mid-crossfade (the old
+      // simultaneous fade dipped both layers to ~50%, most visible on the big focused panel).
+      // The covered outgoing becomes next round's incoming, reset to 0 invisibly behind the top.
+      var inc = panel._flyCurA ? b : a, cur = panel._flyCurA ? a : b;
+      inc.style.transition = 'none'; inc.classList.remove('on');   // snap to 0 (hidden under cur)
+      inc.style.zIndex = '2'; cur.style.zIndex = '1';              // incoming always on top
+      inc.onload = function(){ requestAnimationFrame(function(){
+        inc.style.transition = ''; requestAnimationFrame(function(){ inc.classList.add('on'); }); }); };
+      inc.src = urls[panel._flyIdx];
+      panel._flyCurA = !panel._flyCurA;
+      scheduleFlyby(panel);
+    }, FLYBY_MS);
+  }
+
+  function render(state){
+    var mv = state.mapVeto||{}, m = state.match||{};
+    var pool = (state.tournament && state.tournament.mapPool) || [];
+    ART_REV = (state.settings && state.settings.mapArtRev) || 0;   // before any art URL is built
+    var t1=m.team1||{}, t2=m.team2||{};
+    root.classList.remove('scale-large','scale-normal','scale-l3');
+    root.classList.add('scale-' + (mv.scale || 'normal'));
+    root.classList.toggle('mode-accordion', !!mv.accordion);
+    root.classList.toggle('hide-team-names', mv.showTeamNames === false);
+    root.classList.toggle('show-map-name-img', !!mv.mapNameImages);
+    if (mv.accordion) renderAccordion(state); else removeAllFlyby();
+    document.getElementById('mv-title').textContent = mv.title || 'MAP VETO';
+    document.getElementById('mv-bo').textContent = BO[mv.bestOf] || ('BEST OF ' + (mv.bestOf||3));
+    document.getElementById('mv-t1-name').textContent = t1.name || 'Team 1';
+    document.getElementById('mv-t2-name').textContent = t2.name || 'Team 2';
+    var l1=document.getElementById('mv-t1-logo'), l2=document.getElementById('mv-t2-logo');
+    if(t1.logo){ l1.src=t1.logo; l1.style.display=''; } else l1.style.display='none';
+    if(t2.logo){ l2.src=t2.logo; l2.style.display=''; } else l2.style.display='none';
+    // Event logo
+    var lw=document.getElementById('mv-logo-wrap'), lg=document.getElementById('mv-logo');
+    lw.className = mv.logoPosition || 'left';
+    if(mv.showLogo && mv.logoUrl){ lg.src=mv.logoUrl; lg.style.display=''; lg.style.height=((mv.logoScale||7)*8)+'px'; }
+    else { lg.style.display='none'; }
+
+    var steps = (mv.steps && mv.steps.length) ? mv.steps
+      : pool.map(function(p){ return { action:'pending', map:p.name, team:'', side:'' }; });
+
+    strip.innerHTML = steps.map(function(s, i){
+      var action=(s.action||'pending'), img=poolImage(pool, s.map);
+      var orderHtml = (action==='pending') ? '' : '<div class="mv-order">'+(i+1)+'</div>';
+      var actLabel='', sub1='', sub2='';
+      if (action==='ban'){ actLabel='BAN'; sub1 = s.team ? teamLabel(m, s.team) : ''; }
+      else if (action==='pick'){
+        actLabel='PICK';
+        sub1 = (s.team ? teamLabel(m, s.team) : '') + ' PICK';   // who picked the map
+        var other = s.team==='team1' ? 'team2' : (s.team==='team2' ? 'team1' : '');
+        if (other && s.side) sub2 = teamLabel(m, other) + ' ' + sideLabel(s.side); // other team's start side
+      }
+      else if (action==='decider'){ actLabel='DECIDER';
+        sub1 = (s.side==='knife' || !s.side) ? '' : ((s.team?teamLabel(m,s.team)+' ':'') + sideLabel(s.side)); }
+      // sub1 styling: for pick the action line already says PICK, so show picker as sub
+      var footHtml='';
+      if (action==='ban'){ footHtml = '<div class="mv-action">BAN</div>' + (sub1?'<div class="mv-sub dim">'+eH(sub1)+'</div>':''); }
+      else if (action==='pick'){ footHtml = '<div class="mv-action">'+eH(sub1)+'</div>' + (sub2?'<div class="mv-sub">'+eH(sub2)+'</div>':''); }
+      else if (action==='decider'){ footHtml = '<div class="mv-action">DECIDER</div>' + (sub1?'<div class="mv-sub">'+eH(sub1)+'</div>':''); }
+      var cIcon=mapIconUrl(s.map);
+      return '<div class="mv-card '+action+(cIcon?' has-name-img':'')+'" style="--i:'+i+'">' +
+        (img ? '<img class="img" src="'+eH(img)+'" alt="">' : '') +
+        '<div class="scrim"></div>' + orderHtml +
+        '<div class="mv-name">'+eH(s.map||'')+'</div>' +
+        (cIcon?'<img class="mv-name-img" src="'+eH(cIcon)+'" alt="">':'') +
+        '<div class="mv-foot">'+footHtml+'</div></div>';
+    }).join('');
+  }
+
+  function hashState(state){
+    var mv = state.mapVeto||{}, m = state.match||{};
+    return JSON.stringify({ s:mv.steps, p:(state.tournament&&state.tournament.mapPool), t:mv.title, bo:mv.bestOf, sc:mv.scale,
+      ac:mv.accordion, fi:mv.focusIndex, rc:mv.revealedCount, af:mv.accordionFinal, stn:mv.showTeamNames, mni:mv.mapNameImages, fb:mv.mapFlyby,
+      lg:mv.showLogo, lu:mv.logoUrl, ls:mv.logoScale, lp:mv.logoPosition,
+      rev:(state.settings&&state.settings.mapArtRev)||0,
+      t1:(m.team1||{}).name, t2:(m.team2||{}).name, l1:(m.team1||{}).logo, l2:(m.team2||{}).logo });
+  }
+
+  socket.on('state', function(state){
+    if (window.GfxSettings){ GfxSettings.applyTheme(document.documentElement, state); GfxSettings.applyAnimation(document.documentElement, state, 'mapVeto'); GfxSettings.clearBackground(document.body); }
+    var visible = !!(state.mapVeto && state.mapVeto.visible);
+    var h = hashState(state);
+    if (visible){
+      if (!_visible || h !== _hash){ render(state); _hash = h; }
+      if (!_visible){ _visible = true; requestAnimationFrame(function(){ root.classList.add('show'); }); }
+    } else if (_visible){
+      _visible = false; root.classList.remove("show"); removeAllFlyby();
+    }
+  });
+  socket.on('connect', function(){ _visible = false; root.classList.remove("show"); removeAllFlyby(); });
+})();
+</script>
+</body>
+</html>

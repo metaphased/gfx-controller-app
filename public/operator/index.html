@@ -665,7 +665,7 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
     </div>
 
     <!-- Head to Head -->
-    <div class="ops-panel" id="ops-panel-headToHead">
+    <div class="ops-panel cap-champ-draft" id="ops-panel-headToHead">
       <div class="ops-ctrl-row">
         <div class="ops-ctrl-group" id="ops-grp-headToHead">
           <span class="ops-ctrl-label">Output</span>
@@ -743,6 +743,36 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
         </div>
         <div class="ops-ctrl-group" style="flex:1">
           <span class="phase-badge" id="ops-draft-phase">—</span>
+        </div>
+      </div>
+
+      <!-- Map Veto (CS2 etc.) -->
+      <div class="ops-ctrl-row cap-map-veto">
+        <div class="ops-ctrl-group" id="ops-grp-mapVeto">
+          <span class="ops-ctrl-label">Map Veto</span>
+          <button class="lbar-toggle" id="ops-btn-mapVeto" onclick="toggleGfx('mapVeto')">
+            <span class="lbar-dot" id="ops-dot-mapVeto"></span>Map Veto
+          </button>
+        </div>
+        <div class="ops-ctrl-group" style="flex:1">
+          <span class="ops-ctrl-label">Scale</span>
+          <button class="mode-btn" id="ops-mv-scale-large"  onclick="api('/api/mapVeto',{scale:'large'})">Large</button>
+          <button class="mode-btn" id="ops-mv-scale-normal" onclick="api('/api/mapVeto',{scale:'normal'})">Normal</button>
+          <button class="mode-btn" id="ops-mv-scale-l3"     onclick="api('/api/mapVeto',{scale:'l3'})">Lower 3rd</button>
+        </div>
+      </div>
+      <div class="ops-ctrl-row cap-map-veto">
+        <div class="ops-ctrl-group">
+          <span class="ops-ctrl-label">Accordion</span>
+          <button class="mode-btn" id="ops-mv-acc" onclick="opsMvToggleAcc()">Accordion</button>
+        </div>
+        <div class="ops-ctrl-group" style="flex:1">
+          <span class="ops-ctrl-label">Reveal draft</span>
+          <button class="mode-btn" onclick="opsMvReveal(-1)">◀ Prev</button>
+          <button class="mode-btn" onclick="opsMvReveal(1)">Reveal ▶</button>
+          <button class="mode-btn" id="ops-mv-full" onclick="opsMvFull()">Full</button>
+          <button class="mode-btn" onclick="opsMvRestart()">⟲ Restart</button>
+          <button class="mode-btn" id="ops-mv-auto" onclick="opsMvAuto()">▶ Auto</button>
         </div>
       </div>
 
@@ -825,10 +855,26 @@ function g(id) { return document.getElementById(id); }
 // Active game adapter (broadcast as state.adapter) — hides game-irrelevant operator
 // controls. Elements opt in by class; LoL has all capabilities so nothing changes.
 function gameAdapter() { return (window._state && window._state.adapter) || null; }
+
+// Map-veto accordion controls (mirror the admin GFX-tab logic).
+function _opsMv() { return (window._state && window._state.mapVeto) || {}; }
+function _opsMvSteps() { const mv = _opsMv(); if (mv.steps && mv.steps.length) return mv.steps.length; return ((window._state && window._state.tournament && window._state.tournament.mapPool) || []).length; }
+function opsMvToggleAcc() { if (!_opsMv().accordion) api('/api/mapVeto', { accordion: true, focusIndex: 0, revealedCount: 0, accordionFinal: false }); else api('/api/mapVeto', { accordion: false }); }
+function opsMvReveal(d) {
+  const total = _opsMvSteps(), mv = _opsMv();
+  let focus = mv.focusIndex || 0, revealed = mv.revealedCount || 0;
+  if (d > 0) { if (revealed < total) { focus = revealed; revealed = revealed + 1; } else { focus = Math.min(focus + 1, total - 1); } }
+  else { focus = Math.max(focus - 1, 0); }
+  api('/api/mapVeto', { focusIndex: focus, revealedCount: revealed, accordionFinal: false });
+}
+function opsMvFull() { api('/api/mapVeto', { accordionFinal: !_opsMv().accordionFinal }); }
+function opsMvRestart() { api('/api/mapVeto', { focusIndex: 0, revealedCount: 0, accordionFinal: false }); }
+function opsMvAuto() { const mv = _opsMv(); if (mv.autoRevealing) api('/api/mapVeto/auto-stop', {}); else api('/api/mapVeto/auto-reveal', { stepMs: mv.autoStepMs || 2500 }); }
 function applyOpsAdapterUI() {
   const a = gameAdapter();
   const caps = {
     'cap-champ-draft': a ? a.pregameKind === 'champ-draft'            : true,
+    'cap-map-veto':    a ? a.pregameKind === 'map-veto'               : false,
     'cap-roles':       a ? (a.positions || []).some(function(p){return !!p;}) : true,
     'cap-opgg':        a ? a.intelProvider === 'opgg'                 : true,
     'cap-picks':       a ? a.pickEntity != null                       : true,
@@ -870,7 +916,7 @@ socket.on('presence:list', function(users) {
 });
 
 /* ── Graphic list for bulk sync ── */
-const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
+const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','mapVeto','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
 
 socket.on('state', state => {
   window._state = state;
@@ -965,6 +1011,13 @@ socket.on('state', state => {
     const active = state[key] && state[key].visible;
     syncToggle(`ops-btn-${key}`, `ops-dot-${key}`, `ops-grp-${key}`, !!active);
   });
+  const mvScale = (state.mapVeto && state.mapVeto.scale) || 'normal';
+  ['large','normal','l3'].forEach(s => setModeActive(`ops-mv-scale-${s}`, mvScale === s));
+  const _mv = state.mapVeto || {};
+  setModeActive('ops-mv-acc',  !!_mv.accordion);
+  setModeActive('ops-mv-full', !!_mv.accordionFinal);
+  setModeActive('ops-mv-auto', !!_mv.autoRevealing);
+  const _oaBtn = document.getElementById('ops-mv-auto'); if (_oaBtn) _oaBtn.textContent = _mv.autoRevealing ? '■ Stop' : '▶ Auto';
 
   /* Player quick grid */
   renderPlayerGrid(state);

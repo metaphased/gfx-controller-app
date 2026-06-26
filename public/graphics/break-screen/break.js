@@ -145,6 +145,70 @@ function renderTicker(ticker) {
   });
 }
 
+// ── Per-map round scores (CS2 / map-veto games) ────────────────────────────────
+// Renders one chip per played map: name + "13–6" round score (winner's number in
+// accent), the live map flagged LIVE, the next unplayed map flagged NEXT. Hidden for
+// non-map-veto games and when there are no map results.
+function _mapScoreChips(state) {
+  const adapter = state.adapter || {};
+  if (adapter.pregameKind !== 'map-veto') return null;
+  // Only rows with a chosen map are real played maps (the model carries best-of rows,
+  // some of which may be unset/unplayed).
+  const results = ((state.match && state.match.mapResults) || []).filter(function(r){ return r && r.map; });
+  if (!results.length) return null;
+  // First not-yet-final map = "next" marker (only if it isn't already live).
+  let nextIdx = -1;
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].status !== 'final') { nextIdx = i; break; }
+  }
+  return results.map(function(r, i) {
+    const live  = r.status === 'live';
+    const isNext = !live && i === nextIdx;
+    let scoreHtml;
+    if (isNext) {
+      scoreHtml = '<span class="break-map-next">NEXT</span>';
+    } else {
+      const t1cls = r.winner === 'team1' ? ' win' : '';
+      const t2cls = r.winner === 'team2' ? ' win' : '';
+      scoreHtml = '<span class="break-map-score">' +
+        '<span class="break-map-r' + t1cls + '">' + (r.t1Rounds || 0) + '</span>' +
+        '<span class="break-map-dash">–</span>' +
+        '<span class="break-map-r' + t2cls + '">' + (r.t2Rounds || 0) + '</span></span>';
+    }
+    return '<div class="break-map' + (live ? ' live' : '') + '">' +
+      '<div class="break-map-name">' + esc(r.map || ('MAP ' + (i + 1))) + '</div>' +
+      scoreHtml +
+      (live ? '<span class="break-map-live">LIVE</span>' : '') +
+      '</div>';
+  }).join('<span class="break-map-sep">·</span>');
+}
+function renderMapScores(state) {
+  const el = $('break-maps');
+  if (!el) return;
+  const chips = _mapScoreChips(state);
+  if (!chips) { el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.style.display = '';
+  el.innerHTML = chips;
+}
+
+// CS2 / map-veto series info derived from played maps (NOT currentGameNum). A map
+// counts as played once marked final, so the next game = finals + 1 (2 finals in a
+// Bo3 → game 3). Returns null for non-map-veto games or when no maps are set.
+function _cs2BreakInfo(state) {
+  const adapter = state.adapter || {};
+  if (adapter.pregameKind !== 'map-veto') return null;
+  const results = ((state.match && state.match.mapResults) || []).filter(function(r){ return r && r.map; });
+  if (!results.length) return null;
+  const total = results.length;
+  let finalCount = 0, nextMap = '';
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].status === 'final') finalCount++;
+    else if (!nextMap) nextMap = results[i].map;
+  }
+  return { total: total, finalCount: finalCount, nextMap: nextMap,
+           gameNum: Math.min(finalCount + 1, total), seriesOver: finalCount >= total };
+}
+
 // ── Next Up — auto-derived from today's schedule, manual bs.nextMatch overrides ──
 function renderNextUp(bs, todayGames) {
   const wrapEl = $('break-next');
@@ -276,13 +340,27 @@ function renderPipBottom(state) {
 
   var pipFmtEl  = $('break-pip-format');
   var pipGameEl = $('break-pip-game');
-  if (pipFmtEl) {
-    pipFmtEl.style.display = isBo1 ? '' : 'none';
-    pipFmtEl.textContent   = fmt;
-  }
-  if (pipGameEl) {
-    pipGameEl.style.display = isBo1 ? 'none' : '';
-    pipGameEl.textContent   = seriesOver ? 'SERIES COMPLETE' : 'GAME ' + gameNum + ' OF ' + fmtNum;
+  // CS2: PIP has no map-chip row, so surface the NEXT MAP by the score instead of a
+  // game counter ("NEXT" label + map name; or SERIES COMPLETE).
+  var cs2 = _cs2BreakInfo(state);
+  if (cs2) {
+    if (pipFmtEl) {
+      pipFmtEl.style.display = (!cs2.seriesOver && cs2.nextMap) ? '' : 'none';
+      pipFmtEl.textContent   = 'NEXT';
+    }
+    if (pipGameEl) {
+      pipGameEl.style.display = '';
+      pipGameEl.textContent   = cs2.seriesOver ? 'SERIES COMPLETE' : (cs2.nextMap || '');
+    }
+  } else {
+    if (pipFmtEl) {
+      pipFmtEl.style.display = isBo1 ? '' : 'none';
+      pipFmtEl.textContent   = fmt;
+    }
+    if (pipGameEl) {
+      pipGameEl.style.display = isBo1 ? 'none' : '';
+      pipGameEl.textContent   = seriesOver ? 'SERIES COMPLETE' : 'GAME ' + gameNum + ' OF ' + fmtNum;
+    }
   }
 
   // Upcoming in the bottom bar — manual override takes priority, same as renderNextUp
@@ -333,7 +411,7 @@ function renderAll(state) {
     var _peRootRect   = rootEl.getBoundingClientRect();
     var _peFlipBefore = _flipSnapshot();
     var _peCloneData  = [];
-    ['break-series', 'break-next', 'break-timer'].forEach(function(id) {
+    ['break-series', 'break-maps', 'break-next', 'break-timer'].forEach(function(id) {
       var el = $(id);
       if (!el || el.style.display === 'none') return;
       var r = el.getBoundingClientRect();
@@ -406,17 +484,23 @@ function renderAll(state) {
     t2ScoreEl.style.color   = (!isBo1 && seriesOver && t2wins > t1wins) ? 'var(--gfx-c1)' : '';
   }
 
-  // Centre: BO1 shows format label; BO3+ shows game progress
+  // Centre: BO1 shows format label; BO3+ shows game progress. For CS2 the map-score
+  // chips below already convey which map is next, so drop the centre game counter —
+  // the side scores ("1 — 1") read fine on their own.
+  const cs2Norm  = _cs2BreakInfo(state);
   const formatEl = $('break-series-format');
   const gameEl   = $('break-series-game');
   if (formatEl) {
-    formatEl.style.display = isBo1 ? '' : 'none';
+    formatEl.style.display = (!cs2Norm && isBo1) ? '' : 'none';
     formatEl.textContent   = fmt;
   }
   if (gameEl) {
-    gameEl.style.display = isBo1 ? 'none' : '';
+    gameEl.style.display = (!cs2Norm && !isBo1) ? '' : 'none';
     gameEl.textContent   = seriesOver ? 'SERIES COMPLETE' : 'GAME ' + gameNum + ' OF ' + fmtNum;
   }
+
+  // ── Per-map round scores (CS2) ────────────────────────────────────────────
+  renderMapScores(state);
 
   // ── Timer ─────────────────────────────────────────────────────────────────
   runTimer(bs.timerEnd || null);
@@ -442,7 +526,7 @@ function renderAll(state) {
     // re-show break-timer / break-next on every data update. Keep them hidden here so
     // their content is only surfaced via the bottom bar (renderPipBottom handles that).
     if (bs.pipMode && wasPip) {
-      ['break-series', 'break-next', 'break-timer'].forEach(function(id) {
+      ['break-series', 'break-maps', 'break-next', 'break-timer'].forEach(function(id) {
         var el = $(id); if (el) el.style.display = 'none';
       });
     }

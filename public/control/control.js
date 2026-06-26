@@ -46,11 +46,21 @@ const OPGG_REGIONS  = ['kr','euw','na','eune','jp','oce','br','las','lan','ru','
 function gameAdapter()      { return (window._state && window._state.adapter) || null; }
 function adapterRoles()     { const a = gameAdapter(); return (a && a.positions && a.positions.length) ? a.positions : DEFAULT_ROLES; }
 function isChampDraft()     { const a = gameAdapter(); return a ? a.pregameKind === 'champ-draft' : true; }
+function isMapVeto()        { const a = gameAdapter(); return a ? a.pregameKind === 'map-veto'    : false; }
 function supportsFearless() { const a = gameAdapter(); return a ? !!a.supportsFearless : true; }
 function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvider === 'opgg'  : true; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
 function hasRoles()         { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
+// Map-veto games don't advance match.currentGameNum; the current game is the first map
+// not yet marked final (2 finals in a Bo3 → game 3). Falls back to currentGameNum for LoL.
+function currentGameNumFor(m) {
+  if (isChampDraft()) return (m && m.currentGameNum) || 1;
+  const results = ((m && m.mapResults) || []).filter(function(r){ return r && r.map; });
+  const finals  = results.filter(function(r){ return r.status === 'final'; }).length;
+  const fmtNum  = parseInt(String((m && m.format) || 'Bo3').replace(/Bo/i, '')) || 3;
+  return Math.min(finals + 1, fmtNum);
+}
 
 // Game list (id + label) for tournament + team-game selectors. Mirrors the ts-game options.
 const GAMES = [['lol','League of Legends'],['cs2','CS2'],['dota2','Dota 2'],['valorant','VALORANT'],['r6','Rainbow Six Siege'],['generic','Generic / Other']];
@@ -64,6 +74,7 @@ function currentGameId(){ return (window._state && window._state.match && window
 function applyAdapterUI() {
   const caps = {
     'cap-champ-draft': isChampDraft(),
+    'cap-map-veto':    isMapVeto(),
     'cap-opgg':        supportsOpgg(),
     'cap-assets':      supportsAssets(),
     'cap-picks':       hasPickEntity(),
@@ -71,6 +82,10 @@ function applyAdapterUI() {
   };
   Object.keys(caps).forEach(function(cls){
     document.querySelectorAll('.' + cls).forEach(function(el){ el.style.display = caps[cls] ? '' : 'none'; });
+    // Inverse: `cap-not-<x>` shows only when capability <x> is absent (e.g. CS2 copy
+    // that should appear where the LoL `cap-<x>` copy is hidden).
+    var notCls = cls.replace('cap-', 'cap-not-');
+    document.querySelectorAll('.' + notCls).forEach(function(el){ el.style.display = caps[cls] ? 'none' : ''; });
   });
 }
 
@@ -233,7 +248,10 @@ socket.on('state', async (state) => {
   syncUI(state);
   applyAdapterUI();
   applyTournamentCreateLock();
-  applySetupLock();
+  tmRenderMapPool(state);
+  mvRenderVeto(state);
+  mvRenderGfx(state);
+  applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
   // Debounced dirty check — runs 2 s after state settles
@@ -278,14 +296,14 @@ const TAB_LABELS = {
   players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
   preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
   h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
-  'draft-gfx':'Draft GFX', bracket:'Bracket', 'groups-gfx':'Group Stage',
+  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', bracket:'Bracket', 'groups-gfx':'Group Stage',
   'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
   win:'Win Screen', profiles:'Profiles', routing:'Routing', users:'Settings', log:'Log',
 };
 
 // Tab → claim page key (GFX ctrl-bar pages only)
 const GFX_TAB_CLAIM_KEY = {
-  'draft-gfx':'draft-gfx', 'lowerthird':'lower-thirds', 'player-intro':'player-intro',
+  'draft-gfx':'draft-gfx', 'map-veto-gfx':'map-veto', 'lowerthird':'lower-thirds', 'player-intro':'player-intro',
   'win':'win-screen', 'break':'break-screen', 'preshow':'pre-show',
   'tournament-structure-gfx':'tournament-structure', 'groups-gfx':'standings',
   'bracket':'bracket', 'h2h':'h2h', 'ticker':'ticker', 'prizepool':'prizepool',
@@ -373,6 +391,7 @@ const GFX_PAGES = [
   ['Head to Head',  'graphics/head2head/'],
   ['Pre-show',      'graphics/pre-show/'],
   ['Draft',         'graphics/draft/'],
+  ['Map Veto',      'graphics/map-veto/'],
   ['Bracket',       'graphics/bracket/'],
   ['Group Stage',           'graphics/group-stage/'],
   ['Tournament Structure',  'graphics/tournament-structure/'],
@@ -387,7 +406,7 @@ const urlList = g('url-list');
 GFX_PAGES.forEach(([label, p]) => {
   const url = window.location.origin + '/' + p;
   const chip = document.createElement('div');
-  chip.className = 'url-chip' + (p.indexOf('draft/') !== -1 ? ' cap-champ-draft' : '');
+  chip.className = 'url-chip' + (p.indexOf('map-veto/') !== -1 ? ' cap-map-veto' : ((p.indexOf('draft/') !== -1 || p.indexOf('head2head/') !== -1) ? ' cap-champ-draft' : ''));
   chip.title = 'Click to copy';
   chip.textContent = label;
   chip.addEventListener('click', () => {
@@ -407,6 +426,16 @@ async function api(path, body) {
     if (!res.ok) console.error('API error', path, res.status, data);
     return data;
   } catch (e) { console.error('Fetch error', path, e); }
+}
+
+// Re-acquire map art: server force-regenerates the current pool's cached images and bumps the
+// art revision so on-air graphics re-fetch. Inline button feedback (no toast system here).
+async function mvRefreshImages(btn) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Refreshing…';
+  const r = await api('/api/mapart/refresh', {});
+  btn.textContent = (r && r.ok) ? ('Updated ✓ (' + (r.maps || 0) + ')') : 'Failed';
+  setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
 }
 
 // Clipboard copy with execCommand fallback for non-localhost HTTP (remote users)
@@ -471,9 +500,10 @@ function confirmDestructive(triggerEl, label, callback) {
 const GFX_OUTPUTS = [
   { label: 'Caster View',           path: 'caster/' },
   { label: 'Player Intro',           path: 'graphics/player-intro/' },
-  { label: 'Head to Head',          path: 'graphics/head2head/' },
+  { label: 'Head to Head',          path: 'graphics/head2head/', cap: 'champ-draft' },
   { label: 'Pre-show',              path: 'graphics/pre-show/' },
-  { label: 'Draft Overlay',         path: 'graphics/draft/' },
+  { label: 'Draft Overlay',         path: 'graphics/draft/', cap: 'champ-draft' },
+  { label: 'Map Veto',              path: 'graphics/map-veto/', cap: 'map-veto' },
   { label: 'Bracket',               path: 'graphics/bracket/' },
   { label: 'Group Stage',           path: 'graphics/group-stage/' },
   { label: 'Tournament Structure',  path: 'graphics/tournament-structure/' },
@@ -580,6 +610,7 @@ function syncGfxToken(settings) {
   const _gtBuses = (window._state && window._state.settings && window._state.settings.buses) || [];
   const _gtLtOuts = (window._state && window._state.lowerThird && window._state.lowerThird.outputs) || [];
   if (!_sfp('gfxTokenList', { token, mode: _gfxUrlMode, ext: _externalUrl,
+        game: (window._state && window._state.match && window._state.match.game) || '',
         buses: _gtBuses.map(function(b){ return [b.id, b.name]; }),
         ltOuts: _gtLtOuts.map(function(o){ return [o.id, o.name]; }) })) return;
   const base    = (_gfxUrlMode === 'external' && _externalUrl ? _externalUrl : window.location.origin) + '/';
@@ -619,7 +650,10 @@ function syncGfxToken(settings) {
       '</div>'
     : '';
 
-  listEl.innerHTML = toggleHtml + GFX_OUTPUTS.map(o => urlRow(o.label, o.path)).join('') + ltRows + busRows;
+  const outputs = GFX_OUTPUTS.filter(o =>
+    o.cap === 'champ-draft' ? isChampDraft() :
+    o.cap === 'map-veto'    ? isMapVeto()    : true);
+  listEl.innerHTML = toggleHtml + outputs.map(o => urlRow(o.label, o.path)).join('') + ltRows + busRows;
 }
 
 // ── Bus config ─────────────────────────────────────────────────────────────────
@@ -761,8 +795,9 @@ function renderDashboard(s) {
     var stageLabel = currentTG ? currentTG.stage : '';
     var formatNum = parseInt((m.format || 'Bo3').replace(/[Bb][Oo]/,'')) || 3;
     var metaStr = (stageLabel ? escHtml(stageLabel) + ' &nbsp;–&nbsp; ' : '') + escHtml(m.format || '');
-    var gameProgress = (formatNum > 1 && m.currentGameNum > 1)
-      ? '<div class="dash-match-gamenum">GAME ' + m.currentGameNum + ' &nbsp;·&nbsp; ' + sc1 + '–' + sc2 + ' in series</div>'
+    var _curGame = currentGameNumFor(m);
+    var gameProgress = (formatNum > 1 && _curGame > 1)
+      ? '<div class="dash-match-gamenum">GAME ' + _curGame + ' &nbsp;·&nbsp; ' + sc1 + '–' + sc2 + ' in series</div>'
       : '';
     matchEl.innerHTML = '<div class="card-title">Active Match</div>' +
       (hasTeams
@@ -868,7 +903,11 @@ function renderDashboard(s) {
   if (gfxEl) {
     gfxEl.innerHTML = '<div class="card-title">Live Graphics</div>' +
       '<div class="dash-gfx-grid">' +
-        GRAPHIC_MAP.filter(function(gfx) { return gfx.key !== 'draft' || isChampDraft(); }).map(function(gfx) {
+        GRAPHIC_MAP.filter(function(gfx) {
+          if (gfx.key === 'draft' || gfx.key === 'headToHead') return isChampDraft();
+          if (gfx.key === 'mapVeto') return isMapVeto();
+          return true;
+        }).map(function(gfx) {
           var active = s[gfx.key] && s[gfx.key].visible;
           return '<div class="dash-gfx-item">' +
             '<div class="dash-gfx-dot' + (active ? ' is-live' : '') + '"></div>' +
@@ -1399,10 +1438,11 @@ function renderLTQuickGrid(players, match) {
   const len = Math.max(t1.length, t2.length);
   for (let i = 0; i < len; i++) { if (t1[i]) all.push(t1[i]); if (t2[i]) all.push(t2[i]); }
   grid._players = all;
+  const showRole = hasRoles();   // games without fixed roles (CS2) have no lane to show
   grid.innerHTML = all.map((p,i) =>
     '<button class="player-quick-btn" onclick="quickLT('+i+')">' +
     '<span class="pqb-handle">'+esc(p.handle||p.name)+'</span>' +
-    '<span class="pqb-team">'+esc(p.teamTag||p.teamName)+(p.role?' · '+p.role:'')+'</span>' +
+    '<span class="pqb-team">'+esc(p.teamTag||p.teamName)+((showRole&&p.role)?' · '+p.role:'')+'</span>' +
     '</button>'
   ).join('');
 }
@@ -1416,7 +1456,7 @@ function quickLT(i) {
   let it = (s.items || []).find(x => x.id === _ltSelItem) || s.items[0];
   if (!it) { it = _ltNewItem(); s.items.push(it); _ltSelItem = it.id; }
   it.name = p.handle || p.name;
-  it.sub = (p.role ? p.role + ' · ' : '') + (p.teamName || '');
+  it.sub = ((hasRoles() && p.role) ? p.role + ' · ' : '') + (p.teamName || '');
   it.super = (window._state && window._state.match && window._state.match.tournament) || '';
   _ltTabFp = null;   // force the editor to re-render on the resulting broadcast (content-only change)
   patchLT({ sets, visible: true });
@@ -2571,11 +2611,11 @@ function syncPsOverrides(s) {
       }).join('');
       return '<div style="' + (idx === 1 ? 'margin-top:14px;padding-top:14px;border-top:1px solid var(--border)' : '') + '">' +
         '<div class="gfx-ctrl-section-label" style="margin-bottom:6px">Player ' + (idx === 0 ? 'A' : 'B') + '</div>' +
-        '<label class="hint" style="display:block;margin-bottom:3px">Featured champion</label>' +
-        '<select id="ps-champ-' + idx + '" onchange="patchPsSlot(' + idx + ',{champ:this.value})" style="margin-bottom:8px"><option value="">Auto (most-played)</option></select>' +
+        '<label class="hint cap-champ-draft" style="display:block;margin-bottom:3px">Featured champion</label>' +
+        '<select id="ps-champ-' + idx + '" onchange="patchPsSlot(' + idx + ',{champ:this.value})" class="cap-champ-draft" style="margin-bottom:8px"><option value="">Auto (most-played)</option></select>' +
         '<label class="hint" style="display:block;margin-bottom:3px">Caption</label>' +
         '<input type="text" id="ps-caption-' + idx + '" placeholder="optional caption…" oninput="setPsCaption(' + idx + ',this.value)" style="margin-bottom:8px">' +
-        '<label class="hint" style="display:block">Stats</label>' + rows + '</div>';
+        '<label class="hint cap-champ-draft" style="display:block">Stats</label><div class="cap-champ-draft">' + rows + '</div></div>';
     }).join('');
   }
 
@@ -2698,13 +2738,16 @@ function syncWinTab(ws, match) {
     if (r) r.checked = style === v;
   });
 
-  // Winning draft picks — toggle, position, and "what will appear" preview
-  const showPicks = !!ws.showPicks;
+  // Winning draft picks — toggle, position, and "what will appear" preview.
+  // Champion picks are LoL-only; keep these rows hidden for non-champ-draft games
+  // (the card + COMP radio are also cap-champ-draft hidden via applyAdapterUI).
+  const champDraft = isChampDraft();
+  const showPicks = champDraft && !!ws.showPicks;
   const spChk = g('win-showpicks'); if (spChk) spChk.checked = showPicks;
   const posRow = g('win-picks-pos-row'); if (posRow) posRow.style.display = showPicks ? 'flex' : 'none';
   // Image shape applies to the picks whenever they show — COMP (always) or any
   // style with showPicks on — so it lives here, not gated behind loading COMP.
-  const shapeRow = g('win-shape-row'); if (shapeRow) shapeRow.style.display = (showPicks || style === 'comp') ? 'flex' : 'none';
+  const shapeRow = g('win-shape-row'); if (shapeRow) shapeRow.style.display = (champDraft && (showPicks || style === 'comp')) ? 'flex' : 'none';
   const picksPos = ws.picksPosition === 'bottom' ? 'bottom' : 'below';
   ['below','bottom'].forEach(v => {
     const r = document.querySelector('input[name="win-picks-pos"][value="' + v + '"]');
@@ -2712,9 +2755,9 @@ function syncWinTab(ws, match) {
   });
   renderWinPicksPreview(ws, match);
 
-  // COMP-only options (champion image shape + built-in background)
+  // COMP-only options (champion image shape + built-in background) — LoL only
   const compOpts = g('win-comp-options');
-  if (compOpts) compOpts.style.display = style === 'comp' ? 'block' : 'none';
+  if (compOpts) compOpts.style.display = (champDraft && style === 'comp') ? 'block' : 'none';
   const compShape = ws.compShape === 'angled' ? 'angled' : 'rect';
   const rectBtn = g('win-shape-rect'), angBtn = g('win-shape-angled');
   if (rectBtn) rectBtn.classList.toggle('btn-active', compShape === 'rect');
@@ -3109,7 +3152,7 @@ function renderPlayerEditors(players) {
           '</div>' +
           '<div class="cap-roles"><div class="player-num">Role</div>' +
             '<div class="player-val-display" data-index="'+i+'" data-field="role"></div></div>' +
-          '<div><div class="player-num">Swap Sub</div>' +
+          '<div>' +
             '<select class="sub-swap-sel" data-team="'+team+'" data-player-index="'+i+'">' +
               '<option value="">Swap sub...</option>' +
             '</select>' +
@@ -3910,6 +3953,8 @@ function openPoolCreateTeam() {
 
 // ── Utility ────────────────────────────────────────────────────────────────────
 function esc(str) { return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+// Escape a value for embedding inside a single-quoted JS string in an onclick attribute.
+function jsq(str) { return String(str||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 Champions.load();
@@ -3922,6 +3967,7 @@ const GRAPHIC_MAP = [
   { key: 'headToHead',  tab: 'h2h',         label: 'Head to Head'},
   { key: 'playerIntro', tab: 'player-intro', label: 'Player Intro' },
   { key: 'draft',       tab: 'draft-gfx',   label: 'Draft'       },
+  { key: 'mapVeto',     tab: 'map-veto-gfx', label: 'Map Veto'   },
   { key: 'bracket',     tab: 'bracket',     label: 'Bracket'     },
   { key: 'groupStage',          tab: 'groups-gfx',               label: 'Group Stage'          },
   { key: 'tournamentStructure', tab: 'tournament-structure-gfx', label: 'Tournament Structure' },
@@ -3931,6 +3977,240 @@ const GRAPHIC_MAP = [
   { key: 'winScreen',   tab: 'win',         label: 'Win Screen'  },
   { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
 ];
+
+// ── Map Veto (CS2 etc.) ──────────────────────────────────────────────────────
+// Map POOL lives on the tournament (set in Tournament Setup, setup-lock-guarded, in
+// profiles). The veto always covers every pool map — the server reconciles mapVeto.steps
+// to the pool, so the GAME tab just shows one row per map. Overlay look lives on mapVeto.
+function _mvState(){ return (window._state && window._state.mapVeto) || { steps:[] }; }
+function _mvPool(){ return (window._state && window._state.tournament && window._state.tournament.mapPool) || []; }
+function _mvDefaultPool(){
+  const game = currentGameId();
+  const saved = window._state && window._state.settings && window._state.settings.mapPoolDefaults && window._state.settings.mapPoolDefaults[game];
+  if (saved && saved.length) return saved.map(function(m){ return { name:m.name||'', image:m.image||'' }; });
+  const a=gameAdapter(); return ((a&&a.defaultMapPool)||[]).map(function(m){ return (typeof m==='string') ? { name:m, image:'' } : { name:m.name||'', image:m.image||'', video:m.video||'' }; });
+}
+
+// Map pool (Tournament Setup) — persisted on the tournament.
+function tmCommitMapPool(){
+  const pool = [].slice.call(document.querySelectorAll('#tm-map-pool .mv-pool-row')).map(function(r){
+    return { name:((r.querySelector('.mv-pm-name')||{}).value||'').trim(),
+             image:((r.querySelector('.mv-pm-img')||{}).value||'').trim(),
+             video:((r.querySelector('.mv-pm-vid')||{}).value||'').trim() };
+  }).filter(function(p){ return p.name; });
+  api('/api/tournament', { mapPool: pool });
+}
+function tmAddMap(){ const p=_mvPool().slice(); p.push({name:'',image:'',video:''}); api('/api/tournament',{mapPool:p}); }
+function tmRemoveMap(i){ const p=_mvPool().slice(); p.splice(i,1); api('/api/tournament',{mapPool:p}); }
+function tmMoveMap(i,d){ const p=_mvPool().slice(); const j=i+d; if(j<0||j>=p.length)return; const t=p[i]; p[i]=p[j]; p[j]=t; api('/api/tournament',{mapPool:p}); }
+function tmLoadDefaultPool(){ const def=_mvDefaultPool(); if(!def.length)return;
+  if(_mvPool().length && !confirm('Replace the current map pool with the default pool?'))return;
+  api('/api/tournament',{mapPool:def}); }
+function tmSetDefaultPool(){
+  const game=currentGameId(), pool=_mvPool();
+  if(!pool.length){ if(window.showAlert) showAlert('Add maps to the pool first.'); return; }
+  const d={}; d[game]=pool.map(function(m){ return { name:m.name, image:m.image||'' }; });
+  Promise.resolve(api('/api/settings',{mapPoolDefaults:d})).then(function(){
+    const b=g('tm-set-default-pool'); if(b){ const o=b.textContent; b.textContent='Saved ✓'; setTimeout(function(){ b.textContent=o; },1500); }
+  });
+}
+function tmRenderMapPool(state){
+  const host=g('tm-map-pool'); if(!host) return;
+  const pool=(state&&state.tournament&&state.tournament.mapPool)||[];
+  const hasDef=!!_mvDefaultPool().length;
+  const ld=g('tm-load-default-pool'); if(ld) ld.style.display=hasDef?'':'none';
+  const sd=g('tm-set-default-pool');  if(sd) sd.style.display=hasDef?'':'none';
+  const sig=JSON.stringify(pool); if(sig===window._tmPoolSig) return; window._tmPoolSig=sig;
+  host.innerHTML=(pool.map(function(p,i){
+    return '<div class="mv-pool-row">'+
+      '<span class="mv-row-num">'+(i+1)+'</span>'+
+      '<input type="text" class="mv-pm-name" placeholder="Map name" value="'+esc(p.name||'')+'" onchange="tmCommitMapPool()">'+
+      '<input type="text" class="mv-pm-img" placeholder="Image URL (optional)" value="'+esc(p.image||'')+'" onchange="tmCommitMapPool()">'+
+      '<input type="text" class="mv-pm-vid" placeholder="Video URL (accordion, optional)" value="'+esc(p.video||'')+'" onchange="tmCommitMapPool()">'+
+      '<button class="btn btn-xs mv-rowbtn" title="Move up" onclick="tmMoveMap('+i+',-1)">↑</button>'+
+      '<button class="btn btn-xs mv-rowbtn" title="Move down" onclick="tmMoveMap('+i+',1)">↓</button>'+
+      '<button class="btn btn-xs btn-danger mv-rowbtn" title="Remove" onclick="tmRemoveMap('+i+')">✕</button></div>';
+  }).join('')) || '<p class="hint">No maps yet. Click + Add Map or Load default pool.</p>';
+}
+
+// Veto data entry (GAME → Map Veto) — guided sequence following the official Bo1/Bo3/Bo5
+// veto order. Best-of comes from the loaded match; the admin sets Team A and fills each
+// ban/pick slot (no map can be used twice); the decider is the auto-remaining map.
+function _mvBestOf(){ const f=(window._state&&window._state.match&&window._state.match.format)||'Bo3'; const n=parseInt(String(f).replace(/\D/g,''),10); return (n===1||n===5)?n:3; }
+function _mvTeamA(){ return (_mvState().teamA)==='team2' ? 'team2' : 'team1'; }
+// Ordered veto slots (one per map). pick slots carry the side-picking team; decider is auto.
+function _vetoSlots(bo, A, poolSize){
+  const B = A==='team1'?'team2':'team1', opp=function(x){ return x===A?B:A; }, s=[];
+  if(bo===1){
+    let a=A; for(let i=0;i<Math.max(1,poolSize-1);i++){ s.push({type:'ban',team:a}); a=opp(a); }
+    const finalBanner=((poolSize-1)%2===1)?A:B; s.push({type:'decider', sideTeam:opp(finalBanner)}); return s;
+  }
+  if(bo===5){
+    s.push({type:'ban',team:A},{type:'ban',team:B}); let p=A;
+    for(let i=0;i<4;i++){ s.push({type:'pick',team:p,sideTeam:opp(p)}); p=opp(p); }
+    let a=A; for(let i=0;i<Math.max(0,poolSize-7);i++){ s.push({type:'ban',team:a}); a=opp(a); }
+    s.push({type:'decider', knife:true}); return s;
+  }
+  // Bo3
+  s.push({type:'ban',team:A},{type:'ban',team:B},{type:'pick',team:A,sideTeam:B},{type:'pick',team:B,sideTeam:A});
+  let a=A; for(let i=0;i<Math.max(0,poolSize-5);i++){ s.push({type:'ban',team:a}); a=opp(a); }
+  s.push({type:'decider', knife:true}); return s;
+}
+function mvSetTeamA(team){ api('/api/mapVeto', { teamA: team, steps: [] }); }   // changing A clears the veto
+function mvCommitVeto(){
+  const pool=((window._state&&window._state.tournament&&window._state.tournament.mapPool)||[]).map(function(p){return p.name;}).filter(Boolean);
+  const A=_mvTeamA(), bo=_mvBestOf(), slots=_vetoSlots(bo,A,pool.length);
+  const steps=slots.map(function(sl,i){
+    const mapSel=document.querySelector('.mv-vm-map[data-i="'+i+'"]');
+    const sideSel=document.querySelector('.mv-vm-side[data-i="'+i+'"]')||document.querySelector('.mv-vd-side[data-i="'+i+'"]');
+    if(sl.type==='decider') return { map:'', action:'decider', team:(sl.sideTeam||''), side: sl.knife?'knife':((sideSel||{}).value||'') };
+    return { map:(mapSel||{}).value||'', action:sl.type, team:sl.team, side:(sl.type==='pick'?((sideSel||{}).value||''):'') };
+  });
+  const chosen={}; steps.forEach(function(st){ if(st.action!=='decider'&&st.map) chosen[st.map]=1; });
+  const rem=pool.filter(function(n){ return !chosen[n]; });
+  steps.forEach(function(st){ if(st.action==='decider') st.map = rem.length===1?rem[0]:''; });
+  api('/api/mapVeto', { steps:steps, bestOf:bo, teamA:A });
+}
+function mvRenderVeto(state){
+  const stepsEl=g('mv-steps'); if(!stepsEl) return;
+  const mv=(state&&state.mapVeto)||{}, m=(state&&state.match)||{};
+  const pool=((state&&state.tournament&&state.tournament.mapPool)||[]).map(function(p){return p.name;}).filter(Boolean);
+  const A=_mvTeamA(), bo=_mvBestOf();
+  const tn=function(k){ return ((m[k]||{}).tag)||((m[k]||{}).name)||(k==='team1'?'Team 1':'Team 2'); };
+  // Header: match info + Team A radios + Bo label (always refresh, outside the fingerprint).
+  const mi=g('mv-match-info'); if(mi) mi.innerHTML=(m.tournament?esc(m.tournament)+' — ':'')+'<strong style="color:var(--text)">'+esc((m.team1||{}).name||'Team 1')+'</strong> vs <strong style="color:var(--text)">'+esc((m.team2||{}).name||'Team 2')+'</strong> · <strong style="color:var(--primary)">'+esc(m.format||('Bo'+bo))+'</strong>';
+  const t1r=document.querySelector('input[name="mv-teamA"][value="team1"]'); if(t1r) t1r.checked=(A==='team1');
+  const t2r=document.querySelector('input[name="mv-teamA"][value="team2"]'); if(t2r) t2r.checked=(A==='team2');
+  const e1=g('mv-tA-t1'); if(e1) e1.textContent=(m.team1||{}).name||'Team 1';
+  const e2=g('mv-tA-t2'); if(e2) e2.textContent=(m.team2||{}).name||'Team 2';
+  const bol=g('mv-bo-label'); if(bol) bol.textContent='Best of '+bo;
+
+  const slots=_vetoSlots(bo,A,pool.length);
+  const steps=(mv.bestOf===bo) ? (mv.steps||[]) : [];   // ignore prefill from a different Bo
+  const sig=JSON.stringify({slots:slots,steps:steps,pool:pool,A:A,bo:bo});
+  if(sig===window._mvVetoSig) return; window._mvVetoSig=sig;
+  if(!pool.length){ stepsEl.innerHTML='<p class="hint">No maps in the pool — add maps in <a onclick="switchToTab(\'tournament\')" href="#" style="color:var(--primary)">Tournament Setup</a>.</p>'; return; }
+  const chosen={}; slots.forEach(function(sl,i){ if(sl.type!=='decider'){ const st=steps[i]; if(st&&st.map) chosen[st.map]=1; } });
+  const remaining=pool.filter(function(n){ return !chosen[n]; });
+  const deciderMap = remaining.length===1 ? remaining[0] : (remaining.length ? ('('+remaining.length+' maps remaining)') : '—');
+
+  stepsEl.innerHTML = slots.map(function(sl,i){
+    const st=steps[i]||{}, num=i+1;
+    if(sl.type==='decider'){
+      const side = sl.knife ? '<span class="mv-decider-side">Knife round</span>'
+        : '<select class="mv-vd-side" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">— '+esc(tn(sl.sideTeam))+' side —</option>'+
+          ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+esc(tn(sl.sideTeam))+' '+sd+'</option>';}).join('')+'</select>';
+      return '<div class="mv-veto-row decider"><span class="mv-row-num">'+num+'</span>'+
+        '<span class="mv-veto-act decider">DECIDER</span>'+
+        '<span class="mv-veto-map auto">'+esc(deciderMap)+'</span>'+side+'</div>';
+    }
+    const usedOther={}; slots.forEach(function(o,j){ if(j!==i && o.type!=='decider'){ const os=steps[j]; if(os&&os.map) usedOther[os.map]=1; } });
+    const opts='<option value="">— select map —</option>'+pool.map(function(n){ return usedOther[n] ? '' : '<option'+(st.map===n?' selected':'')+'>'+esc(n)+'</option>'; }).join('');
+    let row='<div class="mv-veto-row '+sl.type+'"><span class="mv-row-num">'+num+'</span>'+
+      '<span class="mv-veto-team">'+esc(tn(sl.team))+'</span>'+
+      '<span class="mv-veto-act '+sl.type+'">'+(sl.type==='ban'?'BAN':'PICK')+'</span>'+
+      '<select class="mv-vm-map" data-i="'+i+'" onchange="mvCommitVeto()">'+opts+'</select>';
+    if(sl.type==='pick') row+='<span class="mv-veto-side-label">'+esc(tn(sl.sideTeam))+' side</span>'+
+      '<select class="mv-vm-side" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">—</option>'+
+      ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+'</select>';
+    return row+'</div>';
+  }).join('');
+}
+
+// CS2 map scores — one row per best-of game (state.match.mapResults). Each row:
+// map dropdown (from tournament pool, pre-filled from the veto), round-score inputs,
+// winner pills, status. Edited by index. Rendered inside the Game Setup Series Tracker.
+function mvSetMapResult(index, patch){ api('/api/match/map-result', Object.assign({ index: index }, patch)); }
+function _mapScoreRowsHtml(state){
+  const m=(state&&state.match)||{}, results=m.mapResults||[];
+  const t1n=((m.team1||{}).tag)||((m.team1||{}).name)||'Team 1';
+  const t2n=((m.team2||{}).tag)||((m.team2||{}).name)||'Team 2';
+  const pool=((state&&state.tournament&&state.tournament.mapPool)||[]).map(function(p){return p.name;}).filter(Boolean);
+  if(!results.length) return '<p class="hint">No maps yet — set the match <strong>Format</strong> above (Bo1/Bo3/Bo5) to add map rows.</p>';
+  return results.map(function(r,i){
+    const st=r.status||'upcoming';
+    const mapOpts='<option value="">— map —</option>'+pool.map(function(n){ return '<option'+(r.map===n?' selected':'')+'>'+esc(n)+'</option>'; }).join('')+
+      ((r.map && pool.indexOf(r.map)===-1)?'<option selected>'+esc(r.map)+'</option>':'');
+    const statusPills=['upcoming','live','final'].map(function(s){
+      return '<button type="button" class="mv-sc-status'+(st===s?' is-active '+s:'')+'" onclick="mvSetMapResult('+i+',{status:\''+s+'\'})">'+s.toUpperCase()+'</button>';
+    }).join('');
+    const winPills=[['team1',t1n],['team2',t2n],['','—']].map(function(p){
+      const on=(r.winner||'')===p[0];
+      return '<button type="button" class="mv-sc-win'+(on?' is-active':'')+'" onclick="mvSetMapResult('+i+',{winner:\''+p[0]+'\'})">'+esc(p[1])+'</button>';
+    }).join('');
+    return '<div class="mv-score-row">'+
+      '<span class="mv-row-num">'+(i+1)+'</span>'+
+      '<select class="mv-sc-mapsel" onchange="mvSetMapResult('+i+',{map:this.value})">'+mapOpts+'</select>'+
+      '<input type="number" class="mv-sc-rounds" min="0" value="'+(r.t1Rounds||0)+'" '+
+        'onchange="mvSetMapResult('+i+',{t1Rounds:this.value})" title="'+esc(t1n)+' rounds">'+
+      '<span class="mv-sc-dash">–</span>'+
+      '<input type="number" class="mv-sc-rounds" min="0" value="'+(r.t2Rounds||0)+'" '+
+        'onchange="mvSetMapResult('+i+',{t2Rounds:this.value})" title="'+esc(t2n)+' rounds">'+
+      '<span class="mv-sc-winlabel">Winner</span><span class="mv-sc-wingrp">'+winPills+'</span>'+
+      '<span class="mv-sc-statusgrp">'+statusPills+'</span>'+
+      '</div>';
+  }).join('');
+}
+
+// Overlay look (GRAPHICS → Map Veto)
+function mvRenderGfx(state){
+  const mv=(state&&state.mapVeto)||{};
+  setInpSafe('mv-title', mv.title||'MAP VETO');
+  const sl=g('mv-show-logo'); if(sl) sl.checked=!!mv.showLogo;
+  setInpSafe('mv-logo-url', mv.logoUrl||'');
+  const ls=g('mv-logo-scale'); if(ls && mv.logoScale!=null) ls.value=mv.logoScale;
+  const pos=mv.logoPosition||'left'; const pr=document.querySelector('input[name="mv-logo-pos"][value="'+pos+'"]'); if(pr) pr.checked=true;
+  const scale=mv.scale||'normal';
+  document.querySelectorAll('#mv-scale-group [data-scale]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-scale')===scale); });
+  const stn=g('mv-show-team-names'); if(stn) stn.checked = mv.showTeamNames !== false;
+  const mni=g('mv-map-name-images'); if(mni) mni.checked = !!mv.mapNameImages;
+  const mfb=g('mv-map-flyby'); if(mfb) mfb.checked = !!mv.mapFlyby;
+  // Accordion (prototype)
+  const acc=g('mv-accordion'); if(acc) acc.checked=!!mv.accordion;
+  const steps=_mvAccordionSteps(state);
+  const fi=Math.max(0, Math.min(mv.focusIndex||0, Math.max(0, steps.length-1)));
+  const fl=g('mv-focus-label');
+  if(fl){ const tot=steps.length; const rev=Math.min(mv.revealedCount||0, tot); const st=steps[fi];
+    fl.textContent = mv.accordionFinal ? ('Full draft ('+tot+' maps)')
+      : (rev===0 ? ('Ready — Reveal to start (0/'+tot+')')
+      : (st ? ((fi+1)+'/'+tot+' · '+(st.map||'—')+(st.action&&st.action!=='pending'?' '+st.action.toUpperCase():'')+' · '+rev+' shown') : '—')); }
+  const fdb=g('mv-fulldraft-btn'); if(fdb) fdb.classList.toggle('btn-primary', !!mv.accordionFinal);
+  const asEl=g('mv-auto-step'); if(asEl && document.activeElement!==asEl) asEl.value=((mv.autoStepMs||2500)/1000);
+  const ab=g('mv-auto-btn'); if(ab){ ab.textContent = mv.autoRevealing ? '■ Stop auto' : '▶ Auto reveal'; ab.classList.toggle('btn-primary', !!mv.autoRevealing); }
+}
+function mvAutoReveal(){
+  const mv=_mvState();
+  if(mv.autoRevealing) api('/api/mapVeto/auto-stop',{});
+  else api('/api/mapVeto/auto-reveal',{ stepMs: mv.autoStepMs||2500 });
+}
+// Accordion steps = the veto steps if present, else the raw pool (pending), matching the graphic.
+function _mvAccordionSteps(state){
+  const mv=(state&&state.mapVeto)||{};
+  if(mv.steps&&mv.steps.length) return mv.steps;
+  const pool=((state&&state.tournament&&state.tournament.mapPool)||[]);
+  return pool.map(function(p){ return { action:'pending', map:p.name }; });
+}
+function mvToggleAccordion(on){
+  // Enabling starts a clean reveal draft — nothing shown until you click Reveal.
+  if(on) api('/api/mapVeto',{ accordion:true, focusIndex:0, revealedCount:0, accordionFinal:false });
+  else   api('/api/mapVeto',{ accordion:false });
+}
+function mvFocusStep(d){
+  const steps=_mvAccordionSteps(window._state);
+  const total=steps.length;
+  const mv=_mvState();
+  let focus=mv.focusIndex||0, revealed=mv.revealedCount||0;
+  if(d>0){
+    if(revealed<total){ focus=revealed; revealed=revealed+1; }   // reveal the next hidden map + focus it
+    else              { focus=Math.min(focus+1, total-1); }       // all revealed → just move focus right
+  } else {
+    focus=Math.max(focus-1, 0);                                   // move focus back among revealed maps
+  }
+  api('/api/mapVeto',{ focusIndex:focus, revealedCount:revealed, accordionFinal:false });
+}
+function mvRestartReveal(){ api('/api/mapVeto',{ focusIndex:0, revealedCount:0, accordionFinal:false }); }
+function mvToggleFullDraft(){ api('/api/mapVeto',{ accordionFinal: !(_mvState().accordionFinal) }); }
+function mvCycleScale(){ const order=['normal','large','l3']; const cur=(_mvState().scale)||'normal'; const next=order[(order.indexOf(cur)+1)%order.length]; api('/api/mapVeto',{scale:next}); }
 
 // ── Draft GFX tab ─────────────────────────────────────────────────────────────
 
@@ -4132,8 +4412,13 @@ function syncLiveBar(s) {
   const gameCtx = g('lbar-game-context');
   if (gameCtx) {
     const formatNum = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
-    gameCtx.textContent = 'GAME ' + (m.currentGameNum || 1) + ' OF ' + formatNum + ' · ' + t1label + ' VS ' + t2label;
+    gameCtx.textContent = 'GAME ' + currentGameNumFor(m) + ' OF ' + formatNum + ' · ' + t1label + ' VS ' + t2label;
   }
+
+  // Map-veto accordion live-bar buttons
+  const _mv = s.mapVeto || {};
+  const lfull = g('lbar-mv-full'); if (lfull) lfull.classList.toggle('is-on', !!_mv.accordionFinal);
+  const lauto = g('lbar-mv-auto'); if (lauto) { lauto.classList.toggle('is-on', !!_mv.autoRevealing); lauto.textContent = _mv.autoRevealing ? 'STOP' : 'AUTO'; }
 
   // Win team quick-set buttons — show team tags, highlight active
   const wt = s.winScreen && s.winScreen.team;
@@ -6443,7 +6728,7 @@ function playEasePreview(style) {
 const _GFX_ANIM_PAGES = {
   'lowerthird': ['lowerThird', 'Lower Third'],
   'player-intro': ['playerIntro', 'Player Intro'], 'h2h': ['headToHead', 'Head to Head'],
-  'draft-gfx': ['draft', 'Draft'], 'win': ['winScreen', 'Win Screen'],
+  'draft-gfx': ['draft', 'Draft'], 'map-veto-gfx': ['mapVeto', 'Map Veto'], 'win': ['winScreen', 'Win Screen'],
   'break': ['breakScreen', 'Break Screen'], 'preshow': ['preShow', 'Pre-show'],
   'bracket': ['bracket', 'Bracket'], 'groups-gfx': ['groupStage', 'Group Stage'],
   'tournament-structure-gfx': ['tournamentStructure', 'Tournament Structure'], 'prizepool': ['prizepool', 'Prizepool'],
@@ -6772,8 +7057,35 @@ function champNameFromUrl(v) {
   return v.split('/').pop().replace(/\.[^.]+$/, '').replace(/_\d+$/, '');
 }
 
+// CS2 / map-veto Series Tracker — per-map round scores + winners (no LoL draft/side
+// fields). Series (maps-won) score derives from winners on the server.
+function renderSeriesTrackerCS2(s, container) {
+  const m = s.match || {};
+  const format = m.format || 'Bo3';
+  const t1n = escHtml(m.team1.tag || m.team1.name || 'T1');
+  const t2n = escHtml(m.team2.tag || m.team2.name || 'T2');
+  const t1wins = m.team1.score || 0, t2wins = m.team2.score || 0;
+  const formatNum = parseInt(format.replace(/Bo/i, '')) || 3;
+  const seriesOver = t1wins >= Math.ceil(formatNum / 2) || t2wins >= Math.ceil(formatNum / 2);
+  const anyScored = (m.mapResults || []).some(function(r){ return r.winner || r.t1Rounds || r.t2Rounds; });
+
+  // Header buttons: enable Format, show Reset, hide LoL Edit-mode toggle.
+  const fmtEl = g('gs-format'); if (fmtEl) fmtEl.disabled = false;
+  const editBtn = g('gs-edit-btn'); if (editBtn) editBtn.style.display = 'none';
+  const resetBtn = g('gs-reset-series-btn'); if (resetBtn) resetBtn.style.display = anyScored ? '' : 'none';
+
+  let html = '<div class="series-header"><span class="series-score-disp">' +
+    t1n + ' <strong>' + t1wins + '</strong> — <strong>' + t2wins + '</strong> ' + t2n +
+    '</span><span class="series-game-disp">' + format + (seriesOver ? ' · Series Complete' : '') + '</span></div>';
+  html += '<p class="hint" style="margin:2px 0 12px">Pick each map and log its <strong>round score</strong>; set the <strong>winner</strong> to count the map toward the series. The break &amp; win screens read these.</p>';
+  html += _mapScoreRowsHtml(s);
+  container.innerHTML = html;
+}
+
 function renderSeriesTracker(s) {
   const container = g('gs-series-tracker'); if (!container) return;
+  // Map-veto games (CS2 etc.) track per-map ROUND scores, not a LoL draft/side flow.
+  if (!isChampDraft()) { renderSeriesTrackerCS2(s, container); return; }
   const m = s.match;
   const format = m.format || 'Bo3';
   const formatNum = parseInt(format.replace('Bo','')) || 3;
@@ -6785,6 +7097,9 @@ function renderSeriesTracker(s) {
   const currentGame = m.currentGameNum || 1;
   const fearless = !!m.fearlessDraft;
   const draft = s.draft || {};
+  // Restore the Edit button (the CS2 tracker hides it) and let edit mode govern format.
+  const _eb = g('gs-edit-btn'); if (_eb) _eb.style.display = '';
+  const _fmtEl = g('gs-format'); if (_fmtEl) _fmtEl.disabled = !_gsEditMode;
 
   // Collect used champion names for fearless (from all completed games)
   const usedChampNames = new Set();

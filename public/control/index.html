@@ -40,6 +40,7 @@
       <a class="nav-item" data-tab="game">Game Setup</a>
       <a class="nav-item" data-tab="players">Players / Rosters</a>
       <a class="nav-item cap-champ-draft" data-tab="draft">Draft</a>
+      <a class="nav-item cap-map-veto" data-tab="map-veto">Map Veto</a>
       <a class="nav-item cap-opgg" data-tab="intel">Match Intel</a>
 
       <div class="nav-section-label">GRAPHICS</div>
@@ -51,7 +52,7 @@
         <span id="nav-dot-lowerthird" class="nav-status-dot"></span>
         Lower Third
       </a>
-      <a class="nav-item" data-tab="h2h">
+      <a class="nav-item cap-champ-draft" data-tab="h2h">
         <span id="nav-dot-h2h" class="nav-status-dot"></span>
         Head to Head
       </a>
@@ -66,6 +67,10 @@
       <a class="nav-item cap-champ-draft" data-tab="draft-gfx">
         <span id="nav-dot-draft-gfx" class="nav-status-dot"></span>
         Draft
+      </a>
+      <a class="nav-item cap-map-veto" data-tab="map-veto-gfx">
+        <span id="nav-dot-map-veto-gfx" class="nav-status-dot"></span>
+        Map Veto
       </a>
       <a class="nav-item" data-tab="bracket">
         <span id="nav-dot-bracket" class="nav-status-dot"></span>
@@ -283,6 +288,20 @@
         <p class="hint" style="margin-bottom:12px">The teams playing in <strong>this</strong> tournament. Only these appear in the Schedule, Bracket, Groups and Game Setup pickers. Your full <strong>Teams Database</strong> stays separate.</p>
         <div id="pool-list"></div>
         <p class="hint" id="pool-empty" style="display:none;margin-top:8px">No competing teams yet. Click <strong>+ Add Team</strong> to pick from your Teams Database or create a new one.</p>
+      </div>
+
+      <div class="card cap-map-veto" style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div class="card-title" style="margin-bottom:0">Map Pool</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="tmAddMap()">+ Add Map</button>
+            <button class="btn btn-sm" id="tm-load-default-pool" onclick="tmLoadDefaultPool()" style="display:none">Load default pool</button>
+            <button class="btn btn-sm" id="tm-set-default-pool" onclick="tmSetDefaultPool()" style="display:none" title="Save this pool as the default for new tournaments of this game">Set as default</button>
+            <button class="btn btn-sm" onclick="mvRefreshImages(this)" title="Re-download and rebuild the map images from source — use if art is outdated, broken, or a map was updated">Refresh images</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-bottom:12px">The maps in <strong>this</strong> tournament's pool (used by the Map Veto). Editable — the active-duty pool rotates. Optional image URL per map (card background on-air).</p>
+        <div id="tm-map-pool"></div>
       </div>
 
       <div class="card" style="margin-top:16px">
@@ -963,7 +982,7 @@
           <div class="card">
             <div class="card-title">About Player Intro</div>
             <p class="hint">Pre-series graphic introducing both rosters. Three layouts: <strong>Nameplate</strong> (centred overlay panel), <strong>Team Stack</strong> (full-screen left/right split), <strong>Bar</strong> (bottom-anchored band).</p>
-            <p class="hint" style="margin-top:8px">Rank and champion data are optional — fetch them first in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel. Champs blends each player's <strong>top 3 most-played</strong> champions along their row (Nameplate &amp; Team Stack); players with no data fall back to a clean name. The Bar layout is always name-only. Disable to keep the focus on player names everywhere.</p>
+            <p class="hint cap-champ-draft" style="margin-top:8px">Rank and champion data are optional — fetch them first in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel. Champs blends each player's <strong>top 3 most-played</strong> champions along their row (Nameplate &amp; Team Stack); players with no data fall back to a clean name. The Bar layout is always name-only. Disable to keep the focus on player names everywhere.</p>
           </div>
         </div>
 
@@ -1520,6 +1539,118 @@
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════
+         MAP VETO — data entry (GAME section)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-map-veto">
+      <div class="tab-header"><h1>Map Veto</h1></div>
+      <div class="card">
+        <div id="mv-match-info" class="hint" style="font-size:14px;margin-bottom:12px"></div>
+        <div class="field-row"><label>Bans First</label>
+          <div class="radio-group" id="mv-teamA-group">
+            <label><input type="radio" name="mv-teamA" value="team1" onchange="mvSetTeamA('team1')"> <span id="mv-tA-t1">Team 1</span></label>
+            <label><input type="radio" name="mv-teamA" value="team2" onchange="mvSetTeamA('team2')"> <span id="mv-tA-t2">Team 2</span></label>
+          </div>
+        </div>
+        <p class="hint" style="margin:2px 0 0">The team you pick bans first; the other team follows in the official veto order below. Each map is used once. Changing this clears the veto.<span id="mv-bo-label" style="display:none"></span></p>
+        <div class="card-title" style="margin-top:16px">Veto Sequence</div>
+        <div id="mv-steps"></div>
+        <p class="hint" style="margin-top:12px">Maps come from <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a>.</p>
+      </div>
+
+      <p class="hint" style="margin-top:12px">Per-map <strong>round scores &amp; winners</strong> are entered in <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup → Series Tracker</a> as the series plays out.</p>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MAP VETO — overlay (GRAPHICS section)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-map-veto-gfx">
+      <div class="tab-header"><h1>Map Veto Overlay</h1></div>
+      <div class="gfx-ctrl-bar">
+        <div class="gfx-ctrl-title">Map Veto Overlay Controls</div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group" id="ctrlgrp-mapVeto">
+            <span class="gfx-ctrl-section-label">Output</span>
+            <button class="lbar-toggle" id="ctrlbtn-mapVeto" onclick="toggleGraphic('mapVeto')">
+              <span class="lbar-dot" id="ctrl-dot-mapVeto"></span>MAP VETO OVERLAY
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="ps-two-col">
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Look</div>
+            <div class="field-row"><label>Title</label><input type="text" id="mv-title" oninput="api('/api/mapVeto',{title:this.value})"></div>
+            <div class="field-row"><label>Scale</label>
+              <div class="btn-row" id="mv-scale-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-scale="large"  onclick="api('/api/mapVeto',{scale:'large'})">Large</button>
+                <button class="btn btn-sm" data-scale="normal" onclick="api('/api/mapVeto',{scale:'normal'})">Normal</button>
+                <button class="btn btn-sm" data-scale="l3"     onclick="api('/api/mapVeto',{scale:'l3'})">Lower Third</button>
+              </div>
+            </div>
+            <p class="hint" style="margin-top:2px">Cycle scales live from the operator view or the live bar.</p>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="mv-show-team-names" onchange="api('/api/mapVeto',{showTeamNames:this.checked})"> <span style="font-size:13px">Show team names (off = logos only)</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="mv-map-name-images" onchange="api('/api/mapVeto',{mapNameImages:this.checked})"> <span style="font-size:13px">Use official map icons instead of map names</span></label>
+            <p class="hint" style="margin-top:6px">Map art (screenshot background + the official icon) is auto-resolved from each map name's <code>de_*</code> slug. Set a per-map <strong>Image URL</strong> in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a> to override the screenshot.</p>
+            <button class="btn btn-sm" style="margin-top:8px" onclick="mvRefreshImages(this)" title="Re-download and rebuild the map images from source — use if art is outdated, broken, or a map was updated">Refresh map images</button>
+          </div>
+          <div class="card">
+            <div class="card-title">Accordion View</div>
+            <p class="hint" style="margin-bottom:10px">Full-screen horizontal focus view: the focused map expands and plays its clip (or shows its image) in full colour; the rest compress and desaturate (bans go greyscale, picks stay low-sat). Add a per-map <strong>Video URL</strong> in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a> (falls back to the image).</p>
+            <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="mv-map-flyby" onchange="api('/api/mapVeto',{mapFlyby:this.checked})"> <span style="font-size:13px">Animate map images (flyby) when focused — crossfade the map's image set every 2.5s</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="mv-accordion" onchange="mvToggleAccordion(this.checked)"> <span style="font-size:13px">Enable accordion view</span></label>
+            <p class="hint" style="margin-bottom:8px">Reveal-draft: maps to the right of the focused one stay hidden until you reveal them with <strong>Next</strong> — once revealed they stay. <strong>Full draft</strong> shows the whole board at once.</p>
+            <div class="field-row"><label>Reveal / focus</label>
+              <div class="btn-row" style="display:flex;gap:6px;align-items:center">
+                <button class="btn btn-sm" onclick="mvFocusStep(-1)">◀ Prev</button>
+                <span id="mv-focus-label" style="font-size:12px;color:var(--text-dim);min-width:130px;text-align:center">—</span>
+                <button class="btn btn-sm btn-primary" onclick="mvFocusStep(1)">Reveal ▶</button>
+              </div>
+            </div>
+            <div class="btn-row" style="display:flex;gap:6px;margin-top:8px">
+              <button class="btn btn-sm" onclick="mvRestartReveal()">⟲ Restart</button>
+              <button class="btn btn-sm" id="mv-fulldraft-btn" onclick="mvToggleFullDraft()">Full draft view</button>
+            </div>
+            <div class="field-row" style="margin-top:10px"><label>Auto reveal</label>
+              <div class="btn-row" style="display:flex;gap:6px;align-items:center">
+                <button class="btn btn-sm" id="mv-auto-btn" onclick="mvAutoReveal()">▶ Auto reveal</button>
+                <input type="number" id="mv-auto-step" min="0.6" step="0.5" style="width:64px" onchange="api('/api/mapVeto',{autoStepMs:Math.max(600,Math.round(Number(this.value)*1000))})">
+                <span style="font-size:11px;color:var(--text-dim)">sec / map</span>
+              </div>
+            </div>
+            <p class="hint" style="margin-top:6px">Auto reveal steps through each map at the pace above, then settles on the full-draft view.</p>
+          </div>
+          <div class="card">
+            <div class="card-title">Logo</div>
+            <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="mv-show-logo" onchange="api('/api/mapVeto',{showLogo:this.checked})"> <span style="font-size:13px">Show logo</span></label>
+            <div class="field-row"><label>Logo URL</label>
+              <div class="upload-row">
+                <input type="text" id="mv-logo-url" placeholder="URL or upload" oninput="api('/api/mapVeto',{logoUrl:this.value})">
+                <button class="btn btn-sm" onclick="triggerUpload('mv-logo-file',function(url){document.getElementById('mv-logo-url').value=url;api('/api/mapVeto',{logoUrl:url,showLogo:true});})">Upload</button>
+                <input type="file" id="mv-logo-file" accept="image/*" style="display:none">
+              </div>
+            </div>
+            <div class="field-row"><label>Scale</label><input type="range" id="mv-logo-scale" min="3" max="14" step="0.5" onchange="api('/api/mapVeto',{logoScale:Number(this.value)})"></div>
+            <div class="field-row"><label>Position</label>
+              <div class="radio-group">
+                <label><input type="radio" name="mv-logo-pos" value="left"   onchange="api('/api/mapVeto',{logoPosition:'left'})"> Left</label>
+                <label><input type="radio" name="mv-logo-pos" value="center" onchange="api('/api/mapVeto',{logoPosition:'center'})"> Center</label>
+                <label><input type="radio" name="mv-logo-pos" value="right"  onchange="api('/api/mapVeto',{logoPosition:'right'})"> Right</label>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Overlay</div>
+            <p class="hint">The veto content is entered in <a onclick="switchToTab('map-veto')" href="#" style="color:var(--primary)">GAME → Map Veto</a>; the map pool in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup</a>.</p>
+            <p class="hint" style="margin-top:6px">URL: <a href="/graphics/map-veto/" target="_blank" style="color:var(--primary)">/graphics/map-veto/</a></p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
          BRACKET
     ══════════════════════════════════════════════════════════════════════════ -->
     <section class="tab" id="tab-bracket">
@@ -2065,7 +2196,7 @@
             </div>
           </div>
 
-          <div class="card">
+          <div class="card cap-champ-draft">
             <div class="card-title">Winning Draft Picks <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· LoL</span></div>
             <p class="hint" style="margin-bottom:8px">Shows the winning team's champion picks from the game they won. The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
@@ -2224,9 +2355,9 @@
               </div>
             </label>
 
-            <div class="win-style-group-label">League of Legends</div>
+            <div class="win-style-group-label cap-champ-draft">League of Legends</div>
 
-            <label class="win-style-option" id="win-style-comp">
+            <label class="win-style-option cap-champ-draft" id="win-style-comp">
               <input type="radio" name="win-style" value="comp" onchange="patchWin({style:'comp'})">
               <div class="win-style-preview win-preview-comp">
                 <div class="win-preview-comp-head"></div>
@@ -2267,7 +2398,8 @@
         <div class="ps-col">
           <div class="card">
             <div class="card-title">Players</div>
-            <p class="hint" style="margin-bottom:8px">Pick each player's team then name; their most-played champion and stats are pulled automatically. Player A sits screen-left, Player B screen-right.</p>
+            <p class="hint cap-champ-draft" style="margin-bottom:8px">Pick each player's team then name; their most-played champion and stats are pulled automatically. Player A sits screen-left, Player B screen-right.</p>
+            <p class="hint cap-not-champ-draft" style="margin-bottom:8px;display:none">Pick each player's team then name. Player A sits screen-left, Player B screen-right.</p>
 
             <!-- Player A -->
             <div class="gfx-ctrl-group" style="margin-bottom:6px">
@@ -2340,8 +2472,8 @@
             </div>
           </div>
           <div class="card">
-            <div class="card-title">Champion, Caption &amp; Stats</div>
-            <div class="comp-opt-row">
+            <div class="card-title">Caption &amp; Stats</div>
+            <div class="comp-opt-row cap-champ-draft">
               <span class="comp-opt-label">Stat source</span>
               <div class="gfx-ctrl-group" style="gap:6px">
                 <button class="btn btn-sm" id="ps-statsrc-both"       onclick="patchPlayerSpotlight({statSource:'both'})">Auto mix</button>
@@ -2349,7 +2481,8 @@
                 <button class="btn btn-sm" id="ps-statsrc-tournament" onclick="patchPlayerSpotlight({statSource:'tournament'})">Tournament</button>
               </div>
             </div>
-            <p class="hint" style="margin:6px 0 12px">Auto mix uses this event's record when available, otherwise op.gg. Override the featured champion, add a caption, and tick which stats to show — leave a stat's box blank to keep its automatic value, or type to override it.</p>
+            <p class="hint cap-champ-draft" style="margin:6px 0 12px">Auto mix uses this event's record when available, otherwise op.gg. Override the featured champion, add a caption, and tick which stats to show — leave a stat's box blank to keep its automatic value, or type to override it.</p>
+            <p class="hint cap-not-champ-draft" style="margin:6px 0 12px;display:none">Add an optional caption shown with each featured player.</p>
             <div id="ps-overrides"></div>
           </div>
         </div>
@@ -2597,7 +2730,7 @@
       <span class="lbar-lt-sets" id="lbar-lt-sets"></span>
     </div>
     <div class="lbar-divider"></div>
-    <div class="lbar-group" id="lbar-group-headToHead">
+    <div class="lbar-group cap-champ-draft" id="lbar-group-headToHead">
       <button class="lbar-toggle" id="lbar-toggle-headToHead" onclick="toggleGraphic('headToHead')"><span class="lbar-dot" id="lbar-dot-headToHead"></span>H2H</button>
     </div>
     <div class="lbar-group" id="lbar-group-playerSpotlight">
@@ -2608,6 +2741,14 @@
     </div>
     <div class="lbar-group" id="lbar-group-draft">
       <button class="lbar-toggle cap-champ-draft" id="lbar-toggle-draft" onclick="toggleGraphic('draft')"><span class="lbar-dot" id="lbar-dot-draft"></span>DRAFT</button>
+    </div>
+    <div class="lbar-group cap-map-veto" id="lbar-group-mapVeto">
+      <button class="lbar-toggle" id="lbar-toggle-mapVeto" onclick="toggleGraphic('mapVeto')"><span class="lbar-dot" id="lbar-dot-mapVeto"></span>MAP VETO</button>
+      <button class="lbar-timer-btn" onclick="mvFocusStep(-1)" title="Reveal: previous">◀</button>
+      <button class="lbar-timer-btn" onclick="mvFocusStep(1)" title="Reveal: next map">▶</button>
+      <button class="lbar-timer-btn" id="lbar-mv-full" onclick="mvToggleFullDraft()" title="Full draft view">FULL</button>
+      <button class="lbar-timer-btn" onclick="mvRestartReveal()" title="Restart reveal">⟲</button>
+      <button class="lbar-timer-btn" id="lbar-mv-auto" onclick="mvAutoReveal()" title="Auto reveal">AUTO</button>
     </div>
 
     <div class="lbar-divider"></div>
