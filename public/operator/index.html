@@ -855,6 +855,7 @@ function g(id) { return document.getElementById(id); }
 // Active game adapter (broadcast as state.adapter) — hides game-irrelevant operator
 // controls. Elements opt in by class; LoL has all capabilities so nothing changes.
 function gameAdapter() { return (window._state && window._state.adapter) || null; }
+function opsHasRoles() { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
 
 // Map-veto accordion controls (mirror the admin GFX-tab logic).
 function _opsMv() { return (window._state && window._state.mapVeto) || {}; }
@@ -1175,10 +1176,11 @@ function renderPlayerGrid(state) {
       if (p.handle) players.push({ ...p, teamTag: tag, teamKey: team });
     });
   });
+  const showRole = opsHasRoles();
   grid.innerHTML = players.map((p, i) =>
     `<button class="player-btn" onclick="opsQuickLT(${i})">` +
     `<span class="p-handle">${esc(p.handle)}</span>` +
-    `<span class="p-team">${esc(p.teamTag)} · ${esc(p.role)}</span>` +
+    `<span class="p-team">${esc(p.teamTag)}${showRole && p.role ? ' · ' + esc(p.role) : ''}</span>` +
     `</button>`
   ).join('');
   grid._players = players;
@@ -1193,7 +1195,8 @@ function opsQuickLT(idx) {
   const s = sets.find(x => x.id === _opsLtActiveId()) || sets[0];
   if (!s) return;
   if (!s.items || !s.items.length) s.items = [_opsLtNewItem()];
-  Object.assign(s.items[0], { name: p.handle, sub: (p.name ? p.name + ' · ' : '') + p.role, super: tag });
+  const sub = [p.name, opsHasRoles() ? p.role : ''].filter(Boolean).join(' · ');
+  Object.assign(s.items[0], { name: p.handle, sub, super: tag });
   api('/api/lowerThird', { sets, visible: true });
 }
 

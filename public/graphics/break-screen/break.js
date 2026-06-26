@@ -191,6 +191,11 @@ function renderMapScores(state) {
   el.innerHTML = chips;
 }
 
+// True for map-veto games (CS2 etc.) — the LoL "GAME x OF y" centre counter never
+// applies (no per-game numbering; the map chips / side scores convey progress). Checked
+// independently of _cs2BreakInfo, which is null until at least one map is logged.
+function _isMapVetoGame(state) { return ((state && state.adapter) || {}).pregameKind === 'map-veto'; }
+
 // CS2 / map-veto series info derived from played maps (NOT currentGameNum). A map
 // counts as played once marked final, so the next game = finals + 1 (2 finals in a
 // Bo3 → game 3). Returns null for non-map-veto games or when no maps are set.
@@ -341,16 +346,18 @@ function renderPipBottom(state) {
   var pipFmtEl  = $('break-pip-format');
   var pipGameEl = $('break-pip-game');
   // CS2: PIP has no map-chip row, so surface the NEXT MAP by the score instead of a
-  // game counter ("NEXT" label + map name; or SERIES COMPLETE).
+  // game counter ("NEXT" label + map name; or SERIES COMPLETE). Gated on the adapter so
+  // a CS2 break BEFORE any map is logged still suppresses the LoL "GAME x OF y" counter.
   var cs2 = _cs2BreakInfo(state);
-  if (cs2) {
+  if (_isMapVetoGame(state)) {
+    var pipLabel = cs2 ? (cs2.seriesOver ? 'SERIES COMPLETE' : (cs2.nextMap || '')) : '';
     if (pipFmtEl) {
-      pipFmtEl.style.display = (!cs2.seriesOver && cs2.nextMap) ? '' : 'none';
+      pipFmtEl.style.display = (cs2 && !cs2.seriesOver && cs2.nextMap) ? '' : 'none';
       pipFmtEl.textContent   = 'NEXT';
     }
     if (pipGameEl) {
-      pipGameEl.style.display = '';
-      pipGameEl.textContent   = cs2.seriesOver ? 'SERIES COMPLETE' : (cs2.nextMap || '');
+      pipGameEl.style.display = pipLabel ? '' : 'none';
+      pipGameEl.textContent   = pipLabel;
     }
   } else {
     if (pipFmtEl) {
@@ -487,15 +494,15 @@ function renderAll(state) {
   // Centre: BO1 shows format label; BO3+ shows game progress. For CS2 the map-score
   // chips below already convey which map is next, so drop the centre game counter —
   // the side scores ("1 — 1") read fine on their own.
-  const cs2Norm  = _cs2BreakInfo(state);
+  const mapVeto  = _isMapVetoGame(state);
   const formatEl = $('break-series-format');
   const gameEl   = $('break-series-game');
   if (formatEl) {
-    formatEl.style.display = (!cs2Norm && isBo1) ? '' : 'none';
+    formatEl.style.display = (!mapVeto && isBo1) ? '' : 'none';
     formatEl.textContent   = fmt;
   }
   if (gameEl) {
-    gameEl.style.display = (!cs2Norm && !isBo1) ? '' : 'none';
+    gameEl.style.display = (!mapVeto && !isBo1) ? '' : 'none';
     gameEl.textContent   = seriesOver ? 'SERIES COMPLETE' : 'GAME ' + gameNum + ' OF ' + fmtNum;
   }
 

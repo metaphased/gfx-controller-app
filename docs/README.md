@@ -44,6 +44,7 @@ Every graphic is a browser source for OBS/vMix at 1920×1080. Each page below co
 | [User profile](user-profile.md) | Per-user keybinds, password, appearance, Companion download, log out. |
 | [Caster view](caster-view.md) | Read-only, token-authed caster dashboard. |
 | [Champion assets](champion-assets.md) | Syncing champion tiles/centered/splash art. |
+| [Live Data (CS2)](live-data.md) | CS2 GSI / MatchZy ingest for auto-filling scores and player stats. |
 | [Live Switcher](live-switcher.md) | OBS/vMix on-air (PGM/PVW) detection. |
 | [Companion / Stream Deck](companion.md) | Bitfocus Companion + action API. |
 | [Theming & Looks](theming.md) | Palette, accents, background and reusable Looks. |
