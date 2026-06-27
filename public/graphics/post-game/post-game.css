@@ -46,19 +46,28 @@ body { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; }
 
 /* ── Round-progression strip ───────────────────────────────────────────────────── */
 #pg-rounds { width: 100%; display: flex; justify-content: center; }
-.pg-rounds-inner { display: flex; flex-wrap: wrap; justify-content: center; gap: 3px; max-width: 100%; }
+.pg-rounds-inner { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 100%; }
 .pg-rc {
-  width: 2.0vw; max-width: 34px; height: 3vh; min-width: 16px;
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  width: 2.3vw; max-width: 40px; height: 3.6vh; min-width: 18px;
+  display: flex; align-items: center; justify-content: center;
   background: var(--rc, #555); border-radius: calc(var(--gfx-radius, 3px) * 0.6);
-  position: relative;
+  position: relative; overflow: hidden;
 }
-.pg-rc-n { font-size: 1vh; font-weight: 800; color: rgba(0,0,0,0.55); line-height: 1; }
-.pg-rc-c { font-size: 0.85vh; font-weight: 800; color: rgba(255,255,255,0.92); line-height: 1; margin-top: 1px; }
+/* Winning team's logo fills the cell; a soft dark shadow keeps light/white logos legible. */
+.pg-rc-logo {
+  position: absolute; inset: 14%;
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+}
+/* Condition icon (bomb / defuse only) — small white glyph, bottom-right corner. */
+svg.pg-rc-cond {
+  position: absolute; right: 1px; bottom: 0; width: 46%; height: 46%; display: block;
+  fill: #fff; filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.95));
+}
 .pg-rc-half { margin-left: 1.1vw; }
 .pg-rc-half::before {
-  content: ''; position: absolute; left: -0.62vw; top: 8%; height: 84%;
-  border-left: 2px dashed rgba(255,255,255,0.35);
+  content: ''; position: absolute; left: -0.62vw; top: 6%; height: 88%;
+  border-left: 2px dashed rgba(255,255,255,0.4);
 }
 
 /* ── Team columns ──────────────────────────────────────────────────────────────── */

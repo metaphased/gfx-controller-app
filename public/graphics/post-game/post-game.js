@@ -50,7 +50,11 @@ function roundTeam(r, ctStartTeam, side) {
 }
 
 // ── Render ──────────────────────────────────────────────────────────────────────
-var COND_GLYPH = { elimination: 'E', bomb: 'B', defuse: 'D', time: 'T' };
+// Only two win conditions get an icon: bomb-plant (explosion) and defuse (cutters).
+// Elimination / time-out rounds show just the team logo.
+var SVG_BOMB = '<svg class="pg-rc-cond" viewBox="0 0 24 24"><polygon points="12,0.5 13.7,7.8 20.1,3.9 16.2,10.3 23.5,12 16.2,13.7 20.1,20.1 13.7,16.2 12,23.5 10.3,16.2 3.9,20.1 7.8,13.7 0.5,12 7.8,10.3 3.9,3.9 10.3,7.8"/></svg>';
+var SVG_DEFUSE = '<svg class="pg-rc-cond" viewBox="0 0 24 24"><path d="M9.64 7.64A4 4 0 1 0 7.5 9.78L10 12l-2.5 2.5A4 4 0 1 0 8.91 15.9L12 12.83l6.5 6.5H21v-1L9.64 7.64ZM6 8a2 2 0 1 1 0-4 2 2 0 0 1 0 4Zm0 12a2 2 0 1 1 0-4 2 2 0 0 1 0 4Z"/><path d="M19 3l-5.5 5.5 1.4 1.4L21 4V3z"/></svg>';
+function condIcon(cond) { return cond === 'bomb' ? SVG_BOMB : cond === 'defuse' ? SVG_DEFUSE : ''; }
 
 function teamMeta(state, key) {
   var m = (state.match && state.match[key]) || {};
@@ -99,13 +103,15 @@ function roundsHtml(state, row) {
   var hist = row.roundHistory || [];
   if (!hist.length) return '';
   var ctStart = row.ctStartTeam || '';
-  var cells = hist.map(function (h, i) {
+  var logos = { team1: teamMeta(state, 'team1').logo, team2: teamMeta(state, 'team2').logo };
+  var cells = hist.map(function (h) {
     var team = roundTeam(h.r, ctStart, h.side);
     var color = team === 'team1' ? 'var(--gfx-blue)' : 'var(--gfx-red)';
     var div = (h.r === 13) ? ' pg-rc-half' : '';   // halftime divider before round 13
-    var g = COND_GLYPH[h.cond] || '';
+    var logo = logos[team];
+    var inner = logo ? '<span class="pg-rc-logo" style="background-image:url(' + esc(logo) + ')"></span>' : '';
     return '<span class="pg-rc' + div + '" style="--rc:' + color + '" title="Round ' + h.r + '">' +
-      '<span class="pg-rc-n">' + h.r + '</span>' + (g ? '<span class="pg-rc-c">' + g + '</span>' : '') + '</span>';
+      inner + condIcon(h.cond) + '</span>';
   }).join('');
   return '<div class="pg-rounds-inner">' + cells + '</div>';
 }
