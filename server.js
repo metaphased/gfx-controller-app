@@ -369,9 +369,11 @@ function gsiPlayers(b) {
   const all = b.allplayers; if (!all || typeof all !== 'object') return null;
   const ctTeam = gsiCtTeam(b), other = ctTeam === 'team1' ? 'team2' : 'team1', out = {};
   for (const sid of Object.keys(all)) {
-    const p = all[sid] || {}, ms = p.match_stats || {};
+    const p = all[sid] || {}, ms = p.match_stats || {}, st = p.state || {};
     out[sid] = { steamid: sid, name: p.name || '', team: p.team === 'CT' ? ctTeam : other, side: p.team || '',
-      kills: ms.kills | 0, deaths: ms.deaths | 0, assists: ms.assists | 0, mvps: ms.mvps | 0, score: ms.score | 0, adr: 0, source: 'gsi' };
+      kills: ms.kills | 0, deaths: ms.deaths | 0, assists: ms.assists | 0, mvps: ms.mvps | 0, score: ms.score | 0, adr: 0,
+      // Live economy (GSI allplayers_state) — volatile, caster reference only; absent on MatchZy.
+      money: st.money | 0, equip: st.equip_value | 0, source: 'gsi' };
   }
   return Object.keys(out).length ? out : null;
 }
@@ -379,13 +381,17 @@ function gsiPlayers(b) {
 // ADR). Shapes vary by version — look for team{1,2}.players[] with steamid + kills/deaths/etc.
 function mzPlayers(b) {
   const out = {};
+  // Multi-kill rounds — Get5/MatchZy field names vary by release; pick the first present.
+  const mk = (p, ...names) => { for (const n of names) if (p[n] != null) return p[n] | 0; return 0; };
   ['team1', 'team2'].forEach(tk => {
     const arr = b[tk] && b[tk].players; if (!Array.isArray(arr)) return;
     arr.forEach(p => {
       const sid = p && (p.steamid || p.steamid64 || p.steam_id || p.steamId); if (!sid) return;
       out[String(sid)] = { steamid: String(sid), name: p.name || '', team: tk, side: '',
         kills: p.kills | 0, deaths: p.deaths | 0, assists: p.assists | 0, mvps: p.mvps | 0,
-        score: p.score | 0, adr: Math.round(Number(p.adr || p.damage_per_round || p.average_damage_per_round || 0)) || 0, source: 'matchzy' };
+        score: p.score | 0, adr: Math.round(Number(p.adr || p.damage_per_round || p.average_damage_per_round || 0)) || 0,
+        k3: mk(p, '3k', 'k3', 'kills_3', 'enemy3ks', '3ks'), k4: mk(p, '4k', 'k4', 'kills_4', 'enemy4ks', '4ks'),
+        k5: mk(p, '5k', 'k5', 'kills_5', 'enemy5ks', '5ks', 'aces'), source: 'matchzy' };
     });
   });
   return Object.keys(out).length ? out : null;
@@ -411,13 +417,14 @@ function recordMapStats(mapName) {
   const sk = csSeriesKey(), disp = csMapDisplayName(mapName);
   if (!state.tournament) state.tournament = {};
   const log = state.tournament.csStats || (state.tournament.csStats = []);
-  const sig = l => [l.kills, l.deaths, l.assists, l.mvps, l.adr, l.name].join('|');
+  const sig = l => [l.kills, l.deaths, l.assists, l.mvps, l.adr, l.k3, l.k4, l.k5, l.name].join('|');
   let changed = false;
   Object.keys(lp).forEach(sid => {
     const p = lp[sid]; if (!p || !p.steamid) return;
     const key = sk + ':' + slug + ':' + sid;
     const next = { key, seriesKey: sk, steamid: sid, name: p.name || '', team: p.team || '', map: disp, slug,
-      kills: p.kills | 0, deaths: p.deaths | 0, assists: p.assists | 0, mvps: p.mvps | 0, adr: p.adr | 0, score: p.score | 0, ts: Date.now() };
+      kills: p.kills | 0, deaths: p.deaths | 0, assists: p.assists | 0, mvps: p.mvps | 0, adr: p.adr | 0, score: p.score | 0,
+      k3: p.k3 | 0, k4: p.k4 | 0, k5: p.k5 | 0, ts: Date.now() };
     const i = log.findIndex(l => l.key === key);
     if (i < 0) { log.push(next); changed = true; }
     else if (sig(log[i]) !== sig(next)) { log[i] = next; changed = true; }
@@ -427,8 +434,8 @@ function recordMapStats(mapName) {
 // Aggregate the log → per-player tournament + current-series totals + per-map lines.
 function buildCsStats() {
   const log = (state.tournament && state.tournament.csStats) || [], sk = csSeriesKey();
-  const zero = () => ({ maps: 0, kills: 0, deaths: 0, assists: 0, mvps: 0, _adr: 0 });
-  const add = (a, l) => { a.maps++; a.kills += l.kills | 0; a.deaths += l.deaths | 0; a.assists += l.assists | 0; a.mvps += l.mvps | 0; a._adr += l.adr | 0; };
+  const zero = () => ({ maps: 0, kills: 0, deaths: 0, assists: 0, mvps: 0, k3: 0, k4: 0, k5: 0, _adr: 0 });
+  const add = (a, l) => { a.maps++; a.kills += l.kills | 0; a.deaths += l.deaths | 0; a.assists += l.assists | 0; a.mvps += l.mvps | 0; a.k3 += l.k3 | 0; a.k4 += l.k4 | 0; a.k5 += l.k5 | 0; a._adr += l.adr | 0; };
   const fin = a => { a.kd = +(a.kills / Math.max(1, a.deaths)).toFixed(2); a.adr = a.maps ? Math.round(a._adr / a.maps) : 0; delete a._adr; return a; };
   const players = {};
   log.forEach(l => {
@@ -436,7 +443,7 @@ function buildCsStats() {
     p.name = l.name || p.name; p.team = l.team || p.team;
     add(p.tournament, l);
     if (l.seriesKey === sk) add(p.series, l);
-    p.byMap[l.map] = { kills: l.kills | 0, deaths: l.deaths | 0, assists: l.assists | 0, mvps: l.mvps | 0, adr: l.adr | 0, kd: +((l.kills | 0) / Math.max(1, l.deaths | 0)).toFixed(2) };
+    p.byMap[l.map] = { kills: l.kills | 0, deaths: l.deaths | 0, assists: l.assists | 0, mvps: l.mvps | 0, adr: l.adr | 0, k3: l.k3 | 0, k4: l.k4 | 0, k5: l.k5 | 0, kd: +((l.kills | 0) / Math.max(1, l.deaths | 0)).toFixed(2) };
   });
   Object.values(players).forEach(p => { fin(p.tournament); fin(p.series); });
   return { seriesKey: sk, players };
