@@ -42,6 +42,7 @@
       <a class="nav-item cap-champ-draft" data-tab="draft">Draft</a>
       <a class="nav-item cap-map-veto" data-tab="map-veto">Map Veto</a>
       <a class="nav-item cap-map-veto" data-tab="live-data">Live Data</a>
+      <a class="nav-item cap-map-veto" data-tab="post-game-gfx">Post-Game</a>
       <a class="nav-item cap-opgg" data-tab="intel">Match Intel</a>
 
       <div class="nav-section-label">GRAPHICS</div>
@@ -689,6 +690,56 @@
           <button class="btn btn-sm" data-pv="tournament" onclick="ldSetView('tournament')">Tournament</button>
         </div>
         <div id="ld-players" style="margin-top:6px"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         POST-GAME SCOREBOARD — overlay (GRAPHICS section, CS2)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-post-game-gfx">
+      <div class="tab-header"><h1>Post-Game Scoreboard</h1></div>
+      <div class="gfx-ctrl-bar">
+        <div class="gfx-ctrl-title">Post-Game Controls</div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group" id="ctrlgrp-postGame">
+            <span class="gfx-ctrl-section-label">Output</span>
+            <button class="lbar-toggle" id="ctrlbtn-postGame" onclick="toggleGraphic('postGame')">
+              <span class="lbar-dot" id="ctrl-dot-postGame"></span>POST-GAME SCOREBOARD
+            </button>
+          </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Map</span>
+            <select id="pg-map-select" onchange="api('/api/postGame',{selectedSlug:this.value})" style="min-width:200px"></select>
+          </div>
+        </div>
+      </div>
+      <div class="ps-two-col">
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Look</div>
+            <div class="field-row"><label>Title</label><input type="text" id="pg-title" placeholder="POST-GAME" oninput="api('/api/postGame',{title:this.value})"></div>
+            <div class="field-row"><label>Design</label>
+              <div class="btn-row" id="pg-design-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-pgdesign="split" onclick="api('/api/postGame',{design:'split'})">Side-by-side</button>
+              </div>
+            </div>
+            <div class="field-row"><label>Background</label>
+              <div class="btn-row" id="pg-bg-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-pgbg="dark" onclick="api('/api/postGame',{bg:'dark'})">Dark</button>
+                <button class="btn btn-sm" data-pgbg="transparent" onclick="api('/api/postGame',{bg:'transparent'})">Transparent</button>
+              </div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="pg-show-rounds" onchange="api('/api/postGame',{showRounds:this.checked})"> <span style="font-size:13px">Show round-by-round tracker</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="pg-show-logos" onchange="api('/api/postGame',{showLogos:this.checked})"> <span style="font-size:13px">Show team logos</span></label>
+            <p class="hint" style="margin-top:10px">Stats are pulled from the live-data the map logged. Map scores come from <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup → Series Tracker</a>; the round tracker needs GSI.</p>
+          </div>
+        </div>
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Confirm data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· before you go live</span></div>
+            <div id="pg-preview"></div>
+          </div>
+        </div>
       </div>
     </section>
 

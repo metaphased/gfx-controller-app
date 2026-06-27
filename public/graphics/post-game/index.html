@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Post-Game Scoreboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<script src="/graphics/gfx-settings.js"></script>
+<link rel="stylesheet" href="post-game.css">
+</head>
+<body>
+<!-- CS2 post-game scoreboard. Side-by-side team columns (team1 left / team2 right),
+     winner accented; map + final score header; a full-width round-progression strip;
+     each team a 5-row stat table (K · D · A · +/- · ADR · K/D + MVP/multikill badges).
+     post-game.js resolves the selected map from mapResults + tournament.csStats. -->
+<div id="pg-root" style="display:none">
+  <div id="pg-stage">
+    <div id="pg-header">
+      <div id="pg-title"></div>
+      <div id="pg-scoreline">
+        <span id="pg-h-t1" class="pg-h-team"></span>
+        <span id="pg-h-score"></span>
+        <span id="pg-h-t2" class="pg-h-team"></span>
+      </div>
+      <div id="pg-map"></div>
+    </div>
+
+    <div id="pg-rounds"></div>
+
+    <div id="pg-cols">
+      <div class="pg-col" id="pg-col-t1"></div>
+      <div class="pg-col" id="pg-col-t2"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="post-game.js"></script>
+</body>
+</html>

@@ -392,6 +392,16 @@ function gsiPlayers(b) {
   }
   return Object.keys(out).length ? out : null;
 }
+// GSI map.round_wins → ordered [{ r, side:'CT'|'T', cond }] (cond = win reason: elimination /
+// bomb / defuse / time). Powers the post-game round-progression tracker.
+function parseRoundWins(rw) {
+  if (!rw || typeof rw !== 'object') return [];
+  return Object.keys(rw).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b).map(n => {
+    const v = String(rw[String(n)] || '').toLowerCase();
+    const side = v.startsWith('ct') ? 'CT' : v.startsWith('t') ? 'T' : '';
+    return { r: n, side, cond: v.replace(/^(ct|t)_win_/, '') };
+  }).filter(x => x.side);
+}
 // Best-effort per-player stats from a MatchZy payload (modern releases carry richer stats incl.
 // ADR). Shapes vary by version — look for team{1,2}.players[] with steamid + kills/deaths/etc.
 function mzPlayers(b) {
@@ -475,6 +485,7 @@ app.post('/api/live/gsi', (req, res) => {
   g.round = (map.round != null ? map.round : ((b.round && b.round.round) || 0)) | 0;
   g.ctScore = ((map.team_ct && map.team_ct.score) || 0) | 0;
   g.tScore  = ((map.team_t  && map.team_t.score)  || 0) | 0;
+  g.roundWins = parseRoundWins(map.round_wins);
   let changed = false;
   if (g.map && ['live', 'gameover', 'intermission'].includes(g.phase)) {
     const sc = gsiTeamScores(b), fin = g.phase === 'gameover';
@@ -483,7 +494,17 @@ app.post('/api/live/gsi', (req, res) => {
   }
   const gp = gsiPlayers(b);   // live K/D/A (carried out on the next throttled broadcast, not per kill)
   if (gp) state.live.players = gp;
-  if (g.phase === 'gameover' && g.map && recordMapStats(g.map)) changed = true;   // final → tournament log
+  if (g.phase === 'gameover' && g.map) {
+    if (recordMapStats(g.map)) changed = true;   // final → tournament log
+    // Snapshot the round history + starting CT team onto the map row for the post-game board.
+    const ri = liveFindMapRow(g.map);
+    if (ri >= 0 && g.roundWins.length) {
+      const row = state.match.mapResults[ri];
+      row.roundHistory = g.roundWins;
+      row.ctStartTeam = vetoStartCtTeam(g.map) || (liveCfg().ctTeam === 'team2' ? 'team2' : 'team1');
+      changed = true;
+    }
+  }
   const sig = [g.map, g.phase, g.round, g.ctScore, g.tScore].join('|');
   const now = Date.now();
   if (changed || sig !== _gsiSig || now - _gsiLastBcast > 3000) { _gsiSig = sig; _gsiLastBcast = now; broadcast(); }
@@ -736,7 +757,7 @@ const makeDefault = () => ({
   // of the last accepted post (the UI shows "connected" if recent). suggested/players are
   // filled in later phases (scores / per-player stats).
   live: {
-    gsi:     { lastSeen: 0, map: '', phase: '', round: 0, ctScore: 0, tScore: 0 },
+    gsi:     { lastSeen: 0, map: '', phase: '', round: 0, ctScore: 0, tScore: 0, roundWins: [] },
     matchzy: { lastSeen: 0, event: '', map: '' },
     suggested: {},   // phase B: { mapResults?, seriesScore? } awaiting operator Apply
     players: {},     // phase C: per-steamid live stats { [steamid]: { name, team, kills, deaths, assists, mvps } }
@@ -796,6 +817,10 @@ const makeDefault = () => ({
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
   winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
+  // CS2 post-game scoreboard — per-map final stats for post-match analysis. selectedSlug =
+  // mapArtSlug of the chosen map (''=latest finalized); the graphic resolves players from
+  // tournament.csStats + the map's mapResults row (+ its snapshot roundHistory). DATA-ONLY.
+  postGame:    { visible: false, selectedSlug: '', design: 'split', bg: 'dark', showRounds: true, showLogos: true, title: 'POST-GAME' },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
   // design: angled|bleed|framed, mode: single|duo|compare. players[0]=A (team1 side),
   // players[1]=C (team2 side); champ='' = auto (most-played); statOverrides keyed by stat.
@@ -1148,13 +1173,14 @@ const GRAPHIC_PATHS = {
   playerSpotlight: 'graphics/player-spotlight',
   bgOutput: 'graphics/bg-output',
   mapVeto: 'graphics/map-veto',
+  postGame: 'graphics/post-game',
 };
 const GRAPHIC_LABELS = {
   lowerThird: 'lower third', headToHead: 'head to head', playerIntro: 'player intro',
   preShow: 'pre-show', draft: 'draft', bracket: 'bracket', groupStage: 'group stage',
   tournamentStructure: 'tournament structure', prizepool: 'prize', winScreen: 'win screen',
   breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker', playerSpotlight: 'player spotlight',
-  mapVeto: 'map veto',
+  mapVeto: 'map veto', postGame: 'post game',
 };
 function _switcherByUrl(url) {
   if (!url) return null;
@@ -1227,7 +1253,7 @@ function broadcast() {
 
 // ── SSE (Server-Sent Events) for Companion / external integrations ─────────────
 const _sseClients = new Set();
-const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto'];
+const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto','postGame'];
 function buildSSEPayload() {
   const visibilities = {};
   SSE_GRAPHIC_KEYS.forEach(k => { if (state[k]) visibilities[k] = !!state[k].visible; });
@@ -1578,7 +1604,7 @@ const GRAPHIC_PAGE_KEYS = {
   winScreen: 'win-screen', preShow: 'pre-show',
   tournamentStructure: 'tournament-structure', groupStage: 'standings',
   prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight',
-  mapVeto: 'map-veto'
+  mapVeto: 'map-veto', postGame: 'post-game'
 };
 
 function findBusForGraphic(graphicName) {
@@ -2103,6 +2129,7 @@ app.post('/api/draft', (req, res) => {
 app.post('/api/bgOutput', requireAdmin, (req, res) => { deepMerge(state.bgOutput, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/breakScreen', (req, res) => { Object.assign(state.breakScreen, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/winScreen',   (req, res) => { Object.assign(state.winScreen,   req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/postGame',    (req, res) => { Object.assign(state.postGame,    req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/playerSpotlight', (req, res) => { Object.assign(state.playerSpotlight, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/headToHead',  (req, res) => { Object.assign(state.headToHead,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/playerIntro', (req, res) => { Object.assign(state.playerIntro, req.body); broadcast(); res.json({ok:true}); });
@@ -2794,13 +2821,17 @@ function reconcileMapResults() {
   const out = [];
   for (let i = 0; i < bestOf; i++) {
     const p = prev[i] || {};
-    out.push({
+    const row = {
       map:      p.map || vetoMaps[i] || '',
       t1Rounds: p.t1Rounds || 0,
       t2Rounds: p.t2Rounds || 0,
       winner:   p.winner   || '',
       status:   p.status   || 'upcoming',
-    });
+    };
+    // Preserve the post-game round snapshot (set on GSI finalize) across reconciles.
+    if (p.roundHistory) row.roundHistory = p.roundHistory;
+    if (p.ctStartTeam)  row.ctStartTeam  = p.ctStartTeam;
+    out.push(row);
   }
   state.match.mapResults = out;
   applyMapResultsToSeries();

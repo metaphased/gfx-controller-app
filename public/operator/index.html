@@ -776,6 +776,20 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
         </div>
       </div>
 
+      <!-- Post-Game scoreboard (CS2) -->
+      <div class="ops-ctrl-row cap-map-veto">
+        <div class="ops-ctrl-group" id="ops-grp-postGame">
+          <span class="ops-ctrl-label">Post-Game</span>
+          <button class="lbar-toggle" id="ops-btn-postGame" onclick="toggleGfx('postGame')">
+            <span class="lbar-dot" id="ops-dot-postGame"></span>Post-Game
+          </button>
+        </div>
+        <div class="ops-ctrl-group" style="flex:1">
+          <span class="ops-ctrl-label">Map</span>
+          <select id="ops-pg-map" onchange="api('/api/postGame',{selectedSlug:this.value})" style="flex:1;min-width:160px"></select>
+        </div>
+      </div>
+
       <!-- Bracket -->
       <div class="ops-ctrl-row">
         <div class="ops-ctrl-group" id="ops-grp-bracket">
@@ -917,7 +931,7 @@ socket.on('presence:list', function(users) {
 });
 
 /* ── Graphic list for bulk sync ── */
-const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','mapVeto','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
+const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','mapVeto','postGame','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
 
 socket.on('state', state => {
   window._state = state;
@@ -1019,6 +1033,20 @@ socket.on('state', state => {
   setModeActive('ops-mv-full', !!_mv.accordionFinal);
   setModeActive('ops-mv-auto', !!_mv.autoRevealing);
   const _oaBtn = document.getElementById('ops-mv-auto'); if (_oaBtn) _oaBtn.textContent = _mv.autoRevealing ? '■ Stop' : '▶ Auto';
+
+  /* Post-Game map selector — finalized maps of the current series */
+  const _pgSel = document.getElementById('ops-pg-map');
+  if (_pgSel) {
+    const norm = x => String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const rows = ((state.match && state.match.mapResults) || []).filter(r => r && r.map && (r.status==='final' || r.winner || r.t1Rounds || r.t2Rounds));
+    const cur = (state.postGame && state.postGame.selectedSlug) || '';
+    const opts = '<option value="">Latest map</option>' + rows.map((r,i) => {
+      const v = norm(r.map);
+      return '<option value="'+v+'"'+(v===cur?' selected':'')+'>Map '+(i+1)+' — '+r.map+' '+(r.t1Rounds|0)+'–'+(r.t2Rounds|0)+'</option>';
+    }).join('');
+    if (_pgSel.dataset.sig !== opts) { _pgSel.dataset.sig = opts; _pgSel.innerHTML = opts; }
+    _pgSel.value = cur;
+  }
 
   /* Player quick grid */
   renderPlayerGrid(state);
