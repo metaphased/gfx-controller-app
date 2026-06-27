@@ -347,14 +347,29 @@ function liveIngestScore(s) {
   state.live.suggested[slug].ts = Date.now();
   return changed;
 }
+// Which team STARTS on CT for a given map, derived from the map veto. On a pick step the
+// recorded `side` is the OTHER (non-picking) team's starting side; the decider is a knife
+// round (no defined side). Returns '' when the map isn't a recorded pick. Matches map by
+// mapArtSlug so "de_mirage" (GSI) lines up with "Mirage" (veto).
+function vetoStartCtTeam(mapName) {
+  const slug = mapArtSlug(mapName); if (!slug) return '';
+  const steps = (state.mapVeto && state.mapVeto.steps) || [];
+  const st = steps.find(s => s && s.action === 'pick' && s.side && (s.side === 'CT' || s.side === 'T') && mapArtSlug(s.map) === slug);
+  if (!st || !st.team) return '';
+  const other = st.team === 'team1' ? 'team2' : 'team1';
+  return st.side === 'CT' ? other : st.team;   // other starts `side`; if other is T, picker is CT
+}
 // Which of our teams is on CT right now — prefer matching the GSI CT team name to our team
-// name/tag (auto-tracks half-time side swaps); else fall back to liveData.ctTeam.
+// name/tag (auto-tracks half-time side swaps); else the veto-defined starting side for the
+// live map; else the manual liveData.ctTeam fallback.
 function gsiCtTeam(b) {
   const ct = (b.map && b.map.team_ct) || {};
   const m1 = (state.match && state.match.team1) || {}, m2 = (state.match && state.match.team2) || {};
   const norm = x => String(x || '').toLowerCase().trim(), n = norm(ct.name);
   if (n && (n === norm(m1.name) || n === norm(m1.tag))) return 'team1';
   if (n && (n === norm(m2.name) || n === norm(m2.tag))) return 'team2';
+  const fromVeto = vetoStartCtTeam((b.map && b.map.name) || '');
+  if (fromVeto) return fromVeto;
   return liveCfg().ctTeam === 'team2' ? 'team2' : 'team1';
 }
 function gsiTeamScores(b) {
