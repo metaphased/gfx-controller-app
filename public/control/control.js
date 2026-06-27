@@ -298,7 +298,7 @@ const TAB_LABELS = {
   players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
   preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
   h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
-  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', bracket:'Bracket', 'groups-gfx':'Group Stage',
+  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', 'live-data':'Live Data', bracket:'Bracket', 'groups-gfx':'Group Stage',
   'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
   win:'Win Screen', profiles:'Profiles', routing:'Routing', users:'Settings', log:'Log',
 };
@@ -472,13 +472,16 @@ function ldRender(state) {
   if (b1) b1.classList.toggle('btn-primary', ct === 'team1');
   if (b2) b2.classList.toggle('btn-primary', ct === 'team2');
   ldStatusEl('gsi', ld.gsiEnabled, live.gsi); ldStatusEl('matchzy', ld.matchzyEnabled, live.matchzy);
-  // Live score suggestions (when auto-apply is off) → Apply buttons.
-  const sx = document.getElementById('ld-suggestions');
-  if (sx) {
+  // Live score suggestions (when auto-apply is off) → Apply buttons. Rendered into BOTH
+  // the Live Data tab (#ld-suggestions) and the Game Setup mirror (#ld-suggestions-gs) so
+  // the operator can apply a suggested score right where they run the series.
+  const sx = document.getElementById('ld-suggestions'), sxg = document.getElementById('ld-suggestions-gs');
+  if (sx || sxg) {
     const m = (state.match) || {}, t1 = (m.team1 && (m.team1.tag || m.team1.name)) || 'T1', t2 = (m.team2 && (m.team2.tag || m.team2.name)) || 'T2';
     const sug = (live.suggested) || {}, keys = Object.keys(sug);
+    let html;
     if (ld.autoApplyScores) {
-      sx.innerHTML = '<p class="hint" style="margin:0;color:#7ee2a8">⟳ Live scores auto-apply to the map results.</p>';
+      html = '<p class="hint" style="margin:0;color:#7ee2a8">⟳ Live scores auto-apply to the map results.</p>';
     } else if (keys.length) {
       const rows = keys.map(function (k) {
         const s = sug[k], win = s.winner === 'team1' ? ' · ' + esc(t1) + ' win' : s.winner === 'team2' ? ' · ' + esc(t2) + ' win' : '';
@@ -486,9 +489,11 @@ function ldRender(state) {
           '<span class="ld-sug-meta">' + esc(s.source) + win + '</span>' +
           '<button class="btn btn-sm" onclick="ldApply(\'' + esc(k) + '\')">Apply</button></div>';
       }).join('');
-      sx.innerHTML = '<div class="hint" style="margin:0 0 6px">Live score' + (keys.length > 1 ? 's' : '') + ' — review &amp; apply (' + esc(t1) + ' – ' + esc(t2) + '):</div>' +
+      html = '<div class="hint" style="margin:0 0 6px">Live score' + (keys.length > 1 ? 's' : '') + ' — review &amp; apply (' + esc(t1) + ' – ' + esc(t2) + '):</div>' +
         rows + (keys.length > 1 ? '<button class="btn btn-sm btn-primary" style="margin-top:6px" onclick="ldApply()">Apply all</button>' : '');
-    } else { sx.innerHTML = ''; }
+    } else { html = ''; }
+    if (sx)  sx.innerHTML  = html;
+    if (sxg) sxg.innerHTML = html;
   }
   ldRenderPlayers(state);
 }

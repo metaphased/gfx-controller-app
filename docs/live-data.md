@@ -9,22 +9,24 @@ Use **either, both, or neither** — they're fully optional and independent. Wit
 
 > **Data-only, by design.** Live Data only **records and suggests** — it never triggers a graphic. You still bring every overlay on and off air yourself. Scores can optionally auto-apply to the match result (your choice), but no graphic is ever shown automatically. Automation belongs in OBS/vMix.
 
-It currently surfaces for **CS2** tournaments. The control card lives in **Tournament Setup → Live Data** (it appears for map-veto games).
+It currently surfaces for **CS2** tournaments, across two places (both appear for map-veto games):
+
+- The **Live Data** tab (in the GAME section) — one-time connection setup, the ingest token, the auto-apply toggle, and the live player-stats readout.
+- **Game Setup**, beside the Series Tracker — the show-time controls: **CT side** and applying suggested scores, right where you run the series.
 
 ## Quick start
 
-1. Open **Tournament Setup → Live Data** (admin).
-2. Enable **Game State Integration (GSI)** and/or **MatchZy**.
-3. **GSI:** click **Download GSI config** and drop the file into the CS2 machine's config folder (below). Restart CS2.
-4. **MatchZy:** **Copy MatchZy URL** and set it as MatchZy's event/webhook URL on the game server.
-5. Set **CT side is → Team 1 / Team 2** so GSI's CT/T scores map to the right team.
-6. Choose whether scores **auto-apply** or are **suggested** for you to apply.
+1. Open the **Live Data** tab (admin) and enable **Game State Integration (GSI)** and/or **MatchZy**.
+2. **GSI:** click **Download GSI config** and drop the file into the CS2 machine's config folder (below). Restart CS2.
+3. **MatchZy:** **Copy MatchZy URL** and set it as MatchZy's event/webhook URL on the game server.
+4. On **Game Setup**, set **CT side is → Team 1 / Team 2** so GSI's CT/T scores map to the right team (GSI usually detects this from team names; set it only if they don't match).
+5. Choose whether scores **auto-apply** (Live Data tab) or are **suggested** for you to apply (from Game Setup or the Live Data tab).
 
 The status pill next to each toggle reads **off**, **waiting…**, or **live · de_mirage R12 7–5** once data arrives. It decays back to *waiting* if a source goes quiet.
 
 ## The ingest token
 
-GSI and MatchZy authenticate with a single **ingest token**, shown at the bottom of the card. It is a **separate secret** from the graphics token, and is **stripped from the state sent to non-admin (operator / caster / token) clients**.
+GSI and MatchZy authenticate with a single **ingest token**, shown on the Live Data tab. It is a **separate secret** from the graphics token, and is **stripped from the state sent to non-admin (operator / caster / token) clients**.
 
 - The token is embedded in the **GSI config** and in the **MatchZy URL** automatically — you don't paste it anywhere by hand.
 - **Regenerate** rotates it. After rotating you must **re-download the GSI config** and **update MatchZy** with the new URL; the old ones stop working.
@@ -33,7 +35,7 @@ GSI and MatchZy authenticate with a single **ingest token**, shown at the bottom
 
 GSI runs on a **CS2 client** — typically your **observer** or a **GOTV** spectator client — because it needs `allplayers` data, which only a spectator sees.
 
-1. In the Live Data card, click **Download GSI config** (`gamestate_integration_metagfx.cfg`).
+1. On the Live Data tab, click **Download GSI config** (`gamestate_integration_metagfx.cfg`).
 2. Copy it into:
    `…\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg\`
 3. Restart CS2 (or the spectator client).
@@ -46,7 +48,7 @@ The config points CS2 at MetaGFX's `/api/live/gsi` endpoint and requests provide
 
 [MatchZy](https://shobhit-pathak.github.io/MatchZy/) runs on the **CS2 game server** and reports authoritative results.
 
-1. In the Live Data card, click **Copy MatchZy URL**.
+1. On the Live Data tab, click **Copy MatchZy URL**.
 2. Point MatchZy's event / webhook URL at that address (it already carries the token).
 
 MatchZy's map/series result events are treated as authoritative — a `map_result` / `map_end` finalizes the map and updates the series. MatchZy reports both teams **directly**, so the **CT side** setting doesn't affect it (it only matters for GSI's CT/T → team mapping).
@@ -55,16 +57,16 @@ MatchZy's map/series result events are treated as authoritative — a `map_resul
 
 ## Scores — review & apply
 
-When score data arrives:
+The **auto-apply** toggle is on the Live Data tab. When score data arrives:
 
-- **Auto-apply on** — scores flow straight into the map results and series (a note shows in the card: *⟳ Live scores auto-apply to the map results*).
-- **Auto-apply off** (default) — each map's suggested score appears with an **Apply** button, plus **Apply all**. Nothing changes until you click.
+- **Auto-apply on** — scores flow straight into the map results and series (a note replaces the suggestions list: *⟳ Live scores auto-apply to the map results*).
+- **Auto-apply off** (default) — each map's suggested score appears with an **Apply** button, plus **Apply all**. The list shows in **both** the Live Data tab and **Game Setup**, beside the Series Tracker, so you can apply it where you enter scores. Nothing changes until you click.
 
-GSI maps **CT/T → Team 1/Team 2** using the team names (and auto-handles the half-side swap); the **CT side is** setting is the fallback when names don't match. A finished map (`gameover` / `map_result`) is marked **final** with a winner, and the series score updates — feeding the break screen, win screen, top bar and map-veto graphic.
+GSI maps **CT/T → Team 1/Team 2** using the team names (and auto-handles the half-side swap); the **CT side is** control (on Game Setup) is the fallback when names don't match. A finished map (`gameover` / `map_result`) is marked **final** with a winner, and the series score updates — feeding the break screen, win screen, top bar and map-veto graphic.
 
 ## Player stats
 
-The card's **Player stats** readout has three views:
+The Live Data tab's **Player stats** readout has three views:
 
 - **Live** — the current map, from GSI's `allplayers` (or MatchZy): K/D/A per player.
 - **This series** — accumulated across the maps of the current series.

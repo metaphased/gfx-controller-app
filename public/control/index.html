@@ -41,6 +41,7 @@
       <a class="nav-item" data-tab="players">Players / Rosters</a>
       <a class="nav-item cap-champ-draft" data-tab="draft">Draft</a>
       <a class="nav-item cap-map-veto" data-tab="map-veto">Map Veto</a>
+      <a class="nav-item cap-map-veto" data-tab="live-data">Live Data</a>
       <a class="nav-item cap-opgg" data-tab="intel">Match Intel</a>
 
       <div class="nav-section-label">GRAPHICS</div>
@@ -302,51 +303,6 @@
         </div>
         <p class="hint" style="margin-bottom:12px">The maps in <strong>this</strong> tournament's pool (used by the Map Veto). Editable — the active-duty pool rotates. Optional image URL per map (card background on-air).</p>
         <div id="tm-map-pool"></div>
-      </div>
-
-      <div class="card cap-map-veto" style="margin-top:16px">
-        <div class="card-title">Live Data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· optional</span></div>
-        <p class="hint" style="margin-bottom:12px">Pull live CS2 data in to auto-fill scores &amp; player stats. Both sources are optional and independent — use either, both, or none (manual entry always works). <strong>Data only:</strong> nothing is shown on air automatically; you still trigger every graphic.</p>
-
-        <div class="ld-src">
-          <label class="ld-toggle"><input type="checkbox" id="ld-gsi-enabled" onchange="ldSetEnabled('gsi',this.checked)"> <span>Game State Integration (GSI)</span> <span class="ld-status" id="ld-gsi-status">off</span></label>
-          <p class="hint" style="margin:4px 0 8px">From a CS2 <strong>observer / GOTV client</strong>: live round score, bomb, and per-player K/D/A. Download the config and drop it in <code>…\\Counter-Strike Global Offensive\\game\\csgo\\cfg\\</code>, then (re)start CS2.</p>
-          <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <a class="btn btn-sm" id="ld-gsi-download" href="/api/live/gsi.cfg" download>Download GSI config</a>
-            <button class="btn btn-sm" onclick="ldCopy('gsi',this)">Copy GSI URL</button>
-          </div>
-        </div>
-
-        <div class="ld-src" style="margin-top:14px">
-          <label class="ld-toggle"><input type="checkbox" id="ld-matchzy-enabled" onchange="ldSetEnabled('matchzy',this.checked)"> <span>MatchZy (game server)</span> <span class="ld-status" id="ld-matchzy-status">off</span></label>
-          <p class="hint" style="margin:4px 0 8px">From the <strong>match server</strong>: authoritative map/series results. Point MatchZy's event/webhook URL at the address below (it carries the token).</p>
-          <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <button class="btn btn-sm" onclick="ldCopy('matchzy',this)">Copy MatchZy URL</button>
-          </div>
-        </div>
-
-        <div class="field-row" style="margin-top:14px"><label>CT side is</label>
-          <div class="btn-row" style="display:flex;gap:6px">
-            <button class="btn btn-sm" id="ld-ct-team1" onclick="ldSetCt('team1')">Team 1</button>
-            <button class="btn btn-sm" id="ld-ct-team2" onclick="ldSetCt('team2')">Team 2</button>
-          </div>
-        </div>
-        <p class="hint" style="margin-top:2px">Which team is currently on CT — so GSI's CT/T scores map to the right team. (MatchZy reports teams directly.)</p>
-        <label class="ld-toggle" style="margin-top:10px"><input type="checkbox" id="ld-autoapply" onchange="ldSetAuto(this.checked)"> <span>Auto-apply scores (otherwise scores are suggested for you to apply)</span></label>
-        <div id="ld-suggestions" style="margin-top:10px"></div>
-        <div id="ld-pview" class="btn-row" style="display:none;gap:6px;margin-top:10px;align-items:center">
-          <span class="hint">Player stats:</span>
-          <button class="btn btn-sm" data-pv="live" onclick="ldSetView('live')">Live</button>
-          <button class="btn btn-sm" data-pv="series" onclick="ldSetView('series')">This series</button>
-          <button class="btn btn-sm" data-pv="tournament" onclick="ldSetView('tournament')">Tournament</button>
-        </div>
-        <div id="ld-players" style="margin-top:6px"></div>
-
-        <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <span class="hint">Ingest token (shared by GSI/MatchZy):</span>
-          <code id="ld-token" style="font-size:11px">—</code>
-          <button class="btn btn-sm" onclick="ldRegenToken(this)" title="Rotate the token — you'll need to re-download the GSI config / update MatchZy">Regenerate</button>
-        </div>
       </div>
 
       <div class="card" style="margin-top:16px">
@@ -665,6 +621,74 @@
           </div>
         </div>
         <div id="gs-series-tracker" style="margin-top:4px"></div>
+      </div>
+
+      <!-- Live Data — show-time controls (CS2). Lives here, beside the Series Tracker,
+           because CT side + score-apply are touched while the series is being run.
+           Setup + the full player-stats readout live on the dedicated Live Data tab. -->
+      <div class="card cap-map-veto" style="margin-top:16px">
+        <div class="card-title">Live Data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· optional</span></div>
+        <div class="field-row" style="margin-bottom:0"><label>CT side is</label>
+          <div class="btn-row" style="display:flex;gap:6px">
+            <button class="btn btn-sm" id="ld-ct-team1" onclick="ldSetCt('team1')">Team 1</button>
+            <button class="btn btn-sm" id="ld-ct-team2" onclick="ldSetCt('team2')">Team 2</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:2px">Which team is currently on CT — so GSI's CT/T scores map to the right team. GSI usually detects this from team names; set it here only if they don't match. (MatchZy reports teams directly.)</p>
+        <div id="ld-suggestions-gs" style="margin-top:10px"></div>
+        <p class="hint" style="margin-top:8px">Connect GSI / MatchZy and see full player stats on the <a onclick="switchToTab('live-data')" href="#" style="color:var(--primary)">Live Data</a> page.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         LIVE DATA — CS2 GSI / MatchZy ingest (GAME section)
+    ══════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-live-data">
+      <div class="tab-header"><h1>Live Data</h1></div>
+      <p class="hint" style="margin-bottom:16px;max-width:900px">Pull live CS2 data in to auto-fill scores &amp; player stats. Both sources are optional and independent — use either, both, or none (manual entry always works). <strong>Data only:</strong> nothing is shown on air automatically; you still trigger every graphic. CT side and applying suggested scores are on the <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup</a> page, where you run the series.</p>
+
+      <div class="card">
+        <div class="card-title">Connection</div>
+        <div class="ld-src">
+          <label class="ld-toggle"><input type="checkbox" id="ld-gsi-enabled" onchange="ldSetEnabled('gsi',this.checked)"> <span>Game State Integration (GSI)</span> <span class="ld-status" id="ld-gsi-status">off</span></label>
+          <p class="hint" style="margin:4px 0 8px">From a CS2 <strong>observer / GOTV client</strong>: live round score, bomb, and per-player K/D/A. Download the config and drop it in <code>…\\Counter-Strike Global Offensive\\game\\csgo\\cfg\\</code>, then (re)start CS2.</p>
+          <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <a class="btn btn-sm" id="ld-gsi-download" href="/api/live/gsi.cfg" download>Download GSI config</a>
+            <button class="btn btn-sm" onclick="ldCopy('gsi',this)">Copy GSI URL</button>
+          </div>
+        </div>
+
+        <div class="ld-src" style="margin-top:14px">
+          <label class="ld-toggle"><input type="checkbox" id="ld-matchzy-enabled" onchange="ldSetEnabled('matchzy',this.checked)"> <span>MatchZy (game server)</span> <span class="ld-status" id="ld-matchzy-status">off</span></label>
+          <p class="hint" style="margin:4px 0 8px">From the <strong>match server</strong>: authoritative map/series results. Point MatchZy's event/webhook URL at the address below (it carries the token).</p>
+          <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-sm" onclick="ldCopy('matchzy',this)">Copy MatchZy URL</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="hint">Ingest token (shared by GSI/MatchZy):</span>
+          <code id="ld-token" style="font-size:11px">—</code>
+          <button class="btn btn-sm" onclick="ldRegenToken(this)" title="Rotate the token — you'll need to re-download the GSI config / update MatchZy">Regenerate</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Live scores</div>
+        <label class="ld-toggle"><input type="checkbox" id="ld-autoapply" onchange="ldSetAuto(this.checked)"> <span>Auto-apply scores (otherwise scores are suggested for you to apply)</span></label>
+        <div id="ld-suggestions" style="margin-top:10px"></div>
+        <p class="hint" style="margin-top:8px">Suggested scores can also be applied from <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup → Series Tracker</a>.</p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Player stats</div>
+        <div id="ld-pview" class="btn-row" style="display:none;gap:6px;align-items:center">
+          <span class="hint">Show:</span>
+          <button class="btn btn-sm" data-pv="live" onclick="ldSetView('live')">Live</button>
+          <button class="btn btn-sm" data-pv="series" onclick="ldSetView('series')">This series</button>
+          <button class="btn btn-sm" data-pv="tournament" onclick="ldSetView('tournament')">Tournament</button>
+        </div>
+        <div id="ld-players" style="margin-top:6px"></div>
       </div>
     </section>
 
