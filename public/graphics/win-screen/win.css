@@ -87,8 +87,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 .ws-tag { text-shadow: 0 0.2vh 0.9vh rgba(0,0,0,0.55); }
 
-/* Hype, not data: win screens never show series / per-map scores now. */
+/* Hype, not data: win screens hide series / per-map scores by default. */
 .ws-score-row, .ws-maps { display: none !important; }
+/* Opt-in (CS2 "auto series score" toggle) brings the series score row back. */
+#win-root.ws-series-on .ws-score-row { display: flex !important; }
 
 .ws-score-row {
   display: flex;

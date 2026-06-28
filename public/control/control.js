@@ -2893,6 +2893,10 @@ function syncWinTab(ws, match) {
   const compBgSel = g('win-compbg');
   if (compBgSel && document.activeElement !== compBgSel) compBgSel.value = ws.compBg || 'bespoke';
 
+  // CS2 auto series score toggle (derives the score row from map results)
+  const autoSeriesEl = g('win-auto-series');
+  if (autoSeriesEl) autoSeriesEl.checked = !!ws.autoSeriesScore;
+
   // Auto-status hint
   const statusEl = g('win-auto-status');
   if (statusEl) {

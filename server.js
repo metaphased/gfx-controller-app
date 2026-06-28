@@ -816,7 +816,7 @@ const makeDefault = () => ({
                  mapFlyby: false,      // true = focused accordion map crossfades through its image set
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
-  winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
+  winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', autoSeriesScore: false, accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
   // CS2 post-game scoreboard — per-map final stats for post-match analysis. selectedSlug =
   // mapArtSlug of the chosen map (''=latest finalized); the graphic resolves players from
   // tournament.csStats + the map's mapResults row (+ its snapshot roundHistory). DATA-ONLY.
@@ -2140,7 +2140,7 @@ app.post('/api/draft', (req, res) => {
 });
 app.post('/api/bgOutput', requireAdmin, (req, res) => { deepMerge(state.bgOutput, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/breakScreen', (req, res) => { Object.assign(state.breakScreen, req.body); broadcast(); res.json({ok:true}); });
-app.post('/api/winScreen',   (req, res) => { Object.assign(state.winScreen,   req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/winScreen',   (req, res) => { Object.assign(state.winScreen,   req.body); reconcileWinSeriesScore(); broadcast(); res.json({ok:true}); });
 app.post('/api/postGame',    (req, res) => { Object.assign(state.postGame,    req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/mapIntro',    (req, res) => { Object.assign(state.mapIntro,    req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/playerSpotlight', (req, res) => { Object.assign(state.playerSpotlight, req.body); broadcast(); res.json({ok:true}); });
@@ -2861,6 +2861,24 @@ function applyMapResultsToSeries() {
   });
   if (state.match.team1) state.match.team1.score = t1;
   if (state.match.team2) state.match.team2.score = t2;
+  reconcileWinSeriesScore();
+}
+
+// CS2 (map-veto) win screen: LoL fills winScreen.seriesScore from the game-flow, but CS2 has no
+// such flow — so when the operator opts in (autoSeriesScore), derive it from the maps-won score
+// (team1.score — team2.score, Bo>1 only). When off, clear it so the score row hides. No-op for
+// non-map-veto games so LoL's game-flow value is never touched.
+function reconcileWinSeriesScore() {
+  if (!state.match || !state.winScreen) return;
+  if (games.resolveAdapter(state.match.game).pregame.kind !== 'map-veto') return;
+  if (state.winScreen.autoSeriesScore) {
+    const fmt = parseInt((state.match.format || 'Bo3').replace(/bo/i, '')) || 3;
+    state.winScreen.seriesScore = fmt > 1
+      ? (((state.match.team1 || {}).score | 0) + ' — ' + ((state.match.team2 || {}).score | 0))
+      : '';
+  } else {
+    state.winScreen.seriesScore = '';
+  }
 }
 
 // Update one map row (by index) — map name + round score + winner + status. Manual
