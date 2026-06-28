@@ -94,6 +94,12 @@ body {
 .sig-pgm { color: var(--pgm); border-color: var(--pgm); background: rgba(var(--live-rgb),0.14); }
 .sig-pvw { color: var(--pvw); border-color: var(--pvw); background: rgba(46,194,122,0.12); }
 
+/* Game maturity badge — control-room only (never on-air). Flags how production-ready the
+   selected/locked game is in the Tournament Setup picker. */
+.maturity-badge { display: inline-flex; align-items: center; font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 7px; border-radius: var(--radius); border: 1px solid; white-space: nowrap; flex-shrink: 0; cursor: help; }
+.maturity-badge.beta  { color: #ffcf6b; border-color: #7a5e1e; background: rgba(255,193,80,0.12); }
+.maturity-badge.alpha { color: #ff9b9b; border-color: #7a2e2e; background: rgba(255,90,90,0.12); }
+
 /* ── Sidebar ─────────────────────────────────────── */
 .sidebar {
   grid-column: 1;

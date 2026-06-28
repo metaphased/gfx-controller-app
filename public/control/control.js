@@ -107,6 +107,19 @@ function applyTournamentCreateLock() {
   if (lockNote)  lockNote.style.display  = created ? '' : 'none';
   if (createRow) createRow.style.display = created ? 'none' : '';
   if (resetRow)  resetRow.style.display  = created ? '' : 'none';
+  // Maturity badge (control-room only, never on-air) — reflects the selected/locked game.
+  const badge = g('ts-game-maturity');
+  if (badge) {
+    const m = (window._state && window._state.adapter && window._state.adapter.maturity) || 'stable';
+    if (m === 'beta' || m === 'alpha') {
+      badge.style.display = '';
+      badge.className = 'maturity-badge ' + m;
+      badge.textContent = m === 'beta' ? 'BETA' : 'ALPHA';
+      badge.title = m === 'beta'
+        ? 'Beta — this game is shipped and usable, still being hardened.'
+        : 'Alpha — early / planned support; runs on the generic core only.';
+    } else { badge.style.display = 'none'; }
+  }
 }
 async function createTournament() {
   const game = g('ts-game') ? g('ts-game').value : 'lol';

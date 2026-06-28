@@ -5,6 +5,8 @@
 module.exports = {
   id:    'generic',
   label: '',
+  maturity: 'stable',  // game-agnostic core only — nothing game-specific to stabilise
+
   roster: {
     positions: ['', '', '', '', ''], // 5 unlabelled slots
     teamSize:  5,

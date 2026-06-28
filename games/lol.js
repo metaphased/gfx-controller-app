@@ -5,6 +5,8 @@
 module.exports = {
   id:    'lol',
   label: 'League of Legends',
+  maturity: 'stable',  // the original, production title
+
   roster: {
     positions: ['Top', 'Jungle', 'Mid', 'Bot', 'Support'],
     teamSize:  5,
