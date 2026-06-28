@@ -912,6 +912,7 @@ function applyOpsAdapterUI() {
   const caps = {
     'cap-champ-draft': a ? a.pregameKind === 'champ-draft'            : true,
     'cap-map-veto':    a ? a.pregameKind === 'map-veto'               : false,
+    'cap-hero-draft':  a ? a.pregameKind === 'hero-draft'             : false,
     'cap-roles':       a ? (a.positions || []).some(function(p){return !!p;}) : true,
     'cap-opgg':        a ? a.intelProvider === 'opgg'                 : true,
     'cap-picks':       a ? a.pickEntity != null                       : true,

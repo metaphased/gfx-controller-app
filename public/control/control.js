@@ -47,6 +47,7 @@ function gameAdapter()      { return (window._state && window._state.adapter) ||
 function adapterRoles()     { const a = gameAdapter(); return (a && a.positions && a.positions.length) ? a.positions : DEFAULT_ROLES; }
 function isChampDraft()     { const a = gameAdapter(); return a ? a.pregameKind === 'champ-draft' : true; }
 function isMapVeto()        { const a = gameAdapter(); return a ? a.pregameKind === 'map-veto'    : false; }
+function isHeroDraft()      { const a = gameAdapter(); return a ? a.pregameKind === 'hero-draft'  : false; }
 function supportsFearless() { const a = gameAdapter(); return a ? !!a.supportsFearless : true; }
 function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvider === 'opgg'  : true; }
 function supportsSteamId()  { const a = gameAdapter(); return a ? a.rosterIds === 'steam'     : false; }
@@ -77,6 +78,7 @@ function applyAdapterUI() {
   const caps = {
     'cap-champ-draft': isChampDraft(),
     'cap-map-veto':    isMapVeto(),
+    'cap-hero-draft':  isHeroDraft(),
     'cap-opgg':        supportsOpgg(),
     'cap-assets':      supportsAssets(),
     'cap-heroes':      supportsHeroes(),
@@ -265,6 +267,8 @@ socket.on('state', async (state) => {
   applyAdapterUI();
   applyTournamentCreateLock();
   tmRenderMapPool(state);
+  tmRenderDraftOrder(state);
+  hdRenderDraft(state);
   ldRender(state);
   mvRenderVeto(state);
   mvRenderGfx(state);
@@ -311,7 +315,7 @@ let _myId = null;
 // ── Navigation ─────────────────────────────────────────────────────────────────
 const TAB_LABELS = {
   home:'Dashboard', tournament:'Tournament Setup', teams:'Teams', talent:'Talent Roster', schedule:'Schedule',
-  groups:'Groups', playoffs:'Playoffs', game:'Game Setup', draft:'Draft',
+  groups:'Groups', playoffs:'Playoffs', game:'Game Setup', draft:'Draft', 'hero-draft':'Hero Draft',
   players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
   preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
   h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
@@ -4206,6 +4210,87 @@ function tmRenderMapPool(state){
       '<button class="btn btn-xs mv-rowbtn" title="Move down" onclick="tmMoveMap('+i+',1)">↓</button>'+
       '<button class="btn btn-xs btn-danger mv-rowbtn" title="Remove" onclick="tmRemoveMap('+i+')">✕</button></div>';
   }).join('')) || '<p class="hint">No maps yet. Click + Add Map or Load default pool.</p>';
+}
+
+// ── Dota 2 Captains Mode order (Tournament Setup) — persisted on the tournament ──────
+function _teamName(k){ const m=(window._state&&window._state.match)||{}; return (m[k]&&(m[k].name||m[k].tag))||(k==='team1'?'Team 1':'Team 2'); }
+function _hdOrder(){ return (window._state && window._state.tournament && window._state.tournament.heroDraftOrder) || []; }
+function _hdDefaultOrder(){
+  const saved = window._state && window._state.settings && window._state.settings.heroDraftDefault;
+  if (saved && saved.length) return saved.map(function(o){ return { team:o.team==='team2'?'team2':'team1', action:o.action==='pick'?'pick':'ban' }; });
+  const a=gameAdapter(); return ((a&&a.defaultDraftOrder)||[]).map(function(o){ return { team:o.team, action:o.action }; });
+}
+function hdCommitOrder(order){ api('/api/tournament', { heroDraftOrder: order }); }
+function hdAddStep(){ const o=_hdOrder().slice(); o.push({ team:'team1', action:'ban' }); hdCommitOrder(o); }
+function hdRemoveStep(i){ const o=_hdOrder().slice(); o.splice(i,1); hdCommitOrder(o); }
+function hdMoveStep(i,d){ const o=_hdOrder().slice(); const j=i+d; if(j<0||j>=o.length)return; const t=o[i]; o[i]=o[j]; o[j]=t; hdCommitOrder(o); }
+function hdSwapTeams(){ hdCommitOrder(_hdOrder().map(function(s){ return { team:s.team==='team1'?'team2':'team1', action:s.action }; })); }
+function hdSetStep(i,field,val){ const o=_hdOrder().slice(); if(!o[i])return; o[i]=Object.assign({},o[i]); o[i][field]=val; hdCommitOrder(o); }
+function hdLoadDefaultOrder(){ const def=_hdDefaultOrder(); if(!def.length)return;
+  if(_hdOrder().length && !confirm('Replace the current Captains Mode order with the default?'))return;
+  hdCommitOrder(def); }
+function hdSetDefaultOrder(){
+  const o=_hdOrder(); if(!o.length){ if(window.showAlert) showAlert('Add steps to the order first.'); return; }
+  Promise.resolve(api('/api/settings',{ heroDraftDefault:o.map(function(s){ return { team:s.team, action:s.action }; }) })).then(function(){
+    const b=g('hd-set-default-order'); if(b){ const t=b.textContent; b.textContent='Saved ✓'; setTimeout(function(){ b.textContent=t; },1500); }
+  });
+}
+function tmRenderDraftOrder(state){
+  const host=g('tm-draft-order'); if(!host) return;
+  const order=(state&&state.tournament&&state.tournament.heroDraftOrder)||[];
+  const sig=JSON.stringify(order); if(sig===window._hdOrderSig) return; window._hdOrderSig=sig;
+  const tn1=_teamName('team1'), tn2=_teamName('team2');
+  host.innerHTML=(order.map(function(s,i){
+    const team=s.team==='team2'?'team2':'team1', action=s.action==='pick'?'pick':'ban';
+    return '<div class="mv-pool-row">'+
+      '<span class="mv-row-num">'+(i+1)+'</span>'+
+      '<select class="hd-step-team" style="width:150px" onchange="hdSetStep('+i+',\'team\',this.value)">'+
+        '<option value="team1"'+(team==='team1'?' selected':'')+'>'+esc(tn1)+'</option>'+
+        '<option value="team2"'+(team==='team2'?' selected':'')+'>'+esc(tn2)+'</option></select>'+
+      '<select class="hd-step-action" style="width:90px" onchange="hdSetStep('+i+',\'action\',this.value)">'+
+        '<option value="ban"'+(action==='ban'?' selected':'')+'>Ban</option>'+
+        '<option value="pick"'+(action==='pick'?' selected':'')+'>Pick</option></select>'+
+      '<button class="btn btn-xs mv-rowbtn" title="Move up" onclick="hdMoveStep('+i+',-1)">↑</button>'+
+      '<button class="btn btn-xs mv-rowbtn" title="Move down" onclick="hdMoveStep('+i+',1)">↓</button>'+
+      '<button class="btn btn-xs btn-danger mv-rowbtn" title="Remove" onclick="hdRemoveStep('+i+')">✕</button></div>';
+  }).join('')) || '<p class="hint">No steps yet. Click Load default order or + Add Step.</p>';
+}
+
+// ── Hero draft entry (GAME → Hero Draft) — fill heroes into the CM slots ─────────
+var _heroList = null; // [{name,slug,img,icon}] from /api/heroes (for the typeahead datalist)
+function hdLoadHeroes(){
+  if (_heroList) return Promise.resolve(_heroList);
+  _heroList = []; // guard against re-entry while fetching
+  return fetch('/api/heroes').then(function(r){ return r.json(); }).then(function(d){
+    _heroList = (d && d.heroes) || [];
+    const dl=g('hd-hero-list');
+    if (dl) dl.innerHTML = _heroList.map(function(h){ return '<option value="'+esc(h.name)+'"></option>'; }).join('');
+    if (_heroList.length) { window._hdDraftSig=null; hdRenderDraft(window._state); } // re-render once names are in
+    return _heroList;
+  }).catch(function(){ _heroList=[]; return _heroList; });
+}
+function _hdLiveState(){ return (window._state && window._state.heroDraft) || { steps:[], currentStep:0 }; }
+function hdSetHero(i, name){ api('/api/heroDraft/pick', { index:i, hero:(name||'').trim() }); }
+function hdStep(d){ const hd=_hdLiveState(), n=(hd.steps||[]).length; api('/api/heroDraft', { currentStep: Math.min(Math.max(0,(hd.currentStep|0)+d), n) }); }
+function hdResetDraft(){ if(!confirm('Clear every entered hero and reset to the first slot?'))return; api('/api/heroDraft/reset', {}); }
+function hdRenderDraft(state){
+  const host=g('hd-steps'); if(!host || !isHeroDraft()) return; // Dota-only; the tab is hidden otherwise
+  if(_heroList===null) hdLoadHeroes();
+  const hd=(state&&state.heroDraft)||{steps:[],currentStep:0};
+  const steps=hd.steps||[], cur=hd.currentStep|0;
+  const tn1=_teamName('team1'), tn2=_teamName('team2');
+  const mi=g('hd-match-info'); if(mi) mi.innerHTML=esc(tn1)+' <span style="color:var(--text-faint)">vs</span> '+esc(tn2)+' · '+steps.length+' slots';
+  const cl=g('hd-current-label'); if(cl) cl.textContent= cur>=steps.length ? 'Draft complete' : ('Slot '+(cur+1)+' of '+steps.length);
+  const sig=JSON.stringify({s:steps,c:cur,t:[tn1,tn2]}); if(sig===window._hdDraftSig) return; window._hdDraftSig=sig;
+  host.innerHTML=steps.map(function(s,i){
+    const team=s.team==='team2'?'team2':'team1', isPick=s.action==='pick', active=i===cur;
+    return '<div class="hd-row" style="display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:4px;'+(active?'background:rgba(var(--live-rgb,255,90,90),0.12);':'')+'">'+
+      '<span class="mv-row-num">'+(i+1)+'</span>'+
+      '<span style="font-size:10px;font-weight:800;letter-spacing:0.08em;padding:2px 7px;border-radius:3px;border:1px solid;'+(isPick?'color:#7ee0a0;border-color:#2f6b45':'color:#f0a8a8;border-color:#7a2e2e')+'">'+(isPick?'PICK':'BAN')+'</span>'+
+      '<span style="min-width:120px;font-size:12px;color:'+(team==='team1'?'#5aa0ff':'#ff7a7a')+'">'+esc(team==='team1'?tn1:tn2)+'</span>'+
+      '<input type="text" list="hd-hero-list" placeholder="Hero…" value="'+esc(s.hero||'')+'" onchange="hdSetHero('+i+',this.value)" style="flex:1;max-width:240px">'+
+      '<button class="btn btn-xs" title="Make this the current (highlighted) slot" onclick="api(\'/api/heroDraft\',{currentStep:'+i+'})">◉</button></div>';
+  }).join('') || '<p class="hint">No draft order. Add steps in <a onclick="switchToTab(\'tournament\')" href="#" style="color:var(--primary)">Tournament Setup → Captains Mode Order</a>.</p>';
 }
 
 // Veto data entry (GAME → Map Veto) — guided sequence following the official Bo1/Bo3/Bo5

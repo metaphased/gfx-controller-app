@@ -40,6 +40,7 @@
       <a class="nav-item" data-tab="game">Game Setup</a>
       <a class="nav-item" data-tab="players">Players / Rosters</a>
       <a class="nav-item cap-champ-draft" data-tab="draft">Draft</a>
+      <a class="nav-item cap-hero-draft" data-tab="hero-draft">Hero Draft</a>
       <a class="nav-item cap-map-veto" data-tab="map-veto">Map Veto</a>
       <a class="nav-item cap-map-veto" data-tab="live-data">Live Data</a>
       <a class="nav-item cap-opgg" data-tab="intel">Match Intel</a>
@@ -313,6 +314,21 @@
         </div>
         <p class="hint" style="margin-bottom:12px">The maps in <strong>this</strong> tournament's pool (used by the Map Veto). Editable — the active-duty pool rotates. Optional image URL per map (card background on-air).</p>
         <div id="tm-map-pool"></div>
+      </div>
+
+      <!-- Dota 2 Captains Mode order -->
+      <div class="card cap-hero-draft" style="margin-top:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div class="card-title" style="margin-bottom:0">Captains Mode Order</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm" onclick="hdAddStep()">+ Add Step</button>
+            <button class="btn btn-sm" onclick="hdSwapTeams()" title="Flip which team acts on every step (e.g. the other team won first pick)">Swap teams</button>
+            <button class="btn btn-sm" id="hd-load-default-order" onclick="hdLoadDefaultOrder()">Load default order</button>
+            <button class="btn btn-sm" id="hd-set-default-order" onclick="hdSetDefaultOrder()" title="Save this order as the default for new Dota 2 tournaments">Set as default</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-bottom:12px">The pick/ban sequence the <strong>Hero Draft</strong> runs (team1 = first pick by convention). Ships with the current Captains Mode preset — edit it here if Valve re-tunes the order. The draft controls fill heroes into these slots in order.</p>
+        <div id="tm-draft-order"></div>
       </div>
 
       <div class="card" style="margin-top:16px">
@@ -1731,6 +1747,26 @@
       </div>
 
       <p class="hint" style="margin-top:12px">Per-map <strong>round scores &amp; winners</strong> are entered in <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup → Series Tracker</a> as the series plays out.</p>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         HERO DRAFT — data entry (Dota 2, GAME section)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-hero-draft">
+      <div class="tab-header"><h1>Hero Draft</h1></div>
+      <div class="card">
+        <div id="hd-match-info" class="hint" style="font-size:14px;margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn btn-sm" onclick="hdStep(-1)">◀ Prev slot</button>
+          <span id="hd-current-label" style="font-weight:700;min-width:140px;text-align:center"></span>
+          <button class="btn btn-sm" onclick="hdStep(1)">Next slot ▶</button>
+          <button class="btn btn-sm btn-danger" onclick="hdResetDraft()" style="margin-left:auto" title="Clear every entered hero and reset to the first slot">Reset draft</button>
+        </div>
+        <div class="card-title" style="margin-top:4px">Pick / Ban Sequence</div>
+        <div id="hd-steps"></div>
+        <datalist id="hd-hero-list"></datalist>
+        <p class="hint" style="margin-top:12px">The order comes from <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Captains Mode Order</a>. Type each hero into its slot as it's drafted (suggestions from the synced hero list); <strong>Next slot</strong> advances the slot the overlay highlights.</p>
+      </div>
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════

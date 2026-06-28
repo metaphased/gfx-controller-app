@@ -732,6 +732,7 @@ const makeDefault = () => ({
     hasPrizepool:    false,
     teamPool:        [],   // team IDs competing in THIS tournament (subset of global Teams DB)
     mapPool:         [],   // CS2 etc. map pool [{ name, image }] — set in Tournament Setup; rotates
+    heroDraftOrder:  [],   // Dota 2 Captains Mode order [{ team, action:'ban'|'pick' }] — editable in Tournament Setup
     csStats:         [],   // CS2 per-map player stat lines accumulated over the event (live-data Phase C2)
     groups: [],
     schedule: []
@@ -825,6 +826,11 @@ const makeDefault = () => ({
   // CS2 map intro — cinematic pre-map card (map art hero + veto story + optional lineups).
   // selectedSlug = mapArtSlug of the chosen map (''=current/next, the first non-final map row).
   mapIntro:    { visible: false, selectedSlug: '', showLineups: false, bg: 'art', title: '', animVariant: 'cinematic', flyby: false },
+  // Dota 2 hero draft (Captains Mode). steps are reconciled from tournament.heroDraftOrder
+  // (team + ban/pick); the operator fills each step's `hero` as it's drafted. currentStep =
+  // the active slot the graphic highlights. Order is editable in Tournament Settings.
+  heroDraft:   { visible: false, title: 'DRAFT', currentStep: 0, steps: [], scale: 'normal',
+                 showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
   // design: angled|bleed|framed, mode: single|duo|compare. players[0]=A (team1 side),
   // players[1]=C (team2 side); champ='' = auto (most-played); statOverrides keyed by stat.
@@ -885,6 +891,7 @@ const makeDefault = () => ({
     },
     logoSet: { logos: [] },        // [{ name: string, url: string }]
     mapPoolDefaults: {},           // per-game default map pool, e.g. { cs2: [{name,image}] } — "Set as default"
+    heroDraftDefault: [],          // Dota 2 default CM order [{team,action}] — "Set as default" (overrides adapter preset)
     // CS2 live-data ingest config (optional; both sources independent). liveToken is a
     // SEPARATE secret from graphicsToken (carried by the GSI cfg / MatchZy plugin) and is
     // stripped from the graphics payload. autoApplyScores=false → ingest only suggests.
@@ -1160,6 +1167,7 @@ _teams = loadTeams(); // prime in-memory cache after state is ready
 _talent = loadTalent();
 _ensureTeamPool();    // migrate legacy tournaments to an explicit competing-teams pool
 reconcileMapVetoSteps(); // ensure veto steps cover the loaded map pool
+reconcileHeroDraftSteps(); // ensure hero-draft slots match the loaded CM order
 
 // ── Bus state (in-memory, not persisted) ───────────────────────────────────────
 let busState = {};
@@ -2144,6 +2152,22 @@ app.post('/api/breakScreen', (req, res) => { Object.assign(state.breakScreen, re
 app.post('/api/winScreen',   (req, res) => { Object.assign(state.winScreen,   req.body); reconcileWinSeriesScore(); broadcast(); res.json({ok:true}); });
 app.post('/api/postGame',    (req, res) => { Object.assign(state.postGame,    req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/mapIntro',    (req, res) => { Object.assign(state.mapIntro,    req.body); broadcast(); res.json({ok:true}); });
+// Dota 2 hero draft: graphic options (visible/currentStep/title/logo/scale). `steps` are
+// reconciled from the order, not set here — heroes are entered via /api/heroDraft/pick.
+app.post('/api/heroDraft',   (req, res) => { const b = req.body || {}; delete b.steps; Object.assign(state.heroDraft, b); broadcast(); res.json({ok:true}); });
+// Set the hero at one draft slot (ban/pick). index is the step ordinal; hero = '' clears it.
+app.post('/api/heroDraft/pick', requireAdmin, (req, res) => {
+  const i = parseInt(req.body && req.body.index);
+  if (isNaN(i) || !state.heroDraft.steps || !state.heroDraft.steps[i]) return res.status(404).json({ error: 'step not found' });
+  state.heroDraft.steps[i].hero = String((req.body && req.body.hero) || '');
+  broadcast(); res.json({ ok: true });
+});
+// Clear all entered heroes + reset the active slot to the start.
+app.post('/api/heroDraft/reset', requireAdmin, (req, res) => {
+  (state.heroDraft.steps || []).forEach(s => { s.hero = ''; });
+  state.heroDraft.currentStep = 0;
+  broadcast(); res.json({ ok: true });
+});
 app.post('/api/playerSpotlight', (req, res) => { Object.assign(state.playerSpotlight, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/headToHead',  (req, res) => { Object.assign(state.headToHead,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/playerIntro', (req, res) => { Object.assign(state.playerIntro, req.body); broadcast(); res.json({ok:true}); });
@@ -2851,6 +2875,21 @@ function reconcileMapVetoSteps() {
   reconcileMapResults();
 }
 
+// Dota 2 hero draft: keep heroDraft.steps matching tournament.heroDraftOrder (team + ban/pick),
+// preserving any heroes already entered (by slot index). currentStep is clamped to range.
+function reconcileHeroDraftSteps() {
+  if (!state.heroDraft) return;
+  const order = (state.tournament && state.tournament.heroDraftOrder) || [];
+  const prev  = state.heroDraft.steps || [];
+  state.heroDraft.steps = order.map((o, i) => ({
+    team:   (o && o.team === 'team2') ? 'team2' : 'team1',
+    action: (o && o.action === 'pick') ? 'pick' : 'ban',
+    hero:   (prev[i] && prev[i].hero) || '',
+  }));
+  const n = state.heroDraft.steps.length;
+  state.heroDraft.currentStep = Math.min(Math.max(0, state.heroDraft.currentStep | 0), n);
+}
+
 // CS2-style map-veto games: maintain match.mapResults as a fixed list of best-of game
 // rows (Bo3 → 3 rows). Each row is operator-editable in Game Setup (map + round score +
 // winner). The veto's picked maps (picks + decider, in order) PRE-FILL empty rows so a
@@ -2958,13 +2997,20 @@ app.post('/api/tournament/create', requireAdmin, (req, res) => {
       : adapter.defaultMapPool.map(m => (typeof m === 'string' ? { name: m, image: '' } : { name: m.name || '', image: m.image || '', video: m.video || '' }));
     warmMapPool(state.tournament.mapPool);   // pre-fetch/resize art so the first focus is instant
   }
+  // Seed the Dota 2 Captains Mode order (saved default wins, else the adapter preset).
+  if (adapter.defaultDraftOrder && (!state.tournament.heroDraftOrder || !state.tournament.heroDraftOrder.length)) {
+    const savedD = state.settings && state.settings.heroDraftDefault;
+    const src = (savedD && savedD.length) ? savedD : adapter.defaultDraftOrder;
+    state.tournament.heroDraftOrder = src.map(o => ({ team: o.team === 'team2' ? 'team2' : 'team1', action: o.action === 'pick' ? 'pick' : 'ban' }));
+  }
   reconcileMapVetoSteps();
+  reconcileHeroDraftSteps();
   broadcast(); res.json({ ok: true });
 });
 
 app.post('/api/tournament', requireAdmin, (req, res) => {
   if (setupIsLocked()) return res.status(423).json({ error: 'Tournament setup is locked' });
-  const { name, game, logo, sponsorLogos, mapPool, ...rest } = req.body;
+  const { name, game, logo, sponsorLogos, mapPool, heroDraftOrder, ...rest } = req.body;
   // Game is locked once the tournament is created — ignore game changes thereafter.
   const gameLocked = !!(state.tournament && state.tournament.created);
   if (name !== undefined) state.match.tournament = name;
@@ -2979,6 +3025,13 @@ app.post('/api/tournament', requireAdmin, (req, res) => {
   // Map pool is replaced wholesale (not deep-merged, so deletions take effect) + the veto
   // steps reconcile to cover exactly the pool.
   if (mapPool !== undefined) { state.tournament.mapPool = Array.isArray(mapPool) ? mapPool : []; reconcileMapVetoSteps(); warmMapPool(state.tournament.mapPool); }
+  // Dota 2 CM order — replaced wholesale (so reorders/removals take), then the draft reconciles.
+  if (heroDraftOrder !== undefined) {
+    state.tournament.heroDraftOrder = Array.isArray(heroDraftOrder)
+      ? heroDraftOrder.map(o => ({ team: o && o.team === 'team2' ? 'team2' : 'team1', action: o && o.action === 'pick' ? 'pick' : 'ban' }))
+      : [];
+    reconcileHeroDraftSteps();
+  }
   deepMerge(state.tournament, rest);
   // Keep bracket.type in sync with playoffFormat
   if (rest.playoffFormat !== undefined) {
@@ -3583,6 +3636,7 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
   // with data comes in locked (same migration as state.json load).
   migrateGame(state);
   reconcileMapVetoSteps(); // keep veto steps in sync with the loaded tournament's map pool
+  reconcileHeroDraftSteps(); // keep hero-draft slots in sync with the loaded CM order
   if (d.players) deepMerge(state.players, d.players);
   if (d.prizepool) {
     const { entries, showLogo, logoScale, logoPosition } = d.prizepool;

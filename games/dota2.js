@@ -20,4 +20,16 @@ module.exports = {
   },
   assets: { source: 'dota-heroes' }, // hero portraits (Valve CDN / OpenDota), not DDragon champions
   intel:  { provider: 'opendota' },  // OpenDota / STRATZ — a later, optional data hook
+  // Default Captains Mode pick/ban order (team1 = first pick). 24 steps, 7 bans + 5 picks per
+  // team. A PRESET, not gospel — Valve re-tunes CM between patches, so the operator can edit
+  // this order in Tournament Settings (settings.heroDraftDefault overrides; "Set as default").
+  defaultDraftOrder: [
+    { team: 'team1', action: 'ban' }, { team: 'team2', action: 'ban' }, { team: 'team1', action: 'ban' }, { team: 'team2', action: 'ban' },
+    { team: 'team1', action: 'ban' }, { team: 'team2', action: 'ban' },
+    { team: 'team1', action: 'pick' }, { team: 'team2', action: 'pick' }, { team: 'team2', action: 'pick' }, { team: 'team1', action: 'pick' },
+    { team: 'team1', action: 'ban' }, { team: 'team2', action: 'ban' }, { team: 'team1', action: 'ban' }, { team: 'team2', action: 'ban' },
+    { team: 'team1', action: 'pick' }, { team: 'team2', action: 'pick' }, { team: 'team2', action: 'pick' }, { team: 'team1', action: 'pick' },
+    { team: 'team1', action: 'ban' }, { team: 'team2', action: 'ban' }, { team: 'team1', action: 'ban' }, { team: 'team2', action: 'ban' },
+    { team: 'team1', action: 'pick' }, { team: 'team2', action: 'pick' },
+  ],
 };

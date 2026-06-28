@@ -45,6 +45,7 @@ function adapterDescriptor(gameId) {
     assetSource:      a.assets.source,
     intelProvider:    a.intel.provider,
     defaultMapPool:   a.defaultMapPool || null, // for "load default pool" in map-veto control
+    defaultDraftOrder: a.defaultDraftOrder || null, // for "load default order" in hero-draft control
     maturity:         gameMaturity(gameId),     // control-room badge only; never on-air
   };
 }
