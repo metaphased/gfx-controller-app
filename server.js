@@ -1781,6 +1781,7 @@ app.get('/api/companion/profile', (req, res) => {
     playerSpotlight:'Player Spotlight', draft:'Draft', bracket:'Bracket',
     tournamentStructure:'Tournament Structure', groupStage:'Group Stage', preShow:'Pre-Show',
     breakScreen:'Break Screen', winScreen:'Win Screen', prizepool:'Prizepool', ticker:'Ticker',
+    mapVeto:'Map Veto', postGame:'Post-Game', mapIntro:'Map Intro',   // CS2
   };
   const GRAPHICS = Object.keys(GRAPHIC_LABELS);
 
@@ -1845,6 +1846,10 @@ app.get('/api/companion/profile', (req, res) => {
     httpButton('Spotlight\nVS Off',   '/api/playerSpotlight', '{"showVs":false}'),
     httpButton('Standings\nGroups',   '/api/groupStage', '{"mode":"live"}'),
     httpButton('Standings\nFinal',    '/api/groupStage', '{"mode":"final"}'),
+    httpButton('Map Intro\nLineups On',  '/api/mapIntro', '{"showLineups":true}'),
+    httpButton('Map Intro\nLineups Off', '/api/mapIntro', '{"showLineups":false}'),
+    httpButton('Map Intro\nFlyby On',    '/api/mapIntro', '{"flyby":true}'),
+    httpButton('Map Intro\nFlyby Off',   '/api/mapIntro', '{"flyby":false}'),
   ];
   const matchBtns = [
     httpButton('T1 Score\n+1',  '/api/match/score/team1/increment'),
