@@ -42,7 +42,6 @@
       <a class="nav-item cap-champ-draft" data-tab="draft">Draft</a>
       <a class="nav-item cap-map-veto" data-tab="map-veto">Map Veto</a>
       <a class="nav-item cap-map-veto" data-tab="live-data">Live Data</a>
-      <a class="nav-item cap-map-veto" data-tab="post-game-gfx">Post-Game</a>
       <a class="nav-item cap-opgg" data-tab="intel">Match Intel</a>
 
       <div class="nav-section-label">GRAPHICS</div>
@@ -97,6 +96,10 @@
       <a class="nav-item" data-tab="player-spotlight">
         <span id="nav-dot-player-spotlight" class="nav-status-dot"></span>
         Player Spotlight
+      </a>
+      <a class="nav-item cap-map-veto" data-tab="post-game-gfx">
+        <span id="nav-dot-post-game-gfx" class="nav-status-dot"></span>
+        Post-Game
       </a>
 
       <div class="nav-section-label">SYSTEM</div>
@@ -2912,6 +2915,11 @@
     </div>
 
     <div class="lbar-divider"></div>
+
+    <!-- Post-Game scoreboard (CS2) -->
+    <div class="lbar-group cap-map-veto" id="lbar-group-postGame">
+      <button class="lbar-toggle" id="lbar-toggle-postGame" onclick="toggleGraphic('postGame')"><span class="lbar-dot" id="lbar-dot-postGame"></span>POST-GAME</button>
+    </div>
 
     <!-- Win screen + winner selector -->
     <div class="lbar-group" id="lbar-group-winScreen">

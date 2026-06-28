@@ -4384,14 +4384,15 @@ function pgRenderPreview(state){
   const col=function(k){
     const rowsH=(by[k].length?by[k]:[]).map(function(l){
       const kd=((l.kills|0)/Math.max(1,l.deaths|0)).toFixed(2);
-      return '<div style="display:grid;grid-template-columns:1fr 30px 30px 30px 42px 42px;gap:4px;font-size:12px;padding:2px 0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(l.name||'?')+'</span>'+
+      return '<div style="display:grid;grid-template-columns:1fr 32px 32px 32px 46px 46px;gap:4px;font-size:12px;padding:2px 0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(l.name||'?')+'</span>'+
         '<span style="text-align:center">'+(l.kills|0)+'</span><span style="text-align:center">'+(l.deaths|0)+'</span><span style="text-align:center">'+(l.assists|0)+'</span>'+
         '<span style="text-align:center;color:var(--primary)">'+(l.adr|0)+'</span><span style="text-align:center;color:var(--text-dim)">'+kd+'</span></div>';
     }).join('')||'<p class="hint" style="margin:2px 0">No player stats logged for this map.</p>';
-    return '<div style="flex:1;min-width:0"><div style="font-weight:700;font-size:12px;margin-bottom:2px;color:var(--text)">'+esc(tn(k))+'</div>'+
-      '<div style="display:grid;grid-template-columns:1fr 30px 30px 30px 42px 42px;gap:4px;font-size:10px;color:var(--text-faint);letter-spacing:0.04em"><span>PLAYER</span><span style="text-align:center">K</span><span style="text-align:center">D</span><span style="text-align:center">A</span><span style="text-align:center">ADR</span><span style="text-align:center">KD</span></div>'+rowsH+'</div>';
+    return '<div style="min-width:0;margin-bottom:10px"><div style="font-weight:700;font-size:12px;margin-bottom:2px;color:var(--text)">'+esc(tn(k))+'</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 32px 32px 32px 46px 46px;gap:4px;font-size:10px;color:var(--text-faint);letter-spacing:0.04em"><span>PLAYER</span><span style="text-align:center">K</span><span style="text-align:center">D</span><span style="text-align:center">A</span><span style="text-align:center">ADR</span><span style="text-align:center">KD</span></div>'+rowsH+'</div>';
   };
-  html+='<div style="display:flex;gap:16px">'+col('team1')+col('team2')+'</div>';
+  // Stack the two teams vertically — the preview card is narrow, so side-by-side overflowed.
+  html+=col('team1')+col('team2');
   el.innerHTML=html;
 }
 // Accordion steps = the veto steps if present, else the raw pool (pending), matching the graphic.
@@ -4652,7 +4653,9 @@ function syncLiveBar(s) {
     const toggleB = g('lbar-toggle-' + gfx.key);
     if (group)   group.classList.toggle('lbar-group-active', !!active);
     if (dot)     dot.classList.toggle('active', !!active);
-    if (toggleB) toggleB.className = 'lbar-toggle' + (gfx.key === 'lowerThird' ? ' lt-master-label' : '') + (active ? ' is-on' : '');
+    // Toggle is-on only — rebuilding className here previously wiped cap-* gating classes
+    // (e.g. cap-champ-draft on the Draft button), breaking adapter show/hide on the live bar.
+    if (toggleB) toggleB.classList.toggle('is-on', !!active);
   });
 
   _syncLbarLtSets(s);
