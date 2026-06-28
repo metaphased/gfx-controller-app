@@ -2160,6 +2160,10 @@ app.post('/api/heroDraft/pick', requireAdmin, (req, res) => {
   const i = parseInt(req.body && req.body.index);
   if (isNaN(i) || !state.heroDraft.steps || !state.heroDraft.steps[i]) return res.status(404).json({ error: 'step not found' });
   state.heroDraft.steps[i].hero = String((req.body && req.body.hero) || '');
+  // Auto-advance the active slot to the first still-empty one (mirrors the LoL draft).
+  const steps = state.heroDraft.steps;
+  const next = steps.findIndex(s => !s.hero);
+  state.heroDraft.currentStep = next === -1 ? steps.length : next;
   broadcast(); res.json({ ok: true });
 });
 // Clear all entered heroes + reset the active slot to the start.

@@ -4130,6 +4130,8 @@ function jsq(str) { return String(str||'').replace(/\\/g,'\\\\').replace(/'/g,"\
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 Champions.load();
+// Re-render the hero draft board once the hero list lands so the pickers show their art.
+Heroes.load().then(function(){ if (typeof isHeroDraft==='function' && isHeroDraft() && window._state) { const b=g('hd-board'); if(b) b.dataset.struct=''; hdRenderDraft(window._state); } });
 refreshBracketTeams();
 
 // ── Graphic status indicators ──────────────────────────────────────────────────
@@ -4257,40 +4259,57 @@ function tmRenderDraftOrder(state){
 }
 
 // ── Hero draft entry (GAME → Hero Draft) — fill heroes into the CM slots ─────────
-var _heroList = null; // [{name,slug,img,icon}] from /api/heroes (for the typeahead datalist)
-function hdLoadHeroes(){
-  if (_heroList) return Promise.resolve(_heroList);
-  _heroList = []; // guard against re-entry while fetching
-  return fetch('/api/heroes').then(function(r){ return r.json(); }).then(function(d){
-    _heroList = (d && d.heroes) || [];
-    const dl=g('hd-hero-list');
-    if (dl) dl.innerHTML = _heroList.map(function(h){ return '<option value="'+esc(h.name)+'"></option>'; }).join('');
-    if (_heroList.length) { window._hdDraftSig=null; hdRenderDraft(window._state); } // re-render once names are in
-    return _heroList;
-  }).catch(function(){ _heroList=[]; return _heroList; });
-}
-function _hdLiveState(){ return (window._state && window._state.heroDraft) || { steps:[], currentStep:0 }; }
-function hdSetHero(i, name){ api('/api/heroDraft/pick', { index:i, hero:(name||'').trim() }); }
-function hdStep(d){ const hd=_hdLiveState(), n=(hd.steps||[]).length; api('/api/heroDraft', { currentStep: Math.min(Math.max(0,(hd.currentStep|0)+d), n) }); }
-function hdResetDraft(){ if(!confirm('Clear every entered hero and reset to the first slot?'))return; api('/api/heroDraft/reset', {}); }
+// The hero draft reuses the LoL draft BOARD + the shared searchable image picker (window.Heroes)
+// so the operator experience is identical across games — just heroes instead of champions. The
+// pick/ban sequence is the editable Captains Mode order (heroDraft.steps); picking a hero
+// auto-advances the active slot (server-side, like the LoL draft).
+var _hdPickerContainers = {};
+function hdSetHero(i, hero){ api('/api/heroDraft/pick', { index:i, hero:(hero && hero.name) || '' }); }
+function hdResetDraft(){ if(!confirm('Clear every drafted hero and start the draft over?'))return; api('/api/heroDraft/reset', {}); }
 function hdRenderDraft(state){
-  const host=g('hd-steps'); if(!host || !isHeroDraft()) return; // Dota-only; the tab is hidden otherwise
-  if(_heroList===null) hdLoadHeroes();
+  const board=g('hd-board'); if(!board || !isHeroDraft()) return; // Dota-only; the tab is hidden otherwise
   const hd=(state&&state.heroDraft)||{steps:[],currentStep:0};
   const steps=hd.steps||[], cur=hd.currentStep|0;
   const tn1=_teamName('team1'), tn2=_teamName('team2');
   const mi=g('hd-match-info'); if(mi) mi.innerHTML=esc(tn1)+' <span style="color:var(--text-faint)">vs</span> '+esc(tn2)+' · '+steps.length+' slots';
-  const cl=g('hd-current-label'); if(cl) cl.textContent= cur>=steps.length ? 'Draft complete' : ('Slot '+(cur+1)+' of '+steps.length);
-  const sig=JSON.stringify({s:steps,c:cur,t:[tn1,tn2]}); if(sig===window._hdDraftSig) return; window._hdDraftSig=sig;
-  host.innerHTML=steps.map(function(s,i){
-    const team=s.team==='team2'?'team2':'team1', isPick=s.action==='pick', active=i===cur;
-    return '<div class="hd-row" style="display:flex;align-items:center;gap:8px;padding:4px 6px;border-radius:4px;'+(active?'background:rgba(var(--live-rgb,255,90,90),0.12);':'')+'">'+
-      '<span class="mv-row-num">'+(i+1)+'</span>'+
-      '<span style="font-size:10px;font-weight:800;letter-spacing:0.08em;padding:2px 7px;border-radius:3px;border:1px solid;'+(isPick?'color:#7ee0a0;border-color:#2f6b45':'color:#f0a8a8;border-color:#7a2e2e')+'">'+(isPick?'PICK':'BAN')+'</span>'+
-      '<span style="min-width:120px;font-size:12px;color:'+(team==='team1'?'#5aa0ff':'#ff7a7a')+'">'+esc(team==='team1'?tn1:tn2)+'</span>'+
-      '<input type="text" list="hd-hero-list" placeholder="Hero…" value="'+esc(s.hero||'')+'" onchange="hdSetHero('+i+',this.value)" style="flex:1;max-width:240px">'+
-      '<button class="btn btn-xs" title="Make this the current (highlighted) slot" onclick="api(\'/api/heroDraft\',{currentStep:'+i+'})">◉</button></div>';
-  }).join('') || '<p class="hint">No draft order. Add steps in <a onclick="switchToTab(\'tournament\')" href="#" style="color:var(--primary)">Tournament Setup → Captains Mode Order</a>.</p>';
+  const cl=g('hd-current-label'); if(cl) cl.textContent = !steps.length ? '' : (cur>=steps.length ? 'Draft complete' : ('On the clock — slot '+(cur+1)));
+
+  // Build the board + pickers once (or when the order / team names change), then only update
+  // values + active state each tick — mirrors renderDraftTab so we don't rebuild pickers live.
+  const struct = JSON.stringify({ o: steps.map(function(s){ return [s.team, s.action]; }), t: [tn1, tn2] });
+  if (board.dataset.struct !== struct) {
+    board.dataset.struct = struct;
+    _hdPickerContainers = {};
+    if (!steps.length) {
+      board.innerHTML = '<p class="hint">No draft order yet. Set it in <a onclick="switchToTab(\'tournament\')" href="#" style="color:var(--primary)">Tournament Setup → Captains Mode Order</a>.</p>';
+    } else {
+      board.innerHTML = '<div class="draft-phase-section">' + steps.map(function(s,i){
+        const team=s.team==='team2'?'team2':'team1', side=team==='team1'?'blue':'red';
+        const tm=((state.match||{})[team])||{};
+        return '<div class="draft-step-row" id="hd-step-'+i+'">'+
+          '<span class="draft-step-num">'+(i+1)+'</span>'+
+          '<span class="draft-side-badge draft-side-'+side+'">'+esc(tm.tag || (team==='team1'?tn1:tn2))+'</span>'+
+          '<span class="draft-type-badge draft-type-'+(s.action==='pick'?'pick':'ban')+'">'+(s.action==='pick'?'PICK':'BAN')+'</span>'+
+          '<div class="draft-picker-wrap" id="hd-picker-'+i+'"></div>'+
+          '<span class="draft-clock-badge" id="hd-clock-'+i+'" style="display:none">ON THE CLOCK</span>'+
+        '</div>';
+      }).join('') + '</div>';
+      steps.forEach(function(s,i){
+        const pc=g('hd-picker-'+i); if(!pc) return;
+        Heroes.buildPicker(pc, function(hero){ hdSetHero(i, hero); }, s.hero || '');
+        _hdPickerContainers[i]=pc;
+      });
+    }
+  } else {
+    steps.forEach(function(s,i){ const pc=_hdPickerContainers[i]; if(pc) Heroes.updatePickerValue(pc, s.hero || ''); });
+  }
+
+  // Active-slot highlight + clock badge each tick (like the LoL board).
+  steps.forEach(function(s,i){
+    const row=g('hd-step-'+i);
+    if(row) row.className='draft-step-row'+(i===cur?' draft-step-active':'')+(s.hero?' draft-step-done':'');
+    const clk=g('hd-clock-'+i); if(clk) clk.style.display=(i===cur)?'inline-block':'none';
+  });
 }
 
 // Veto data entry (GAME → Map Veto) — guided sequence following the official Bo1/Bo3/Bo5
@@ -6314,9 +6333,31 @@ document.querySelectorAll('.nav-item[data-tab="playoffs"]').forEach(el => {
   el.addEventListener('click', () => renderStandingsAndSeedings(window._state));
 });
 
+let _schedRerenderPending = false;
 function renderSchedule() {
-  const days = (window._state && window._state.tournament && window._state.tournament.schedule) || [];
   const container = g('schedule-days'); if (!container) return;
+  // A native date input fires 'change' mid-edit (per segment), which triggers a schedule
+  // broadcast → re-render. Rebuilding innerHTML here would destroy the very input being typed
+  // in (the year-field focus-loss bug). So while focus is inside a schedule field, DEFER the
+  // rebuild and re-run it once focus leaves (bound below).
+  if (container.contains(document.activeElement) &&
+      /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName || '')) {
+    _schedRerenderPending = true;
+    return;
+  }
+  if (!container._schedBlurBound) {
+    container._schedBlurBound = true;
+    container.addEventListener('focusout', function () {
+      // Next tick: only re-render once focus has fully left the schedule (not just moved to
+      // another schedule field), so a deferred render can't clobber the next focused input.
+      setTimeout(function () {
+        if (_schedRerenderPending && !container.contains(document.activeElement)) {
+          _schedRerenderPending = false; renderSchedule();
+        }
+      }, 0);
+    });
+  }
+  const days = (window._state && window._state.tournament && window._state.tournament.schedule) || [];
   const empty = g('schedule-empty');
   if (empty) empty.style.display = days.length === 0 ? 'block' : 'none';
 
