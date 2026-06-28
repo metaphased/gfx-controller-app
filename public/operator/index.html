@@ -788,6 +788,10 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
           <span class="ops-ctrl-label">Lineups</span>
           <button class="mode-btn" id="ops-mi-lineups" onclick="api('/api/mapIntro',{showLineups:!(window._state&&window._state.mapIntro&&window._state.mapIntro.showLineups)})">Toggle</button>
         </div>
+        <div class="ops-ctrl-group">
+          <span class="ops-ctrl-label">Flyby</span>
+          <button class="mode-btn" id="ops-mi-flyby" onclick="api('/api/mapIntro',{flyby:!(window._state&&window._state.mapIntro&&window._state.mapIntro.flyby)})">Toggle</button>
+        </div>
         <div class="ops-ctrl-group" style="flex:1">
           <span class="ops-ctrl-label">Map</span>
           <select id="ops-mi-map" onchange="api('/api/mapIntro',{selectedSlug:this.value})" style="flex:1;min-width:160px"></select>
@@ -1068,6 +1072,7 @@ socket.on('state', state => {
 
   /* Map Intro: lineups state + map selector (current/next + all series maps) */
   setModeActive('ops-mi-lineups', !!(state.mapIntro && state.mapIntro.showLineups));
+  setModeActive('ops-mi-flyby', !!(state.mapIntro && state.mapIntro.flyby));
   const _miSel = document.getElementById('ops-mi-map');
   if (_miSel) {
     const norm = x => String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');

@@ -14,7 +14,9 @@
      team logos flanking a VS, and the veto story (who picked + starting sides). An optional
      lineups row reveals both 5-man rosters. map-intro.js resolves the map + veto. -->
 <div id="mi-root" style="display:none">
-  <div id="mi-art"></div>
+  <!-- Two stacked image layers so the optional flyby slideshow can crossfade screenshots
+       (opacity only) without disturbing the Ken-Burns transform on #mi-art. -->
+  <div id="mi-art"><img class="mi-art-img" id="mi-art-a"><img class="mi-art-img" id="mi-art-b"></div>
   <div id="mi-scrim"></div>
   <div id="mi-stage">
     <div id="mi-meta"></div>

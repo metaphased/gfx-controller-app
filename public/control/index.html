@@ -787,6 +787,7 @@
               </div>
             </div>
             <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="mi-show-lineups" onchange="api('/api/mapIntro',{showLineups:this.checked})"> <span style="font-size:13px">Show team lineups</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="mi-flyby" onchange="api('/api/mapIntro',{flyby:this.checked})"> <span style="font-size:13px">Map flyby (cycle screenshots, random start)</span></label>
             <p class="hint" style="margin-top:10px">The cinematic intro for the <strong>current / next map</strong> (or pick one above). Map art comes from <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a>; the pick / starting side comes from the <a onclick="switchToTab('map-veto')" href="#" style="color:var(--primary)">map veto</a>.</p>
           </div>
         </div>

@@ -2,7 +2,7 @@
 var _gfxToken = new URLSearchParams(window.location.search).get('token') || '';
 var socket = io({ auth: { token: _gfxToken }, query: { token: _gfxToken } });
 
-var _lastVisible = null, _exitTimer = null, _enterTimer = null, _lastArtUrl = '';
+var _lastVisible = null, _exitTimer = null, _enterTimer = null;
 
 function $(id) { return document.getElementById(id); }
 function setTxt(id, v) { var e = $(id); if (e) e.textContent = v; }
@@ -21,6 +21,14 @@ function mapSlug(name) {
   return k ? ('de_' + k) : '';
 }
 function mapThumbUrl(name, w) { var s = mapSlug(name); return s ? ('/api/mapart?slug=' + s + '&kind=thumb&w=' + (w || 1920) + ART_TOK + artRev()) : ''; }
+// Candidate screenshot variants for a map (base + _1.._5). Missing ones 404 → dropped on load
+// error. Mirrors map-veto's flyby set; used by the optional map-intro slideshow.
+function mapThumbVariants(name, w) {
+  var s = mapSlug(name); if (!s) return []; w = w || 1920;
+  var out = ['/api/mapart?slug=' + s + '&kind=thumb&w=' + w + ART_TOK + artRev()];
+  for (var i = 1; i <= 5; i++) out.push('/api/mapart?slug=' + s + '&kind=thumb&v=' + i + '&w=' + w + ART_TOK + artRev());
+  return out;
+}
 function poolEntry(state, name) {
   var pool = (state.tournament && state.tournament.mapPool) || [], n = norm(name);
   for (var i = 0; i < pool.length; i++) { var p = pool[i]; if (p && norm(typeof p === 'string' ? p : p.name) === n) return (typeof p === 'string' ? { name: p } : p); }
@@ -62,6 +70,76 @@ function vetoStory(state, mapName) {
   return { picker: picker, sideTxt: ctTeam ? (teamMeta(state, ctTeam).name + ' CT start') : '' };
 }
 
+// ── Map art + optional flyby slideshow ───────────────────────────────────────────
+// flyby on → cycle the map's screenshot set (base + _1.._5), crossfading opacity between
+// two stacked <img> layers; the FIRST image is random so the card opens differently each
+// time. flyby off, or a per-map custom pool image, shows a single still.
+var MI_FLYBY_MS = 5000;
+var _fly = { timer: null, urls: [], idx: 0, curA: true, key: '' };
+function miStopFlyby() { if (_fly.timer) { clearTimeout(_fly.timer); _fly.timer = null; } }
+function miClearArt() {
+  miStopFlyby(); _fly.key = ''; _fly.urls = [];
+  ['mi-art-a', 'mi-art-b'].forEach(function (id) { var im = $(id); if (im) { im.classList.remove('on'); im.onload = null; im.onerror = null; im.removeAttribute('src'); } });
+  $('mi-root').classList.add('mi-noart');
+}
+function miSchedule() {
+  miStopFlyby();
+  if (_fly.urls.length <= 1) return;                 // nothing to cycle to
+  _fly.timer = setTimeout(function () {
+    var a = $('mi-art-a'), b = $('mi-art-b'); if (!a || !b || _fly.urls.length <= 1) return;
+    _fly.idx = (_fly.idx + 1) % _fly.urls.length;
+    var show = _fly.curA ? b : a, hide = _fly.curA ? a : b;
+    // Fade incoming IN on top; drop the outgoing only after the fade (no bleed-through dip).
+    show.style.zIndex = '2'; hide.style.zIndex = '1';
+    show.onload = function () { show.classList.add('on'); setTimeout(function () { hide.classList.remove('on'); }, 1150); };
+    show.src = _fly.urls[_fly.idx];
+    _fly.curA = !_fly.curA;
+    miSchedule();
+  }, MI_FLYBY_MS);
+}
+function miRenderArt(state, row) {
+  var mi = state.mapIntro || {};
+  var name = row.map;
+  var entry = poolEntry(state, name);
+  var custom = (entry && entry.image) ? entry.image : '';
+  var key = name + '|' + (mi.flyby ? 'fly' : 'one') + '|' + (custom ? 'c' : '') + '|' + _artRev;
+  if (key === _fly.key) return;                       // unchanged → leave current still / slideshow running
+  _fly.key = key;
+  miStopFlyby();
+  var a = $('mi-art-a'), b = $('mi-art-b'); if (!a || !b) return;
+  b.classList.remove('on'); b.onload = null; b.onerror = null; b.removeAttribute('src');
+  _fly.curA = true; _fly.idx = 0; _fly.urls = [];
+
+  // Single still: flyby off, or a per-map custom image (no variant set to cycle).
+  if (!mi.flyby || custom) {
+    var single = custom || mapThumbUrl(name, 1920);
+    $('mi-root').classList.toggle('mi-noart', !single);
+    a.onerror = null;
+    if (single) { a.src = single; a.classList.add('on'); } else { a.classList.remove('on'); a.removeAttribute('src'); }
+    return;
+  }
+
+  // Flyby slideshow — random starting image, then crossfade every MI_FLYBY_MS.
+  var cand = mapThumbVariants(name, 1920);
+  if (!cand.length) { $('mi-root').classList.add('mi-noart'); return; }
+  $('mi-root').classList.remove('mi-noart');
+  var base = cand[0], startIdx = Math.floor(Math.random() * cand.length);
+  a.onerror = function () { if (a.src.indexOf(base) < 0) a.src = base; };   // missing variant → base
+  a.src = cand[startIdx]; a.classList.add('on');
+  var pend = cand.length;
+  function settle() {                                  // index the cycle at whatever ended up on screen
+    var shown = (_fly.urls.indexOf(cand[startIdx]) >= 0) ? cand[startIdx] : base;
+    _fly.idx = Math.max(0, _fly.urls.indexOf(shown));
+    miSchedule();
+  }
+  cand.forEach(function (u) {
+    var im = new Image();
+    im.onload = function () { if (_fly.urls.indexOf(u) < 0) _fly.urls.push(u); if (--pend === 0) settle(); };
+    im.onerror = function () { if (--pend === 0) settle(); };
+    im.src = u;
+  });
+}
+
 // ── Render ──────────────────────────────────────────────────────────────────────
 function setBg(id, url) { var e = $(id); if (e) e.style.backgroundImage = url ? "url('" + String(url).replace(/'/g, "%27") + "')" : ''; }
 
@@ -73,14 +151,12 @@ function renderAll(state) {
 
   if (!row) {
     setTxt('mi-map', mi.title || ''); setTxt('mi-meta', ''); $('mi-veto').textContent = '';
-    setBg('mi-art', ''); $('mi-lineups').innerHTML = '';
+    miClearArt(); $('mi-lineups').innerHTML = '';
     return;
   }
 
-  // Map art backdrop (decode-swap to avoid flashes is overkill here — single image).
-  var art = mapImage(state, row.map);
-  if (art !== _lastArtUrl) { _lastArtUrl = art; setBg('mi-art', art); }
-  $('mi-root').classList.toggle('mi-noart', !art);
+  // Map art backdrop — single still or, if enabled, the crossfading flyby slideshow.
+  miRenderArt(state, row);
 
   setTxt('mi-map', (mi.title && mi.title.trim()) || row.map || '');
   var fmt = (state.match && state.match.format) || 'Bo3';
@@ -148,8 +224,8 @@ socket.on('state', function (state) {
   }
 
   if (visible !== _lastVisible) {
-    if (visible) { renderAll(state); animateIn(); }
-    else if (_lastVisible !== null) animateOut();
+    if (visible) { _fly.key = ''; renderAll(state); animateIn(); }   // re-randomize the flyby start each show
+    else if (_lastVisible !== null) { animateOut(); miStopFlyby(); }
     _lastVisible = visible;
     return;
   }

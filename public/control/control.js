@@ -4418,6 +4418,7 @@ function renderMapIntro(state){
   document.querySelectorAll('#mi-bg-group [data-mibg]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-mibg')===(mi.bg||'art')); });
   document.querySelectorAll('#mi-anim-group [data-mianim]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-mianim')===(mi.animVariant||'cinematic')); });
   const sl=g('mi-show-lineups'); if(sl) sl.checked=!!mi.showLineups;
+  const fb=g('mi-flyby'); if(fb) fb.checked=!!mi.flyby;
 }
 
 // Accordion steps = the veto steps if present, else the raw pool (pending), matching the graphic.
