@@ -50,20 +50,26 @@ body { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; }
 .pg-rc {
   width: 2.3vw; max-width: 40px; height: 3.6vh; min-width: 18px;
   display: flex; align-items: center; justify-content: center;
-  background: var(--rc, #555); border-radius: calc(var(--gfx-radius, 3px) * 0.6);
+  border-radius: calc(var(--gfx-radius, 3px) * 0.6);
   position: relative; overflow: hidden;
 }
+/* Cell colour = the side that WON the round (CS convention: CT blue, T orange). */
+.pg-rc-ct { background: #3f86d6; }
+.pg-rc-t  { background: #d98a34; }
 /* Winning team's logo fills the cell; a soft dark shadow keeps light/white logos legible. */
 .pg-rc-logo {
   position: absolute; inset: 14%;
   background-size: contain; background-repeat: no-repeat; background-position: center;
   filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
 }
-/* Condition icon (bomb / defuse only) — small white glyph, bottom-right corner. */
+/* Condition icon (bomb / defuse only) — a coloured glyph in the bottom-right corner; the
+   colour + a soft dark shadow keep it distinct from the team logo on any cell colour. */
 svg.pg-rc-cond {
-  position: absolute; right: 1px; bottom: 0; width: 46%; height: 46%; display: block;
-  fill: #fff; filter: drop-shadow(0 0 1.5px rgba(0,0,0,0.95));
+  position: absolute; right: 1px; bottom: 0; width: 50%; height: 50%; display: block;
+  filter: drop-shadow(0 0 1.2px rgba(0,0,0,0.95));
 }
+.pg-cond-bomb   { fill: #ff6a33; }   /* bomb plant → fiery orange-red */
+.pg-cond-defuse { fill: #36e0cf; }   /* defuse     → teal/cyan */
 .pg-rc-half { margin-left: 1.1vw; }
 .pg-rc-half::before {
   content: ''; position: absolute; left: -0.62vw; top: 6%; height: 88%;
