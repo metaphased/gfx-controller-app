@@ -1022,12 +1022,15 @@ function migrateGame(st) {
   if (!st.match.game) st.match.game = 'lol';
   if (!st.tournament) st.tournament = {};
   if (st.tournament.game === undefined) st.tournament.game = st.match.game;
-  // Lock pre-existing (non-empty) tournaments so a loaded show doesn't drop back to the
-  // create step. A truly empty/reset state stays created:false → create step shows.
+  // Lock pre-existing tournaments so a loaded show doesn't drop back to the create step.
+  // "Established" = has real STRUCTURAL data (teams / schedule / groups / series) — NOT merely
+  // a name. A freshly-created blank profile carries the profile name but no structure, so it
+  // stays unlocked at the create step (the operator can still pick the game). A truly empty /
+  // reset state stays created:false too.
   if (!st.tournament.created) {
     const t = st.tournament;
-    const hasData = !!(t.name || (t.teamPool && t.teamPool.length) || (t.schedule && t.schedule.length) ||
-      (t.groups && t.groups.length) || (st.match && (st.match.tournament || (st.match.seriesGames && st.match.seriesGames.length))));
+    const hasData = !!((t.teamPool && t.teamPool.length) || (t.schedule && t.schedule.length) ||
+      (t.groups && t.groups.length) || (st.match && st.match.seriesGames && st.match.seriesGames.length));
     if (hasData) st.tournament.created = true;
   }
 }
@@ -3454,6 +3457,11 @@ app.post('/api/profiles/save', requireAdmin, (req, res) => {
 app.post('/api/profiles/save-empty', requireAdmin, (req, res) => {
   const { name } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Profile name required' });
+  // Game is chosen in the New Profile dialog so the blank profile starts on the right adapter.
+  // The profile is created UNLOCKED (tournament.created:false) so the operator can still change
+  // the game before locking it in. Unknown ids fall back to LoL.
+  const KNOWN_GAMES = ['lol', 'cs2', 'dota2', 'valorant', 'r6', 'generic'];
+  const game = KNOWN_GAMES.includes(req.body.game) ? req.body.game : 'lol';
   const profiles = loadProfiles();
   // Use system defaults — don't inherit colours/logos from whatever is currently loaded
   const defaultSettingsSnap = JSON.parse(JSON.stringify(makeDefault().settings));
@@ -3465,9 +3473,9 @@ app.post('/api/profiles/save-empty', requireAdmin, (req, res) => {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     data: {
-      tournament: {},
+      tournament: { game, created: false },
       bracket: { title: '', rounds: [] },
-      match: { team1: { ...emptyTeam }, team2: { ...emptyTeam }, game: 'lol', format: 'bo3',
+      match: { team1: { ...emptyTeam }, team2: { ...emptyTeam }, game, format: 'bo3',
                tournament: name.trim(), tournamentLogo: '', sponsorLogos: [],
                fearlessDraft: false, currentGameNum: 1, seriesGames: [] },
       players: { team1: [], team2: [] },

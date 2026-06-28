@@ -227,7 +227,8 @@
       <div class="card" id="save-profile-form" style="display:none;max-width:520px;margin-bottom:20px">
         <div class="card-title">New Profile</div>
         <div class="field-row"><label>Profile Name</label><input type="text" id="new-profile-name" placeholder="e.g. Summer Split 2025" autocomplete="off"></div>
-        <p class="hint" style="margin-bottom:12px">Saves the current tournament structure, schedule, groups, bracket, active game setup and rosters.</p>
+        <div class="field-row"><label>Game</label><select id="new-profile-game" style="flex:1"></select></div>
+        <p class="hint" style="margin-bottom:12px"><strong>Create empty</strong> makes a blank profile for the chosen game (left unlocked so you can finish setting it up). <strong>Save from current</strong> snapshots the current tournament structure, schedule, groups, bracket, game setup and rosters (game taken from the current tournament).</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" onclick="submitSaveProfile()">Save from current</button>
           <button class="btn btn-sm" onclick="submitNewEmptyProfile()">Create empty</button>

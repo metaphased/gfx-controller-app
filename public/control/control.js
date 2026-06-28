@@ -5107,6 +5107,8 @@ function renderProfilesList(profiles) {
 function openSaveProfileForm() {
   const el = g('save-profile-form'); if (!el) return;
   el.style.display = 'block';
+  const gameEl = g('new-profile-game');
+  if (gameEl) gameEl.innerHTML = gameOptionsHtml(currentGameId()); // default to the current game
   const nameEl = g('new-profile-name');
   if (nameEl) {
     const tournName = (window._state.match || {}).tournament || '';
@@ -5123,7 +5125,8 @@ function closeSaveProfileForm() {
 function submitNewEmptyProfile() {
   const name = g('new-profile-name') && g('new-profile-name').value.trim();
   if (!name) { showProfileMsg('save-profile-msg', 'Please enter a profile name.', 'error'); return; }
-  fetch('/api/profiles/save-empty', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name }) })
+  const game = (g('new-profile-game') && g('new-profile-game').value) || 'lol';
+  fetch('/api/profiles/save-empty', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, game }) })
     .then(r => r.json()).then(data => {
       if (data.ok) {
         closeSaveProfileForm();
