@@ -1299,6 +1299,8 @@ const GFX_LABELS = {
   playerIntro:'Player Intro', preShow:'Pre-show', draft:'Draft', bracket:'Bracket',
   groupStage:'Group Stage', tournamentStructure:'Structure', breakScreen:'Break Screen',
   winScreen:'Win Screen', prizepool:'Prizepool', bgOutput:'BG Output', champSelect:'Champ Select',
+  ticker:'Ticker', playerSpotlight:'Player Spotlight',
+  mapVeto:'Map Veto', postGame:'Post-Game', mapIntro:'Map Intro',
 };
 
 function _gfxKeyLabel(state, key) {
@@ -1310,14 +1312,27 @@ function _gfxKeyLabel(state, key) {
   return GFX_LABELS[key] || key;
 }
 
+// Per-game capability of a graphic (champ-draft = LoL draft/H2H, map-veto = CS2 pre-game set).
+// Routing buttons for the other game's graphics are hidden so the matrix only shows what's
+// relevant to the active game (their assignments are preserved in the config).
+const _OPS_GFX_CAP = { headToHead:'champ-draft', draft:'champ-draft', mapVeto:'map-veto', postGame:'map-veto', mapIntro:'map-veto' };
+function _opsGfxKeyActive(key) {
+  const cap = _OPS_GFX_CAP[String(key).split(':')[0]];
+  if (!cap) return true;
+  const a = gameAdapter();
+  if (cap === 'champ-draft') return a ? a.pregameKind === 'champ-draft' : true;
+  if (cap === 'map-veto')    return a ? a.pregameKind === 'map-veto'    : false;
+  return true;
+}
 function renderBusPanel(state) {
   const panel = g('bus-routing-panel');
   const list  = g('bus-routing-list');
   if (!panel || !list) return;
 
-  const buses    = (state.settings && state.settings.buses) || [];
   const busState = state.busState || {};
-  const withAssignments = buses.filter(b => (b.assignments || []).length > 0);
+  const buses = ((state.settings && state.settings.buses) || [])
+    .map(b => ({ ...b, assignments: (b.assignments || []).filter(_opsGfxKeyActive) }));
+  const withAssignments = buses.filter(b => b.assignments.length > 0);
 
   panel.style.display = withAssignments.length ? '' : 'none';
   if (!withAssignments.length) return;

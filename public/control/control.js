@@ -778,9 +778,7 @@ function syncGfxToken(settings) {
       '</div>'
     : '';
 
-  const outputs = GFX_OUTPUTS.filter(o =>
-    o.cap === 'champ-draft' ? isChampDraft() :
-    o.cap === 'map-veto'    ? isMapVeto()    : true);
+  const outputs = GFX_OUTPUTS.filter(o => _gfxCapActive(o.cap));
   listEl.innerHTML = toggleHtml + outputs.map(o => urlRow(o.label, o.path)).join('') + ltRows + busRows;
 }
 
@@ -794,10 +792,14 @@ function syncBusConfig(s) {
   if (emptyEl) emptyEl.style.display = buses.length ? 'none' : '';
 
   // Bus config (names, graphic assignments, URLs) is static during a show —
-  // only rebuild when the buses, token, mode or LT outputs actually change.
+  // only rebuild when the buses, token, mode, game or LT outputs actually change.
   const _bcLtOuts = (s.lowerThird && s.lowerThird.outputs) || [];
-  if (!_sfp('busConfigList', { buses, token, mode: _gfxUrlMode, ext: _externalUrl,
+  if (!_sfp('busConfigList', { buses, token, mode: _gfxUrlMode, ext: _externalUrl, game: currentGameId(),
         ltOuts: _bcLtOuts.map(function(o){ return [o.id, o.name]; }) })) return;
+
+  // Only offer the current game's graphics for assignment (mirrors the output-URL list);
+  // the other game's graphics stay hidden, and their assignments are preserved on save.
+  const assignableGfx = GRAPHIC_MAP.filter(function(gfx){ return _gfxCapActive(gfx.cap); });
 
   const _busCheckbox = function(i, key, label, checked) {
     return '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap">' +
@@ -807,7 +809,7 @@ function syncBusConfig(s) {
   list.innerHTML = buses.map(function(bus, i) {
     // Lower Third expands into one entry per output (lowerThird:<outId>); main keeps
     // the bare 'lowerThird' key for back-compat with existing assignments.
-    const assignChecks = GRAPHIC_MAP.flatMap(function(gfx) {
+    const assignChecks = assignableGfx.flatMap(function(gfx) {
       if (gfx.key === 'lowerThird') {
         const outs = (s.lowerThird && s.lowerThird.outputs) || [{ id: 'main', name: 'Main' }];
         return outs.map(function(o) {
@@ -841,12 +843,16 @@ function syncBusConfig(s) {
 function saveBusConfig() {
   const s = window._state;
   if (!s || !s.settings) return;
+  // Graphics hidden by the per-game filter aren't in the DOM — keep their existing assignments
+  // so editing a CS2 show's buses doesn't wipe the LoL graphics' routing (and vice versa).
+  const hiddenKeys = new Set(GRAPHIC_MAP.filter(function(g){ return g.cap && !_gfxCapActive(g.cap); }).map(function(g){ return g.key; }));
   const buses = (s.settings.buses || []).map(function(bus, i) {
     const nameEl = document.querySelector('.bus-cfg-name[data-bus-idx="' + i + '"]');
     const name = nameEl ? nameEl.value.trim() : bus.name;
     const checkboxes = document.querySelectorAll('input[type=checkbox][data-bus-idx="' + i + '"]');
     const assignments = [];
     checkboxes.forEach(function(cb) { if (cb.checked) assignments.push(cb.dataset.gfxKey); });
+    (bus.assignments || []).forEach(function(k) { if (hiddenKeys.has(k) && assignments.indexOf(k) < 0) assignments.push(k); });
     return { id: bus.id, name: name || bus.id, assignments };
   });
   patchSettings({ buses });
@@ -4124,10 +4130,10 @@ refreshBracketTeams();
 // Maps state key -> sidebar nav data-tab and operator card id
 const GRAPHIC_MAP = [
   { key: 'lowerThird',  tab: 'lowerthird',  label: 'Lower Third' },
-  { key: 'headToHead',  tab: 'h2h',         label: 'Head to Head'},
+  { key: 'headToHead',  tab: 'h2h',         label: 'Head to Head', cap: 'champ-draft' },
   { key: 'playerIntro', tab: 'player-intro', label: 'Player Intro' },
-  { key: 'draft',       tab: 'draft-gfx',   label: 'Draft'       },
-  { key: 'mapVeto',     tab: 'map-veto-gfx', label: 'Map Veto'   },
+  { key: 'draft',       tab: 'draft-gfx',   label: 'Draft', cap: 'champ-draft' },
+  { key: 'mapVeto',     tab: 'map-veto-gfx', label: 'Map Veto', cap: 'map-veto' },
   { key: 'bracket',     tab: 'bracket',     label: 'Bracket'     },
   { key: 'groupStage',          tab: 'groups-gfx',               label: 'Group Stage'          },
   { key: 'tournamentStructure', tab: 'tournament-structure-gfx', label: 'Tournament Structure' },
@@ -4136,9 +4142,14 @@ const GRAPHIC_MAP = [
   { key: 'ticker',      tab: 'ticker',      label: 'Ticker'      },
   { key: 'winScreen',   tab: 'win',         label: 'Win Screen'  },
   { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
-  { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game'  },
-  { key: 'mapIntro',    tab: 'map-intro-gfx', label: 'Map Intro'  },
+  { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game', cap: 'map-veto' },
+  { key: 'mapIntro',    tab: 'map-intro-gfx', label: 'Map Intro', cap: 'map-veto' },
 ];
+// Is a graphic's capability active for the current game? (champ-draft = LoL-style draft,
+// map-veto = CS2-style pre-game). Used to scope output URLs + bus routing per game.
+function _gfxCapActive(cap) {
+  return cap === 'champ-draft' ? isChampDraft() : cap === 'map-veto' ? isMapVeto() : true;
+}
 
 // ── Map Veto (CS2 etc.) ──────────────────────────────────────────────────────
 // Map POOL lives on the tournament (set in Tournament Setup, setup-lock-guarded, in
