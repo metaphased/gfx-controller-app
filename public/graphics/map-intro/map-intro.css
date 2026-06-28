@@ -6,6 +6,9 @@ body { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; }
   position: absolute; inset: 0; overflow: hidden;
   color: var(--gfx-c3, #fff);
   text-transform: var(--gfx-text-transform, uppercase);
+  /* Exit = fade the whole root via opacity; the art's Ken-Burns transform keeps running
+     (replacing its animation on exit reset the scale → a visible "cut zoom"). */
+  transition: opacity calc(0.45s * var(--gfx-dur-scale, 1)) cubic-bezier(0.5,0,0.75,0);
 }
 
 /* Map screenshot hero — covers the frame, slow Ken-Burns drift while on screen. */
@@ -92,9 +95,7 @@ body { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; }
 #mi-root.mi-entering #mi-veto,
 #mi-root.mi-entering #mi-lineups { animation: mi-rise calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; animation-delay: calc(0.22s * var(--gfx-dur-scale, 1)); }
 
-#mi-root.mi-exiting #mi-stage { animation: mi-fade-out calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.5,0,0.75,0)) forwards; }
-#mi-root.mi-exiting #mi-art,
-#mi-root.mi-exiting #mi-scrim { animation: mi-fade-out calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.5,0,0.75,0)) forwards; }
+#mi-root.mi-exiting { opacity: 0; }
 
 @keyframes mi-kenburns { from { transform: scale(1.04) translate(0,0); } to { transform: scale(1.14) translate(-1.2%, -1%); } }
 @keyframes mi-art-in   { from { opacity: 0; transform: scale(1.1); } to { opacity: 1; } }

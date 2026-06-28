@@ -82,7 +82,7 @@ function renderAll(state) {
   if (art !== _lastArtUrl) { _lastArtUrl = art; setBg('mi-art', art); }
   $('mi-root').classList.toggle('mi-noart', !art);
 
-  setTxt('mi-map', row.map || '');
+  setTxt('mi-map', (mi.title && mi.title.trim()) || row.map || '');
   var fmt = (state.match && state.match.format) || 'Bo3';
   var n = mapNumber(state, row), s1 = (t1 && state.match.team1.score) | 0, s2 = (state.match.team2 && state.match.team2.score) | 0;
   setTxt('mi-meta', 'MAP ' + n + ' · ' + fmt + ' · ' + s1 + '–' + s2);
