@@ -2784,6 +2784,17 @@
             <div id="asset-status" style="font-size:12px;color:var(--text-dim)"></div>
           </div>
 
+          <!-- Hero Assets (Dota 2) -->
+          <div class="card cap-heroes" style="margin-bottom:16px">
+            <div class="card-title">Hero Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· Dota 2</span></div>
+            <p class="hint" style="margin-bottom:12px">Downloads Dota 2 hero portraits + icons from Valve's CDN (hero list via OpenDota). Only missing files are fetched — existing files are never overwritten.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button class="btn btn-sm" onclick="checkHeroes()">Check Status</button>
+              <button class="btn btn-primary btn-sm" onclick="syncHeroes()">Sync Missing</button>
+            </div>
+            <div id="hero-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
+          </div>
+
           <!-- New user form -->
           <div class="card" id="new-user-form" style="display:none;margin-bottom:16px">
             <div class="card-title">New User</div>

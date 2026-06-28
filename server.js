@@ -216,6 +216,7 @@ app.use('/graphics', express.static(path.join(__dirname, 'public', 'graphics'), 
 }));
 app.use('/uploads',  express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
+app.use('/heroes',   express.static(path.join(__dirname, 'public', 'heroes'))); // Dota 2 hero art
 app.use('/fonts',    express.static(path.join(__dirname, 'public', 'fonts')));
 app.use('/shared',   express.static(path.join(__dirname, 'public', 'shared')));  // design tokens — needed by login (pre-auth) too
 
@@ -2251,8 +2252,9 @@ const RIOT_REGION_MAP = {
 // data endpoints (op.gg intel, DDragon assets) so non-LoL games skip them cleanly.
 function adapterSupports(kind) {
   const d = games.adapterDescriptor(state.match && state.match.game);
-  if (kind === 'opgg')    return d.intelProvider === 'opgg';
-  if (kind === 'ddragon') return d.assetSource   === 'ddragon';
+  if (kind === 'opgg')        return d.intelProvider === 'opgg';
+  if (kind === 'ddragon')     return d.assetSource   === 'ddragon';
+  if (kind === 'dota-heroes') return d.assetSource   === 'dota-heroes';
   return true;
 }
 
@@ -2788,6 +2790,41 @@ app.post('/api/assets/sync', requireAdmin, async (req, res) => {
       io.emit('assets:progress', { phase: 'done', key: target.key, result });
       results.push(result);
     }
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Dota 2 hero assets (mirrors /api/assets, gated on the dota-heroes source) ─────
+const heroSync = require('./scripts/sync-heroes');
+// List the synced heroes (name ↔ slug ↔ image paths) for the draft control + graphics.
+app.get('/api/heroes', (req, res) => {
+  try {
+    if (!fs.existsSync(heroSync.MANIFEST)) return res.json({ heroes: [] });
+    res.json({ heroes: JSON.parse(fs.readFileSync(heroSync.MANIFEST, 'utf8')) });
+  } catch (e) { res.json({ heroes: [] }); }
+});
+app.post('/api/heroes/check', requireAdmin, async (req, res) => {
+  if (!adapterSupports('dota-heroes')) return res.json({ skipped: true, reason: 'Active game has no Dota hero asset source' });
+  try { res.json({ ok: true, results: await heroSync.syncAll({ dryRun: true }) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/heroes/sync', requireAdmin, async (req, res) => {
+  if (!adapterSupports('dota-heroes')) return res.json({ skipped: true, reason: 'Active game has no Dota hero asset source' });
+  try {
+    const targets = heroSync.TARGETS;
+    io.emit('assets:progress', { phase: 'init', targets });   // reuse the asset-sync progress channel
+    const results = [];
+    for (const target of targets) {
+      io.emit('assets:progress', { phase: 'start', key: target.key });
+      const result = await heroSync.syncTargetByKey(target.key, {
+        onProgress: (key, n, total, name) => io.emit('assets:progress', { phase: 'file', key, n, total, name }),
+      });
+      io.emit('assets:progress', { phase: 'done', key: target.key, result });
+      results.push(result);
+    }
+    heroSync.writeManifest(await heroSync.heroList());   // refresh name↔slug manifest after a sync
     res.json({ ok: true, results });
   } catch (e) {
     res.status(500).json({ error: e.message });

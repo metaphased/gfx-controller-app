@@ -56,16 +56,16 @@ LoL/CS2 unchanged.
 **2f — (deferred) Dota GSI live-data hook.** Optional listener writing `state.live.suggested`
 (draft picks/bans, score) for operator-confirm — never auto-air. Same sidecar shape as CS2.
 
-## ⚠️ OPEN DECISIONS — confirm before building 2b+
-1. **Hero-draft graphic: Dota-specific build vs generalise the LoL draft graphic.**
-   - *Dota-specific* (recommended): new `public/graphics/hero-draft/` with Radiant/Dire + CM
-     sequence + hero art. Zero risk to the working LoL draft; Dota gets its own identity.
-   - *Generalise LoL draft*: make `draft.js` sequence/entity-driven (champion|hero). DRY, but a
-     risky refactor of a deeply-built, working LoL graphic.
-2. **Captains Mode sequence**: target current CM (7 ban / 5 pick, 24 steps) — fixed, or operator-
-   editable order (like CS2 veto steps)? (Patches change CM order; editable is safer.)
-3. **Sides**: map Radiant→team1 / Dire→team2 (with green/red accents) — confirm naming/colours.
-4. **Live GSI**: confirmed deferred (manual-first) until the user can run a Dota observer + GSI.
+## ✅ DECISIONS (confirmed by user 2026-06-29)
+1. **Hero-draft graphic = Dota-specific build.** New `public/graphics/hero-draft/` (Radiant/Dire,
+   CM sequence, hero art). Do NOT refactor the working LoL draft graphic.
+2. **CM sequence = default preset + editable.** Ship a built-in **current-CM preset order** as the
+   default; the order is **editable in Tournament Settings** (mirrors CS2's settable map-pool
+   default). Once saved there, the draft controls run the steps in that saved order — preset now,
+   adjustable later when Valve re-tunes CM.
+3. **Live GSI = deferred / manual-first** (user can't test Dota live data yet — same as CS2).
+4. **Build order: hero assets (2b) first.**
+   (Side mapping Radiant→team1 / Dire→team2 + accent colours to confirm when 2d is built.)
 
 ## Verification / guardrails
 - LoL + CS2 parity re-checked after each step (descriptors + screenshots).

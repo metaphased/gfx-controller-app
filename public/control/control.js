@@ -51,6 +51,7 @@ function supportsFearless() { const a = gameAdapter(); return a ? !!a.supportsFe
 function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvider === 'opgg'  : true; }
 function supportsSteamId()  { const a = gameAdapter(); return a ? a.rosterIds === 'steam'     : false; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
+function supportsHeroes()   { const a = gameAdapter(); return a ? a.assetSource === 'dota-heroes' : false; }
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
 function hasRoles()         { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
 // Map-veto games don't advance match.currentGameNum; the current game is the first map
@@ -78,6 +79,7 @@ function applyAdapterUI() {
     'cap-map-veto':    isMapVeto(),
     'cap-opgg':        supportsOpgg(),
     'cap-assets':      supportsAssets(),
+    'cap-heroes':      supportsHeroes(),
     'cap-picks':       hasPickEntity(),
     'cap-roles':       hasRoles(),
   };
@@ -4849,9 +4851,13 @@ function loadActionLog() {
 
 // ── Champion asset sync ────────────────────────────────────────────────────────
 let _assetTargetStates = null;
+// Both the Champion Assets (LoL) and Hero Assets (Dota) cards reuse this progress/result
+// renderer + the 'assets:progress' socket channel; they never run at once (one game per
+// tournament), so a single target-element pointer is enough.
+let _assetStatusElId = 'asset-status';
 
 function _renderAssetProgress() {
-  const el = g('asset-status');
+  const el = g(_assetStatusElId);
   if (!el || !_assetTargetStates) return;
   el.innerHTML = Object.values(_assetTargetStates).map(t => {
     let statusHtml, barHtml = '';
@@ -4904,7 +4910,7 @@ function _onAssetProgress(data) {
 }
 
 function renderAssetResults(results) {
-  const el = g('asset-status');
+  const el = g(_assetStatusElId);
   if (!el) return;
   el.innerHTML = results.map(r => {
     // r.missing = files that were missing at scan time (downloaded or not)
@@ -4937,7 +4943,8 @@ function renderAssetResults(results) {
 }
 
 async function checkAssets() {
-  const el = g('asset-status');
+  _assetStatusElId = 'asset-status';
+  const el = g(_assetStatusElId);
   if (el) el.innerHTML = '<span style="color:var(--text-dim)">Checking…</span>';
   const res = await api('/api/assets/check', {});
   if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
@@ -4946,11 +4953,38 @@ async function checkAssets() {
 
 async function syncAssets(forceRoles) {
   if (_assetTargetStates !== null) return; // already running
-  const el = g('asset-status');
+  _assetStatusElId = 'asset-status';
+  const el = g(_assetStatusElId);
   _assetTargetStates = {};
   if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
   socket.on('assets:progress', _onAssetProgress);
   const res = await api('/api/assets/sync', { forceRoles: !!forceRoles });
+  socket.off('assets:progress', _onAssetProgress);
+  _assetTargetStates = null;
+  if (!res || res.error) {
+    if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml((res && res.error) || 'Request failed') + '</span>';
+    return;
+  }
+  renderAssetResults(res.results);
+}
+
+// Dota 2 hero assets — same flow as champion assets, targeting the Hero Assets card.
+async function checkHeroes() {
+  _assetStatusElId = 'hero-asset-status';
+  const el = g(_assetStatusElId);
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Checking…</span>';
+  const res = await api('/api/heroes/check', {});
+  if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
+  renderAssetResults(res.results);
+}
+async function syncHeroes() {
+  if (_assetTargetStates !== null) return; // already running
+  _assetStatusElId = 'hero-asset-status';
+  const el = g(_assetStatusElId);
+  _assetTargetStates = {};
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
+  socket.on('assets:progress', _onAssetProgress);
+  const res = await api('/api/heroes/sync', {});
   socket.off('assets:progress', _onAssetProgress);
   _assetTargetStates = null;
   if (!res || res.error) {

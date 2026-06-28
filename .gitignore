@@ -12,6 +12,8 @@ code/
 public/champions/
 public/graphics/head2head/champions/
 public/graphics/head2head/champions-splash/
+# Dota 2 hero art — downloaded via Settings → Hero Assets / scripts/sync-heroes.js
+public/heroes/
 
 # Logs
 *.log
