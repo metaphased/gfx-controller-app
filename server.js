@@ -821,6 +821,9 @@ const makeDefault = () => ({
   // mapArtSlug of the chosen map (''=latest finalized); the graphic resolves players from
   // tournament.csStats + the map's mapResults row (+ its snapshot roundHistory). DATA-ONLY.
   postGame:    { visible: false, selectedSlug: '', design: 'split', bg: 'dark', showRounds: true, showLogos: true, title: 'POST-GAME' },
+  // CS2 map intro — cinematic pre-map card (map art hero + veto story + optional lineups).
+  // selectedSlug = mapArtSlug of the chosen map (''=current/next, the first non-final map row).
+  mapIntro:    { visible: false, selectedSlug: '', showLineups: false, bg: 'art', title: '' },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
   // design: angled|bleed|framed, mode: single|duo|compare. players[0]=A (team1 side),
   // players[1]=C (team2 side); champ='' = auto (most-played); statOverrides keyed by stat.
@@ -1174,13 +1177,14 @@ const GRAPHIC_PATHS = {
   bgOutput: 'graphics/bg-output',
   mapVeto: 'graphics/map-veto',
   postGame: 'graphics/post-game',
+  mapIntro: 'graphics/map-intro',
 };
 const GRAPHIC_LABELS = {
   lowerThird: 'lower third', headToHead: 'head to head', playerIntro: 'player intro',
   preShow: 'pre-show', draft: 'draft', bracket: 'bracket', groupStage: 'group stage',
   tournamentStructure: 'tournament structure', prizepool: 'prize', winScreen: 'win screen',
   breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker', playerSpotlight: 'player spotlight',
-  mapVeto: 'map veto', postGame: 'post game',
+  mapVeto: 'map veto', postGame: 'post game', mapIntro: 'map intro',
 };
 function _switcherByUrl(url) {
   if (!url) return null;
@@ -1253,7 +1257,7 @@ function broadcast() {
 
 // ── SSE (Server-Sent Events) for Companion / external integrations ─────────────
 const _sseClients = new Set();
-const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto','postGame'];
+const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto','postGame','mapIntro'];
 function buildSSEPayload() {
   const visibilities = {};
   SSE_GRAPHIC_KEYS.forEach(k => { if (state[k]) visibilities[k] = !!state[k].visible; });
@@ -1604,7 +1608,7 @@ const GRAPHIC_PAGE_KEYS = {
   winScreen: 'win-screen', preShow: 'pre-show',
   tournamentStructure: 'tournament-structure', groupStage: 'standings',
   prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight',
-  mapVeto: 'map-veto', postGame: 'post-game'
+  mapVeto: 'map-veto', postGame: 'post-game', mapIntro: 'map-intro'
 };
 
 function findBusForGraphic(graphicName) {
@@ -2130,6 +2134,7 @@ app.post('/api/bgOutput', requireAdmin, (req, res) => { deepMerge(state.bgOutput
 app.post('/api/breakScreen', (req, res) => { Object.assign(state.breakScreen, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/winScreen',   (req, res) => { Object.assign(state.winScreen,   req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/postGame',    (req, res) => { Object.assign(state.postGame,    req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/mapIntro',    (req, res) => { Object.assign(state.mapIntro,    req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/playerSpotlight', (req, res) => { Object.assign(state.playerSpotlight, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/headToHead',  (req, res) => { Object.assign(state.headToHead,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/playerIntro', (req, res) => { Object.assign(state.playerIntro, req.body); broadcast(); res.json({ok:true}); });

@@ -101,6 +101,10 @@
         <span id="nav-dot-post-game-gfx" class="nav-status-dot"></span>
         Post-Game
       </a>
+      <a class="nav-item cap-map-veto" data-tab="map-intro-gfx">
+        <span id="nav-dot-map-intro-gfx" class="nav-status-dot"></span>
+        Map Intro
+      </a>
 
       <div class="nav-section-label">SYSTEM</div>
       <a class="nav-item" data-tab="profiles" id="nav-item-profiles">Profiles</a>
@@ -741,6 +745,43 @@
           <div class="card">
             <div class="card-title">Confirm data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· before you go live</span></div>
             <div id="pg-preview"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MAP INTRO — overlay (GRAPHICS section, CS2)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-map-intro-gfx">
+      <div class="tab-header"><h1>Map Intro</h1></div>
+      <div class="gfx-ctrl-bar">
+        <div class="gfx-ctrl-title">Map Intro Controls</div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group" id="ctrlgrp-mapIntro">
+            <span class="gfx-ctrl-section-label">Output</span>
+            <button class="lbar-toggle" id="ctrlbtn-mapIntro" onclick="toggleGraphic('mapIntro')">
+              <span class="lbar-dot" id="ctrl-dot-mapIntro"></span>MAP INTRO
+            </button>
+          </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Map</span>
+            <select id="mi-map-select" onchange="api('/api/mapIntro',{selectedSlug:this.value})" style="min-width:200px"></select>
+          </div>
+        </div>
+      </div>
+      <div class="ps-two-col">
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Look</div>
+            <div class="field-row"><label>Title</label><input type="text" id="mi-title" placeholder="(map name shown by default)" oninput="api('/api/mapIntro',{title:this.value})"></div>
+            <div class="field-row"><label>Background</label>
+              <div class="btn-row" id="mi-bg-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-mibg="art" onclick="api('/api/mapIntro',{bg:'art'})">Map art</button>
+              </div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="mi-show-lineups" onchange="api('/api/mapIntro',{showLineups:this.checked})"> <span style="font-size:13px">Show team lineups</span></label>
+            <p class="hint" style="margin-top:10px">The cinematic intro for the <strong>current / next map</strong> (or pick one above). Map art comes from <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a>; the pick / starting side comes from the <a onclick="switchToTab('map-veto')" href="#" style="color:var(--primary)">map veto</a>.</p>
           </div>
         </div>
       </div>
@@ -2916,7 +2957,10 @@
 
     <div class="lbar-divider"></div>
 
-    <!-- Post-Game scoreboard (CS2) -->
+    <!-- Map Intro + Post-Game scoreboard (CS2) -->
+    <div class="lbar-group cap-map-veto" id="lbar-group-mapIntro">
+      <button class="lbar-toggle" id="lbar-toggle-mapIntro" onclick="toggleGraphic('mapIntro')"><span class="lbar-dot" id="lbar-dot-mapIntro"></span>MAP INTRO</button>
+    </div>
     <div class="lbar-group cap-map-veto" id="lbar-group-postGame">
       <button class="lbar-toggle" id="lbar-toggle-postGame" onclick="toggleGraphic('postGame')"><span class="lbar-dot" id="lbar-dot-postGame"></span>POST-GAME</button>
     </div>

@@ -1,0 +1,103 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+body { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; }
+
+#mi-root {
+  position: absolute; inset: 0; overflow: hidden;
+  color: var(--gfx-c3, #fff);
+  text-transform: var(--gfx-text-transform, uppercase);
+}
+
+/* Map screenshot hero — covers the frame, slow Ken-Burns drift while on screen. */
+#mi-art {
+  position: absolute; inset: -4%;
+  background-size: cover; background-position: center;
+  transform: scale(1.04);
+  animation: mi-kenburns 18s ease-in-out infinite alternate;
+}
+#mi-root.mi-noart #mi-art { background: #0a1018; animation: none; }
+/* Scrim: darken + vignette so the text reads over any map. */
+#mi-scrim {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 42%, rgba(6,10,16,0.35) 0%, rgba(6,10,16,0.78) 70%, rgba(6,10,16,0.92) 100%),
+    linear-gradient(180deg, rgba(6,10,16,0.55) 0%, rgba(6,10,16,0.1) 30%, rgba(6,10,16,0.1) 60%, rgba(6,10,16,0.85) 100%);
+}
+
+#mi-stage {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1.4vh; text-align: center;
+}
+
+#mi-meta {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.9vh; font-weight: 700; letter-spacing: 0.4em;
+  color: var(--gfx-c1, #1ffaff);
+}
+#mi-map {
+  font-size: 12vh; font-weight: 900; line-height: 0.96; letter-spacing: 0.01em;
+  text-shadow: 0 0.4vh 2.4vh rgba(0,0,0,0.6);
+}
+
+#mi-teams { display: flex; align-items: center; justify-content: center; gap: 2.6vw; margin-top: 1vh; }
+.mi-team { display: flex; align-items: center; gap: 1vw; }
+.mi-team-l { flex-direction: row-reverse; }
+.mi-team-logo {
+  width: 8vh; height: 8vh; flex-shrink: 0;
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+  filter: drop-shadow(0 0.3vh 0.8vh rgba(0,0,0,0.5));
+}
+.mi-team-logo.mi-nologo { display: none; }
+.mi-team-name {
+  font-size: 4.4vh; font-weight: 800; letter-spacing: 0.02em;
+  border-bottom: 3px solid var(--team-color, var(--gfx-c1));
+  padding-bottom: 0.4vh;
+}
+#mi-vs {
+  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-size: 2.2vh; font-weight: 800; letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.6);
+}
+
+#mi-veto {
+  display: flex; align-items: center; gap: 0.7vw; margin-top: 1.6vh;
+  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-size: 1.7vh; font-weight: 700; letter-spacing: 0.14em;
+}
+.mi-veto-pick { color: rgba(255,255,255,0.78); }
+.mi-veto-sep  { color: rgba(255,255,255,0.35); }
+.mi-veto-side { color: var(--gfx-c1, #1ffaff); }
+
+/* Optional lineups — two columns of handles below the hero. */
+#mi-lineups { display: flex; align-items: flex-start; gap: 0; margin-top: 2.4vh; }
+.mi-lu-gap { width: 8vw; }
+.mi-lu-col { display: flex; flex-direction: column; gap: 0.6vh; min-width: 16vw; }
+.mi-lu-l { align-items: flex-end; text-align: right; }
+.mi-lu-r { align-items: flex-start; text-align: left; }
+.mi-lp {
+  font-size: 2.4vh; font-weight: 700; letter-spacing: 0.03em; line-height: 1.1;
+  padding: 0.2vh 0.8vw;
+  border-right: 0;
+}
+.mi-lu-l .mi-lp { border-right: 3px solid var(--team-color, var(--gfx-c1)); }
+.mi-lu-r .mi-lp { border-left: 3px solid var(--team-color, var(--gfx-c1)); }
+
+/* ── Animation (theme easing + duration tokens) ────────────────────────────────── */
+#mi-root.mi-entering #mi-art   { animation: mi-art-in calc(0.7s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both, mi-kenburns 18s ease-in-out infinite alternate; }
+#mi-root.mi-entering #mi-scrim { animation: mi-fade calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#mi-root.mi-entering #mi-meta,
+#mi-root.mi-entering #mi-map   { animation: mi-rise calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#mi-root.mi-entering #mi-teams { animation: mi-rise calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; animation-delay: calc(0.12s * var(--gfx-dur-scale, 1)); }
+#mi-root.mi-entering #mi-veto,
+#mi-root.mi-entering #mi-lineups { animation: mi-rise calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; animation-delay: calc(0.22s * var(--gfx-dur-scale, 1)); }
+
+#mi-root.mi-exiting #mi-stage { animation: mi-fade-out calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.5,0,0.75,0)) forwards; }
+#mi-root.mi-exiting #mi-art,
+#mi-root.mi-exiting #mi-scrim { animation: mi-fade-out calc(0.45s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.5,0,0.75,0)) forwards; }
+
+@keyframes mi-kenburns { from { transform: scale(1.04) translate(0,0); } to { transform: scale(1.14) translate(-1.2%, -1%); } }
+@keyframes mi-art-in   { from { opacity: 0; transform: scale(1.1); } to { opacity: 1; } }
+@keyframes mi-fade     { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mi-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes mi-rise     { from { opacity: 0; transform: translateY(2.4vh); } to { opacity: 1; transform: none; } }

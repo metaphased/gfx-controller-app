@@ -776,6 +776,24 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
         </div>
       </div>
 
+      <!-- Map Intro (CS2) -->
+      <div class="ops-ctrl-row cap-map-veto">
+        <div class="ops-ctrl-group" id="ops-grp-mapIntro">
+          <span class="ops-ctrl-label">Map Intro</span>
+          <button class="lbar-toggle" id="ops-btn-mapIntro" onclick="toggleGfx('mapIntro')">
+            <span class="lbar-dot" id="ops-dot-mapIntro"></span>Map Intro
+          </button>
+        </div>
+        <div class="ops-ctrl-group">
+          <span class="ops-ctrl-label">Lineups</span>
+          <button class="mode-btn" id="ops-mi-lineups" onclick="api('/api/mapIntro',{showLineups:!(window._state&&window._state.mapIntro&&window._state.mapIntro.showLineups)})">Toggle</button>
+        </div>
+        <div class="ops-ctrl-group" style="flex:1">
+          <span class="ops-ctrl-label">Map</span>
+          <select id="ops-mi-map" onchange="api('/api/mapIntro',{selectedSlug:this.value})" style="flex:1;min-width:160px"></select>
+        </div>
+      </div>
+
       <!-- Post-Game scoreboard (CS2) -->
       <div class="ops-ctrl-row cap-map-veto">
         <div class="ops-ctrl-group" id="ops-grp-postGame">
@@ -931,7 +949,7 @@ socket.on('presence:list', function(users) {
 });
 
 /* ── Graphic list for bulk sync ── */
-const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','mapVeto','postGame','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
+const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','mapVeto','mapIntro','postGame','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
 
 socket.on('state', state => {
   window._state = state;
@@ -1046,6 +1064,19 @@ socket.on('state', state => {
     }).join('');
     if (_pgSel.dataset.sig !== opts) { _pgSel.dataset.sig = opts; _pgSel.innerHTML = opts; }
     _pgSel.value = cur;
+  }
+
+  /* Map Intro: lineups state + map selector (current/next + all series maps) */
+  setModeActive('ops-mi-lineups', !!(state.mapIntro && state.mapIntro.showLineups));
+  const _miSel = document.getElementById('ops-mi-map');
+  if (_miSel) {
+    const norm = x => String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const rows = ((state.match && state.match.mapResults) || []).filter(r => r && r.map);
+    const cur = (state.mapIntro && state.mapIntro.selectedSlug) || '';
+    const opts = '<option value="">Current / next</option>' + rows.map((r,i) =>
+      '<option value="'+norm(r.map)+'"'+(norm(r.map)===cur?' selected':'')+'>Map '+(i+1)+' — '+r.map+'</option>').join('');
+    if (_miSel.dataset.sig !== opts) { _miSel.dataset.sig = opts; _miSel.innerHTML = opts; }
+    _miSel.value = cur;
   }
 
   /* Player quick grid */

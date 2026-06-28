@@ -254,6 +254,7 @@ socket.on('state', async (state) => {
   mvRenderVeto(state);
   mvRenderGfx(state);
   renderPostGame(state);
+  renderMapIntro(state);
   applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
@@ -299,7 +300,7 @@ const TAB_LABELS = {
   players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
   preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
   h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
-  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', 'live-data':'Live Data', 'post-game-gfx':'Post-Game', bracket:'Bracket', 'groups-gfx':'Group Stage',
+  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', 'live-data':'Live Data', 'post-game-gfx':'Post-Game', 'map-intro-gfx':'Map Intro', bracket:'Bracket', 'groups-gfx':'Group Stage',
   'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
   win:'Win Screen', profiles:'Profiles', routing:'Routing', users:'Settings', log:'Log',
 };
@@ -310,7 +311,7 @@ const GFX_TAB_CLAIM_KEY = {
   'win':'win-screen', 'break':'break-screen', 'preshow':'pre-show',
   'tournament-structure-gfx':'tournament-structure', 'groups-gfx':'standings',
   'bracket':'bracket', 'h2h':'h2h', 'ticker':'ticker', 'prizepool':'prizepool',
-  'player-spotlight':'player-spotlight', 'post-game-gfx':'post-game',
+  'player-spotlight':'player-spotlight', 'post-game-gfx':'post-game', 'map-intro-gfx':'map-intro',
 };
 let _currentClaimTab = null; // tabKey currently claimed
 
@@ -404,6 +405,7 @@ const GFX_PAGES = [
   ['Win Screen',    'graphics/win-screen/'],
   ['Player Spotlight', 'graphics/player-spotlight/'],
   ['Post-Game',     'graphics/post-game/'],
+  ['Map Intro',     'graphics/map-intro/'],
   ['Lower Third',   'graphics/lower-third/'],
 ];
 const urlList = g('url-list');
@@ -624,6 +626,7 @@ const GFX_OUTPUTS = [
   { label: 'Win Screen',            path: 'graphics/win-screen/' },
   { label: 'Player Spotlight',      path: 'graphics/player-spotlight/' },
   { label: 'Post-Game',             path: 'graphics/post-game/', cap: 'map-veto' },
+  { label: 'Map Intro',             path: 'graphics/map-intro/', cap: 'map-veto' },
   // Lower Third outputs are appended dynamically (one row per output) in syncGfxToken.
 ];
 
@@ -4117,6 +4120,7 @@ const GRAPHIC_MAP = [
   { key: 'winScreen',   tab: 'win',         label: 'Win Screen'  },
   { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
   { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game'  },
+  { key: 'mapIntro',    tab: 'map-intro-gfx', label: 'Map Intro'  },
 ];
 
 // ── Map Veto (CS2 etc.) ──────────────────────────────────────────────────────
@@ -4395,6 +4399,26 @@ function pgRenderPreview(state){
   html+=col('team1')+col('team2');
   el.innerHTML=html;
 }
+
+// ── Map Intro control ───────────────────────────────────────────────────────────
+function renderMapIntro(state){
+  if(typeof isMapVeto==='function' && !isMapVeto()) return; // CS2-only surface
+  const mi=(state&&state.mapIntro)||{};
+  const sel=g('mi-map-select');
+  if(sel){
+    const rows=(((state.match&&state.match.mapResults)||[]).filter(function(r){return r&&r.map;}));
+    const cur=mi.selectedSlug||'';
+    const opts='<option value="">Current / next map</option>'+rows.map(function(r,i){
+      return '<option value="'+pgNorm(r.map)+'"'+(pgNorm(r.map)===cur?' selected':'')+'>Map '+(i+1)+' — '+esc(r.map)+'</option>';
+    }).join('');
+    if(sel.dataset.sig!==opts){ sel.dataset.sig=opts; sel.innerHTML=opts; }
+    sel.value=cur;
+  }
+  setInpSafe('mi-title', mi.title||'');
+  document.querySelectorAll('#mi-bg-group [data-mibg]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-mibg')===(mi.bg||'art')); });
+  const sl=g('mi-show-lineups'); if(sl) sl.checked=!!mi.showLineups;
+}
+
 // Accordion steps = the veto steps if present, else the raw pool (pending), matching the graphic.
 function _mvAccordionSteps(state){
   const mv=(state&&state.mapVeto)||{};
@@ -6950,6 +6974,7 @@ const _GFX_ANIM_PAGES = {
   'bracket': ['bracket', 'Bracket'], 'groups-gfx': ['groupStage', 'Group Stage'],
   'tournament-structure-gfx': ['tournamentStructure', 'Tournament Structure'], 'prizepool': ['prizepool', 'Prizepool'],
   'player-spotlight': ['playerSpotlight', 'Player Spotlight'], 'post-game-gfx': ['postGame', 'Post-Game'],
+  'map-intro-gfx': ['mapIntro', 'Map Intro'],
 };
 function _graphicAnimCardHtml(key) {
   const sp = (v, t) => `<button class="theme-pill" data-sp="${v}" onclick="setGfxAnimSpeed('${key}','${v}')">${t}</button>`;
