@@ -1,0 +1,154 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+body { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; }
+
+#pg-root {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--gfx-c3, #fff);
+}
+#pg-stage {
+  width: 86vw; max-width: 1640px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2.4vh;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────────── */
+#pg-header { text-align: center; width: 100%; }
+#pg-title {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.7vh; font-weight: 700; letter-spacing: 0.42em;
+  color: var(--gfx-c1, #1ffaff); opacity: 0.9; margin-bottom: 0.6vh;
+}
+#pg-scoreline {
+  display: flex; align-items: center; justify-content: center; gap: 2.4vw;
+  font-weight: 900; line-height: 1;
+}
+.pg-h-team {
+  font-size: 4.6vh; letter-spacing: 0.02em; color: var(--gfx-c3, #fff);
+  flex: 1 1 0; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#pg-scoreline .pg-h-t1 { text-align: right; }
+#pg-scoreline .pg-h-t2 { text-align: left; }
+.pg-h-win { color: #fff; }
+#pg-h-score {
+  font-size: 6.4vh; font-weight: 900; letter-spacing: 0.04em; flex: 0 0 auto;
+  display: inline-flex; align-items: center; gap: 0.5vw;
+}
+#pg-h-score b { color: rgba(255,255,255,0.55); }
+#pg-h-score .pg-sc-win { color: var(--gfx-c1, #1ffaff); }
+#pg-h-score .pg-sc-sep { color: rgba(255,255,255,0.3); font-size: 4.2vh; }
+#pg-map {
+  margin-top: 0.6vh; font-size: 1.9vh; font-weight: 700; letter-spacing: 0.3em;
+  color: rgba(255,255,255,0.6);
+}
+
+/* ── Round-progression strip ───────────────────────────────────────────────────── */
+#pg-rounds { width: 100%; display: flex; justify-content: center; }
+.pg-rounds-inner { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; max-width: 100%; }
+.pg-rc {
+  width: 2.3vw; max-width: 40px; height: 3.6vh; min-width: 18px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: calc(var(--gfx-radius, 3px) * 0.6);
+  position: relative; overflow: hidden;
+}
+/* Cell colour = the side that WON the round (CS convention: CT blue, T orange). */
+.pg-rc-ct { background: #3f86d6; }
+.pg-rc-t  { background: #d98a34; }
+/* Winning team's logo fills the cell; a soft dark shadow keeps light/white logos legible. */
+.pg-rc-logo {
+  position: absolute; inset: 14%;
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.5));
+}
+/* Condition icon (bomb / defuse only) — a coloured glyph in the bottom-right corner; the
+   colour + a soft dark shadow keep it distinct from the team logo on any cell colour. */
+svg.pg-rc-cond {
+  position: absolute; right: 1px; bottom: 0; width: 50%; height: 50%; display: block;
+  filter: drop-shadow(0 0 1.2px rgba(0,0,0,0.95));
+}
+.pg-cond-bomb   { fill: #ff6a33; }   /* bomb plant → fiery orange-red */
+.pg-cond-defuse { fill: #36e0cf; }   /* defuse     → teal/cyan */
+.pg-rc-half { margin-left: 1.1vw; }
+.pg-rc-half::before {
+  content: ''; position: absolute; left: -0.62vw; top: 6%; height: 88%;
+  border-left: 2px dashed rgba(255,255,255,0.4);
+}
+
+/* ── Team columns ──────────────────────────────────────────────────────────────── */
+#pg-cols { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 1.6vw; }
+.pg-col-inner {
+  background: var(--gfx-panel-bg, rgba(7,15,18,0.82));
+  border: var(--gfx-panel-border, 1px solid rgba(255,255,255,0.08));
+  border-radius: var(--gfx-radius, 3px);
+  border-top: 3px solid var(--team-color, var(--gfx-c1));
+  overflow: hidden;
+}
+.pg-col-inner.pg-winner { box-shadow: 0 0 0 1px var(--team-color), 0 1.2vh 4vh rgba(0,0,0,0.45); }
+.pg-col-head {
+  display: flex; align-items: center; gap: 0.8vw; padding: 1.2vh 1.4vw;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--team-color) 22%, transparent), transparent);
+}
+.pg-col-logo { width: 4vh; height: 4vh; flex-shrink: 0; background-size: contain; background-repeat: no-repeat; background-position: center; }
+.pg-col-name { font-size: 2.8vh; font-weight: 900; letter-spacing: 0.02em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pg-win-badge {
+  margin-left: auto; font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-size: 1.4vh; font-weight: 800; letter-spacing: 0.12em;
+  color: #07120a; background: var(--team-color); padding: 0.3vh 0.8vw; border-radius: calc(var(--gfx-radius, 3px) * 0.6);
+}
+
+.pg-row {
+  display: grid;
+  grid-template-columns: 1fr 4.4vw 4.4vw 4.4vw 4.8vw 5.4vw 5.4vw;
+  align-items: center; padding: 0 1.4vw; height: 5.4vh;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.pg-row-head {
+  height: 3vh; border-top: none;
+  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-size: 1.15vh; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,0.4);
+}
+.pg-row-head .pg-stat, .pg-row-head .pg-pname { text-align: center; }
+.pg-row-head .pg-pname { text-align: left; }
+.pg-pname {
+  font-size: 2.1vh; font-weight: 700; letter-spacing: 0.02em; color: var(--gfx-c3, #fff);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: 0.5vw;
+}
+.pg-stat { text-align: center; font-size: 2vh; font-weight: 700; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.86); }
+.pg-stat.pg-k { color: #fff; font-weight: 800; }
+.pg-stat.pg-adr { color: var(--gfx-c1, #1ffaff); }
+.pg-stat.pg-kd { color: rgba(255,255,255,0.7); }
+.pg-diff.pos { color: #4dcc90; }
+.pg-diff.neg { color: #e06868; }
+.pg-mvp { color: #f0cc44; font-size: 1.6vh; }
+.pg-mk {
+  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-size: 1vh; font-weight: 800; letter-spacing: 0.04em; color: #f0cc44;
+  border: 1px solid rgba(240,204,68,0.45); border-radius: 2px; padding: 0 0.3vw; line-height: 1.5;
+}
+.pg-mk-ace { color: #ff7a45; border-color: rgba(255,122,69,0.55); }
+.pg-empty { padding: 2vh 1.4vw; color: rgba(255,255,255,0.4); font-size: 1.6vh; }
+
+/* ── Animation (uses theme easing + duration tokens) ───────────────────────────── */
+#pg-root.pg-entering #pg-stage { animation: pg-rise calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#pg-root.pg-entering #pg-header,
+#pg-root.pg-entering #pg-rounds { animation: pg-fade calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#pg-root.pg-entering .pg-row { animation: pg-row-in calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#pg-root.pg-entering .pg-col-t1 .pg-row:nth-child(1) { animation-delay: calc(0.20s * var(--gfx-dur-scale, 1)); }
+#pg-root.pg-entering .pg-row:nth-child(2) { animation-delay: calc(0.24s * var(--gfx-dur-scale, 1)); }
+#pg-root.pg-entering .pg-row:nth-child(3) { animation-delay: calc(0.29s * var(--gfx-dur-scale, 1)); }
+#pg-root.pg-entering .pg-row:nth-child(4) { animation-delay: calc(0.34s * var(--gfx-dur-scale, 1)); }
+#pg-root.pg-entering .pg-row:nth-child(5) { animation-delay: calc(0.39s * var(--gfx-dur-scale, 1)); }
+#pg-root.pg-entering .pg-row:nth-child(6) { animation-delay: calc(0.44s * var(--gfx-dur-scale, 1)); }
+#pg-root.pg-entering .pg-row:nth-child(7) { animation-delay: calc(0.49s * var(--gfx-dur-scale, 1)); }
+#pg-root.pg-entering .pg-rc { animation: pg-pop calc(0.3s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+
+#pg-root.pg-exiting #pg-stage { animation: pg-fall calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.5,0,0.75,0)) forwards; }
+
+@keyframes pg-rise { from { opacity: 0; transform: translateY(3vh) scale(0.99); } to { opacity: 1; transform: none; } }
+@keyframes pg-fall { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(2vh); } }
+@keyframes pg-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pg-row-in { from { opacity: 0; transform: translateX(-1.4vw); } to { opacity: 1; transform: none; } }
+@keyframes pg-pop { from { opacity: 0; transform: scaleY(0.4); } to { opacity: 1; transform: none; } }

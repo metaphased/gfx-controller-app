@@ -53,7 +53,7 @@ const sessionMiddleware = session({
   }
 });
 app.use(sessionMiddleware);
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));   // CS2 GSI allplayers payloads exceed the 100kb default
 
 // ── Socket.io (shares express session) ────────────────────────────────────────
 const io = new Server(server, { cors: { origin: '*' } });
@@ -293,6 +293,253 @@ app.get('/', (req, res) => {
   res.redirect(['admin','superadmin'].includes(req.session.user.role) ? '/control/' : '/operator/');
 });
 
+// ── CS2 live-data ingest (auth-EXEMPT — external tools can't hold a session) ────
+// GSI (CS2 observer client) and MatchZy (game server) POST here. Gated by liveData.liveToken
+// (a separate secret from graphicsToken), accepted via ?token=, an Authorization header, or
+// the GSI body's auth.token. DATA-ONLY: records what the game reports; never triggers graphics.
+// MUST be registered BEFORE the protected-static + /api auth middleware so it bypasses them.
+// (Admin config + the GSI .cfg download live further down, behind requireAdmin.)
+function liveTokenFromReq(req) {
+  if (req.query && req.query.token) return String(req.query.token);
+  const h = req.headers && req.headers.authorization;
+  if (h) return h.replace(/^Bearer\s+/i, '').trim();
+  if (req.body && req.body.auth && req.body.auth.token) return String(req.body.auth.token);
+  return '';
+}
+function liveCfg() { return (state.settings && state.settings.liveData) || {}; }
+function liveAuthed(req) { const t = liveCfg().liveToken; return !!t && liveTokenFromReq(req) === t; }
+
+// ── Live score derivation (Phase B) ─────────────────────────────────────────────
+// Ingested per-map round scores land as SUGGESTIONS (state.live.suggested[slug]) the operator
+// applies — unless liveData.autoApplyScores writes them straight into match.mapResults.
+function liveFindMapRow(mapName) {
+  const slug = mapArtSlug(mapName); if (!slug) return -1;
+  const rows = (state.match && state.match.mapResults) || [];
+  for (let i = 0; i < rows.length; i++) if (rows[i] && mapArtSlug(rows[i].map) === slug) return i;
+  return -1;
+}
+function liveApplyToRow(i, s) {
+  const r = state.match.mapResults[i];
+  if (s.t1Rounds != null) r.t1Rounds = Math.max(0, s.t1Rounds | 0);
+  if (s.t2Rounds != null) r.t2Rounds = Math.max(0, s.t2Rounds | 0);
+  if (s.winner && ['team1', 'team2', ''].includes(s.winner)) r.winner = s.winner;
+  if (s.status && ['upcoming', 'live', 'final'].includes(s.status)) r.status = s.status;
+  applyMapResultsToSeries();
+}
+// Returns true if state changed (→ caller broadcasts). s = {map, t1Rounds, t2Rounds, winner, status, source}.
+function liveIngestScore(s) {
+  if (!s || !s.map) return false;
+  const i = liveFindMapRow(s.map); if (i < 0) return false;   // no matching mapResults row → can't use it
+  const slug = mapArtSlug(s.map), r = state.match.mapResults[i];
+  if (liveCfg().autoApplyScores) {
+    const before = JSON.stringify([r.t1Rounds, r.t2Rounds, r.winner, r.status]);
+    liveApplyToRow(i, s);
+    if (state.live.suggested[slug]) delete state.live.suggested[slug];
+    return before !== JSON.stringify([r.t1Rounds, r.t2Rounds, r.winner, r.status]);
+  }
+  // Suggestion mode — only keep it while it differs from what's already applied.
+  const same = (r.t1Rounds | 0) === (s.t1Rounds | 0) && (r.t2Rounds | 0) === (s.t2Rounds | 0) && (r.winner || '') === (s.winner || '');
+  if (same) { if (state.live.suggested[slug]) { delete state.live.suggested[slug]; return true; } return false; }
+  const prev = JSON.stringify(state.live.suggested[slug] || null);
+  state.live.suggested[slug] = { row: i, map: r.map || s.map, t1Rounds: s.t1Rounds | 0, t2Rounds: s.t2Rounds | 0, winner: s.winner || '', status: s.status || 'live', source: s.source || '', ts: Date.now() };
+  delete state.live.suggested[slug].ts;   // exclude volatile ts from the change check below
+  const changed = prev !== JSON.stringify(state.live.suggested[slug]);
+  state.live.suggested[slug].ts = Date.now();
+  return changed;
+}
+// Which team STARTS on CT for a given map, derived from the map veto. On a pick step the
+// recorded `side` is the OTHER (non-picking) team's starting side; the decider is a knife
+// round (no defined side). Returns '' when the map isn't a recorded pick. Matches map by
+// mapArtSlug so "de_mirage" (GSI) lines up with "Mirage" (veto).
+function vetoStartCtTeam(mapName) {
+  const slug = mapArtSlug(mapName); if (!slug) return '';
+  const steps = (state.mapVeto && state.mapVeto.steps) || [];
+  const st = steps.find(s => s && s.action === 'pick' && s.side && (s.side === 'CT' || s.side === 'T') && mapArtSlug(s.map) === slug);
+  if (!st || !st.team) return '';
+  const other = st.team === 'team1' ? 'team2' : 'team1';
+  return st.side === 'CT' ? other : st.team;   // other starts `side`; if other is T, picker is CT
+}
+// Which of our teams is on CT right now — prefer matching the GSI CT team name to our team
+// name/tag (auto-tracks half-time side swaps); else the veto-defined starting side for the
+// live map; else the manual liveData.ctTeam fallback.
+function gsiCtTeam(b) {
+  const ct = (b.map && b.map.team_ct) || {};
+  const m1 = (state.match && state.match.team1) || {}, m2 = (state.match && state.match.team2) || {};
+  const norm = x => String(x || '').toLowerCase().trim(), n = norm(ct.name);
+  if (n && (n === norm(m1.name) || n === norm(m1.tag))) return 'team1';
+  if (n && (n === norm(m2.name) || n === norm(m2.tag))) return 'team2';
+  const fromVeto = vetoStartCtTeam((b.map && b.map.name) || '');
+  if (fromVeto) return fromVeto;
+  return liveCfg().ctTeam === 'team2' ? 'team2' : 'team1';
+}
+function gsiTeamScores(b) {
+  const ct = (b.map && b.map.team_ct) || {}, t = (b.map && b.map.team_t) || {};
+  const ctTeam = gsiCtTeam(b), cs = (ct.score | 0), ts = (t.score | 0);
+  return ctTeam === 'team1' ? { t1: cs, t2: ts } : { t1: ts, t2: cs };
+}
+// Per-player live stats from GSI allplayers (spectator/GOTV) → keyed by steamid, assigned to
+// team1/team2 via the current CT side. GSI gives K/A/D/MVP/score (no ADR). Returns {} if the
+// observer isn't sending allplayers (e.g. POV, not GOTV).
+function gsiPlayers(b) {
+  const all = b.allplayers; if (!all || typeof all !== 'object') return null;
+  const ctTeam = gsiCtTeam(b), other = ctTeam === 'team1' ? 'team2' : 'team1', out = {};
+  for (const sid of Object.keys(all)) {
+    const p = all[sid] || {}, ms = p.match_stats || {}, st = p.state || {};
+    out[sid] = { steamid: sid, name: p.name || '', team: p.team === 'CT' ? ctTeam : other, side: p.team || '',
+      kills: ms.kills | 0, deaths: ms.deaths | 0, assists: ms.assists | 0, mvps: ms.mvps | 0, score: ms.score | 0, adr: 0,
+      // Live economy (GSI allplayers_state) — volatile, caster reference only; absent on MatchZy.
+      money: st.money | 0, equip: st.equip_value | 0, source: 'gsi' };
+  }
+  return Object.keys(out).length ? out : null;
+}
+// GSI map.round_wins → ordered [{ r, side:'CT'|'T', cond }] (cond = win reason: elimination /
+// bomb / defuse / time). Powers the post-game round-progression tracker.
+function parseRoundWins(rw) {
+  if (!rw || typeof rw !== 'object') return [];
+  return Object.keys(rw).map(Number).filter(n => !isNaN(n)).sort((a, b) => a - b).map(n => {
+    const v = String(rw[String(n)] || '').toLowerCase();
+    const side = v.startsWith('ct') ? 'CT' : v.startsWith('t') ? 'T' : '';
+    return { r: n, side, cond: v.replace(/^(ct|t)_win_/, '') };
+  }).filter(x => x.side);
+}
+// Best-effort per-player stats from a MatchZy payload (modern releases carry richer stats incl.
+// ADR). Shapes vary by version — look for team{1,2}.players[] with steamid + kills/deaths/etc.
+function mzPlayers(b) {
+  const out = {};
+  // Multi-kill rounds — Get5/MatchZy field names vary by release; pick the first present.
+  const mk = (p, ...names) => { for (const n of names) if (p[n] != null) return p[n] | 0; return 0; };
+  ['team1', 'team2'].forEach(tk => {
+    const arr = b[tk] && b[tk].players; if (!Array.isArray(arr)) return;
+    arr.forEach(p => {
+      const sid = p && (p.steamid || p.steamid64 || p.steam_id || p.steamId); if (!sid) return;
+      out[String(sid)] = { steamid: String(sid), name: p.name || '', team: tk, side: '',
+        kills: p.kills | 0, deaths: p.deaths | 0, assists: p.assists | 0, mvps: p.mvps | 0,
+        score: p.score | 0, adr: Math.round(Number(p.adr || p.damage_per_round || p.average_damage_per_round || 0)) || 0,
+        k3: mk(p, '3k', 'k3', 'kills_3', 'enemy3ks', '3ks'), k4: mk(p, '4k', 'k4', 'kills_4', 'enemy4ks', '4ks'),
+        k5: mk(p, '5k', 'k5', 'kills_5', 'enemy5ks', '5ks', 'aces'), source: 'matchzy' };
+    });
+  });
+  return Object.keys(out).length ? out : null;
+}
+
+// ── Tournament stat accumulation (Phase C2) ─────────────────────────────────────
+// When a map FINALIZES, snapshot the live players as that map's final stat line into
+// state.tournament.csStats (keyed by series+map+steamid so re-finalizing updates, not
+// duplicates). Aggregated per map / current series / whole tournament via GET /api/cs-stats.
+function csSeriesKey() {
+  const m = state.match || {};
+  if (m.scheduleGameId) return 'sg:' + m.scheduleGameId;
+  const norm = x => String(x || '').toLowerCase().trim();
+  return 'tm:' + [norm((m.team1 || {}).name), norm((m.team2 || {}).name)].sort().join('__');
+}
+function csMapDisplayName(mapName) {
+  const i = liveFindMapRow(mapName);
+  return (i >= 0 && state.match.mapResults[i].map) ? state.match.mapResults[i].map : mapName;
+}
+function recordMapStats(mapName) {
+  const slug = mapArtSlug(mapName); if (!slug) return false;
+  const lp = state.live.players || {}; if (!Object.keys(lp).length) return false;
+  const sk = csSeriesKey(), disp = csMapDisplayName(mapName);
+  if (!state.tournament) state.tournament = {};
+  const log = state.tournament.csStats || (state.tournament.csStats = []);
+  const sig = l => [l.kills, l.deaths, l.assists, l.mvps, l.adr, l.k3, l.k4, l.k5, l.name].join('|');
+  let changed = false;
+  Object.keys(lp).forEach(sid => {
+    const p = lp[sid]; if (!p || !p.steamid) return;
+    const key = sk + ':' + slug + ':' + sid;
+    const next = { key, seriesKey: sk, steamid: sid, name: p.name || '', team: p.team || '', map: disp, slug,
+      kills: p.kills | 0, deaths: p.deaths | 0, assists: p.assists | 0, mvps: p.mvps | 0, adr: p.adr | 0, score: p.score | 0,
+      k3: p.k3 | 0, k4: p.k4 | 0, k5: p.k5 | 0, ts: Date.now() };
+    const i = log.findIndex(l => l.key === key);
+    if (i < 0) { log.push(next); changed = true; }
+    else if (sig(log[i]) !== sig(next)) { log[i] = next; changed = true; }
+  });
+  return changed;
+}
+// Aggregate the log → per-player tournament + current-series totals + per-map lines.
+function buildCsStats() {
+  const log = (state.tournament && state.tournament.csStats) || [], sk = csSeriesKey();
+  const zero = () => ({ maps: 0, kills: 0, deaths: 0, assists: 0, mvps: 0, k3: 0, k4: 0, k5: 0, _adr: 0 });
+  const add = (a, l) => { a.maps++; a.kills += l.kills | 0; a.deaths += l.deaths | 0; a.assists += l.assists | 0; a.mvps += l.mvps | 0; a.k3 += l.k3 | 0; a.k4 += l.k4 | 0; a.k5 += l.k5 | 0; a._adr += l.adr | 0; };
+  const fin = a => { a.kd = +(a.kills / Math.max(1, a.deaths)).toFixed(2); a.adr = a.maps ? Math.round(a._adr / a.maps) : 0; delete a._adr; return a; };
+  const players = {};
+  log.forEach(l => {
+    const p = players[l.steamid] || (players[l.steamid] = { steamid: l.steamid, name: l.name, team: l.team, tournament: zero(), series: zero(), byMap: {} });
+    p.name = l.name || p.name; p.team = l.team || p.team;
+    add(p.tournament, l);
+    if (l.seriesKey === sk) add(p.series, l);
+    p.byMap[l.map] = { kills: l.kills | 0, deaths: l.deaths | 0, assists: l.assists | 0, mvps: l.mvps | 0, adr: l.adr | 0, k3: l.k3 | 0, k4: l.k4 | 0, k5: l.k5 | 0, kd: +((l.kills | 0) / Math.max(1, l.deaths | 0)).toFixed(2) };
+  });
+  Object.values(players).forEach(p => { fin(p.tournament); fin(p.series); });
+  return { seriesKey: sk, players };
+}
+
+let _gsiSig = '', _gsiLastBcast = 0;
+app.post('/api/live/gsi', (req, res) => {
+  if (!liveAuthed(req)) return res.status(403).end();
+  if (!liveCfg().gsiEnabled) return res.json({ ignored: true });   // source turned off — drop quietly
+  const b = req.body || {}, map = b.map || {};
+  const g = state.live.gsi;
+  g.lastSeen = Date.now();
+  g.map = map.name || ''; g.phase = map.phase || '';
+  g.round = (map.round != null ? map.round : ((b.round && b.round.round) || 0)) | 0;
+  g.ctScore = ((map.team_ct && map.team_ct.score) || 0) | 0;
+  g.tScore  = ((map.team_t  && map.team_t.score)  || 0) | 0;
+  g.roundWins = parseRoundWins(map.round_wins);
+  let changed = false;
+  if (g.map && ['live', 'gameover', 'intermission'].includes(g.phase)) {
+    const sc = gsiTeamScores(b), fin = g.phase === 'gameover';
+    const winner = fin ? (sc.t1 > sc.t2 ? 'team1' : (sc.t2 > sc.t1 ? 'team2' : '')) : '';
+    changed = liveIngestScore({ map: g.map, t1Rounds: sc.t1, t2Rounds: sc.t2, winner, status: fin ? 'final' : 'live', source: 'gsi' });
+  }
+  const gp = gsiPlayers(b);   // live K/D/A (carried out on the next throttled broadcast, not per kill)
+  if (gp) state.live.players = gp;
+  if (g.phase === 'gameover' && g.map) {
+    if (recordMapStats(g.map)) changed = true;   // final → tournament log
+    // Snapshot the round history + starting CT team onto the map row for the post-game board.
+    const ri = liveFindMapRow(g.map);
+    if (ri >= 0 && g.roundWins.length) {
+      const row = state.match.mapResults[ri];
+      row.roundHistory = g.roundWins;
+      row.ctStartTeam = vetoStartCtTeam(g.map) || (liveCfg().ctTeam === 'team2' ? 'team2' : 'team1');
+      changed = true;
+    }
+  }
+  const sig = [g.map, g.phase, g.round, g.ctScore, g.tScore].join('|');
+  const now = Date.now();
+  if (changed || sig !== _gsiSig || now - _gsiLastBcast > 3000) { _gsiSig = sig; _gsiLastBcast = now; broadcast(); }
+  res.json({ ok: true });
+});
+app.post('/api/live/matchzy', (req, res) => {
+  if (!liveAuthed(req)) return res.status(403).end();
+  if (!liveCfg().matchzyEnabled) return res.json({ ignored: true });
+  const b = req.body || {};
+  const mz = state.live.matchzy;
+  mz.lastSeen = Date.now();
+  const ev = String(b.event || b.eventType || '').toLowerCase();
+  mz.event = ev;
+  const map = b.map_name || b.map || b.mapName || mz.map || '';
+  mz.map = map;
+  // Best-effort score parse — MatchZy payload fields vary by version; teams are reported
+  // directly (no side mapping needed). Round scores: team{1,2}.score | *_score | map_score.
+  const T1 = b.team1 || {}, T2 = b.team2 || {};
+  const num = (...xs) => { for (const x of xs) if (x != null && x !== '' && !isNaN(x)) return x | 0; return null; };
+  const t1r = num(T1.score, T1.map_score, b.team1_score, b.t1_score);
+  const t2r = num(T2.score, T2.map_score, b.team2_score, b.t2_score);
+  let winner = typeof b.winner === 'string' ? b.winner : (b.winner && b.winner.team) || '';
+  winner = (winner === 'team1' || winner === 'team2') ? winner : '';
+  const fin = ev.includes('map_result') || ev.includes('map_end');
+  let changed = false;
+  if (map && (t1r != null || t2r != null)) {
+    changed = liveIngestScore({ map, t1Rounds: t1r, t2Rounds: t2r, winner: fin ? winner : '', status: fin ? 'final' : 'live', source: 'matchzy' });
+  }
+  const mp = mzPlayers(b);   // MatchZy player stats (incl. ADR) when present — prefer over GSI
+  if (mp) { state.live.players = mp; changed = true; }
+  if (fin && map && recordMapStats(map)) changed = true;   // map_result → tournament log
+  if (changed || ev) broadcast();
+  res.json({ ok: true });
+});
+
 // ── Static — protected ─────────────────────────────────────────────────────────
 app.use('/control',  requireAuth, requireAdmin, express.static(path.join(__dirname, 'public', 'control')));
 app.use('/operator', requireAuth, express.static(path.join(__dirname, 'public', 'operator')));
@@ -484,6 +731,7 @@ const makeDefault = () => ({
     hasPrizepool:    false,
     teamPool:        [],   // team IDs competing in THIS tournament (subset of global Teams DB)
     mapPool:         [],   // CS2 etc. map pool [{ name, image }] — set in Tournament Setup; rotates
+    csStats:         [],   // CS2 per-map player stat lines accumulated over the event (live-data Phase C2)
     groups: [],
     schedule: []
   },
@@ -502,6 +750,17 @@ const makeDefault = () => ({
     mapResults: [],
     scheduleDayId: null,
     scheduleGameId: null,
+  },
+  // CS2 live-data ingest (optional). Populated by GSI (observer client) and/or MatchZy
+  // (game server) POSTs. DATA-ONLY: it records what the game reports + derives SUGGESTED
+  // scores/stats; the operator still triggers every graphic manually. lastSeen = epoch ms
+  // of the last accepted post (the UI shows "connected" if recent). suggested/players are
+  // filled in later phases (scores / per-player stats).
+  live: {
+    gsi:     { lastSeen: 0, map: '', phase: '', round: 0, ctScore: 0, tScore: 0, roundWins: [] },
+    matchzy: { lastSeen: 0, event: '', map: '' },
+    suggested: {},   // phase B: { mapResults?, seriesScore? } awaiting operator Apply
+    players: {},     // phase C: per-steamid live stats { [steamid]: { name, team, kills, deaths, assists, mvps } }
   },
   players: {
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),
@@ -557,7 +816,14 @@ const makeDefault = () => ({
                  mapFlyby: false,      // true = focused accordion map crossfades through its image set
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left' },
   breakScreen: { visible: false, message: 'BE RIGHT BACK', subtext: '', nextMatch: '', timerEnd: null, pipMode: false },
-  winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
+  winScreen:   { visible: false, team: 'team1', message: 'WINS THE SERIES', style: 'blade', seriesScore: '', autoSeriesScore: false, accentSource: 'side', accentCustom: '#1ffaff', showPicks: false, picksPosition: 'below', compShape: 'rect', compBg: 'bespoke' },
+  // CS2 post-game scoreboard — per-map final stats for post-match analysis. selectedSlug =
+  // mapArtSlug of the chosen map (''=latest finalized); the graphic resolves players from
+  // tournament.csStats + the map's mapResults row (+ its snapshot roundHistory). DATA-ONLY.
+  postGame:    { visible: false, selectedSlug: '', design: 'split', bg: 'dark', showRounds: true, showLogos: true, title: 'POST-GAME' },
+  // CS2 map intro — cinematic pre-map card (map art hero + veto story + optional lineups).
+  // selectedSlug = mapArtSlug of the chosen map (''=current/next, the first non-final map row).
+  mapIntro:    { visible: false, selectedSlug: '', showLineups: false, bg: 'art', title: '', animVariant: 'cinematic', flyby: false },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
   // design: angled|bleed|framed, mode: single|duo|compare. players[0]=A (team1 side),
   // players[1]=C (team2 side); champ='' = auto (most-played); statOverrides keyed by stat.
@@ -618,6 +884,16 @@ const makeDefault = () => ({
     },
     logoSet: { logos: [] },        // [{ name: string, url: string }]
     mapPoolDefaults: {},           // per-game default map pool, e.g. { cs2: [{name,image}] } — "Set as default"
+    // CS2 live-data ingest config (optional; both sources independent). liveToken is a
+    // SEPARATE secret from graphicsToken (carried by the GSI cfg / MatchZy plugin) and is
+    // stripped from the graphics payload. autoApplyScores=false → ingest only suggests.
+    liveData: {
+      gsiEnabled:      false,
+      matchzyEnabled:  false,
+      liveToken:       require('crypto').randomBytes(16).toString('hex'),
+      autoApplyScores: false,
+      ctTeam:          'team1',   // which of our teams is currently on CT (maps GSI CT/T → team1/2)
+    },
     buses: [
       { id: 'busA', name: 'Bus A', assignments: [] },
       { id: 'busB', name: 'Bus B', assignments: [] },
@@ -746,12 +1022,15 @@ function migrateGame(st) {
   if (!st.match.game) st.match.game = 'lol';
   if (!st.tournament) st.tournament = {};
   if (st.tournament.game === undefined) st.tournament.game = st.match.game;
-  // Lock pre-existing (non-empty) tournaments so a loaded show doesn't drop back to the
-  // create step. A truly empty/reset state stays created:false → create step shows.
+  // Lock pre-existing tournaments so a loaded show doesn't drop back to the create step.
+  // "Established" = has real STRUCTURAL data (teams / schedule / groups / series) — NOT merely
+  // a name. A freshly-created blank profile carries the profile name but no structure, so it
+  // stays unlocked at the create step (the operator can still pick the game). A truly empty /
+  // reset state stays created:false too.
   if (!st.tournament.created) {
     const t = st.tournament;
-    const hasData = !!(t.name || (t.teamPool && t.teamPool.length) || (t.schedule && t.schedule.length) ||
-      (t.groups && t.groups.length) || (st.match && (st.match.tournament || (st.match.seriesGames && st.match.seriesGames.length))));
+    const hasData = !!((t.teamPool && t.teamPool.length) || (t.schedule && t.schedule.length) ||
+      (t.groups && t.groups.length) || (st.match && st.match.seriesGames && st.match.seriesGames.length));
     if (hasData) st.tournament.created = true;
   }
 }
@@ -900,13 +1179,15 @@ const GRAPHIC_PATHS = {
   playerSpotlight: 'graphics/player-spotlight',
   bgOutput: 'graphics/bg-output',
   mapVeto: 'graphics/map-veto',
+  postGame: 'graphics/post-game',
+  mapIntro: 'graphics/map-intro',
 };
 const GRAPHIC_LABELS = {
   lowerThird: 'lower third', headToHead: 'head to head', playerIntro: 'player intro',
   preShow: 'pre-show', draft: 'draft', bracket: 'bracket', groupStage: 'group stage',
   tournamentStructure: 'tournament structure', prizepool: 'prize', winScreen: 'win screen',
   breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker', playerSpotlight: 'player spotlight',
-  mapVeto: 'map veto',
+  mapVeto: 'map veto', postGame: 'post game', mapIntro: 'map intro',
 };
 function _switcherByUrl(url) {
   if (!url) return null;
@@ -959,6 +1240,10 @@ function buildStatePayload(includeToken) {
   if (!includeToken && payload.settings) {
     payload.settings = Object.assign({}, payload.settings); // clone so we don't mutate real state
     delete payload.settings.graphicsToken;
+    if (payload.settings.liveData) {            // hide the live-ingest secret from graphics/operators
+      payload.settings.liveData = Object.assign({}, payload.settings.liveData);
+      delete payload.settings.liveData.liveToken;
+    }
     if (payload.settings.switcher) {            // hide switcher creds/config from non-admins
       payload.settings = Object.assign({}, payload.settings);
       delete payload.settings.switcher;
@@ -975,7 +1260,7 @@ function broadcast() {
 
 // ── SSE (Server-Sent Events) for Companion / external integrations ─────────────
 const _sseClients = new Set();
-const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto'];
+const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto','postGame','mapIntro'];
 function buildSSEPayload() {
   const visibilities = {};
   SSE_GRAPHIC_KEYS.forEach(k => { if (state[k]) visibilities[k] = !!state[k].visible; });
@@ -1172,6 +1457,91 @@ deriveTodayGames();
 // ── Config API (public) ────────────────────────────────────────────────────────
 app.get('/api/config', (req, res) => res.json({ externalUrl: EXTERNAL_URL }));
 
+// ── CS2 live-data: admin config + setup helpers (the ingest endpoints are above, pre-auth) ──
+function liveBaseUrl(req) { return EXTERNAL_URL || (req.protocol + '://' + req.get('host')); }
+// Toggle sources / options + optionally rotate the ingest token.
+app.post('/api/live/config', requireAdmin, (req, res) => {
+  const ld = state.settings.liveData || (state.settings.liveData = {});
+  const b = req.body || {};
+  if (b.gsiEnabled      !== undefined) ld.gsiEnabled      = !!b.gsiEnabled;
+  if (b.matchzyEnabled  !== undefined) ld.matchzyEnabled  = !!b.matchzyEnabled;
+  if (b.autoApplyScores !== undefined) ld.autoApplyScores = !!b.autoApplyScores;
+  if (b.ctTeam          !== undefined) ld.ctTeam          = (b.ctTeam === 'team2' ? 'team2' : 'team1');
+  if (b.regenerateToken) ld.liveToken = require('crypto').randomBytes(16).toString('hex');
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'live-config',
+    'gsi=' + ld.gsiEnabled + ' matchzy=' + ld.matchzyEnabled + (b.regenerateToken ? ' (token rotated)' : ''));
+  broadcast(); res.json({ ok: true });
+});
+// Apply a live SCORE suggestion into match.mapResults — one map (by slug) or all pending.
+app.post('/api/live/apply', requireAdmin, (req, res) => {
+  const sug = state.live.suggested || {};
+  const keys = req.body && req.body.slug ? [req.body.slug] : Object.keys(sug);
+  let applied = 0;
+  keys.forEach(slug => {
+    const s = sug[slug]; if (!s) return;
+    const i = liveFindMapRow(s.map); if (i < 0) return;
+    liveApplyToRow(i, s); delete sug[slug]; applied++;
+  });
+  if (applied) {
+    logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'live-apply', applied + ' map score(s)');
+    broadcast();
+  }
+  res.json({ ok: true, applied });
+});
+// Accumulated CS2 player stats — per-player tournament + current-series totals + per-map lines.
+// requireAuth (global) lets the caster view / graphics read it via session or ?token=.
+app.get('/api/cs-stats', (req, res) => res.json(buildCsStats()));
+// Clear the accumulated tournament stat log (admin) — for a fresh event / mistaken entries.
+app.post('/api/cs-stats/clear', requireAdmin, (req, res) => {
+  if (state.tournament) state.tournament.csStats = [];
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'cs-stats-clear', '');
+  broadcast(); res.json({ ok: true });
+});
+// Everything the control "Live Data" card needs to show setup instructions (admin only —
+// includes the secret token + the ready-to-paste URLs/cfg).
+app.get('/api/live/info', requireAdmin, (req, res) => {
+  const ld = state.settings.liveData || {};
+  const base = liveBaseUrl(req), token = ld.liveToken || '';
+  res.json({
+    token, base,
+    gsiUrl:     base + '/api/live/gsi?token=' + encodeURIComponent(token),
+    matchzyUrl: base + '/api/live/matchzy?token=' + encodeURIComponent(token),
+    cfgUrl:     '/api/live/gsi.cfg',
+    note: 'The URL must be reachable from the CS2 PC / game server — set EXTERNAL_URL (or use this machine\'s LAN IP), not localhost, for a separate machine.',
+  });
+});
+// Downloadable GSI config — drop in ...\\Counter-Strike Global Offensive\\game\\csgo\\cfg\\
+app.get('/api/live/gsi.cfg', requireAdmin, (req, res) => {
+  const ld = state.settings.liveData || {};
+  const uri = liveBaseUrl(req) + '/api/live/gsi?token=' + encodeURIComponent(ld.liveToken || '');
+  const cfg =
+`"MetaGFX Live"
+{
+ "uri"       "${uri}"
+ "timeout"   "5.0"
+ "buffer"    "0.1"
+ "throttle"  "0.5"
+ "heartbeat" "10.0"
+ "auth"      { "token" "${ld.liveToken || ''}" }
+ "data"
+ {
+  "provider"               "1"
+  "map"                    "1"
+  "round"                  "1"
+  "player_id"              "1"
+  "player_state"           "1"
+  "player_match_stats"     "1"
+  "allplayers_id"          "1"
+  "allplayers_state"       "1"
+  "allplayers_match_stats" "1"
+ }
+}
+`;
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.set('Content-Disposition', 'attachment; filename="gamestate_integration_metagfx.cfg"');
+  res.send(cfg);
+});
+
 // ── State API ──────────────────────────────────────────────────────────────────
 app.get('/api/state', (req, res) => {
   const isAdmin = req.session && req.session.user && ['admin','superadmin'].includes(req.session.user.role);
@@ -1179,6 +1549,7 @@ app.get('/api/state', (req, res) => {
   if (isAdmin) return res.json(Object.assign({}, state, { adapter }));
   const safe = Object.assign({}, state, { adapter, settings: Object.assign({}, state.settings) });
   delete safe.settings.graphicsToken;
+  if (safe.settings.liveData) { safe.settings.liveData = Object.assign({}, safe.settings.liveData); delete safe.settings.liveData.liveToken; }
   res.json(safe);
 });
 app.post('/api/state/reset', requireAdmin, (req, res) => { state = makeDefault(); deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true }); });
@@ -1222,13 +1593,13 @@ app.post('/api/match/load-team', requireAdmin, (req, res) => {
   const tp = team.players || [];
   DEFAULT_ROLES.forEach((role, i) => {
     const p = tp[i] || {};
-    state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'' };
+    state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'', steamid: p.steamid||'', hltvUrl: p.hltvUrl||'' };
   });
   const subsKey = slot + 'subs';
   const ts = team.subs || [];
   state.players[subsKey] = [0,1,2].map(i => {
     const s = ts[i] || {};
-    return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'' };
+    return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'', steamid: s.steamid||'', hltvUrl: s.hltvUrl||'' };
   });
   broadcast(); res.json({ ok: true });
 });
@@ -1240,7 +1611,7 @@ const GRAPHIC_PAGE_KEYS = {
   winScreen: 'win-screen', preShow: 'pre-show',
   tournamentStructure: 'tournament-structure', groupStage: 'standings',
   prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight',
-  mapVeto: 'map-veto'
+  mapVeto: 'map-veto', postGame: 'post-game', mapIntro: 'map-intro'
 };
 
 function findBusForGraphic(graphicName) {
@@ -1410,6 +1781,7 @@ app.get('/api/companion/profile', (req, res) => {
     playerSpotlight:'Player Spotlight', draft:'Draft', bracket:'Bracket',
     tournamentStructure:'Tournament Structure', groupStage:'Group Stage', preShow:'Pre-Show',
     breakScreen:'Break Screen', winScreen:'Win Screen', prizepool:'Prizepool', ticker:'Ticker',
+    mapVeto:'Map Veto', postGame:'Post-Game', mapIntro:'Map Intro',   // CS2
   };
   const GRAPHICS = Object.keys(GRAPHIC_LABELS);
 
@@ -1474,6 +1846,10 @@ app.get('/api/companion/profile', (req, res) => {
     httpButton('Spotlight\nVS Off',   '/api/playerSpotlight', '{"showVs":false}'),
     httpButton('Standings\nGroups',   '/api/groupStage', '{"mode":"live"}'),
     httpButton('Standings\nFinal',    '/api/groupStage', '{"mode":"final"}'),
+    httpButton('Map Intro\nLineups On',  '/api/mapIntro', '{"showLineups":true}'),
+    httpButton('Map Intro\nLineups Off', '/api/mapIntro', '{"showLineups":false}'),
+    httpButton('Map Intro\nFlyby On',    '/api/mapIntro', '{"flyby":true}'),
+    httpButton('Map Intro\nFlyby Off',   '/api/mapIntro', '{"flyby":false}'),
   ];
   const matchBtns = [
     httpButton('T1 Score\n+1',  '/api/match/score/team1/increment'),
@@ -1764,7 +2140,9 @@ app.post('/api/draft', (req, res) => {
 });
 app.post('/api/bgOutput', requireAdmin, (req, res) => { deepMerge(state.bgOutput, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/breakScreen', (req, res) => { Object.assign(state.breakScreen, req.body); broadcast(); res.json({ok:true}); });
-app.post('/api/winScreen',   (req, res) => { Object.assign(state.winScreen,   req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/winScreen',   (req, res) => { Object.assign(state.winScreen,   req.body); reconcileWinSeriesScore(); broadcast(); res.json({ok:true}); });
+app.post('/api/postGame',    (req, res) => { Object.assign(state.postGame,    req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/mapIntro',    (req, res) => { Object.assign(state.mapIntro,    req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/playerSpotlight', (req, res) => { Object.assign(state.playerSpotlight, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/headToHead',  (req, res) => { Object.assign(state.headToHead,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/playerIntro', (req, res) => { Object.assign(state.playerIntro, req.body); broadcast(); res.json({ok:true}); });
@@ -2139,13 +2517,13 @@ app.post('/api/teams/save', requireAdmin, (req, res) => {
       const tp = inc.players || [];
       DEFAULT_ROLES.forEach((role, i) => {
         const p = tp[i] || {};
-        state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'' };
+        state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'', steamid: p.steamid||'', hltvUrl: p.hltvUrl||'' };
       });
       const subsKey = slot + 'subs';
       const ts = inc.subs || [];
       state.players[subsKey] = [0,1,2].map(i => {
         const s = ts[i] || {};
-        return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'' };
+        return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'', steamid: s.steamid||'', hltvUrl: s.hltvUrl||'' };
       });
       synced = true;
     });
@@ -2456,13 +2834,17 @@ function reconcileMapResults() {
   const out = [];
   for (let i = 0; i < bestOf; i++) {
     const p = prev[i] || {};
-    out.push({
+    const row = {
       map:      p.map || vetoMaps[i] || '',
       t1Rounds: p.t1Rounds || 0,
       t2Rounds: p.t2Rounds || 0,
       winner:   p.winner   || '',
       status:   p.status   || 'upcoming',
-    });
+    };
+    // Preserve the post-game round snapshot (set on GSI finalize) across reconciles.
+    if (p.roundHistory) row.roundHistory = p.roundHistory;
+    if (p.ctStartTeam)  row.ctStartTeam  = p.ctStartTeam;
+    out.push(row);
   }
   state.match.mapResults = out;
   applyMapResultsToSeries();
@@ -2479,6 +2861,24 @@ function applyMapResultsToSeries() {
   });
   if (state.match.team1) state.match.team1.score = t1;
   if (state.match.team2) state.match.team2.score = t2;
+  reconcileWinSeriesScore();
+}
+
+// CS2 (map-veto) win screen: LoL fills winScreen.seriesScore from the game-flow, but CS2 has no
+// such flow — so when the operator opts in (autoSeriesScore), derive it from the maps-won score
+// (team1.score — team2.score, Bo>1 only). When off, clear it so the score row hides. No-op for
+// non-map-veto games so LoL's game-flow value is never touched.
+function reconcileWinSeriesScore() {
+  if (!state.match || !state.winScreen) return;
+  if (games.resolveAdapter(state.match.game).pregame.kind !== 'map-veto') return;
+  if (state.winScreen.autoSeriesScore) {
+    const fmt = parseInt((state.match.format || 'Bo3').replace(/bo/i, '')) || 3;
+    state.winScreen.seriesScore = fmt > 1
+      ? (((state.match.team1 || {}).score | 0) + ' — ' + ((state.match.team2 || {}).score | 0))
+      : '';
+  } else {
+    state.winScreen.seriesScore = '';
+  }
 }
 
 // Update one map row (by index) — map name + round score + winner + status. Manual
@@ -2682,12 +3082,12 @@ app.post('/api/match/load-schedule-game', (req, res) => {
     const tp = t.players || [];
     DEFAULT_ROLES.forEach((role, i) => {
       const p = tp[i] || {};
-      state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'' };
+      state.players[slot][i] = { name: p.name||'', handle: p.handle||'', role, country: p.country||'', active: true, opggRegion: p.opggRegion||'', riotId: p.riotId||'', steamid: p.steamid||'', hltvUrl: p.hltvUrl||'' };
     });
     const subsKey = slot + 'subs';
     state.players[subsKey] = [0,1,2].map(i => {
       const s = (t.subs||[])[i] || {};
-      return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'' };
+      return { name: s.name||'', handle: s.handle||'', role: s.role||'', country: s.country||'', active: false, opggRegion: s.opggRegion||'', riotId: s.riotId||'', steamid: s.steamid||'', hltvUrl: s.hltvUrl||'' };
     });
   };
   loadTeamIntoSlot(sg.team1Id, 'team1');
@@ -3080,6 +3480,11 @@ app.post('/api/profiles/save', requireAdmin, (req, res) => {
 app.post('/api/profiles/save-empty', requireAdmin, (req, res) => {
   const { name } = req.body;
   if (!name || !name.trim()) return res.status(400).json({ error: 'Profile name required' });
+  // Game is chosen in the New Profile dialog so the blank profile starts on the right adapter.
+  // The profile is created UNLOCKED (tournament.created:false) so the operator can still change
+  // the game before locking it in. Unknown ids fall back to LoL.
+  const KNOWN_GAMES = ['lol', 'cs2', 'dota2', 'valorant', 'r6', 'generic'];
+  const game = KNOWN_GAMES.includes(req.body.game) ? req.body.game : 'lol';
   const profiles = loadProfiles();
   // Use system defaults — don't inherit colours/logos from whatever is currently loaded
   const defaultSettingsSnap = JSON.parse(JSON.stringify(makeDefault().settings));
@@ -3091,9 +3496,9 @@ app.post('/api/profiles/save-empty', requireAdmin, (req, res) => {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     data: {
-      tournament: {},
+      tournament: { game, created: false },
       bracket: { title: '', rounds: [] },
-      match: { team1: { ...emptyTeam }, team2: { ...emptyTeam }, game: 'lol', format: 'bo3',
+      match: { team1: { ...emptyTeam }, team2: { ...emptyTeam }, game, format: 'bo3',
                tournament: name.trim(), tournamentLogo: '', sponsorLogos: [],
                fearlessDraft: false, currentGameNum: 1, seriesGames: [] },
       players: { team1: [], team2: [] },

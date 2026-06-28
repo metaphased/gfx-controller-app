@@ -228,6 +228,10 @@ function populateContent(ws, match) {
 
   const scoreRow    = document.getElementById('ws-score-row');
   const seriesScore = ws.seriesScore || '';
+  // The hype redesign hides scores by default; the CS2 "auto series score" opt-in brings the
+  // series score row back (only when there's a score to show).
+  const rootEl = document.getElementById('win-root');
+  if (rootEl) rootEl.classList.toggle('ws-series-on', !!(ws.autoSeriesScore && seriesScore));
   if (scoreRow) {
     if (seriesScore) {
       const parts = seriesScore.split('—').map(s => s.trim());

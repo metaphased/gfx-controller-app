@@ -49,6 +49,7 @@ function isChampDraft()     { const a = gameAdapter(); return a ? a.pregameKind 
 function isMapVeto()        { const a = gameAdapter(); return a ? a.pregameKind === 'map-veto'    : false; }
 function supportsFearless() { const a = gameAdapter(); return a ? !!a.supportsFearless : true; }
 function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvider === 'opgg'  : true; }
+function supportsSteamId()  { const a = gameAdapter(); return a ? a.rosterIds === 'steam'     : false; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
 function hasRoles()         { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
@@ -106,6 +107,19 @@ function applyTournamentCreateLock() {
   if (lockNote)  lockNote.style.display  = created ? '' : 'none';
   if (createRow) createRow.style.display = created ? 'none' : '';
   if (resetRow)  resetRow.style.display  = created ? '' : 'none';
+  // Maturity badge (control-room only, never on-air) — reflects the selected/locked game.
+  const badge = g('ts-game-maturity');
+  if (badge) {
+    const m = (window._state && window._state.adapter && window._state.adapter.maturity) || 'stable';
+    if (m === 'beta' || m === 'alpha') {
+      badge.style.display = '';
+      badge.className = 'maturity-badge ' + m;
+      badge.textContent = m === 'beta' ? 'BETA' : 'ALPHA';
+      badge.title = m === 'beta'
+        ? 'Beta — this game is shipped and usable, still being hardened.'
+        : 'Alpha — early / planned support; runs on the generic core only.';
+    } else { badge.style.display = 'none'; }
+  }
 }
 async function createTournament() {
   const game = g('ts-game') ? g('ts-game').value : 'lol';
@@ -249,8 +263,11 @@ socket.on('state', async (state) => {
   applyAdapterUI();
   applyTournamentCreateLock();
   tmRenderMapPool(state);
+  ldRender(state);
   mvRenderVeto(state);
   mvRenderGfx(state);
+  renderPostGame(state);
+  renderMapIntro(state);
   applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
@@ -296,7 +313,7 @@ const TAB_LABELS = {
   players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
   preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
   h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
-  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', bracket:'Bracket', 'groups-gfx':'Group Stage',
+  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', 'live-data':'Live Data', 'post-game-gfx':'Post-Game', 'map-intro-gfx':'Map Intro', bracket:'Bracket', 'groups-gfx':'Group Stage',
   'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
   win:'Win Screen', profiles:'Profiles', routing:'Routing', users:'Settings', log:'Log',
 };
@@ -307,7 +324,7 @@ const GFX_TAB_CLAIM_KEY = {
   'win':'win-screen', 'break':'break-screen', 'preshow':'pre-show',
   'tournament-structure-gfx':'tournament-structure', 'groups-gfx':'standings',
   'bracket':'bracket', 'h2h':'h2h', 'ticker':'ticker', 'prizepool':'prizepool',
-  'player-spotlight':'player-spotlight',
+  'player-spotlight':'player-spotlight', 'post-game-gfx':'post-game', 'map-intro-gfx':'map-intro',
 };
 let _currentClaimTab = null; // tabKey currently claimed
 
@@ -400,6 +417,8 @@ const GFX_PAGES = [
   ['Break Screen',          'graphics/break-screen/'],
   ['Win Screen',    'graphics/win-screen/'],
   ['Player Spotlight', 'graphics/player-spotlight/'],
+  ['Post-Game',     'graphics/post-game/'],
+  ['Map Intro',     'graphics/map-intro/'],
   ['Lower Third',   'graphics/lower-third/'],
 ];
 const urlList = g('url-list');
@@ -437,6 +456,113 @@ async function mvRefreshImages(btn) {
   btn.textContent = (r && r.ok) ? ('Updated ✓ (' + (r.maps || 0) + ')') : 'Failed';
   setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
 }
+
+// ── Live Data (CS2 GSI / MatchZy ingest) ────────────────────────────────────────
+// _ldInfo holds the admin-only token + ready-to-paste URLs (fetched from /api/live/info);
+// enabled flags + connection status come from the broadcast state (state.settings.liveData +
+// state.live). Status decays to "idle" via a periodic re-render since posts stop broadcasting.
+let _ldInfo = null;
+async function ldFetchInfo() {
+  try { const r = await fetch('/api/live/info'); if (r.ok) _ldInfo = await r.json(); } catch (e) {}
+  const t = document.getElementById('ld-token');
+  if (t) t.textContent = (_ldInfo && _ldInfo.token) ? (_ldInfo.token.slice(0, 6) + '…' + _ldInfo.token.slice(-4)) : '—';
+}
+function ldAgo(ms) { const s = Math.round(ms / 1000); if (s < 60) return s + 's'; const m = Math.round(s / 60); if (m < 60) return m + 'm'; return Math.round(m / 60) + 'h'; }
+function ldStatusEl(src, enabled, info) {
+  const e = document.getElementById('ld-' + src + '-status'); if (!e) return;
+  const lastSeen = (info && info.lastSeen) || 0, age = Date.now() - lastSeen;
+  if (!enabled) { e.className = 'ld-status'; e.textContent = 'off'; return; }
+  if (lastSeen && age < 15000) {
+    e.className = 'ld-status on';
+    e.textContent = src === 'gsi'
+      ? ('live · ' + (info.map || '?') + (info.round ? ' R' + info.round : '') + '  ' + info.ctScore + '–' + info.tScore)
+      : ('live' + (info.event ? ' · ' + info.event : ''));
+  } else if (lastSeen) { e.className = 'ld-status idle'; e.textContent = 'idle (' + ldAgo(age) + ')'; }
+  else { e.className = 'ld-status idle'; e.textContent = 'waiting…'; }
+}
+function ldRender(state) {
+  const ld = (state.settings && state.settings.liveData) || {}, live = state.live || {};
+  const set = (id, on) => { const e = document.getElementById(id); if (e) e.checked = !!on; };
+  set('ld-gsi-enabled', ld.gsiEnabled); set('ld-matchzy-enabled', ld.matchzyEnabled); set('ld-autoapply', ld.autoApplyScores);
+  const ct = ld.ctTeam === 'team2' ? 'team2' : 'team1';
+  const b1 = document.getElementById('ld-ct-team1'), b2 = document.getElementById('ld-ct-team2');
+  if (b1) b1.classList.toggle('btn-primary', ct === 'team1');
+  if (b2) b2.classList.toggle('btn-primary', ct === 'team2');
+  ldStatusEl('gsi', ld.gsiEnabled, live.gsi); ldStatusEl('matchzy', ld.matchzyEnabled, live.matchzy);
+  // Live score suggestions (when auto-apply is off) → Apply buttons. Rendered into BOTH
+  // the Live Data tab (#ld-suggestions) and the Game Setup mirror (#ld-suggestions-gs) so
+  // the operator can apply a suggested score right where they run the series.
+  const sx = document.getElementById('ld-suggestions'), sxg = document.getElementById('ld-suggestions-gs');
+  if (sx || sxg) {
+    const m = (state.match) || {}, t1 = (m.team1 && (m.team1.tag || m.team1.name)) || 'T1', t2 = (m.team2 && (m.team2.tag || m.team2.name)) || 'T2';
+    const sug = (live.suggested) || {}, keys = Object.keys(sug);
+    let html;
+    if (ld.autoApplyScores) {
+      html = '<p class="hint" style="margin:0;color:#7ee2a8">⟳ Live scores auto-apply to the map results.</p>';
+    } else if (keys.length) {
+      const rows = keys.map(function (k) {
+        const s = sug[k], win = s.winner === 'team1' ? ' · ' + esc(t1) + ' win' : s.winner === 'team2' ? ' · ' + esc(t2) + ' win' : '';
+        return '<div class="ld-sug-row"><span>' + esc(s.map) + '</span><b>' + (s.t1Rounds | 0) + '–' + (s.t2Rounds | 0) + '</b>' +
+          '<span class="ld-sug-meta">' + esc(s.source) + win + '</span>' +
+          '<button class="btn btn-sm" onclick="ldApply(\'' + esc(k) + '\')">Apply</button></div>';
+      }).join('');
+      html = '<div class="hint" style="margin:0 0 6px">Live score' + (keys.length > 1 ? 's' : '') + ' — review &amp; apply (' + esc(t1) + ' – ' + esc(t2) + '):</div>' +
+        rows + (keys.length > 1 ? '<button class="btn btn-sm btn-primary" style="margin-top:6px" onclick="ldApply()">Apply all</button>' : '');
+    } else { html = ''; }
+    if (sx)  sx.innerHTML  = html;
+    if (sxg) sxg.innerHTML = html;
+  }
+  ldRenderPlayers(state);
+}
+async function ldApply(slug) { await api('/api/live/apply', slug ? { slug: slug } : {}); }
+
+// Player stats readout — Live (current map, from state.live.players) OR accumulated Series /
+// Tournament totals (from /api/cs-stats, Phase C2). _ldCs caches the aggregate fetch.
+let _ldView = 'live', _ldCs = null;
+async function ldFetchCs() { try { _ldCs = await (await fetch('/api/cs-stats')).json(); } catch (e) { _ldCs = null; } }
+async function ldSetView(v) { _ldView = v; if (v !== 'live') await ldFetchCs(); if (window._state) ldRender(window._state); }
+function ldRenderPlayers(state) {
+  const live = state.live || {}, px = document.getElementById('ld-players'), pv = document.getElementById('ld-pview');
+  if (!px) return;
+  const liveIds = Object.keys(live.players || {}), csP = (_ldCs && _ldCs.players) || {}, csIds = Object.keys(csP);
+  const hasAny = liveIds.length || csIds.length;
+  if (pv) { pv.style.display = hasAny ? 'flex' : 'none'; pv.querySelectorAll('[data-pv]').forEach(b => b.classList.toggle('btn-primary', b.getAttribute('data-pv') === _ldView)); }
+  if (!hasAny) { px.innerHTML = ''; return; }
+  const m = (state.match) || {}, names = { team1: (m.team1 && m.team1.name) || 'Team 1', team2: (m.team2 && m.team2.name) || 'Team 2' };
+  if (_ldView === 'live') {
+    if (!liveIds.length) { px.innerHTML = '<p class="hint" style="margin:6px 0 0">No live players yet (needs GSI allplayers / GOTV, or MatchZy).</p>'; return; }
+    const by = { team1: [], team2: [] }; liveIds.forEach(id => { const p = live.players[id]; (by[p.team] || by.team1).push(p); });
+    const col = tk => '<div class="ld-pcol"><div class="ld-pcol-h">' + esc(names[tk]) + '</div>' +
+      by[tk].sort((a, b) => (b.kills | 0) - (a.kills | 0)).map(p => '<div class="ld-prow"><span>' + esc(p.name || '?') + '</span>' +
+        '<b>' + (p.kills | 0) + '/' + (p.deaths | 0) + '/' + (p.assists | 0) + '</b>' + (p.adr ? '<span class="ld-padr">' + (p.adr | 0) + ' adr</span>' : '') + '</div>').join('') + '</div>';
+    px.innerHTML = '<div class="hint" style="margin:8px 0 4px">Live (K / D / A):</div><div class="ld-pcols">' + col('team1') + col('team2') + '</div>';
+  } else {
+    if (!csIds.length) { px.innerHTML = '<p class="hint" style="margin:6px 0 0">No completed maps logged yet.</p>'; return; }
+    const by = { team1: [], team2: [] }; csIds.forEach(id => { const p = csP[id]; (by[p.team] || by.team1).push(p); });
+    const col = tk => '<div class="ld-pcol"><div class="ld-pcol-h">' + esc(names[tk]) + '</div>' +
+      by[tk].map(p => ({ p, a: p[_ldView] })).filter(x => x.a && x.a.maps).sort((x, y) => y.a.kills - x.a.kills).map(x => {
+        const a = x.a;
+        return '<div class="ld-prow"><span>' + esc(x.p.name || '?') + '</span><span class="ld-pmeta">' + a.maps + 'm</span>' +
+          '<b>' + a.kills + '/' + a.deaths + '/' + a.assists + '</b><span class="ld-padr">' + a.kd + ' kd' + (a.adr ? ' · ' + a.adr + ' adr' : '') + '</span></div>';
+      }).join('') + '</div>';
+    px.innerHTML = '<div class="hint" style="margin:8px 0 4px">' + (_ldView === 'series' ? 'This series' : 'Tournament') + ' (maps · K/D/A · KD):</div><div class="ld-pcols">' + col('team1') + col('team2') + '</div>';
+  }
+}
+async function ldSetEnabled(src, on) { await api('/api/live/config', src === 'gsi' ? { gsiEnabled: on } : { matchzyEnabled: on }); }
+async function ldSetCt(team) { await api('/api/live/config', { ctTeam: team }); }
+async function ldSetAuto(on) { await api('/api/live/config', { autoApplyScores: on }); }
+async function ldRegenToken(btn) {
+  if (!confirm('Rotate the ingest token? You must re-download the GSI config and update MatchZy with the new URL.')) return;
+  btn.disabled = true; await api('/api/live/config', { regenerateToken: true }); await ldFetchInfo(); btn.disabled = false;
+}
+function ldCopy(src, btn) {
+  if (!_ldInfo) return;
+  copyText(src === 'gsi' ? _ldInfo.gsiUrl : _ldInfo.matchzyUrl).then(() => {
+    const o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => { btn.textContent = o; }, 1500);
+  });
+}
+// Decay status to idle + refresh accumulated stats (when shown) without a fresh broadcast.
+setInterval(async () => { if (!window._state) return; if (_ldView !== 'live') await ldFetchCs(); ldRender(window._state); }, 5000);
 
 // Clipboard copy with execCommand fallback for non-localhost HTTP (remote users)
 function copyText(str) {
@@ -512,6 +638,8 @@ const GFX_OUTPUTS = [
   { label: 'Break Screen',          path: 'graphics/break-screen/' },
   { label: 'Win Screen',            path: 'graphics/win-screen/' },
   { label: 'Player Spotlight',      path: 'graphics/player-spotlight/' },
+  { label: 'Post-Game',             path: 'graphics/post-game/', cap: 'map-veto' },
+  { label: 'Map Intro',             path: 'graphics/map-intro/', cap: 'map-veto' },
   // Lower Third outputs are appended dynamically (one row per output) in syncGfxToken.
 ];
 
@@ -650,9 +778,7 @@ function syncGfxToken(settings) {
       '</div>'
     : '';
 
-  const outputs = GFX_OUTPUTS.filter(o =>
-    o.cap === 'champ-draft' ? isChampDraft() :
-    o.cap === 'map-veto'    ? isMapVeto()    : true);
+  const outputs = GFX_OUTPUTS.filter(o => _gfxCapActive(o.cap));
   listEl.innerHTML = toggleHtml + outputs.map(o => urlRow(o.label, o.path)).join('') + ltRows + busRows;
 }
 
@@ -666,10 +792,14 @@ function syncBusConfig(s) {
   if (emptyEl) emptyEl.style.display = buses.length ? 'none' : '';
 
   // Bus config (names, graphic assignments, URLs) is static during a show —
-  // only rebuild when the buses, token, mode or LT outputs actually change.
+  // only rebuild when the buses, token, mode, game or LT outputs actually change.
   const _bcLtOuts = (s.lowerThird && s.lowerThird.outputs) || [];
-  if (!_sfp('busConfigList', { buses, token, mode: _gfxUrlMode, ext: _externalUrl,
+  if (!_sfp('busConfigList', { buses, token, mode: _gfxUrlMode, ext: _externalUrl, game: currentGameId(),
         ltOuts: _bcLtOuts.map(function(o){ return [o.id, o.name]; }) })) return;
+
+  // Only offer the current game's graphics for assignment (mirrors the output-URL list);
+  // the other game's graphics stay hidden, and their assignments are preserved on save.
+  const assignableGfx = GRAPHIC_MAP.filter(function(gfx){ return _gfxCapActive(gfx.cap); });
 
   const _busCheckbox = function(i, key, label, checked) {
     return '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap">' +
@@ -679,7 +809,7 @@ function syncBusConfig(s) {
   list.innerHTML = buses.map(function(bus, i) {
     // Lower Third expands into one entry per output (lowerThird:<outId>); main keeps
     // the bare 'lowerThird' key for back-compat with existing assignments.
-    const assignChecks = GRAPHIC_MAP.flatMap(function(gfx) {
+    const assignChecks = assignableGfx.flatMap(function(gfx) {
       if (gfx.key === 'lowerThird') {
         const outs = (s.lowerThird && s.lowerThird.outputs) || [{ id: 'main', name: 'Main' }];
         return outs.map(function(o) {
@@ -713,12 +843,16 @@ function syncBusConfig(s) {
 function saveBusConfig() {
   const s = window._state;
   if (!s || !s.settings) return;
+  // Graphics hidden by the per-game filter aren't in the DOM — keep their existing assignments
+  // so editing a CS2 show's buses doesn't wipe the LoL graphics' routing (and vice versa).
+  const hiddenKeys = new Set(GRAPHIC_MAP.filter(function(g){ return g.cap && !_gfxCapActive(g.cap); }).map(function(g){ return g.key; }));
   const buses = (s.settings.buses || []).map(function(bus, i) {
     const nameEl = document.querySelector('.bus-cfg-name[data-bus-idx="' + i + '"]');
     const name = nameEl ? nameEl.value.trim() : bus.name;
     const checkboxes = document.querySelectorAll('input[type=checkbox][data-bus-idx="' + i + '"]');
     const assignments = [];
     checkboxes.forEach(function(cb) { if (cb.checked) assignments.push(cb.dataset.gfxKey); });
+    (bus.assignments || []).forEach(function(k) { if (hiddenKeys.has(k) && assignments.indexOf(k) < 0) assignments.push(k); });
     return { id: bus.id, name: name || bus.id, assignments };
   });
   patchSettings({ buses });
@@ -1045,7 +1179,7 @@ function syncUI(s) {
   syncBgoTab(s.bgOutput || {});
 
   if (_sfp('sponsors', m.sponsorLogos)) renderSponsors(m.sponsorLogos || []);
-  if (_sfp('players', { t1: (p.team1||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId];}), t1s: p.team1subs, t2: (p.team2||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId];}), t2s: p.team2subs })) renderPlayerEditors(p);
+  if (_sfp('players', { t1: (p.team1||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId,x.hltvUrl];}), t1s: p.team1subs, t2: (p.team2||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId,x.hltvUrl];}), t2s: p.team2subs })) renderPlayerEditors(p);
   renderIntelPanel(s);
   if (_sfp('ltGrid', { t1: m.team1.name+m.team1.tag, t2: m.team2.name+m.team2.tag, p1: (p.team1||[]).map(function(x){return x.handle||x.name;}), p2: (p.team2||[]).map(function(x){return x.handle||x.name;}) })) renderLTQuickGrid(p, m);
   syncTalent(s);
@@ -2765,6 +2899,10 @@ function syncWinTab(ws, match) {
   const compBgSel = g('win-compbg');
   if (compBgSel && document.activeElement !== compBgSel) compBgSel.value = ws.compBg || 'bespoke';
 
+  // CS2 auto series score toggle (derives the score row from map results)
+  const autoSeriesEl = g('win-auto-series');
+  if (autoSeriesEl) autoSeriesEl.checked = !!ws.autoSeriesScore;
+
   // Auto-status hint
   const statusEl = g('win-auto-status');
   if (statusEl) {
@@ -3148,6 +3286,7 @@ function renderPlayerEditors(players) {
             '<div style="display:flex;align-items:center;gap:5px">' +
               '<div class="player-val-display" data-index="'+i+'" data-field="handle"></div>' +
               '<a class="opgg-link" data-index="'+i+'" href="#" target="_blank" rel="noopener" style="display:none">op.gg ↗</a>' +
+              '<a class="hltv-link" data-index="'+i+'" href="#" target="_blank" rel="noopener" style="display:none">HLTV ↗</a>' +
             '</div>' +
           '</div>' +
           '<div class="cap-roles"><div class="player-num">Role</div>' +
@@ -3223,6 +3362,13 @@ function renderPlayerEditors(players) {
     starterSec.querySelectorAll('.opgg-link').forEach(function(link) {
       const p = list[parseInt(link.dataset.index)];
       const url = (p && supportsOpgg()) ? opggUrl(p.opggRegion, p.riotId) : '';
+      if (url) { link.href = url; link.style.display = ''; }
+      else      { link.href = '#'; link.style.display = 'none'; }
+    });
+
+    starterSec.querySelectorAll('.hltv-link').forEach(function(link) {
+      const p = list[parseInt(link.dataset.index)];
+      const url = (p && supportsSteamId()) ? hltvUrlOf(p.hltvUrl) : '';
       if (url) { link.href = url; link.style.display = ''; }
       else      { link.href = '#'; link.style.display = 'none'; }
     });
@@ -3723,6 +3869,14 @@ function opggUrl(region, riotId) {
   if (parts.length !== 2 || !parts[0] || !parts[1]) return '';
   return 'https://www.op.gg/summoners/' + region + '/' + encodeURIComponent(parts[0]) + '-' + encodeURIComponent(parts[1]);
 }
+// Normalize a manually-entered HLTV link: add https:// if missing, reject unsafe schemes.
+// Permissive about the host (operator pastes the player's HLTV page) — it's just a shortcut.
+function hltvUrlOf(raw) {
+  const v = (raw || '').trim();
+  if (!v) return '';
+  if (/^(javascript|data|vbscript):/i.test(v)) return '';
+  return /^https?:\/\//i.test(v) ? v : 'https://' + v;
+}
 function opggRegionSelect(cls, dataAttr, selected) {
   return '<select class="' + cls + '" ' + dataAttr + '>' +
     '<option value="">Region</option>' +
@@ -3739,6 +3893,7 @@ function renderEditPlayers(players, subs) {
   let html='<div class="roster-section-label">STARTING LINEUP</div>';
   const showOpgg = supportsOpgg();   // Region / Riot ID columns only for op.gg-intel games
   const showRoles = hasRoles();      // Role column only for games with defined positions
+  const showSteam = supportsSteamId(); // Steam ID / HLTV columns only for CS2-style rosters
   html+=adapterRoles().map(function(role,i){
     const p=players[i]||{};
     return '<div class="player-row-edit">'+
@@ -3750,6 +3905,15 @@ function renderEditPlayers(players, subs) {
       '</div>'+
       '<div><div class="player-num">Riot ID</div>'+
         '<input type="text" class="ep-riot-id" data-index="'+i+'" placeholder="Name#TAG" value="'+esc(p.riotId||'')+'">'+
+      '</div>') : '')+
+      (showSteam ? (
+      // Steam ID = optional live-data match override (matching is by in-game name otherwise);
+      // HLTV URL = manual link only (no scraping) surfaced as an operator shortcut.
+      '<div><div class="player-num">Steam ID</div>'+
+        '<input type="text" class="ep-steamid" data-index="'+i+'" placeholder="765… (optional)" value="'+esc(p.steamid||'')+'">'+
+      '</div>'+
+      '<div><div class="player-num">HLTV URL</div>'+
+        '<input type="text" class="ep-hltv" data-index="'+i+'" placeholder="hltv.org/… (optional)" value="'+esc(p.hltvUrl||'')+'">'+
       '</div>') : '')+
       '</div>';
   }).join('');
@@ -3778,6 +3942,8 @@ async function saveTeamEditor() {
       role:       (c.querySelector('.ep-role[data-index="'+i+'"]')        ||{}).value||adapterRoles()[i],
       opggRegion: (c.querySelector('.ep-opgg-region[data-index="'+i+'"]') ||{}).value||'',
       riotId:     (c.querySelector('.ep-riot-id[data-index="'+i+'"]')     ||{}).value||'',
+      steamid:    ((c.querySelector('.ep-steamid[data-index="'+i+'"]')    ||{}).value||'').trim(),
+      hltvUrl:    ((c.querySelector('.ep-hltv[data-index="'+i+'"]')       ||{}).value||'').trim(),
     };
   });
   const subs=[0,1,2].map(function(i){
@@ -3964,10 +4130,10 @@ refreshBracketTeams();
 // Maps state key -> sidebar nav data-tab and operator card id
 const GRAPHIC_MAP = [
   { key: 'lowerThird',  tab: 'lowerthird',  label: 'Lower Third' },
-  { key: 'headToHead',  tab: 'h2h',         label: 'Head to Head'},
+  { key: 'headToHead',  tab: 'h2h',         label: 'Head to Head', cap: 'champ-draft' },
   { key: 'playerIntro', tab: 'player-intro', label: 'Player Intro' },
-  { key: 'draft',       tab: 'draft-gfx',   label: 'Draft'       },
-  { key: 'mapVeto',     tab: 'map-veto-gfx', label: 'Map Veto'   },
+  { key: 'draft',       tab: 'draft-gfx',   label: 'Draft', cap: 'champ-draft' },
+  { key: 'mapVeto',     tab: 'map-veto-gfx', label: 'Map Veto', cap: 'map-veto' },
   { key: 'bracket',     tab: 'bracket',     label: 'Bracket'     },
   { key: 'groupStage',          tab: 'groups-gfx',               label: 'Group Stage'          },
   { key: 'tournamentStructure', tab: 'tournament-structure-gfx', label: 'Tournament Structure' },
@@ -3976,7 +4142,14 @@ const GRAPHIC_MAP = [
   { key: 'ticker',      tab: 'ticker',      label: 'Ticker'      },
   { key: 'winScreen',   tab: 'win',         label: 'Win Screen'  },
   { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
+  { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game', cap: 'map-veto' },
+  { key: 'mapIntro',    tab: 'map-intro-gfx', label: 'Map Intro', cap: 'map-veto' },
 ];
+// Is a graphic's capability active for the current game? (champ-draft = LoL-style draft,
+// map-veto = CS2-style pre-game). Used to scope output URLs + bus routing per game.
+function _gfxCapActive(cap) {
+  return cap === 'champ-draft' ? isChampDraft() : cap === 'map-veto' ? isMapVeto() : true;
+}
 
 // ── Map Veto (CS2 etc.) ──────────────────────────────────────────────────────
 // Map POOL lives on the tournament (set in Tournament Setup, setup-lock-guarded, in
@@ -4183,6 +4356,99 @@ function mvAutoReveal(){
   if(mv.autoRevealing) api('/api/mapVeto/auto-stop',{});
   else api('/api/mapVeto/auto-reveal',{ stepMs: mv.autoStepMs||2500 });
 }
+
+// ── Post-Game scoreboard control ────────────────────────────────────────────────
+// Map selector + look options + a read-only "confirm data" preview resolving the same
+// way the graphic does (mapResults row + per-map csStats lines), so the operator can
+// verify scores/stats before going to air.
+function pgNorm(s){ return String(s||'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+function pgSeriesKey(state){
+  const m=(state&&state.match)||{};
+  if(m.scheduleGameId) return 'sg:'+m.scheduleGameId;
+  const n=x=>String(x||'').toLowerCase().trim();
+  return 'tm:'+[n((m.team1||{}).name),n((m.team2||{}).name)].sort().join('__');
+}
+function pgFinalRows(state){
+  return (((state&&state.match&&state.match.mapResults)||[]).filter(function(r){
+    return r&&r.map&&(r.status==='final'||r.winner||r.t1Rounds||r.t2Rounds);
+  }));
+}
+function pgResolveRow(state){
+  const rows=pgFinalRows(state); if(!rows.length) return null;
+  const sel=(state.postGame&&state.postGame.selectedSlug)||'';
+  if(sel){ const hit=rows.filter(function(r){return pgNorm(r.map)===sel;})[0]; if(hit) return hit; }
+  return rows[rows.length-1];
+}
+function renderPostGame(state){
+  if(typeof isMapVeto==='function' && !isMapVeto()) return; // CS2-only surface
+  const pg=(state&&state.postGame)||{};
+  const sel=g('pg-map-select');
+  if(sel){
+    const rows=pgFinalRows(state), cur=pg.selectedSlug||'';
+    const opts='<option value="">Latest finalized map</option>'+rows.map(function(r,i){
+      const v=pgNorm(r.map);
+      return '<option value="'+v+'"'+(v===cur?' selected':'')+'>Map '+(i+1)+' — '+esc(r.map)+' '+(r.t1Rounds|0)+'–'+(r.t2Rounds|0)+'</option>';
+    }).join('');
+    if(sel.dataset.sig!==opts){ sel.dataset.sig=opts; sel.innerHTML=opts; }
+    sel.value=cur;
+  }
+  setInpSafe('pg-title', pg.title||'POST-GAME');
+  document.querySelectorAll('#pg-bg-group [data-pgbg]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-pgbg')===(pg.bg||'dark')); });
+  document.querySelectorAll('#pg-design-group [data-pgdesign]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-pgdesign')===(pg.design||'split')); });
+  const sr=g('pg-show-rounds'); if(sr) sr.checked=pg.showRounds!==false;
+  const sl=g('pg-show-logos'); if(sl) sl.checked=pg.showLogos!==false;
+  pgRenderPreview(state);
+}
+function pgRenderPreview(state){
+  const el=g('pg-preview'); if(!el) return;
+  const row=pgResolveRow(state), m=(state.match)||{};
+  if(!row){ el.innerHTML='<p class="hint" style="margin:0">No completed map yet. Log a map’s scores in <a onclick="switchToTab(\'game\')" href="#" style="color:var(--primary)">Game Setup</a> (or via live data) — it will appear here to confirm before you show it.</p>'; return; }
+  const sk=pgSeriesKey(state), mapN=pgNorm(row.map);
+  const lines=((state.tournament&&state.tournament.csStats)||[]).filter(function(l){return l.seriesKey===sk&&pgNorm(l.map)===mapN;});
+  const by={team1:[],team2:[]}; lines.forEach(function(l){ (by[l.team]||by.team1).push(l); });
+  const sortK=function(a,b){return (b.kills|0)-(a.kills|0);};
+  by.team1.sort(sortK); by.team2.sort(sortK);
+  const tn=function(k){ return (m[k]&&(m[k].name||m[k].tag))||(k==='team1'?'Team 1':'Team 2'); };
+  const winTxt=row.winner==='team1'?(' · '+esc(tn('team1'))+' win'):row.winner==='team2'?(' · '+esc(tn('team2'))+' win'):'';
+  const hist=(row.roundHistory||[]).length;
+  let html='<div style="font-size:13px;margin-bottom:8px"><strong>'+esc(row.map)+'</strong> · '+(row.t1Rounds|0)+'–'+(row.t2Rounds|0)+winTxt+
+    ' <span class="hint" style="margin-left:6px">'+(hist?hist+' rounds tracked':'no round tracker (needs GSI)')+'</span></div>';
+  const col=function(k){
+    const rowsH=(by[k].length?by[k]:[]).map(function(l){
+      const kd=((l.kills|0)/Math.max(1,l.deaths|0)).toFixed(2);
+      return '<div style="display:grid;grid-template-columns:1fr 32px 32px 32px 46px 46px;gap:4px;font-size:12px;padding:2px 0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(l.name||'?')+'</span>'+
+        '<span style="text-align:center">'+(l.kills|0)+'</span><span style="text-align:center">'+(l.deaths|0)+'</span><span style="text-align:center">'+(l.assists|0)+'</span>'+
+        '<span style="text-align:center;color:var(--primary)">'+(l.adr|0)+'</span><span style="text-align:center;color:var(--text-dim)">'+kd+'</span></div>';
+    }).join('')||'<p class="hint" style="margin:2px 0">No player stats logged for this map.</p>';
+    return '<div style="min-width:0;margin-bottom:10px"><div style="font-weight:700;font-size:12px;margin-bottom:2px;color:var(--text)">'+esc(tn(k))+'</div>'+
+      '<div style="display:grid;grid-template-columns:1fr 32px 32px 32px 46px 46px;gap:4px;font-size:10px;color:var(--text-faint);letter-spacing:0.04em"><span>PLAYER</span><span style="text-align:center">K</span><span style="text-align:center">D</span><span style="text-align:center">A</span><span style="text-align:center">ADR</span><span style="text-align:center">KD</span></div>'+rowsH+'</div>';
+  };
+  // Stack the two teams vertically — the preview card is narrow, so side-by-side overflowed.
+  html+=col('team1')+col('team2');
+  el.innerHTML=html;
+}
+
+// ── Map Intro control ───────────────────────────────────────────────────────────
+function renderMapIntro(state){
+  if(typeof isMapVeto==='function' && !isMapVeto()) return; // CS2-only surface
+  const mi=(state&&state.mapIntro)||{};
+  const sel=g('mi-map-select');
+  if(sel){
+    const rows=(((state.match&&state.match.mapResults)||[]).filter(function(r){return r&&r.map;}));
+    const cur=mi.selectedSlug||'';
+    const opts='<option value="">Current / next map</option>'+rows.map(function(r,i){
+      return '<option value="'+pgNorm(r.map)+'"'+(pgNorm(r.map)===cur?' selected':'')+'>Map '+(i+1)+' — '+esc(r.map)+'</option>';
+    }).join('');
+    if(sel.dataset.sig!==opts){ sel.dataset.sig=opts; sel.innerHTML=opts; }
+    sel.value=cur;
+  }
+  setInpSafe('mi-title', mi.title||'');
+  document.querySelectorAll('#mi-bg-group [data-mibg]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-mibg')===(mi.bg||'art')); });
+  document.querySelectorAll('#mi-anim-group [data-mianim]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-mianim')===(mi.animVariant||'cinematic')); });
+  const sl=g('mi-show-lineups'); if(sl) sl.checked=!!mi.showLineups;
+  const fb=g('mi-flyby'); if(fb) fb.checked=!!mi.flyby;
+}
+
 // Accordion steps = the veto steps if present, else the raw pool (pending), matching the graphic.
 function _mvAccordionSteps(state){
   const mv=(state&&state.mapVeto)||{};
@@ -4441,7 +4707,9 @@ function syncLiveBar(s) {
     const toggleB = g('lbar-toggle-' + gfx.key);
     if (group)   group.classList.toggle('lbar-group-active', !!active);
     if (dot)     dot.classList.toggle('active', !!active);
-    if (toggleB) toggleB.className = 'lbar-toggle' + (gfx.key === 'lowerThird' ? ' lt-master-label' : '') + (active ? ' is-on' : '');
+    // Toggle is-on only — rebuilding className here previously wiped cap-* gating classes
+    // (e.g. cap-champ-draft on the Draft button), breaking adapter show/hide on the live bar.
+    if (toggleB) toggleB.classList.toggle('is-on', !!active);
   });
 
   _syncLbarLtSets(s);
@@ -4515,7 +4783,9 @@ function lbarSetWinTeam(team) {
 }
 
 function toggleGraphic(key) {
-  const btn = g('lbar-toggle-' + key);
+  // Live-bar button drives the on/off read; graphics with only a ctrl-bar Output toggle
+  // (e.g. Post-Game) fall back to that button, which syncGraphicIndicators keeps in sync.
+  const btn = g('lbar-toggle-' + key) || g('ctrlbtn-' + key);
   if (btn && btn.classList.contains('is-on')) hideGraphic(key);
   else showGraphic(key);
 }
@@ -4852,6 +5122,8 @@ function renderProfilesList(profiles) {
 function openSaveProfileForm() {
   const el = g('save-profile-form'); if (!el) return;
   el.style.display = 'block';
+  const gameEl = g('new-profile-game');
+  if (gameEl) gameEl.innerHTML = gameOptionsHtml(currentGameId()); // default to the current game
   const nameEl = g('new-profile-name');
   if (nameEl) {
     const tournName = (window._state.match || {}).tournament || '';
@@ -4868,7 +5140,8 @@ function closeSaveProfileForm() {
 function submitNewEmptyProfile() {
   const name = g('new-profile-name') && g('new-profile-name').value.trim();
   if (!name) { showProfileMsg('save-profile-msg', 'Please enter a profile name.', 'error'); return; }
-  fetch('/api/profiles/save-empty', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name }) })
+  const game = (g('new-profile-game') && g('new-profile-game').value) || 'lol';
+  fetch('/api/profiles/save-empty', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, game }) })
     .then(r => r.json()).then(data => {
       if (data.ok) {
         closeSaveProfileForm();
@@ -4950,6 +5223,7 @@ function closeProfileLoadModal() {
 document.addEventListener('DOMContentLoaded', function() {
   const m = g('profile-load-modal');
   if (m) m.addEventListener('click', function(e) { if (e.target === m) closeProfileLoadModal(); });
+  ldFetchInfo();   // load the live-data token + setup URLs (admin only)
 
   // Autofill suppression — readonly trick for both text and password inputs
   ['ts-gfx-display-title', 'win-msg', 'chpw-new', 'chpw-confirm', 'nu-password'].forEach(function(id) {
@@ -6732,7 +7006,8 @@ const _GFX_ANIM_PAGES = {
   'break': ['breakScreen', 'Break Screen'], 'preshow': ['preShow', 'Pre-show'],
   'bracket': ['bracket', 'Bracket'], 'groups-gfx': ['groupStage', 'Group Stage'],
   'tournament-structure-gfx': ['tournamentStructure', 'Tournament Structure'], 'prizepool': ['prizepool', 'Prizepool'],
-  'player-spotlight': ['playerSpotlight', 'Player Spotlight'],
+  'player-spotlight': ['playerSpotlight', 'Player Spotlight'], 'post-game-gfx': ['postGame', 'Post-Game'],
+  'map-intro-gfx': ['mapIntro', 'Map Intro'],
 };
 function _graphicAnimCardHtml(key) {
   const sp = (v, t) => `<button class="theme-pill" data-sp="${v}" onclick="setGfxAnimSpeed('${key}','${v}')">${t}</button>`;

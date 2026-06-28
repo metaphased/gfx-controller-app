@@ -24,6 +24,7 @@ Every graphic is a browser source for OBS/vMix at 1920×1080. Each page below co
 | [Player Spotlight](player-spotlight.md) | 1–2 player spotlight; fullscreen + lower third; 4 designs. |
 | [Head to Head](head-to-head.md) | Team-vs-team comparison and lineups. |
 | [Draft Overlay](draft.md) | Live pick/ban board with timer. |
+| [Map Veto](map-veto.md) | CS2 map-veto pre-game board — ban/pick sequence, accordion reveal. |
 | [Win Screen](win-screen.md) | Match/series result, stingers and the COMP winning-picks screen. |
 | [Break Screen](break-screen.md) | "Back soon" / PIP break card. |
 | [Pre-show](pre-show.md) | Countdown, sponsors and ticker. |
@@ -44,6 +45,7 @@ Every graphic is a browser source for OBS/vMix at 1920×1080. Each page below co
 | [User profile](user-profile.md) | Per-user keybinds, password, appearance, Companion download, log out. |
 | [Caster view](caster-view.md) | Read-only, token-authed caster dashboard. |
 | [Champion assets](champion-assets.md) | Syncing champion tiles/centered/splash art. |
+| [Live Data (CS2)](live-data.md) | CS2 GSI / MatchZy ingest for auto-filling scores and player stats. |
 | [Live Switcher](live-switcher.md) | OBS/vMix on-air (PGM/PVW) detection. |
 | [Companion / Stream Deck](companion.md) | Bitfocus Companion + action API. |
 | [Theming & Looks](theming.md) | Palette, accents, background and reusable Looks. |

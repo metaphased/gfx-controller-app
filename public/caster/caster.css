@@ -1878,3 +1878,95 @@ html, body {
   padding: 2px 5px;
   margin-top: 2px;
 }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   CS2 (map-veto) caster surfaces — roster CS stats, Series map results, Map Veto, Live
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* Roster — CS stats variant */
+.cs-badge {
+  font-family: var(--data-font);
+  font-size: 11px; font-weight: 800; letter-spacing: 0.04em;
+  color: var(--team-color, var(--accent));
+  background: rgba(var(--accent-rgb),0.08);
+  border: 1px solid rgba(var(--accent-rgb),0.18);
+  border-radius: 2px; padding: 2px 7px; flex-shrink: 0;
+}
+.hltv-btn {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--accent); background: rgba(var(--accent-rgb),0.10);
+  border: 1px solid var(--accent); border-radius: 2px; padding: 2px 7px;
+  text-decoration: none; flex-shrink: 0; opacity: 0.85; white-space: nowrap;
+  transition: opacity 0.15s, background 0.15s;
+}
+.hltv-btn:hover { opacity: 1; background: rgba(var(--accent-rgb),0.18); }
+.cs-stat-row { display: flex; align-items: baseline; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.cs-stat-row:last-child { border-bottom: none; }
+.cs-stat-label { flex: 0 0 92px; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-dim); }
+.cs-stat-vals { font-size: 13px; color: var(--text); }
+.cs-stat-vals b { color: var(--accent); }
+.cs-live-row .cs-stat-vals b { color: var(--green); }
+.cs-mk { color: #f0cc44; font-size: 11px; letter-spacing: 0.04em; }
+.cs-steamid { margin-top: 8px; font-size: 10px; color: var(--text-faint); letter-spacing: 0.04em; }
+
+/* Series — CS map results */
+.cs-series-score { font-family: var(--data-font); font-size: 20px; font-weight: 800; margin: 6px 0 14px; color: var(--text); }
+.cs-series-score b { color: var(--accent); }
+.cs-map-row { padding: 10px 14px; margin-bottom: 8px; }
+.cs-map-main { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.cs-map-name { font-family: var(--data-font); font-size: 16px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text); min-width: 96px; }
+.cs-map-score { font-size: 16px; color: var(--text-dim); }
+.cs-map-score b { color: var(--text); }
+.cs-map-win { font-size: 12px; color: var(--green); letter-spacing: 0.04em; }
+.cs-map-top { margin-top: 6px; font-size: 12px; color: var(--text-dim); }
+.cs-pill-final { color: var(--text-dim); border-color: var(--border); background: var(--surface2); }
+.cs-pill-live  { color: var(--green); border-color: rgba(34,197,94,0.35); background: rgba(34,197,94,0.08); }
+.cs-pill-up    { color: var(--text-faint); border-color: var(--border); background: transparent; }
+
+/* Map Veto */
+.cs-veto-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+.cs-veto-step {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 14px; background: var(--surface); border: 1px solid var(--border);
+  border-left-width: 3px; border-radius: 2px;
+}
+.cs-veto-ban  { border-left-color: #e0524d; opacity: 0.72; }
+.cs-veto-pick { border-left-color: var(--accent); }
+.cs-veto-dec  { border-left-color: #f0cc44; }
+.cs-veto-num  { font-family: var(--data-font); font-size: 12px; color: var(--text-faint); width: 16px; }
+.cs-veto-act  { font-family: var(--data-font); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; width: 64px; color: var(--text-dim); }
+.cs-veto-ban .cs-veto-act { color: #e0524d; }
+.cs-veto-dec .cs-veto-act { color: #f0cc44; }
+.cs-veto-map  { font-family: var(--data-font); font-size: 15px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text); min-width: 96px; }
+.cs-veto-actor { font-size: 12px; color: var(--text-dim); }
+.cs-veto-side { margin-left: auto; font-size: 11px; letter-spacing: 0.04em; color: var(--accent); }
+.cs-pool-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+.cs-pool-maps { display: flex; flex-wrap: wrap; gap: 6px; }
+.cs-pool-map { font-size: 12px; padding: 3px 9px; border: 1px solid var(--border); border-radius: 2px; color: var(--text); }
+.cs-pool-map.used { color: var(--text-faint); opacity: 0.55; text-decoration: line-through; }
+
+/* Live scoreboard */
+.cs-live-head { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 14px; }
+.cs-live-map { font-family: var(--data-font); font-size: 22px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text); }
+.cs-live-score { font-family: var(--data-font); font-size: 20px; color: var(--text-dim); }
+.cs-live-score b { color: var(--accent); }
+.cs-live-round { font-size: 12px; color: var(--text-dim); letter-spacing: 0.04em; }
+.cs-sb-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.cs-sb-col { padding: 0; }
+.cs-sb-hdr { font-family: var(--data-font); font-size: 15px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; padding: 10px 14px; background: var(--surface2); border-bottom: 1px solid var(--border); }
+.cs-econ { padding: 6px 14px; font-size: 12px; color: var(--text-dim); border-bottom: 1px solid var(--border); }
+.cs-buy { color: var(--accent); margin-left: 6px; font-weight: 700; }
+.cs-sb-head-row, .cs-sb-row { display: grid; grid-template-columns: 1fr auto auto auto; gap: 10px; align-items: center; padding: 6px 14px; }
+.cs-sb-head-row { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+.cs-sb-row { border-bottom: 1px solid var(--border); }
+.cs-sb-row:last-child { border-bottom: none; }
+.cs-sb-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.cs-sb-side { font-size: 10px; color: var(--text-faint); letter-spacing: 0.04em; }
+.cs-sb-kda { font-family: var(--data-font); font-size: 13px; color: var(--text-dim); }
+.cs-sb-kda b { color: var(--text); }
+.cs-sb-adr { font-size: 11px; color: var(--text-faint); min-width: 48px; text-align: right; }
+.cs-sb-mk { display: inline-flex; gap: 3px; }
+.cs-mkb { font-size: 9px; font-weight: 800; letter-spacing: 0.04em; color: #f0cc44; border: 1px solid rgba(240,204,68,0.4); border-radius: 2px; padding: 1px 4px; }
+.cs-mkb-ace { color: #ff7a45; border-color: rgba(255,122,69,0.5); }
+
+@media (max-width: 760px) { .cs-sb-cols { grid-template-columns: 1fr; } }

@@ -1,0 +1,151 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+body { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; }
+
+#mi-root {
+  position: absolute; inset: 0; overflow: hidden;
+  color: var(--gfx-c3, #fff);
+  text-transform: var(--gfx-text-transform, uppercase);
+  /* Exit = fade the whole root via opacity; the art's Ken-Burns transform keeps running
+     (replacing its animation on exit reset the scale → a visible "cut zoom"). */
+  transition: opacity calc(0.45s * var(--gfx-dur-scale, 1)) cubic-bezier(0.5,0,0.75,0);
+}
+
+/* Map screenshot hero — covers the frame, slow Ken-Burns drift while on screen. */
+#mi-art {
+  position: absolute; inset: -4%;
+  transform: scale(1.04);
+  animation: mi-kenburns 18s ease-in-out infinite alternate;
+}
+/* Stacked screenshot layers — the flyby slideshow crossfades opacity between a/b. */
+.mi-art-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 1.1s ease; }
+.mi-art-img.on { opacity: 1; }
+#mi-root.mi-noart #mi-art { background: #0a1018; animation: none; }
+/* Scrim: darken + vignette so the text reads over any map. */
+#mi-scrim {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% 42%, rgba(6,10,16,0.35) 0%, rgba(6,10,16,0.78) 70%, rgba(6,10,16,0.92) 100%),
+    linear-gradient(180deg, rgba(6,10,16,0.55) 0%, rgba(6,10,16,0.1) 30%, rgba(6,10,16,0.1) 60%, rgba(6,10,16,0.85) 100%);
+}
+
+#mi-stage {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1.4vh; text-align: center;
+}
+
+#mi-meta {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.9vh; font-weight: 700; letter-spacing: 0.4em;
+  color: var(--gfx-c1, #1ffaff);
+}
+#mi-map {
+  font-size: 12vh; font-weight: 900; line-height: 0.96; letter-spacing: 0.01em;
+  text-shadow: 0 0.4vh 2.4vh rgba(0,0,0,0.6);
+}
+
+#mi-teams { display: flex; align-items: center; justify-content: center; gap: 2.6vw; margin-top: 1vh; }
+.mi-team { display: flex; align-items: center; gap: 1vw; }
+.mi-team-l { flex-direction: row-reverse; }
+.mi-team-logo {
+  width: 8vh; height: 8vh; flex-shrink: 0;
+  background-size: contain; background-repeat: no-repeat; background-position: center;
+  filter: drop-shadow(0 0.3vh 0.8vh rgba(0,0,0,0.5));
+}
+.mi-team-logo.mi-nologo { display: none; }
+.mi-team-name {
+  font-size: 4.4vh; font-weight: 800; letter-spacing: 0.02em;
+  border-bottom: 3px solid var(--team-color, var(--gfx-c1));
+  padding-bottom: 0.4vh;
+}
+#mi-vs {
+  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-size: 2.2vh; font-weight: 800; letter-spacing: 0.12em;
+  color: rgba(255,255,255,0.6);
+}
+
+#mi-veto {
+  display: flex; align-items: center; gap: 0.7vw; margin-top: 1.6vh;
+  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-size: 1.7vh; font-weight: 700; letter-spacing: 0.14em;
+}
+.mi-veto-pick { color: rgba(255,255,255,0.78); }
+.mi-veto-sep  { color: rgba(255,255,255,0.35); }
+.mi-veto-side { color: var(--gfx-c1, #1ffaff); }
+
+/* Optional lineups — two columns of handles below the hero. */
+#mi-lineups { display: flex; align-items: flex-start; gap: 0; margin-top: 2.4vh; }
+.mi-lu-gap { width: 8vw; }
+.mi-lu-col { display: flex; flex-direction: column; gap: 0.6vh; min-width: 16vw; }
+.mi-lu-l { align-items: flex-end; text-align: right; }
+.mi-lu-r { align-items: flex-start; text-align: left; }
+.mi-lp {
+  font-size: 2.4vh; font-weight: 700; letter-spacing: 0.03em; line-height: 1.1;
+  padding: 0.2vh 0.8vw;
+  border-right: 0;
+}
+.mi-lu-l .mi-lp { border-right: 3px solid var(--team-color, var(--gfx-c1)); }
+.mi-lu-r .mi-lp { border-left: 3px solid var(--team-color, var(--gfx-c1)); }
+
+/* ── Animation (theme easing + duration tokens) ────────────────────────────────── */
+#mi-root.mi-entering #mi-art   { animation: mi-art-in calc(0.7s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both, mi-kenburns 18s ease-in-out infinite alternate; }
+#mi-root.mi-entering #mi-scrim { animation: mi-fade calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#mi-root.mi-entering #mi-meta,
+#mi-root.mi-entering #mi-map   { animation: mi-rise calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#mi-root.mi-entering #mi-teams { animation: mi-rise calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; animation-delay: calc(0.12s * var(--gfx-dur-scale, 1)); }
+#mi-root.mi-entering #mi-veto,
+#mi-root.mi-entering #mi-lineups { animation: mi-rise calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; animation-delay: calc(0.22s * var(--gfx-dur-scale, 1)); }
+
+#mi-root.mi-exiting { opacity: 0; }
+
+@keyframes mi-kenburns { from { transform: scale(1.04) translate(0,0); } to { transform: scale(1.14) translate(-1.2%, -1%); } }
+@keyframes mi-art-in   { from { opacity: 0; transform: scale(1.1); } to { opacity: 1; } }
+@keyframes mi-fade     { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mi-fade-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes mi-rise     { from { opacity: 0; transform: translateY(2.4vh); } to { opacity: 1; transform: none; } }
+
+/* ── IMPACT variant — punchier in/out on every element ──────────────────────────
+   Selected via the `mi-anim-impact` root class (control "Animation: Impact"). Higher
+   specificity than the base `.mi-entering` rules above so it overrides them. The art's
+   transform stays owned by mi-kenburns (we only animate its opacity/blur) to preserve
+   the no-cut-zoom fix; the hero + teams + meta carry the motion. */
+#mi-root.mi-anim-impact.mi-entering #mi-art {
+  animation: mi-art-in-impact calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both,
+             mi-kenburns 18s ease-in-out infinite alternate;
+}
+#mi-root.mi-anim-impact.mi-entering #mi-scrim { animation: mi-fade calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#mi-root.mi-anim-impact.mi-entering #mi-meta  { animation: mi-impact-meta calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#mi-root.mi-anim-impact.mi-entering #mi-map   { animation: mi-impact-hero calc(0.72s * var(--gfx-dur-scale, 1)) cubic-bezier(0.34,1.56,0.64,1) both; }
+/* Teams: container itself doesn't move — the two sides slide in from their edges + VS pops. */
+#mi-root.mi-anim-impact.mi-entering #mi-teams   { animation: none; }
+#mi-root.mi-anim-impact.mi-entering .mi-team-l  { animation: mi-impact-team-l calc(0.6s * var(--gfx-dur-scale, 1)) cubic-bezier(0.34,1.4,0.64,1) both; animation-delay: calc(0.16s * var(--gfx-dur-scale, 1)); }
+#mi-root.mi-anim-impact.mi-entering .mi-team-r  { animation: mi-impact-team-r calc(0.6s * var(--gfx-dur-scale, 1)) cubic-bezier(0.34,1.4,0.64,1) both; animation-delay: calc(0.16s * var(--gfx-dur-scale, 1)); }
+#mi-root.mi-anim-impact.mi-entering #mi-vs      { animation: mi-impact-vs calc(0.5s * var(--gfx-dur-scale, 1)) cubic-bezier(0.34,1.7,0.64,1) both; animation-delay: calc(0.3s * var(--gfx-dur-scale, 1)); }
+#mi-root.mi-anim-impact.mi-entering #mi-veto,
+#mi-root.mi-anim-impact.mi-entering #mi-lineups { animation: mi-impact-rise calc(0.6s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; animation-delay: calc(0.34s * var(--gfx-dur-scale, 1)); }
+
+/* Impact exit — elements punch out (root opacity still fades for a clean teardown, but the
+   motion is what reads). Art untouched on exit so kenburns keeps running (no cut zoom). */
+#mi-root.mi-anim-impact.mi-exiting #mi-map      { animation: mi-impact-hero-out calc(0.42s * var(--gfx-dur-scale, 1)) cubic-bezier(0.5,0,0.75,0) both; }
+#mi-root.mi-anim-impact.mi-exiting .mi-team-l   { animation: mi-impact-team-l-out calc(0.4s * var(--gfx-dur-scale, 1)) cubic-bezier(0.5,0,0.75,0) both; }
+#mi-root.mi-anim-impact.mi-exiting .mi-team-r   { animation: mi-impact-team-r-out calc(0.4s * var(--gfx-dur-scale, 1)) cubic-bezier(0.5,0,0.75,0) both; }
+#mi-root.mi-anim-impact.mi-exiting #mi-meta,
+#mi-root.mi-anim-impact.mi-exiting #mi-veto,
+#mi-root.mi-anim-impact.mi-exiting #mi-lineups  { animation: mi-impact-drop-out calc(0.4s * var(--gfx-dur-scale, 1)) cubic-bezier(0.5,0,0.75,0) both; }
+
+@keyframes mi-art-in-impact   { from { opacity: 0; filter: blur(16px) brightness(1.25); } to { opacity: 1; filter: none; } }
+@keyframes mi-impact-meta     { from { opacity: 0; transform: translateY(-2vh); letter-spacing: 0.7em; } to { opacity: 1; transform: none; letter-spacing: 0.4em; } }
+@keyframes mi-impact-hero {
+  0%   { opacity: 0; transform: translateY(5vh) scale(1.22); filter: blur(8px); letter-spacing: 0.16em; }
+  55%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: none; letter-spacing: 0.01em; }
+}
+@keyframes mi-impact-team-l   { from { opacity: 0; transform: translateX(-6vw) scale(0.86); } to { opacity: 1; transform: none; } }
+@keyframes mi-impact-team-r   { from { opacity: 0; transform: translateX(6vw) scale(0.86); } to { opacity: 1; transform: none; } }
+@keyframes mi-impact-vs       { 0% { opacity: 0; transform: scale(0.2); } 70% { opacity: 1; transform: scale(1.22); } 100% { opacity: 1; transform: scale(1); } }
+@keyframes mi-impact-rise     { from { opacity: 0; transform: translateY(4vh); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes mi-impact-hero-out     { from { opacity: 1; transform: none; filter: blur(0); } to { opacity: 0; transform: translateY(-3vh) scale(1.12); filter: blur(6px); } }
+@keyframes mi-impact-team-l-out   { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-5vw) scale(0.9); } }
+@keyframes mi-impact-team-r-out   { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(5vw) scale(0.9); } }
+@keyframes mi-impact-drop-out     { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(2.4vh); } }

@@ -147,11 +147,57 @@ socket.on('state', async (s) => {
 function applyCasterAdapterUI() {
   const a = (_state && _state.adapter) || null;
   const champDraft = a ? a.pregameKind === 'champ-draft' : true;
+  const mapVeto    = a ? a.pregameKind === 'map-veto'    : false;
   document.querySelectorAll('.cap-champ-draft').forEach(function(el){ el.style.display = champDraft ? '' : 'none'; });
-  if (!champDraft) {
-    const activeBtn = document.querySelector('.tab-btn.active[data-tab="draft"]');
-    if (activeBtn) { const r = document.querySelector('.tab-btn[data-tab="roster"]'); if (r) r.click(); }
+  document.querySelectorAll('.cap-map-veto').forEach(function(el){ el.style.display = mapVeto ? '' : 'none'; });
+  // If the active tab just got hidden by a game switch, fall back to Roster.
+  const activeBtn = document.querySelector('.tab-btn.active');
+  if (activeBtn && activeBtn.offsetParent === null) {
+    const r = document.querySelector('.tab-btn[data-tab="roster"]'); if (r) r.click();
   }
+}
+
+// ── CS2 (map-veto) helpers ──────────────────────────────────────────────────────
+function casterIsMapVeto() { const a = _state && _state.adapter; return a ? a.pregameKind === 'map-veto' : false; }
+function casterNoRoles()   { const a = _state && _state.adapter; return a && a.positions ? !a.positions.some(function(p){return !!p;}) : false; }
+function csNormName(s) { return String(s || '').toLowerCase().replace(/\s+/g, '').trim(); }
+// Current series key, mirroring the server's csSeriesKey (server.js) so client aggregates
+// split tournament vs this-series the same way.
+function csCurrentSeriesKey() {
+  const m = (_state && _state.match) || {};
+  if (m.scheduleGameId) return 'sg:' + m.scheduleGameId;
+  const norm = x => String(x || '').toLowerCase().trim();
+  return 'tm:' + [norm((m.team1 || {}).name), norm((m.team2 || {}).name)].sort().join('__');
+}
+// Aggregate a roster player's accumulated CS lines into { tournament, series } from
+// state.tournament.csStats — match by steamid (C3c) or normalized in-game name. Mirrors
+// spotlight.js csAggForPlayer / server buildCsStats. Returns null when nothing matches.
+function csAggForPlayer(p) {
+  const lines = (_state && _state.tournament && _state.tournament.csStats) || [];
+  if (!lines.length || !p) return null;
+  const key = csNormName(p.handle || p.name), sid = p.steamid;
+  if (!key && !sid) return null;
+  const sk = csCurrentSeriesKey();
+  const z = () => ({ maps: 0, kills: 0, deaths: 0, assists: 0, adr: 0, k3: 0, k4: 0, k5: 0 });
+  const t = z(), se = z();
+  let hit = false;
+  lines.forEach(function(l){
+    if (!((sid && l.steamid === sid) || (key && csNormName(l.name) === key))) return;
+    hit = true;
+    const acc = a => { a.maps++; a.kills += l.kills|0; a.deaths += l.deaths|0; a.assists += l.assists|0; a.adr += l.adr|0; a.k3 += l.k3|0; a.k4 += l.k4|0; a.k5 += l.k5|0; };
+    acc(t); if (l.seriesKey === sk) acc(se);
+  });
+  if (!hit) return null;
+  const fin = a => { a.kd = (a.kills / Math.max(1, a.deaths)).toFixed(2); a.adr = a.maps ? Math.round(a.adr / a.maps) : 0; return a; };
+  return { tournament: fin(t), series: fin(se) };
+}
+// Find a roster player's live in-game line from state.live.players (by steamid or name).
+function csLiveForPlayer(p) {
+  const lp = (_state && _state.live && _state.live.players) || {};
+  const key = csNormName(p && (p.handle || p.name)), sid = p && p.steamid;
+  if (!key && !sid) return null;
+  for (const id in lp) { const x = lp[id]; if ((sid && x.steamid === sid) || (key && csNormName(x.name) === key)) return x; }
+  return null;
 }
 
 socket.on('stats:invalidated', () => refreshTournamentStats());
@@ -287,6 +333,8 @@ function renderAll() {
   renderTeams();
   renderSeries();
   renderDraft();
+  renderMapVeto();
+  renderLive();
   renderStandings();
   renderBracket();
   renderSchedule();
@@ -306,10 +354,15 @@ function renderHeader() {
   document.getElementById('hdr-t1').textContent = t1name;
   document.getElementById('hdr-t2').textContent = t2name;
 
-  // Series score from seriesGames
-  const games = m.seriesGames || [];
-  let t1wins = 0, t2wins = 0;
-  games.forEach(g => { if (g.winner === 'team1') t1wins++; else if (g.winner === 'team2') t2wins++; });
+  // Series score: map-veto games (CS2) track maps won on match.team{1,2}.score; LoL
+  // counts winners in seriesGames.
+  let t1wins, t2wins;
+  if (casterIsMapVeto()) {
+    t1wins = (m.team1 && m.team1.score) || 0; t2wins = (m.team2 && m.team2.score) || 0;
+  } else {
+    t1wins = 0; t2wins = 0;
+    (m.seriesGames || []).forEach(g => { if (g.winner === 'team1') t1wins++; else if (g.winner === 'team2') t2wins++; });
+  }
   document.getElementById('hdr-score').textContent = t1wins + ' : ' + t2wins;
   document.getElementById('hdr-format').textContent = m.format || '';
 }
@@ -369,6 +422,8 @@ function opggUrl(region, riotId) {
 }
 
 function renderPlayerRow(p, color) {
+  // CS2 (role-less / no champion pick entity): show CS stats + HLTV instead of champ/rank/op.gg.
+  if (casterIsMapVeto() || casterNoRoles()) return renderPlayerRowCS(p, color);
   const rk = p.rank;
   const badge = rk ? '<span class="rank-badge" style="--team-color:' + esc(color) + '">' + esc(rankShort(rk)) + '</span>' : '';
   const pool = p.champPool || [];
@@ -485,6 +540,52 @@ function renderPlayerRow(p, color) {
   '</div>';
 }
 
+// CS2 roster row: tournament & series K/D · ADR · maps (+ multikills) from accumulated
+// csStats, the live current-map line when in progress, and an HLTV link (C3c). No champ
+// pool / rank / op.gg.
+function renderPlayerRowCS(p, color) {
+  const agg = csAggForPlayer(p), live = csLiveForPlayer(p);
+  const hltv = hltvUrlOf(p.hltvUrl);
+  // Summary badge: tournament K/D if logged, else the live K/D/A.
+  let badge = '';
+  if (agg && agg.tournament.maps) badge = '<span class="cs-badge" style="--team-color:' + esc(color) + '">' + esc(agg.tournament.kd) + ' K/D</span>';
+  else if (live) badge = '<span class="cs-badge" style="--team-color:' + esc(color) + '">' + ((live.kills|0) + '/' + (live.deaths|0) + '/' + (live.assists|0)) + '</span>';
+
+  const mk = a => { const out = []; if (a.k3) out.push(a.k3 + '×3K'); if (a.k4) out.push(a.k4 + '×4K'); if (a.k5) out.push(a.k5 + '×ACE'); return out.join(' · '); };
+  const statRow = (label, a) => a && a.maps
+    ? '<div class="cs-stat-row"><span class="cs-stat-label">' + label + '</span>' +
+        '<span class="cs-stat-vals"><b>' + a.kd + '</b> K/D · ' + a.adr + ' ADR · ' + a.kills + '/' + a.deaths + '/' + a.assists + ' · ' + a.maps + (a.maps === 1 ? ' map' : ' maps') +
+        (mk(a) ? ' <span class="cs-mk">' + mk(a) + '</span>' : '') + '</span></div>'
+    : '';
+  const liveRow = live
+    ? '<div class="cs-stat-row cs-live-row"><span class="cs-stat-label">Live map</span>' +
+        '<span class="cs-stat-vals"><b>' + (live.kills|0) + ' / ' + (live.deaths|0) + ' / ' + (live.assists|0) + '</b>' + (live.adr ? ' · ' + (live.adr|0) + ' ADR' : '') +
+        (live.side ? ' · ' + esc(live.side) : '') + '</span></div>'
+    : '';
+
+  let detail = statRow('Tournament', agg && agg.tournament) + statRow('This series', agg && agg.series) + liveRow;
+  if (!detail) detail = '<div style="color:var(--text-faint);font-size:12px">No CS stats logged yet</div>';
+  if (p.steamid) detail += '<div class="cs-steamid">Steam ID ' + esc(p.steamid) + '</div>';
+
+  return '<div class="player-row">' +
+    '<div class="player-row-summary">' +
+      '<div class="player-handle">' + esc(p.handle || p.name || '—') + '</div>' +
+      badge +
+      (hltv ? '<a class="hltv-btn" href="' + esc(hltv) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">HLTV ↗</a>' : '') +
+      '<div class="expand-arrow">▼</div>' +
+    '</div>' +
+    '<div class="player-detail">' + detail + '</div>' +
+  '</div>';
+}
+
+// Normalize a manual HLTV link (mirror control.js hltvUrlOf): add https://, reject unsafe schemes.
+function hltvUrlOf(raw) {
+  const v = (raw || '').trim();
+  if (!v) return '';
+  if (/^(javascript|data|vbscript):/i.test(v)) return '';
+  return /^https?:\/\//i.test(v) ? v : 'https://' + v;
+}
+
 // ── TEAMS TAB ─────────────────────────────────────────────────────────────────
 // All competing teams (the tournament pool), available even for teams not in the
 // active broadcast — so casters can pull up any team's roster on demand.
@@ -566,6 +667,9 @@ function renderSeries() {
     el.innerHTML = '<div class="empty-state">No active match</div>';
     return;
   }
+
+  // CS2 (map-veto): per-map round scores + winners, not a draft series.
+  if (casterIsMapVeto()) { renderSeriesCS(el, m, t1name, t2name); return; }
 
   const formatNum   = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
   const winsNeeded  = Math.ceil(formatNum / 2);
@@ -821,6 +925,141 @@ function buildSeriesHistory(m, t1name, t2name) {
 
   html += '</div>';
   return html;
+}
+
+// ── SERIES TAB — CS2 variant (map results) ───────────────────────────────────────
+function csLinesForMap(mapDisp) {
+  const sk = csCurrentSeriesKey();
+  return ((_state.tournament && _state.tournament.csStats) || []).filter(l => l.seriesKey === sk && l.map === mapDisp);
+}
+function renderSeriesCS(el, m, t1name, t2name) {
+  const formatNum = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
+  const t1wins = (m.team1 && m.team1.score) || 0, t2wins = (m.team2 && m.team2.score) || 0;
+  const seriesOver = t1wins >= Math.ceil(formatNum / 2) || t2wins >= Math.ceil(formatNum / 2);
+  const rows = (m.mapResults || []).filter(r => r && r.map);
+
+  let html = '<div class="series-header">' +
+    '<span class="series-title">' + esc(t1name) + ' vs ' + esc(t2name) + '</span>' +
+    '<span class="series-title" style="color:var(--text-faint)">·</span>' +
+    '<span class="series-title" style="font-size:15px;color:var(--text-dim)">' + esc(m.format || '') + (seriesOver ? ' · Series complete' : '') + '</span>' +
+  '</div>';
+  html += '<div class="cs-series-score">' + esc(t1name) + ' <b>' + t1wins + '</b> — <b>' + t2wins + '</b> ' + esc(t2name) + '</div>';
+
+  if (!rows.length) { el.innerHTML = html + '<div class="empty-state">No maps set yet — see Map Veto</div>'; return; }
+
+  html += rows.map(r => {
+    const st = (r.status || 'upcoming').toLowerCase();
+    const winName = r.winner === 'team1' ? t1name : r.winner === 'team2' ? t2name : '';
+    const score = (st === 'final' || r.t1Rounds || r.t2Rounds) ? '<b>' + (r.t1Rounds|0) + '</b> – <b>' + (r.t2Rounds|0) + '</b>' : '';
+    const pill = st === 'final' ? '<span class="pill cs-pill-final">FINAL</span>' : st === 'live' ? '<span class="pill cs-pill-live">LIVE</span>' : '<span class="pill cs-pill-up">UPCOMING</span>';
+    // Top fragger this map (from logged stats)
+    const lines = csLinesForMap(r.map);
+    let topHtml = '';
+    if (lines.length) {
+      const top = lines.slice().sort((a, b) => (b.kills|0) - (a.kills|0))[0];
+      if (top) topHtml = '<div class="cs-map-top">Top: ' + esc(top.name) + ' ' + (top.kills|0) + '/' + (top.deaths|0) + '/' + (top.assists|0) + (top.adr ? ' · ' + (top.adr|0) + ' ADR' : '') + '</div>';
+    }
+    return '<div class="card cs-map-row">' +
+      '<div class="cs-map-main">' +
+        '<span class="cs-map-name">' + esc(r.map) + '</span>' + pill +
+        (score ? '<span class="cs-map-score">' + score + '</span>' : '') +
+        (winName ? '<span class="cs-map-win">' + esc(winName) + ' win</span>' : '') +
+      '</div>' + topHtml +
+    '</div>';
+  }).join('');
+  el.innerHTML = html;
+}
+
+// ── MAP VETO TAB (CS2) ───────────────────────────────────────────────────────────
+function renderMapVeto() {
+  const el = document.getElementById('mapveto-content'); if (!el) return;
+  const s = _state, m = s.match || {}, mv = s.mapVeto || {};
+  const teamName = tk => (m[tk] && (m[tk].name || m[tk].tag)) || (tk === 'team1' ? 'Team 1' : 'Team 2');
+  const steps = (mv.steps || []).filter(st => st && st.map);
+  const pool = (s.tournament && s.tournament.mapPool) || [];
+  const poolNames = pool.map(x => (typeof x === 'string' ? x : (x && x.name)) || '').filter(Boolean);
+
+  if (!steps.length && !poolNames.length) { el.innerHTML = '<div class="empty-state">No map veto data</div>'; return; }
+
+  let html = '<div class="series-header"><span class="series-title">' + esc(mv.title || 'Map Veto') + '</span>' +
+    '<span class="series-title" style="font-size:15px;color:var(--text-dim)">' + esc(m.format || '') + '</span></div>';
+
+  if (steps.length) {
+    html += '<div class="cs-veto-list">' + steps.map((st, i) => {
+      const act = (st.action || '').toLowerCase();
+      const actor = st.team ? teamName(st.team) : '';
+      const cls = act === 'ban' ? 'cs-veto-ban' : act === 'decider' ? 'cs-veto-dec' : 'cs-veto-pick';
+      let meta = '';
+      if (act === 'pick') {
+        const other = st.team === 'team1' ? 'team2' : 'team1';
+        meta = st.side ? '<span class="cs-veto-side">' + esc(teamName(other)) + ' ' + esc(st.side) + ' start</span>' : '';
+      } else if (act === 'decider') meta = '<span class="cs-veto-side">Knife round</span>';
+      return '<div class="cs-veto-step ' + cls + '">' +
+        '<span class="cs-veto-num">' + (i + 1) + '</span>' +
+        '<span class="cs-veto-act">' + esc((act || '').toUpperCase()) + '</span>' +
+        '<span class="cs-veto-map">' + esc(st.map) + '</span>' +
+        (actor ? '<span class="cs-veto-actor">' + esc(actor) + '</span>' : '') +
+        meta +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  // Remaining pool (maps not in the veto)
+  const usedMaps = new Set(steps.map(st => (st.map || '').toLowerCase()));
+  const remaining = poolNames.filter(n => !usedMaps.has(n.toLowerCase()));
+  if (remaining.length) {
+    html += '<div class="cs-pool"><div class="cs-pool-label">Map pool</div><div class="cs-pool-maps">' +
+      poolNames.map(n => '<span class="cs-pool-map' + (usedMaps.has(n.toLowerCase()) ? ' used' : '') + '">' + esc(n) + '</span>').join('') +
+      '</div></div>';
+  }
+  el.innerHTML = html;
+}
+
+// ── LIVE TAB (CS2 scoreboard) ────────────────────────────────────────────────────
+function csMoney(n) { return '$' + (n | 0).toLocaleString('en-US'); }
+function csBuyLabel(avgEquip) { return avgEquip < 2000 ? 'Eco' : avgEquip < 3800 ? 'Force buy' : 'Full buy'; }
+function renderLive() {
+  const el = document.getElementById('live-content'); if (!el) return;
+  const s = _state, m = s.match || {}, live = s.live || {}, gsi = live.gsi || {}, players = live.players || {};
+  const ids = Object.keys(players);
+  const fresh = gsi.lastSeen && (Date.now() - gsi.lastSeen < 30000);
+
+  if (!ids.length && !fresh) { el.innerHTML = '<div class="empty-state">Waiting for live data… (enable GSI / MatchZy on the Live Data tab)</div>'; return; }
+
+  const t1name = (m.team1 && (m.team1.name || m.team1.tag)) || 'Team 1';
+  const t2name = (m.team2 && (m.team2.name || m.team2.tag)) || 'Team 2';
+
+  // Scoreline — GSI reports CT/T scores; show those plus the map/phase.
+  let head = '<div class="cs-live-head">';
+  head += '<span class="cs-live-map">' + esc(gsi.map || (live.matchzy && live.matchzy.map) || 'Live') + '</span>';
+  if (gsi.map) head += '<span class="cs-live-score">CT <b>' + (gsi.ctScore|0) + '</b> : <b>' + (gsi.tScore|0) + '</b> T</span>';
+  if (gsi.round) head += '<span class="cs-live-round">Round ' + (gsi.round|0) + (gsi.phase ? ' · ' + esc(gsi.phase) : '') + '</span>';
+  head += '</div>';
+
+  const col = tk => {
+    const ps = ids.map(id => players[id]).filter(p => (p.team || 'team1') === tk).sort((a, b) => (b.kills|0) - (a.kills|0));
+    const hasEco = ps.some(p => p.money != null || p.equip != null);
+    let econ = '';
+    if (hasEco) {
+      const money = ps.reduce((n, p) => n + (p.money|0), 0), equip = ps.reduce((n, p) => n + (p.equip|0), 0);
+      const avg = ps.length ? equip / ps.length : 0;
+      econ = '<div class="cs-econ">' + csMoney(money) + ' · equip ' + csMoney(equip) + ' <span class="cs-buy">' + csBuyLabel(avg) + '</span></div>';
+    }
+    const rows = ps.map(p => {
+      const mk = [];
+      if (p.k5) mk.push('<span class="cs-mkb cs-mkb-ace">ACE</span>'); if (p.k4) mk.push('<span class="cs-mkb">4K</span>'); if (p.k3) mk.push('<span class="cs-mkb">3K</span>');
+      return '<div class="cs-sb-row">' +
+        '<span class="cs-sb-name">' + esc(p.name || '?') + (p.side ? ' <span class="cs-sb-side">' + esc(p.side) + '</span>' : '') + '</span>' +
+        '<span class="cs-sb-kda"><b>' + (p.kills|0) + '</b> / ' + (p.deaths|0) + ' / ' + (p.assists|0) + '</span>' +
+        (p.adr ? '<span class="cs-sb-adr">' + (p.adr|0) + ' adr</span>' : '<span class="cs-sb-adr"></span>') +
+        (mk.length ? '<span class="cs-sb-mk">' + mk.join('') + '</span>' : '') +
+      '</div>';
+    }).join('') || '<div class="empty-state" style="padding:14px">No players</div>';
+    return '<div class="card cs-sb-col"><div class="cs-sb-hdr">' + esc(tk === 'team1' ? t1name : t2name) + '</div>' + econ +
+      '<div class="cs-sb-head-row"><span>Player</span><span>K / D / A</span><span>ADR</span><span></span></div>' + rows + '</div>';
+  };
+
+  el.innerHTML = head + '<div class="cs-sb-cols">' + col('team1') + col('team2') + '</div>';
 }
 
 const DRAFT_ROLE_NAMES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];

@@ -113,6 +113,42 @@ function piNoRoles(state) {
   return a.positions ? !a.positions.some(function(p) { return !!p; }) : false;
 }
 
+// ── CS2 player stats (live-data) ────────────────────────────────────────────────
+// Compact one-line CS stat for a player in role-less games (CS2 etc.). Prefers the
+// tournament aggregate ("KD 1.75 · 95 ADR") once any maps are logged, else falls
+// back to the live current-map line ("24 / 11 / 6"). Matches the player to stats by
+// normalized in-game name (clan prefixes stripped) with steamid as an override.
+// Returns '' for games with roles (LoL) or when nothing matches — the handle shows alone.
+// Mirrors spotlight.js csAggForPlayer/csLiveForPlayer; kept in sync deliberately.
+function piNormName(s) { return String(s || '').toLowerCase().replace(/\s+/g, '').trim(); }
+function piCsStatLine(state, player) {
+  if (!player || !piNoRoles(state)) return '';
+  var key = piNormName(player.handle || player.name), sid = player.steamid;
+  if (!key && !sid) return '';
+
+  var lines = (state.tournament && state.tournament.csStats) || [];
+  var a = { maps: 0, kills: 0, deaths: 0, adr: 0 }, hit = false;
+  lines.forEach(function(l) {
+    if ((sid && l.steamid === sid) || (key && piNormName(l.name) === key)) {
+      hit = true; a.maps++; a.kills += l.kills | 0; a.deaths += l.deaths | 0; a.adr += l.adr | 0;
+    }
+  });
+  if (hit && a.maps) {
+    var kd = (a.kills / Math.max(1, a.deaths)).toFixed(2);
+    var adr = Math.round(a.adr / a.maps);
+    return 'KD ' + kd + (adr ? ' · ' + adr + ' ADR' : '');
+  }
+
+  var lp = (state.live && state.live.players) || {};
+  for (var k in lp) {
+    var p = lp[k];
+    if ((sid && p.steamid === sid) || (key && piNormName(p.name) === key)) {
+      return (p.kills | 0) + ' / ' + (p.deaths | 0) + ' / ' + (p.assists | 0);
+    }
+  }
+  return '';
+}
+
 // Player slots for a team: role-based (LoL) gives a fixed top→support order with role
 // icons; role-less games (CS2) list players in roster order with no role icon.
 // Returns [{ player, roleKey }] — roleKey '' means "no role icon".
@@ -269,7 +305,7 @@ function champStripHtml(champPool, side, layout) {
   return '<span class="' + wrap + '">' + imgs + '</span>';
 }
 
-function buildPanelRowHtml(player, roleKey, side, showRank, showChamps) {
+function buildPanelRowHtml(player, roleKey, side, showRank, showChamps, csLine) {
   var handle    = player.handle || '';
   var icon      = ROLE_ICONS[roleKey] || '';
   var rank      = showRank   ? rankText(player.rank || null) : '';
@@ -282,6 +318,7 @@ function buildPanelRowHtml(player, roleKey, side, showRank, showChamps) {
   var textEl = (
     '<span class="pi-pnl-text">' +
       '<span class="pi-pnl-handle">' + esc(handle) + '</span>' +
+      (csLine    ? '<span class="pi-pnl-csstat">' + esc(csLine) + '</span>' : '') +
       (rank      ? '<span class="pi-pnl-rank">'  + rank      + '</span>' : '') +
     '</span>'
   );
@@ -319,15 +356,18 @@ function renderPanel(state) {
     var el = $(elId);
     if (!el) return;
     var slots = piSlots(state, players);
-    var key = slots.map(function(sl) {
-      var p = sl.player;
-      return [p.handle||'', sl.roleKey, showRank, rankText(p.rank||null), showChamps,
-        (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(',')].join(':');
+    var rows = slots.map(function(sl) {
+      return { player: sl.player, roleKey: sl.roleKey, cs: piCsStatLine(state, sl.player) };
+    });
+    var key = rows.map(function(r) {
+      var p = r.player;
+      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), showChamps,
+        (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(','), r.cs].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
       el.dataset.key = key;
-      el.innerHTML = slots.map(function(sl) {
-        return buildPanelRowHtml(sl.player, sl.roleKey, side, showRank, showChamps);
+      el.innerHTML = rows.map(function(r) {
+        return buildPanelRowHtml(r.player, r.roleKey, side, showRank, showChamps, r.cs);
       }).join('');
     }
   }
@@ -337,7 +377,7 @@ function renderPanel(state) {
 }
 
 // ── Layout: Team Card Stack ───────────────────────────────────────────────────
-function buildStackPlayerHtml(player, roleKey, showRank, showChamps, side) {
+function buildStackPlayerHtml(player, roleKey, showRank, showChamps, side, csLine) {
   var handle    = player.handle || '';
   var icon      = ROLE_ICONS[roleKey] || '';
   var rank      = showRank   ? rankText(player.rank || null) : '';
@@ -348,6 +388,7 @@ function buildStackPlayerHtml(player, roleKey, showRank, showChamps, side) {
       strip +
       (roleKey ? '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' : '') +
       '<span class="pi-stk-handle">' + esc(handle) + '</span>' +
+      (csLine    ? '<span class="pi-stk-csstat">' + esc(csLine) + '</span>' : '') +
       (rank      ? '<span class="pi-stk-rank">' + rank + '</span>' : '') +
     '</div>'
   );
@@ -378,15 +419,18 @@ function renderStack(state) {
     var el = $(elId);
     if (!el) return;
     var slots = piSlots(state, players);
-    var key = slots.map(function(sl) {
-      var p = sl.player;
-      return [p.handle||'', sl.roleKey, showRank, rankText(p.rank||null), showChamps,
-        (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(',')].join(':');
+    var rows = slots.map(function(sl) {
+      return { player: sl.player, roleKey: sl.roleKey, cs: piCsStatLine(state, sl.player) };
+    });
+    var key = rows.map(function(r) {
+      var p = r.player;
+      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), showChamps,
+        (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(','), r.cs].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
       el.dataset.key = key;
-      el.innerHTML = slots.map(function(sl) {
-        return buildStackPlayerHtml(sl.player, sl.roleKey, showRank, showChamps, side);
+      el.innerHTML = rows.map(function(r) {
+        return buildStackPlayerHtml(r.player, r.roleKey, showRank, showChamps, side, r.cs);
       }).join('');
     }
   }
@@ -399,7 +443,7 @@ function renderStack(state) {
 // The Bar layout is name-only: its rows are too thin for the champ strip and its
 // centre dead-space is already filled by the team names, so champions are never
 // shown here regardless of the showChamps toggle.
-function buildBarPlayerHtml(player, roleKey, showRank) {
+function buildBarPlayerHtml(player, roleKey, showRank, csLine) {
   var handle = player.handle || '';
   var icon   = ROLE_ICONS[roleKey] || '';
   var rank   = showRank ? rankTextShort(player.rank || null) : '';
@@ -409,6 +453,7 @@ function buildBarPlayerHtml(player, roleKey, showRank) {
       (roleKey ? '<span class="pi-bar-role" style="background-image:url(' + icon + ')"></span>' : '') +
       '<span class="pi-bar-text">' +
         '<span class="pi-bar-handle">' + esc(handle) + '</span>' +
+        (csLine ? '<span class="pi-bar-csstat">' + esc(csLine) + '</span>' : '') +
         (rank ? '<span class="pi-bar-rank">' + rank + '</span>' : '') +
       '</span>' +
     '</div>'
@@ -425,9 +470,14 @@ function renderBar(state) {
   var showRank   = !!pi.showRank;
   var showLogo   = pi.showLogo !== false;
 
+  // CS2 stat lines need the same extra row height as ranks (a second line per player).
+  var hasCs = piNoRoles(state) &&
+    t1Players.concat(t2Players).some(function(p) { return !!piCsStatLine(state, p); });
+
   var bandEl = document.querySelector('.pi-bar-band');
   if (bandEl) {
     bandEl.classList.toggle('has-rank', showRank);
+    bandEl.classList.toggle('has-cs', hasCs);  // CS stat line is taller than a rank — needs more band height
     bandEl.style.setProperty('--pi-bar-alpha', pi.barOpacity !== undefined ? pi.barOpacity : 0.93);
   }
 
@@ -444,14 +494,17 @@ function renderBar(state) {
     var el = $(elId);
     if (!el) return;
     var slots = piSlots(state, players);
-    var key = slots.map(function(sl) {
-      var p = sl.player;
-      return [p.handle||'', sl.roleKey, showRank, rankText(p.rank||null)].join(':');
+    var rows = slots.map(function(sl) {
+      return { player: sl.player, roleKey: sl.roleKey, cs: piCsStatLine(state, sl.player) };
+    });
+    var key = rows.map(function(r) {
+      var p = r.player;
+      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), r.cs].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
       el.dataset.key = key;
-      el.innerHTML = slots.map(function(sl) {
-        return buildBarPlayerHtml(sl.player, sl.roleKey, showRank);
+      el.innerHTML = rows.map(function(r) {
+        return buildBarPlayerHtml(r.player, r.roleKey, showRank, r.cs);
       }).join('');
     }
   }

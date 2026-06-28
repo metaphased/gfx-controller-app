@@ -41,6 +41,7 @@
       <a class="nav-item" data-tab="players">Players / Rosters</a>
       <a class="nav-item cap-champ-draft" data-tab="draft">Draft</a>
       <a class="nav-item cap-map-veto" data-tab="map-veto">Map Veto</a>
+      <a class="nav-item cap-map-veto" data-tab="live-data">Live Data</a>
       <a class="nav-item cap-opgg" data-tab="intel">Match Intel</a>
 
       <div class="nav-section-label">GRAPHICS</div>
@@ -95,6 +96,14 @@
       <a class="nav-item" data-tab="player-spotlight">
         <span id="nav-dot-player-spotlight" class="nav-status-dot"></span>
         Player Spotlight
+      </a>
+      <a class="nav-item cap-map-veto" data-tab="post-game-gfx">
+        <span id="nav-dot-post-game-gfx" class="nav-status-dot"></span>
+        Post-Game
+      </a>
+      <a class="nav-item cap-map-veto" data-tab="map-intro-gfx">
+        <span id="nav-dot-map-intro-gfx" class="nav-status-dot"></span>
+        Map Intro
       </a>
 
       <div class="nav-section-label">SYSTEM</div>
@@ -218,7 +227,8 @@
       <div class="card" id="save-profile-form" style="display:none;max-width:520px;margin-bottom:20px">
         <div class="card-title">New Profile</div>
         <div class="field-row"><label>Profile Name</label><input type="text" id="new-profile-name" placeholder="e.g. Summer Split 2025" autocomplete="off"></div>
-        <p class="hint" style="margin-bottom:12px">Saves the current tournament structure, schedule, groups, bracket, active game setup and rosters.</p>
+        <div class="field-row"><label>Game</label><select id="new-profile-game" style="flex:1"></select></div>
+        <p class="hint" style="margin-bottom:12px"><strong>Create empty</strong> makes a blank profile for the chosen game (left unlocked so you can finish setting it up). <strong>Save from current</strong> snapshots the current tournament structure, schedule, groups, bracket, game setup and rosters (game taken from the current tournament).</p>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" onclick="submitSaveProfile()">Save from current</button>
           <button class="btn btn-sm" onclick="submitNewEmptyProfile()">Create empty</button>
@@ -250,8 +260,9 @@
           <div class="field-row"><label>Game</label>
             <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <select id="ts-game" onchange="patchTournamentInfo({game:this.value})">
-                <option value="lol">League of Legends</option><option value="cs2">CS2</option><option value="dota2">Dota 2</option><option value="valorant">VALORANT</option><option value="r6">Rainbow Six Siege</option><option value="generic">Generic / Other</option>
+                <option value="lol">League of Legends</option><option value="cs2">CS2 (Beta)</option><option value="dota2">Dota 2 (Alpha)</option><option value="valorant">VALORANT (Alpha)</option><option value="r6">Rainbow Six Siege (Alpha)</option><option value="generic">Generic / Other</option>
               </select>
+              <span id="ts-game-maturity" class="maturity-badge" style="display:none"></span>
               <span id="ts-game-locked" style="display:none;font-weight:600"></span>
               <span id="ts-game-lock-note" class="hint" style="display:none;margin:0">🔒 Fixed for this tournament — Reset to change</span>
             </div>
@@ -620,6 +631,168 @@
           </div>
         </div>
         <div id="gs-series-tracker" style="margin-top:4px"></div>
+      </div>
+
+      <!-- Live Data — show-time controls (CS2). Lives here, beside the Series Tracker,
+           because CT side + score-apply are touched while the series is being run.
+           Setup + the full player-stats readout live on the dedicated Live Data tab. -->
+      <div class="card cap-map-veto" style="margin-top:16px">
+        <div class="card-title">Live Data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· optional</span></div>
+        <div class="field-row" style="margin-bottom:0"><label>CT side is</label>
+          <div class="btn-row" style="display:flex;gap:6px">
+            <button class="btn btn-sm" id="ld-ct-team1" onclick="ldSetCt('team1')">Team 1</button>
+            <button class="btn btn-sm" id="ld-ct-team2" onclick="ldSetCt('team2')">Team 2</button>
+          </div>
+        </div>
+        <p class="hint" style="margin-top:2px">Which team is on CT — so GSI's CT/T scores map to the right team. Detected automatically from team names, then from the <a onclick="switchToTab('map-veto')" href="#" style="color:var(--primary)">map veto</a>'s recorded starting side; set it here only as a manual fallback. (MatchZy reports teams directly.)</p>
+        <div id="ld-suggestions-gs" style="margin-top:10px"></div>
+        <p class="hint" style="margin-top:8px">Connect GSI / MatchZy and see full player stats on the <a onclick="switchToTab('live-data')" href="#" style="color:var(--primary)">Live Data</a> page.</p>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         LIVE DATA — CS2 GSI / MatchZy ingest (GAME section)
+    ══════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-live-data">
+      <div class="tab-header"><h1>Live Data</h1></div>
+      <p class="hint" style="margin-bottom:16px;max-width:900px">Pull live CS2 data in to auto-fill scores &amp; player stats. Both sources are optional and independent — use either, both, or none (manual entry always works). <strong>Data only:</strong> nothing is shown on air automatically; you still trigger every graphic. CT side and applying suggested scores are on the <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup</a> page, where you run the series.</p>
+
+      <div class="card">
+        <div class="card-title">Connection</div>
+        <div class="ld-src">
+          <label class="ld-toggle"><input type="checkbox" id="ld-gsi-enabled" onchange="ldSetEnabled('gsi',this.checked)"> <span>Game State Integration (GSI)</span> <span class="ld-status" id="ld-gsi-status">off</span></label>
+          <p class="hint" style="margin:4px 0 8px">From a CS2 <strong>observer / GOTV client</strong>: live round score, bomb, and per-player K/D/A. Download the config and drop it in <code>…\\Counter-Strike Global Offensive\\game\\csgo\\cfg\\</code>, then (re)start CS2.</p>
+          <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <a class="btn btn-sm" id="ld-gsi-download" href="/api/live/gsi.cfg" download>Download GSI config</a>
+            <button class="btn btn-sm" onclick="ldCopy('gsi',this)">Copy GSI URL</button>
+          </div>
+        </div>
+
+        <div class="ld-src" style="margin-top:14px">
+          <label class="ld-toggle"><input type="checkbox" id="ld-matchzy-enabled" onchange="ldSetEnabled('matchzy',this.checked)"> <span>MatchZy (game server)</span> <span class="ld-status" id="ld-matchzy-status">off</span></label>
+          <p class="hint" style="margin:4px 0 8px">From the <strong>match server</strong>: authoritative map/series results. Point MatchZy's event/webhook URL at the address below (it carries the token).</p>
+          <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn-sm" onclick="ldCopy('matchzy',this)">Copy MatchZy URL</button>
+          </div>
+        </div>
+
+        <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <span class="hint">Ingest token (shared by GSI/MatchZy):</span>
+          <code id="ld-token" style="font-size:11px">—</code>
+          <button class="btn btn-sm" onclick="ldRegenToken(this)" title="Rotate the token — you'll need to re-download the GSI config / update MatchZy">Regenerate</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Live scores</div>
+        <label class="ld-toggle"><input type="checkbox" id="ld-autoapply" onchange="ldSetAuto(this.checked)"> <span>Auto-apply scores (otherwise scores are suggested for you to apply)</span></label>
+        <div id="ld-suggestions" style="margin-top:10px"></div>
+        <p class="hint" style="margin-top:8px">Suggested scores can also be applied from <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup → Series Tracker</a>.</p>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-title">Player stats</div>
+        <div id="ld-pview" class="btn-row" style="display:none;gap:6px;align-items:center">
+          <span class="hint">Show:</span>
+          <button class="btn btn-sm" data-pv="live" onclick="ldSetView('live')">Live</button>
+          <button class="btn btn-sm" data-pv="series" onclick="ldSetView('series')">This series</button>
+          <button class="btn btn-sm" data-pv="tournament" onclick="ldSetView('tournament')">Tournament</button>
+        </div>
+        <div id="ld-players" style="margin-top:6px"></div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         POST-GAME SCOREBOARD — overlay (GRAPHICS section, CS2)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-post-game-gfx">
+      <div class="tab-header"><h1>Post-Game Scoreboard</h1></div>
+      <div class="gfx-ctrl-bar">
+        <div class="gfx-ctrl-title">Post-Game Controls</div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group" id="ctrlgrp-postGame">
+            <span class="gfx-ctrl-section-label">Output</span>
+            <button class="lbar-toggle" id="ctrlbtn-postGame" onclick="toggleGraphic('postGame')">
+              <span class="lbar-dot" id="ctrl-dot-postGame"></span>POST-GAME SCOREBOARD
+            </button>
+          </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Map</span>
+            <select id="pg-map-select" onchange="api('/api/postGame',{selectedSlug:this.value})" style="min-width:200px"></select>
+          </div>
+        </div>
+      </div>
+      <div class="ps-two-col">
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Look</div>
+            <div class="field-row"><label>Title</label><input type="text" id="pg-title" placeholder="POST-GAME" oninput="api('/api/postGame',{title:this.value})"></div>
+            <div class="field-row"><label>Design</label>
+              <div class="btn-row" id="pg-design-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-pgdesign="split" onclick="api('/api/postGame',{design:'split'})">Side-by-side</button>
+              </div>
+            </div>
+            <div class="field-row"><label>Background</label>
+              <div class="btn-row" id="pg-bg-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-pgbg="dark" onclick="api('/api/postGame',{bg:'dark'})">Dark</button>
+                <button class="btn btn-sm" data-pgbg="transparent" onclick="api('/api/postGame',{bg:'transparent'})">Transparent</button>
+              </div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="pg-show-rounds" onchange="api('/api/postGame',{showRounds:this.checked})"> <span style="font-size:13px">Show round-by-round tracker</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="pg-show-logos" onchange="api('/api/postGame',{showLogos:this.checked})"> <span style="font-size:13px">Show team logos</span></label>
+            <p class="hint" style="margin-top:10px">Stats are pulled from the live-data the map logged. Map scores come from <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup → Series Tracker</a>; the round tracker needs GSI.</p>
+          </div>
+        </div>
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Confirm data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· before you go live</span></div>
+            <div id="pg-preview"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MAP INTRO — overlay (GRAPHICS section, CS2)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-map-intro-gfx">
+      <div class="tab-header"><h1>Map Intro</h1></div>
+      <div class="gfx-ctrl-bar">
+        <div class="gfx-ctrl-title">Map Intro Controls</div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group" id="ctrlgrp-mapIntro">
+            <span class="gfx-ctrl-section-label">Output</span>
+            <button class="lbar-toggle" id="ctrlbtn-mapIntro" onclick="toggleGraphic('mapIntro')">
+              <span class="lbar-dot" id="ctrl-dot-mapIntro"></span>MAP INTRO
+            </button>
+          </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Map</span>
+            <select id="mi-map-select" onchange="api('/api/mapIntro',{selectedSlug:this.value})" style="min-width:200px"></select>
+          </div>
+        </div>
+      </div>
+      <div class="ps-two-col">
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Look</div>
+            <div class="field-row"><label>Title</label><input type="text" id="mi-title" placeholder="(map name shown by default)" oninput="api('/api/mapIntro',{title:this.value})"></div>
+            <div class="field-row"><label>Background</label>
+              <div class="btn-row" id="mi-bg-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-mibg="art" onclick="api('/api/mapIntro',{bg:'art'})">Map art</button>
+              </div>
+            </div>
+            <div class="field-row"><label>Animation</label>
+              <div class="btn-row" id="mi-anim-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-mianim="cinematic" onclick="api('/api/mapIntro',{animVariant:'cinematic'})">Cinematic</button>
+                <button class="btn btn-sm" data-mianim="impact" onclick="api('/api/mapIntro',{animVariant:'impact'})">Impact</button>
+              </div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="mi-show-lineups" onchange="api('/api/mapIntro',{showLineups:this.checked})"> <span style="font-size:13px">Show team lineups</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="mi-flyby" onchange="api('/api/mapIntro',{flyby:this.checked})"> <span style="font-size:13px">Map flyby (cycle screenshots, random start)</span></label>
+            <p class="hint" style="margin-top:10px">The cinematic intro for the <strong>current / next map</strong> (or pick one above). Map art comes from <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Map Pool</a>; the pick / starting side comes from the <a onclick="switchToTab('map-veto')" href="#" style="color:var(--primary)">map veto</a>.</p>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -2168,6 +2341,7 @@
           <div class="card">
             <div class="card-title">Overlay</div>
             <p class="hint" id="win-auto-status" style="margin-bottom:0">Auto-populated from last game result.</p>
+            <label class="cap-map-veto" style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="win-auto-series" onchange="patchWin({autoSeriesScore:this.checked})"> <span style="font-size:13px">Auto series score <span style="color:var(--text-dim)">(from map results)</span></span></label>
           </div>
 
           <div class="card">
@@ -2792,6 +2966,14 @@
     </div>
 
     <div class="lbar-divider"></div>
+
+    <!-- Map Intro + Post-Game scoreboard (CS2) -->
+    <div class="lbar-group cap-map-veto" id="lbar-group-mapIntro">
+      <button class="lbar-toggle" id="lbar-toggle-mapIntro" onclick="toggleGraphic('mapIntro')"><span class="lbar-dot" id="lbar-dot-mapIntro"></span>MAP INTRO</button>
+    </div>
+    <div class="lbar-group cap-map-veto" id="lbar-group-postGame">
+      <button class="lbar-toggle" id="lbar-toggle-postGame" onclick="toggleGraphic('postGame')"><span class="lbar-dot" id="lbar-dot-postGame"></span>POST-GAME</button>
+    </div>
 
     <!-- Win screen + winner selector -->
     <div class="lbar-group" id="lbar-group-winScreen">

@@ -25,6 +25,9 @@
     { id: 'winScreen',           label: 'Win Screen' },
     { id: 'prizepool',           label: 'Prizepool' },
     { id: 'ticker',              label: 'Ticker' },
+    { id: 'mapVeto',             label: 'Map Veto' },    // CS2
+    { id: 'postGame',            label: 'Post-Game' },   // CS2
+    { id: 'mapIntro',            label: 'Map Intro' },   // CS2
   ];
 
   const _static = [];
@@ -57,6 +60,10 @@
     { id: 'playerSpotlight.vs.hide',    label: 'Spotlight: Hide VS Badge',    category: 'Player Spotlight', handler: () => postBody('/api/playerSpotlight', { showVs: false }) },
     { id: 'groupStage.mode.live',       label: 'Standings: Group Stage View', category: 'Group Stage', handler: () => postBody('/api/groupStage', { mode: 'live' }) },
     { id: 'groupStage.mode.final',      label: 'Standings: Final Standings',  category: 'Group Stage', handler: () => postBody('/api/groupStage', { mode: 'final' }) },
+    { id: 'mapIntro.lineups.on',        label: 'Map Intro: Lineups On',  category: 'Map Intro', handler: () => postBody('/api/mapIntro', { showLineups: true }) },
+    { id: 'mapIntro.lineups.off',       label: 'Map Intro: Lineups Off', category: 'Map Intro', handler: () => postBody('/api/mapIntro', { showLineups: false }) },
+    { id: 'mapIntro.flyby.on',          label: 'Map Intro: Flyby On',    category: 'Map Intro', handler: () => postBody('/api/mapIntro', { flyby: true }) },
+    { id: 'mapIntro.flyby.off',         label: 'Map Intro: Flyby Off',   category: 'Map Intro', handler: () => postBody('/api/mapIntro', { flyby: false }) },
   );
 
   // Master "hide all lower thirds" (per-set trigger actions are dynamic, below).

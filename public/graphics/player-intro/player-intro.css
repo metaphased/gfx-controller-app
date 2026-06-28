@@ -193,6 +193,18 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   margin-top: 0.2vh;
 }
 
+/* CS2 live-data stat line — small dim row under the handle (KD · ADR or live K/D/A) */
+.pi-pnl-csstat {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.55vh; font-weight: 700;
+  letter-spacing: 0.08em; text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--gfx-c3, #fff);
+  opacity: 0.78;
+  line-height: 1.2;
+  margin-top: 0.4vh;
+  white-space: nowrap;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    LAYOUT: TEAM CARD STACK (full-screen)
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -306,6 +318,18 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   opacity: 0.85;
 }
 
+/* CS2 live-data stat chip — sits inline after the big handle in the stack row */
+.pi-stk-csstat {
+  position: relative; z-index: 2;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 2vh; font-weight: 700;
+  letter-spacing: 0.06em; text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--gfx-c3, #fff);
+  opacity: 0.72;
+  align-self: center;
+  white-space: nowrap;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════
    LAYOUT: NAMEPLATE BAR (bottom anchor)
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -318,6 +342,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   border-top: 1px solid rgba(255, 255, 255,0.1);
 }
 .pi-bar-band.has-rank { height: 23vh; }
+.pi-bar-band.has-cs   { height: 27vh; }  /* CS2 stat line is a touch taller than a rank → more room for 5 two-line rows */
 
 .pi-bar-side {
   flex: 1;
@@ -394,6 +419,18 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   letter-spacing: 0.1em; text-transform: var(--gfx-text-transform, uppercase);
   color: var(--team-color, var(--gfx-c1));
   margin-top: 0.15vh;
+}
+
+/* CS2 live-data stat line — small dim row under the handle in the bar */
+.pi-bar-csstat {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.25vh; font-weight: 700;
+  letter-spacing: 0.07em; text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--gfx-c3, #fff);
+  opacity: 0.74;
+  margin-top: 0.2vh;
+  white-space: nowrap;
+  direction: ltr;  /* T2 column is rtl; keep the stat string in reading order */
 }
 
 /* Team name — fills the dead space between players and centre, flanking the VS */

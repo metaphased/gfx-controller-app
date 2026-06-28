@@ -776,6 +776,42 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
         </div>
       </div>
 
+      <!-- Map Intro (CS2) -->
+      <div class="ops-ctrl-row cap-map-veto">
+        <div class="ops-ctrl-group" id="ops-grp-mapIntro">
+          <span class="ops-ctrl-label">Map Intro</span>
+          <button class="lbar-toggle" id="ops-btn-mapIntro" onclick="toggleGfx('mapIntro')">
+            <span class="lbar-dot" id="ops-dot-mapIntro"></span>Map Intro
+          </button>
+        </div>
+        <div class="ops-ctrl-group">
+          <span class="ops-ctrl-label">Lineups</span>
+          <button class="mode-btn" id="ops-mi-lineups" onclick="api('/api/mapIntro',{showLineups:!(window._state&&window._state.mapIntro&&window._state.mapIntro.showLineups)})">Toggle</button>
+        </div>
+        <div class="ops-ctrl-group">
+          <span class="ops-ctrl-label">Flyby</span>
+          <button class="mode-btn" id="ops-mi-flyby" onclick="api('/api/mapIntro',{flyby:!(window._state&&window._state.mapIntro&&window._state.mapIntro.flyby)})">Toggle</button>
+        </div>
+        <div class="ops-ctrl-group" style="flex:1">
+          <span class="ops-ctrl-label">Map</span>
+          <select id="ops-mi-map" onchange="api('/api/mapIntro',{selectedSlug:this.value})" style="flex:1;min-width:160px"></select>
+        </div>
+      </div>
+
+      <!-- Post-Game scoreboard (CS2) -->
+      <div class="ops-ctrl-row cap-map-veto">
+        <div class="ops-ctrl-group" id="ops-grp-postGame">
+          <span class="ops-ctrl-label">Post-Game</span>
+          <button class="lbar-toggle" id="ops-btn-postGame" onclick="toggleGfx('postGame')">
+            <span class="lbar-dot" id="ops-dot-postGame"></span>Post-Game
+          </button>
+        </div>
+        <div class="ops-ctrl-group" style="flex:1">
+          <span class="ops-ctrl-label">Map</span>
+          <select id="ops-pg-map" onchange="api('/api/postGame',{selectedSlug:this.value})" style="flex:1;min-width:160px"></select>
+        </div>
+      </div>
+
       <!-- Bracket -->
       <div class="ops-ctrl-row">
         <div class="ops-ctrl-group" id="ops-grp-bracket">
@@ -855,6 +891,7 @@ function g(id) { return document.getElementById(id); }
 // Active game adapter (broadcast as state.adapter) — hides game-irrelevant operator
 // controls. Elements opt in by class; LoL has all capabilities so nothing changes.
 function gameAdapter() { return (window._state && window._state.adapter) || null; }
+function opsHasRoles() { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
 
 // Map-veto accordion controls (mirror the admin GFX-tab logic).
 function _opsMv() { return (window._state && window._state.mapVeto) || {}; }
@@ -916,7 +953,7 @@ socket.on('presence:list', function(users) {
 });
 
 /* ── Graphic list for bulk sync ── */
-const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','mapVeto','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
+const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','mapVeto','mapIntro','postGame','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
 
 socket.on('state', state => {
   window._state = state;
@@ -1018,6 +1055,34 @@ socket.on('state', state => {
   setModeActive('ops-mv-full', !!_mv.accordionFinal);
   setModeActive('ops-mv-auto', !!_mv.autoRevealing);
   const _oaBtn = document.getElementById('ops-mv-auto'); if (_oaBtn) _oaBtn.textContent = _mv.autoRevealing ? '■ Stop' : '▶ Auto';
+
+  /* Post-Game map selector — finalized maps of the current series */
+  const _pgSel = document.getElementById('ops-pg-map');
+  if (_pgSel) {
+    const norm = x => String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const rows = ((state.match && state.match.mapResults) || []).filter(r => r && r.map && (r.status==='final' || r.winner || r.t1Rounds || r.t2Rounds));
+    const cur = (state.postGame && state.postGame.selectedSlug) || '';
+    const opts = '<option value="">Latest map</option>' + rows.map((r,i) => {
+      const v = norm(r.map);
+      return '<option value="'+v+'"'+(v===cur?' selected':'')+'>Map '+(i+1)+' — '+r.map+' '+(r.t1Rounds|0)+'–'+(r.t2Rounds|0)+'</option>';
+    }).join('');
+    if (_pgSel.dataset.sig !== opts) { _pgSel.dataset.sig = opts; _pgSel.innerHTML = opts; }
+    _pgSel.value = cur;
+  }
+
+  /* Map Intro: lineups state + map selector (current/next + all series maps) */
+  setModeActive('ops-mi-lineups', !!(state.mapIntro && state.mapIntro.showLineups));
+  setModeActive('ops-mi-flyby', !!(state.mapIntro && state.mapIntro.flyby));
+  const _miSel = document.getElementById('ops-mi-map');
+  if (_miSel) {
+    const norm = x => String(x||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+    const rows = ((state.match && state.match.mapResults) || []).filter(r => r && r.map);
+    const cur = (state.mapIntro && state.mapIntro.selectedSlug) || '';
+    const opts = '<option value="">Current / next</option>' + rows.map((r,i) =>
+      '<option value="'+norm(r.map)+'"'+(norm(r.map)===cur?' selected':'')+'>Map '+(i+1)+' — '+r.map+'</option>').join('');
+    if (_miSel.dataset.sig !== opts) { _miSel.dataset.sig = opts; _miSel.innerHTML = opts; }
+    _miSel.value = cur;
+  }
 
   /* Player quick grid */
   renderPlayerGrid(state);
@@ -1175,10 +1240,11 @@ function renderPlayerGrid(state) {
       if (p.handle) players.push({ ...p, teamTag: tag, teamKey: team });
     });
   });
+  const showRole = opsHasRoles();
   grid.innerHTML = players.map((p, i) =>
     `<button class="player-btn" onclick="opsQuickLT(${i})">` +
     `<span class="p-handle">${esc(p.handle)}</span>` +
-    `<span class="p-team">${esc(p.teamTag)} · ${esc(p.role)}</span>` +
+    `<span class="p-team">${esc(p.teamTag)}${showRole && p.role ? ' · ' + esc(p.role) : ''}</span>` +
     `</button>`
   ).join('');
   grid._players = players;
@@ -1193,7 +1259,8 @@ function opsQuickLT(idx) {
   const s = sets.find(x => x.id === _opsLtActiveId()) || sets[0];
   if (!s) return;
   if (!s.items || !s.items.length) s.items = [_opsLtNewItem()];
-  Object.assign(s.items[0], { name: p.handle, sub: (p.name ? p.name + ' · ' : '') + p.role, super: tag });
+  const sub = [p.name, opsHasRoles() ? p.role : ''].filter(Boolean).join(' · ');
+  Object.assign(s.items[0], { name: p.handle, sub, super: tag });
   api('/api/lowerThird', { sets, visible: true });
 }
 
@@ -1232,6 +1299,8 @@ const GFX_LABELS = {
   playerIntro:'Player Intro', preShow:'Pre-show', draft:'Draft', bracket:'Bracket',
   groupStage:'Group Stage', tournamentStructure:'Structure', breakScreen:'Break Screen',
   winScreen:'Win Screen', prizepool:'Prizepool', bgOutput:'BG Output', champSelect:'Champ Select',
+  ticker:'Ticker', playerSpotlight:'Player Spotlight',
+  mapVeto:'Map Veto', postGame:'Post-Game', mapIntro:'Map Intro',
 };
 
 function _gfxKeyLabel(state, key) {
@@ -1243,14 +1312,27 @@ function _gfxKeyLabel(state, key) {
   return GFX_LABELS[key] || key;
 }
 
+// Per-game capability of a graphic (champ-draft = LoL draft/H2H, map-veto = CS2 pre-game set).
+// Routing buttons for the other game's graphics are hidden so the matrix only shows what's
+// relevant to the active game (their assignments are preserved in the config).
+const _OPS_GFX_CAP = { headToHead:'champ-draft', draft:'champ-draft', mapVeto:'map-veto', postGame:'map-veto', mapIntro:'map-veto' };
+function _opsGfxKeyActive(key) {
+  const cap = _OPS_GFX_CAP[String(key).split(':')[0]];
+  if (!cap) return true;
+  const a = gameAdapter();
+  if (cap === 'champ-draft') return a ? a.pregameKind === 'champ-draft' : true;
+  if (cap === 'map-veto')    return a ? a.pregameKind === 'map-veto'    : false;
+  return true;
+}
 function renderBusPanel(state) {
   const panel = g('bus-routing-panel');
   const list  = g('bus-routing-list');
   if (!panel || !list) return;
 
-  const buses    = (state.settings && state.settings.buses) || [];
   const busState = state.busState || {};
-  const withAssignments = buses.filter(b => (b.assignments || []).length > 0);
+  const buses = ((state.settings && state.settings.buses) || [])
+    .map(b => ({ ...b, assignments: (b.assignments || []).filter(_opsGfxKeyActive) }));
+  const withAssignments = buses.filter(b => b.assignments.length > 0);
 
   panel.style.display = withAssignments.length ? '' : 'none';
   if (!withAssignments.length) return;

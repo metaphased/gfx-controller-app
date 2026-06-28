@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Map Intro</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<script src="/graphics/gfx-settings.js"></script>
+<link rel="stylesheet" href="map-intro.css">
+</head>
+<body>
+<!-- CS2 cinematic map intro. The upcoming map's screenshot fills the frame (slow Ken-Burns)
+     behind a dark scrim; the hero shows the map name, MAP n · format · series score, the two
+     team logos flanking a VS, and the veto story (who picked + starting sides). An optional
+     lineups row reveals both 5-man rosters. map-intro.js resolves the map + veto. -->
+<div id="mi-root" style="display:none">
+  <!-- Two stacked image layers so the optional flyby slideshow can crossfade screenshots
+       (opacity only) without disturbing the Ken-Burns transform on #mi-art. -->
+  <div id="mi-art"><img class="mi-art-img" id="mi-art-a"><img class="mi-art-img" id="mi-art-b"></div>
+  <div id="mi-scrim"></div>
+  <div id="mi-stage">
+    <div id="mi-meta"></div>
+    <div id="mi-map"></div>
+    <div id="mi-teams">
+      <div class="mi-team mi-team-l">
+        <div class="mi-team-logo" id="mi-t1-logo"></div>
+        <div class="mi-team-name" id="mi-t1-name"></div>
+      </div>
+      <div id="mi-vs">VS</div>
+      <div class="mi-team mi-team-r">
+        <div class="mi-team-logo" id="mi-t2-logo"></div>
+        <div class="mi-team-name" id="mi-t2-name"></div>
+      </div>
+    </div>
+    <div id="mi-veto"></div>
+    <div id="mi-lineups"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="map-intro.js"></script>
+</body>
+</html>

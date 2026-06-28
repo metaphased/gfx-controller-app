@@ -5,10 +5,13 @@
 module.exports = {
   id:    'cs2',
   label: 'CS2',
+  maturity: 'beta',  // control-room only (never on-air): map-veto + live data shipped, hardening
+
   roster: {
     positions: ['', '', '', '', ''], // 5 slots, no fixed roles
     teamSize:  5,
     hasSubs:   true,
+    idScheme:  'steam',  // roster carries optional Steam ID (live-data match override) + HLTV link
   },
   pregame: {
     kind:       'map-veto',  // shown as a broadcast scene; operator-entered

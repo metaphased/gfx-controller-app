@@ -94,6 +94,12 @@ body {
 .sig-pgm { color: var(--pgm); border-color: var(--pgm); background: rgba(var(--live-rgb),0.14); }
 .sig-pvw { color: var(--pvw); border-color: var(--pvw); background: rgba(46,194,122,0.12); }
 
+/* Game maturity badge — control-room only (never on-air). Flags how production-ready the
+   selected/locked game is in the Tournament Setup picker. */
+.maturity-badge { display: inline-flex; align-items: center; font-size: 9px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 7px; border-radius: var(--radius); border: 1px solid; white-space: nowrap; flex-shrink: 0; cursor: help; }
+.maturity-badge.beta  { color: #ffcf6b; border-color: #7a5e1e; background: rgba(255,193,80,0.12); }
+.maturity-badge.alpha { color: #ff9b9b; border-color: #7a2e2e; background: rgba(255,90,90,0.12); }
+
 /* ── Sidebar ─────────────────────────────────────── */
 .sidebar {
   grid-column: 1;
@@ -1005,7 +1011,7 @@ input[type=checkbox]:checked::after {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.opgg-link {
+.opgg-link, .hltv-link {
   display: inline-flex;
   align-items: center;
   align-self: stretch;
@@ -1023,6 +1029,9 @@ input[type=checkbox]:checked::after {
   transition: opacity 0.15s, background 0.15s;
 }
 .opgg-link:hover { opacity: 1; background: rgba(var(--opgg-rgb),0.12); }
+/* HLTV shortcut reuses the op.gg pill shape but the app accent (no HLTV brand token) */
+.hltv-link { border-color: var(--accent); color: var(--accent); }
+.hltv-link:hover { opacity: 1; background: rgba(var(--accent-rgb),0.12); }
 .player-num {
   font-family: var(--ui-font), sans-serif;
   font-size: 12px;
@@ -1974,3 +1983,24 @@ input[type=search]::-webkit-search-decoration { display: none; }
 .mv-sc-status.is-active.live { background: #ff5a5a; border-color: #ff5a5a; color: #fff; }
 .mv-sc-status.is-active.final { background: #ffd24a; border-color: #ffd24a; color: #1a1405; }
 
+
+/* ── Live Data card (CS2 GSI / MatchZy ingest) ─────────────────────────────────── */
+.ld-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 13px; color: var(--text); }
+.ld-status { font-size: 11px; font-weight: 700; letter-spacing: 0.02em; padding: 1px 8px; border-radius: var(--radius-pill, 10px);
+  background: rgba(255,255,255,0.07); color: var(--text-dim); }
+.ld-status.on   { background: rgba(34,197,94,0.18);  color: #7ee2a8; }
+.ld-status.idle { background: rgba(234,179,8,0.16);  color: #f0c674; }
+.ld-src { padding: 10px 12px; border: 1px solid var(--border, rgba(255,255,255,0.1)); border-radius: var(--radius, 6px); }
+.ld-sug-row { display: flex; align-items: center; gap: 10px; padding: 5px 9px; margin-bottom: 5px; font-size: 13px;
+  border: 1px solid var(--border, rgba(255,255,255,0.1)); border-radius: var(--radius, 6px); }
+.ld-sug-row > b { font-variant-numeric: tabular-nums; }
+.ld-sug-row .ld-sug-meta { margin-left: auto; color: var(--text-dim); font-size: 11px; }
+.ld-pcols { display: flex; gap: 12px; }
+.ld-pcol { flex: 1 1 0; min-width: 0; }
+.ld-pcol-h { font-size: 11px; font-weight: 700; letter-spacing: 0.04em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px; }
+.ld-prow { display: flex; align-items: center; gap: 8px; padding: 3px 8px; font-size: 13px;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,0.06)); }
+.ld-prow > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ld-prow > b { margin-left: auto; font-variant-numeric: tabular-nums; }
+.ld-prow .ld-padr { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+.ld-prow .ld-pmeta { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
