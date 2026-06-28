@@ -4416,6 +4416,7 @@ function renderMapIntro(state){
   }
   setInpSafe('mi-title', mi.title||'');
   document.querySelectorAll('#mi-bg-group [data-mibg]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-mibg')===(mi.bg||'art')); });
+  document.querySelectorAll('#mi-anim-group [data-mianim]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-mianim')===(mi.animVariant||'cinematic')); });
   const sl=g('mi-show-lineups'); if(sl) sl.checked=!!mi.showLineups;
 }
 

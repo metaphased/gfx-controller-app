@@ -140,6 +140,13 @@ socket.on('state', function (state) {
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyAnimation(document.documentElement, state, 'mapIntro');
 
+  // Animation variant: 'cinematic' (default rise/fade) | 'impact' (punchier in/out).
+  var root = $('mi-root');
+  if (root) {
+    var impact = (mi.animVariant || 'cinematic') === 'impact';
+    root.classList.toggle('mi-anim-impact', impact);
+  }
+
   if (visible !== _lastVisible) {
     if (visible) { renderAll(state); animateIn(); }
     else if (_lastVisible !== null) animateOut();

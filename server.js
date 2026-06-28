@@ -823,7 +823,7 @@ const makeDefault = () => ({
   postGame:    { visible: false, selectedSlug: '', design: 'split', bg: 'dark', showRounds: true, showLogos: true, title: 'POST-GAME' },
   // CS2 map intro — cinematic pre-map card (map art hero + veto story + optional lineups).
   // selectedSlug = mapArtSlug of the chosen map (''=current/next, the first non-final map row).
-  mapIntro:    { visible: false, selectedSlug: '', showLineups: false, bg: 'art', title: '' },
+  mapIntro:    { visible: false, selectedSlug: '', showLineups: false, bg: 'art', title: '', animVariant: 'cinematic' },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
   // design: angled|bleed|framed, mode: single|duo|compare. players[0]=A (team1 side),
   // players[1]=C (team2 side); champ='' = auto (most-played); statOverrides keyed by stat.
