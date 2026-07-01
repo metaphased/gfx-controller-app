@@ -1190,13 +1190,14 @@ const GRAPHIC_PATHS = {
   mapVeto: 'graphics/map-veto',
   postGame: 'graphics/post-game',
   mapIntro: 'graphics/map-intro',
+  heroDraft: 'graphics/hero-draft',
 };
 const GRAPHIC_LABELS = {
   lowerThird: 'lower third', headToHead: 'head to head', playerIntro: 'player intro',
   preShow: 'pre-show', draft: 'draft', bracket: 'bracket', groupStage: 'group stage',
   tournamentStructure: 'tournament structure', prizepool: 'prize', winScreen: 'win screen',
   breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker', playerSpotlight: 'player spotlight',
-  mapVeto: 'map veto', postGame: 'post game', mapIntro: 'map intro',
+  mapVeto: 'map veto', postGame: 'post game', mapIntro: 'map intro', heroDraft: 'hero draft',
 };
 function _switcherByUrl(url) {
   if (!url) return null;
@@ -1269,7 +1270,7 @@ function broadcast() {
 
 // ── SSE (Server-Sent Events) for Companion / external integrations ─────────────
 const _sseClients = new Set();
-const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto','postGame','mapIntro'];
+const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto','postGame','mapIntro','heroDraft'];
 function buildSSEPayload() {
   const visibilities = {};
   SSE_GRAPHIC_KEYS.forEach(k => { if (state[k]) visibilities[k] = !!state[k].visible; });
@@ -1620,7 +1621,7 @@ const GRAPHIC_PAGE_KEYS = {
   winScreen: 'win-screen', preShow: 'pre-show',
   tournamentStructure: 'tournament-structure', groupStage: 'standings',
   prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight',
-  mapVeto: 'map-veto', postGame: 'post-game', mapIntro: 'map-intro'
+  mapVeto: 'map-veto', postGame: 'post-game', mapIntro: 'map-intro', heroDraft: 'hero-draft'
 };
 
 function findBusForGraphic(graphicName) {

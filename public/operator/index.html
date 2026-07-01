@@ -746,6 +746,19 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
         </div>
       </div>
 
+      <!-- Hero Draft (Dota 2) -->
+      <div class="ops-ctrl-row cap-hero-draft">
+        <div class="ops-ctrl-group" id="ops-grp-heroDraft">
+          <span class="ops-ctrl-label">Hero Draft</span>
+          <button class="lbar-toggle" id="ops-btn-heroDraft" onclick="toggleGfx('heroDraft')">
+            <span class="lbar-dot" id="ops-dot-heroDraft"></span>Hero Draft
+          </button>
+        </div>
+        <div class="ops-ctrl-group" style="flex:1">
+          <span class="phase-badge" id="ops-hd-phase">—</span>
+        </div>
+      </div>
+
       <!-- Map Veto (CS2 etc.) -->
       <div class="ops-ctrl-row cap-map-veto">
         <div class="ops-ctrl-group" id="ops-grp-mapVeto">
@@ -954,7 +967,7 @@ socket.on('presence:list', function(users) {
 });
 
 /* ── Graphic list for bulk sync ── */
-const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','mapVeto','mapIntro','postGame','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
+const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','heroDraft','mapVeto','mapIntro','postGame','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
 
 socket.on('state', state => {
   window._state = state;
@@ -1316,13 +1329,14 @@ function _gfxKeyLabel(state, key) {
 // Per-game capability of a graphic (champ-draft = LoL draft/H2H, map-veto = CS2 pre-game set).
 // Routing buttons for the other game's graphics are hidden so the matrix only shows what's
 // relevant to the active game (their assignments are preserved in the config).
-const _OPS_GFX_CAP = { headToHead:'champ-draft', draft:'champ-draft', mapVeto:'map-veto', postGame:'map-veto', mapIntro:'map-veto' };
+const _OPS_GFX_CAP = { headToHead:'champ-draft', draft:'champ-draft', mapVeto:'map-veto', postGame:'map-veto', mapIntro:'map-veto', heroDraft:'hero-draft' };
 function _opsGfxKeyActive(key) {
   const cap = _OPS_GFX_CAP[String(key).split(':')[0]];
   if (!cap) return true;
   const a = gameAdapter();
   if (cap === 'champ-draft') return a ? a.pregameKind === 'champ-draft' : true;
   if (cap === 'map-veto')    return a ? a.pregameKind === 'map-veto'    : false;
+  if (cap === 'hero-draft')  return a ? a.pregameKind === 'hero-draft'  : false;
   return true;
 }
 function renderBusPanel(state) {

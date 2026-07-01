@@ -319,7 +319,7 @@ const TAB_LABELS = {
   players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
   preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
   h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
-  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', 'live-data':'Live Data', 'post-game-gfx':'Post-Game', 'map-intro-gfx':'Map Intro', bracket:'Bracket', 'groups-gfx':'Group Stage',
+  'draft-gfx':'Draft GFX', 'hero-draft-gfx':'Hero Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', 'live-data':'Live Data', 'post-game-gfx':'Post-Game', 'map-intro-gfx':'Map Intro', bracket:'Bracket', 'groups-gfx':'Group Stage',
   'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
   win:'Win Screen', profiles:'Profiles', routing:'Routing', users:'Settings', log:'Log',
 };
@@ -330,7 +330,7 @@ const GFX_TAB_CLAIM_KEY = {
   'win':'win-screen', 'break':'break-screen', 'preshow':'pre-show',
   'tournament-structure-gfx':'tournament-structure', 'groups-gfx':'standings',
   'bracket':'bracket', 'h2h':'h2h', 'ticker':'ticker', 'prizepool':'prizepool',
-  'player-spotlight':'player-spotlight', 'post-game-gfx':'post-game', 'map-intro-gfx':'map-intro',
+  'player-spotlight':'player-spotlight', 'post-game-gfx':'post-game', 'map-intro-gfx':'map-intro', 'hero-draft-gfx':'hero-draft',
 };
 let _currentClaimTab = null; // tabKey currently claimed
 
@@ -646,6 +646,7 @@ const GFX_OUTPUTS = [
   { label: 'Player Spotlight',      path: 'graphics/player-spotlight/' },
   { label: 'Post-Game',             path: 'graphics/post-game/', cap: 'map-veto' },
   { label: 'Map Intro',             path: 'graphics/map-intro/', cap: 'map-veto' },
+  { label: 'Hero Draft',            path: 'graphics/hero-draft/', cap: 'hero-draft' },
   // Lower Third outputs are appended dynamically (one row per output) in syncGfxToken.
 ];
 
@@ -4152,11 +4153,12 @@ const GRAPHIC_MAP = [
   { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
   { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game', cap: 'map-veto' },
   { key: 'mapIntro',    tab: 'map-intro-gfx', label: 'Map Intro', cap: 'map-veto' },
+  { key: 'heroDraft',   tab: 'hero-draft-gfx', label: 'Hero Draft', cap: 'hero-draft' },
 ];
 // Is a graphic's capability active for the current game? (champ-draft = LoL-style draft,
 // map-veto = CS2-style pre-game). Used to scope output URLs + bus routing per game.
 function _gfxCapActive(cap) {
-  return cap === 'champ-draft' ? isChampDraft() : cap === 'map-veto' ? isMapVeto() : true;
+  return cap === 'champ-draft' ? isChampDraft() : cap === 'map-veto' ? isMapVeto() : cap === 'hero-draft' ? isHeroDraft() : true;
 }
 
 // ── Map Veto (CS2 etc.) ──────────────────────────────────────────────────────
@@ -7167,7 +7169,7 @@ const _GFX_ANIM_PAGES = {
   'bracket': ['bracket', 'Bracket'], 'groups-gfx': ['groupStage', 'Group Stage'],
   'tournament-structure-gfx': ['tournamentStructure', 'Tournament Structure'], 'prizepool': ['prizepool', 'Prizepool'],
   'player-spotlight': ['playerSpotlight', 'Player Spotlight'], 'post-game-gfx': ['postGame', 'Post-Game'],
-  'map-intro-gfx': ['mapIntro', 'Map Intro'],
+  'map-intro-gfx': ['mapIntro', 'Map Intro'], 'hero-draft-gfx': ['heroDraft', 'Hero Draft'],
 };
 function _graphicAnimCardHtml(key) {
   const sp = (v, t) => `<button class="theme-pill" data-sp="${v}" onclick="setGfxAnimSpeed('${key}','${v}')">${t}</button>`;

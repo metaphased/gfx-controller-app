@@ -70,6 +70,10 @@
         <span id="nav-dot-draft-gfx" class="nav-status-dot"></span>
         Draft
       </a>
+      <a class="nav-item cap-hero-draft" data-tab="hero-draft-gfx">
+        <span id="nav-dot-hero-draft-gfx" class="nav-status-dot"></span>
+        Hero Draft
+      </a>
       <a class="nav-item cap-map-veto" data-tab="map-veto-gfx">
         <span id="nav-dot-map-veto-gfx" class="nav-status-dot"></span>
         Map Veto
@@ -763,6 +767,32 @@
           <div class="card">
             <div class="card-title">Confirm data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· before you go live</span></div>
             <div id="pg-preview"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         HERO DRAFT — overlay (GRAPHICS section, Dota 2)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-hero-draft-gfx">
+      <div class="tab-header"><h1>Hero Draft Overlay</h1></div>
+      <div class="gfx-ctrl-bar">
+        <div class="gfx-ctrl-title">Hero Draft Overlay Controls</div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group" id="ctrlgrp-heroDraft">
+            <span class="gfx-ctrl-section-label">Output</span>
+            <button class="lbar-toggle" id="ctrlbtn-heroDraft" onclick="toggleGraphic('heroDraft')">
+              <span class="lbar-dot" id="ctrl-dot-heroDraft"></span>HERO DRAFT
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="ps-two-col">
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Hero Draft</div>
+            <p class="hint" style="margin-bottom:0">The Captains Mode pick/ban overlay — <strong>Radiant</strong> (team 1, green) vs <strong>Dire</strong> (team 2, red). Fill heroes as they're drafted in <a onclick="switchToTab('hero-draft')" href="#" style="color:var(--primary)">Game → Hero Draft</a>; the pick/ban order is set in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Captains Mode Order</a>. The overlay highlights whichever team is on the clock.</p>
           </div>
         </div>
       </div>
@@ -2963,6 +2993,9 @@
     </div>
     <div class="lbar-group" id="lbar-group-draft">
       <button class="lbar-toggle cap-champ-draft" id="lbar-toggle-draft" onclick="toggleGraphic('draft')"><span class="lbar-dot" id="lbar-dot-draft"></span>DRAFT</button>
+    </div>
+    <div class="lbar-group cap-hero-draft" id="lbar-group-heroDraft">
+      <button class="lbar-toggle" id="lbar-toggle-heroDraft" onclick="toggleGraphic('heroDraft')"><span class="lbar-dot" id="lbar-dot-heroDraft"></span>HERO DRAFT</button>
     </div>
     <div class="lbar-group cap-map-veto" id="lbar-group-mapVeto">
       <button class="lbar-toggle" id="lbar-toggle-mapVeto" onclick="toggleGraphic('mapVeto')"><span class="lbar-dot" id="lbar-dot-mapVeto"></span>MAP VETO</button>
