@@ -53,6 +53,7 @@ function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvide
 function supportsSteamId()  { const a = gameAdapter(); return a ? a.rosterIds === 'steam'     : false; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
 function supportsHeroes()   { const a = gameAdapter(); return a ? a.assetSource === 'dota-heroes' : false; }
+function supportsLiveData()  { const a = gameAdapter(); return a ? !!a.liveData : false; } // has a GSI feed (CS2, Dota 2)
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
 function hasRoles()         { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
 // Map-veto games don't advance match.currentGameNum; the current game is the first map
@@ -82,6 +83,7 @@ function applyAdapterUI() {
     // character draft = a champion OR hero pick/ban (LoL + Dota, NOT CS2's map pickEntity) — for
     // shared graphics that show drafted characters (e.g. win-screen picks).
     'cap-char-draft':  isChampDraft() || isHeroDraft(),
+    'cap-live-data':   supportsLiveData(),   // games with a GSI live feed (CS2, Dota 2)
     'cap-opgg':        supportsOpgg(),
     'cap-assets':      supportsAssets(),
     'cap-heroes':      supportsHeroes(),
@@ -275,6 +277,7 @@ socket.on('state', async (state) => {
   ldRender(state);
   mvRenderVeto(state);
   mvRenderGfx(state);
+  ldRenderDota(state);
   renderPostGame(state);
   renderMapIntro(state);
   applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
@@ -562,6 +565,51 @@ function ldRenderPlayers(state) {
       }).join('') + '</div>';
     px.innerHTML = '<div class="hint" style="margin:8px 0 4px">' + (_ldView === 'series' ? 'This series' : 'Tournament') + ' (maps · K/D/A · KD):</div><div class="ld-pcols">' + col('team1') + col('team2') + '</div>';
   }
+}
+// Dota 2 live inspector (Phase A) — parsed summary from state.live.dota + on-demand raw payload.
+function _ldFmtClock(s) { s = s | 0; const neg = s < 0; s = Math.abs(s); return (neg ? '-' : '') + Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+function ldRenderDota(state) {
+  const card = document.getElementById('ld-dota-card'); if (!card || !isHeroDraft()) return;
+  const d = (state && state.live && state.live.dota) || {};
+  const ld = (state.settings && state.settings.liveData) || {};
+  const fresh = d.lastSeen && (Date.now() - d.lastSeen < 8000);
+  const stat = document.getElementById('ld-dota-status');
+  if (stat) { stat.textContent = fresh ? 'live' : (d.lastSeen ? 'stale' : 'no data'); stat.classList.toggle('on', !!fresh); }
+  // Top GSI toggle status reflects the DOTA feed here (ldRender's ldStatusEl reads the CS2 slice).
+  const top = document.getElementById('ld-gsi-status');
+  if (top) {
+    top.textContent = !ld.gsiEnabled ? 'off' : (fresh ? 'live' : 'waiting…');
+    top.classList.toggle('on', !!(ld.gsiEnabled && fresh));
+    top.classList.toggle('idle', !!(ld.gsiEnabled && !fresh));
+  }
+  const host = document.getElementById('ld-dota-fields'); if (!host) return;
+  const cell = (k, v) => '<div class="ld-dota-cell"><span class="ld-dk">' + esc(k) + '</span><span class="ld-dv">' + esc(String(v)) + '</span></div>';
+  const html = [
+    cell('Game state', d.gameState || '—'),
+    cell('Clock', d.lastSeen ? _ldFmtClock(d.clockTime) : '—'),
+    cell('Score (R–D)', d.lastSeen ? ((d.radiantScore | 0) + ' – ' + (d.direScore | 0)) : '—'),
+    cell('Draft data', d.draft ? 'yes' : 'no'),
+    cell('Players', d.players | 0),
+    cell('Paused', d.paused ? 'yes' : 'no'),
+    cell('Match ID', d.matchId || '—'),
+    cell('Provider', d.provider || '—'),
+  ].join('');
+  if (host._h !== html) { host._h = html; host.innerHTML = html; }
+}
+let _ldRawOpen = false, _ldRawTimer = null;
+function ldToggleDotaRaw(btn) {
+  _ldRawOpen = !_ldRawOpen;
+  const pre = document.getElementById('ld-dota-raw'); if (pre) pre.style.display = _ldRawOpen ? '' : 'none';
+  if (btn) btn.textContent = _ldRawOpen ? 'Hide raw payload' : 'Show raw payload';
+  if (_ldRawOpen) { ldFetchDotaRaw(); if (!_ldRawTimer) _ldRawTimer = setInterval(ldFetchDotaRaw, 2000); }
+  else if (_ldRawTimer) { clearInterval(_ldRawTimer); _ldRawTimer = null; }
+}
+async function ldFetchDotaRaw() {
+  try {
+    const d = await (await fetch('/api/live/dota/raw')).json();
+    const pre = document.getElementById('ld-dota-raw'); if (pre) pre.textContent = d && d.raw ? JSON.stringify(d.raw, null, 2) : '(no payload received yet)';
+    const note = document.getElementById('ld-dota-raw-note'); if (note) note.textContent = d && d.lastSeen ? ('updated ' + new Date(d.lastSeen).toLocaleTimeString()) : '';
+  } catch (e) {}
 }
 async function ldSetEnabled(src, on) { await api('/api/live/config', src === 'gsi' ? { gsiEnabled: on } : { matchzyEnabled: on }); }
 async function ldSetCt(team) { await api('/api/live/config', { ctTeam: team }); }

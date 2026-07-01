@@ -2017,3 +2017,10 @@ input[type=search]::-webkit-search-decoration { display: none; }
 .ld-prow > b { margin-left: auto; font-variant-numeric: tabular-nums; }
 .ld-prow .ld-padr { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
 .ld-prow .ld-pmeta { color: var(--text-dim); font-size: 11px; font-variant-numeric: tabular-nums; }
+
+/* Dota GSI live inspector (Phase A) — parsed-field grid. */
+.ld-dota-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; }
+.ld-dota-cell { display: flex; flex-direction: column; gap: 2px; padding: 7px 10px;
+  border: 1px solid var(--border, rgba(255,255,255,0.1)); border-radius: var(--radius, 6px); background: rgba(255,255,255,0.02); }
+.ld-dota-cell .ld-dk { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-dim); }
+.ld-dota-cell .ld-dv { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

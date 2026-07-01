@@ -20,6 +20,7 @@ module.exports = {
   },
   assets: { source: 'cs2-maps' },  // map-pool images (not DDragon champions)
   intel:  { provider: 'none' },    // FACEIT/HLTV is a later, optional data-only hook
+  liveData: { gsi: true, matchzy: true }, // CS2 GSI (observer client) + MatchZy (game server)
   // Fallback active-duty map pool — used to seed a tournament's pool when no saved default
   // exists (settings.mapPoolDefaults.cs2 overrides this). Names only: the map-veto graphic
   // auto-resolves each map's image/icon from its `de_<name>` slug (community

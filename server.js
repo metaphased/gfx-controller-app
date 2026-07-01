@@ -310,6 +310,41 @@ function liveTokenFromReq(req) {
 function liveCfg() { return (state.settings && state.settings.liveData) || {}; }
 function liveAuthed(req) { const t = liveCfg().liveToken; return !!t && liveTokenFromReq(req) === t; }
 
+// ── Dota 2 GSI (Phase A: prove the ingest pipe + surface the payload) ─────────────
+// Dota's observer / GOTV client posts to the same /api/live/gsi endpoint (routed by
+// provider.appid === 570). DATA-ONLY. Phase A parses a small summary for the live inspector
+// and keeps the last full payload server-side (admin-fetchable) so we can confirm exact field
+// shapes before wiring the draft auto-fill / post-game / timeline visuals in later phases.
+let _dotaGsiRaw = null, _dotaSig = '', _dotaLastBcast = 0;
+// Count players across GSI shapes: single `player` (own client) vs spectator `player` nested by
+// team → slot (player.team2.player0 …).
+function _dotaPlayerCount(b) {
+  const p = b && b.player; if (!p) return 0;
+  if (p.name || p.steamid) return 1;
+  let n = 0; Object.keys(p).forEach(k => { const t = p[k]; if (t && typeof t === 'object') n += Object.keys(t).length; });
+  return n;
+}
+function ingestDotaGsi(b, res) {
+  _dotaGsiRaw = b;
+  const map = b.map || {}, prov = b.provider || {};
+  const d = state.live.dota;
+  d.lastSeen     = Date.now();
+  d.matchId      = String(map.matchid || '');
+  d.gameState    = String(map.game_state || '').replace(/^DOTA_GAMERULES_STATE_/, '');
+  d.clockTime    = (map.clock_time != null ? map.clock_time : 0) | 0;
+  d.gameTime     = (map.game_time  != null ? map.game_time  : 0) | 0;
+  d.radiantScore = (map.radiant_score != null ? map.radiant_score : 0) | 0;
+  d.direScore    = (map.dire_score    != null ? map.dire_score    : 0) | 0;
+  d.paused       = !!map.paused;
+  d.draft        = !!b.draft;
+  d.players      = _dotaPlayerCount(b);
+  d.provider     = String(prov.name || '');
+  const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players].join('|');
+  const now = Date.now();
+  if (sig !== _dotaSig || now - _dotaLastBcast > 3000) { _dotaSig = sig; _dotaLastBcast = now; broadcast(); }
+  return res.json({ ok: true });
+}
+
 // ── Live score derivation (Phase B) ─────────────────────────────────────────────
 // Ingested per-map round scores land as SUGGESTIONS (state.live.suggested[slug]) the operator
 // applies — unless liveData.autoApplyScores writes them straight into match.mapResults.
@@ -480,6 +515,8 @@ app.post('/api/live/gsi', (req, res) => {
   if (!liveAuthed(req)) return res.status(403).end();
   if (!liveCfg().gsiEnabled) return res.json({ ignored: true });   // source turned off — drop quietly
   const b = req.body || {}, map = b.map || {};
+  // Dota 2 (appid 570) posts to the same endpoint — route to its own parser. CS2 (730) falls through.
+  if (b.provider && (b.provider.appid | 0) === 570) return ingestDotaGsi(b, res);
   const g = state.live.gsi;
   g.lastSeen = Date.now();
   g.map = map.name || ''; g.phase = map.phase || '';
@@ -763,6 +800,8 @@ const makeDefault = () => ({
     matchzy: { lastSeen: 0, event: '', map: '' },
     suggested: {},   // phase B: { mapResults?, seriesScore? } awaiting operator Apply
     players: {},     // phase C: per-steamid live stats { [steamid]: { name, team, kills, deaths, assists, mvps } }
+    // Dota 2 GSI (Phase A: ingest pipe + inspector; parsed summary only — raw held server-side).
+    dota:    { lastSeen: 0, matchId: '', gameState: '', clockTime: 0, gameTime: 0, radiantScore: 0, direScore: 0, paused: false, draft: false, players: 0, provider: '' },
   },
   players: {
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),
@@ -1527,6 +1566,7 @@ app.get('/api/live/info', requireAdmin, (req, res) => {
     gsiUrl:     base + '/api/live/gsi?token=' + encodeURIComponent(token),
     matchzyUrl: base + '/api/live/matchzy?token=' + encodeURIComponent(token),
     cfgUrl:     '/api/live/gsi.cfg',
+    cfgDotaUrl: '/api/live/gsi-dota.cfg',
     note: 'The URL must be reachable from the CS2 PC / game server — set EXTERNAL_URL (or use this machine\'s LAN IP), not localhost, for a separate machine.',
   });
 });
@@ -1560,6 +1600,42 @@ app.get('/api/live/gsi.cfg', requireAdmin, (req, res) => {
   res.set('Content-Type', 'text/plain; charset=utf-8');
   res.set('Content-Disposition', 'attachment; filename="gamestate_integration_metagfx.cfg"');
   res.send(cfg);
+});
+// Downloadable Dota 2 GSI config — drop in ...\\dota 2 beta\\game\\dota\\cfg\\gamestate_integration\\
+// (create the folder if missing) + add -gamestateintegration to Dota's launch options. Run it on the
+// OBSERVER / GOTV (spectator) client for full both-team + draft data.
+app.get('/api/live/gsi-dota.cfg', requireAdmin, (req, res) => {
+  const ld = state.settings.liveData || {};
+  const uri = liveBaseUrl(req) + '/api/live/gsi?token=' + encodeURIComponent(ld.liveToken || '');
+  const cfg =
+`"MetaGFX Dota Live"
+{
+ "uri"       "${uri}"
+ "timeout"   "5.0"
+ "buffer"    "0.1"
+ "throttle"  "0.5"
+ "heartbeat" "10.0"
+ "auth"      { "token" "${ld.liveToken || ''}" }
+ "data"
+ {
+  "provider"  "1"
+  "map"       "1"
+  "player"    "1"
+  "hero"      "1"
+  "abilities" "1"
+  "items"     "1"
+  "draft"     "1"
+  "buildings" "1"
+ }
+}
+`;
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.set('Content-Disposition', 'attachment; filename="gamestate_integration_metagfx.cfg"');
+  res.send(cfg);
+});
+// Live inspector: the last full Dota GSI payload (admin only) so we can confirm field shapes.
+app.get('/api/live/dota/raw', requireAdmin, (req, res) => {
+  res.json({ lastSeen: (state.live.dota && state.live.dota.lastSeen) || 0, raw: _dotaGsiRaw });
 });
 
 // ── State API ──────────────────────────────────────────────────────────────────

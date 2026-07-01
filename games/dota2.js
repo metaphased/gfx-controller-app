@@ -20,6 +20,7 @@ module.exports = {
   },
   assets: { source: 'dota-heroes' }, // hero portraits (Valve CDN / OpenDota), not DDragon champions
   intel:  { provider: 'opendota' },  // OpenDota / STRATZ — a later, optional data hook
+  liveData: { gsi: true },           // Dota 2 GSI (observer/GOTV client) — live match data feed
   // Default Captains Mode pick/ban order (team1 = first pick). 24 steps, 7 bans + 5 picks per
   // team. A PRESET, not gospel — Valve re-tunes CM between patches, so the operator can edit
   // this order in Tournament Settings (settings.heroDraftDefault overrides; "Set as default").

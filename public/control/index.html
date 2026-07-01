@@ -42,7 +42,7 @@
       <a class="nav-item cap-champ-draft" data-tab="draft">Draft</a>
       <a class="nav-item cap-hero-draft" data-tab="hero-draft">Hero Draft</a>
       <a class="nav-item cap-map-veto" data-tab="map-veto">Map Veto</a>
-      <a class="nav-item cap-map-veto" data-tab="live-data">Live Data</a>
+      <a class="nav-item cap-live-data" data-tab="live-data">Live Data</a>
       <a class="nav-item cap-opgg" data-tab="intel">Match Intel</a>
 
       <div class="nav-section-label">GRAPHICS</div>
@@ -675,20 +675,23 @@
     ══════════════════════════════════════════════════════════════════════ -->
     <section class="tab" id="tab-live-data">
       <div class="tab-header"><h1>Live Data</h1></div>
-      <p class="hint" style="margin-bottom:16px;max-width:900px">Pull live CS2 data in to auto-fill scores &amp; player stats. Both sources are optional and independent — use either, both, or none (manual entry always works). <strong>Data only:</strong> nothing is shown on air automatically; you still trigger every graphic. CT side and applying suggested scores are on the <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup</a> page, where you run the series.</p>
+      <p class="hint cap-map-veto" style="margin-bottom:16px;max-width:900px">Pull live CS2 data in to auto-fill scores &amp; player stats. Both sources are optional and independent — use either, both, or none (manual entry always works). <strong>Data only:</strong> nothing is shown on air automatically; you still trigger every graphic. CT side and applying suggested scores are on the <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup</a> page, where you run the series.</p>
+      <p class="hint cap-hero-draft" style="margin-bottom:16px;max-width:900px;display:none">Pull live Dota 2 data in from the game's <strong>observer / GOTV client</strong>. <strong>Data only:</strong> nothing airs automatically. This is the early ingest — the inspector below confirms the feed is connected before we wire it into graphics (draft auto-fill, post-game, match visuals).</p>
 
       <div class="card">
         <div class="card-title">Connection</div>
         <div class="ld-src">
           <label class="ld-toggle"><input type="checkbox" id="ld-gsi-enabled" onchange="ldSetEnabled('gsi',this.checked)"> <span>Game State Integration (GSI)</span> <span class="ld-status" id="ld-gsi-status">off</span></label>
-          <p class="hint" style="margin:4px 0 8px">From a CS2 <strong>observer / GOTV client</strong>: live round score, bomb, and per-player K/D/A. Download the config and drop it in <code>…\\Counter-Strike Global Offensive\\game\\csgo\\cfg\\</code>, then (re)start CS2.</p>
+          <p class="hint cap-map-veto" style="margin:4px 0 8px">From a CS2 <strong>observer / GOTV client</strong>: live round score, bomb, and per-player K/D/A. Download the config and drop it in <code>…\\Counter-Strike Global Offensive\\game\\csgo\\cfg\\</code>, then (re)start CS2.</p>
+          <p class="hint cap-hero-draft" style="margin:4px 0 8px;display:none">From a Dota 2 <strong>observer / GOTV (spectator) client</strong> — that's what carries both teams + the draft. Drop the config in <code>…\\dota 2 beta\\game\\dota\\cfg\\gamestate_integration\\</code> (create the folder if missing), add <code>-gamestateintegration</code> to Dota's launch options, then (re)start Dota. Tip: you can test it by watching a downloaded replay.</p>
           <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-            <a class="btn btn-sm" id="ld-gsi-download" href="/api/live/gsi.cfg" download>Download GSI config</a>
+            <a class="btn btn-sm cap-map-veto" id="ld-gsi-download" href="/api/live/gsi.cfg" download>Download GSI config</a>
+            <a class="btn btn-sm cap-hero-draft" id="ld-gsi-download-dota" href="/api/live/gsi-dota.cfg" download style="display:none">Download GSI config</a>
             <button class="btn btn-sm" onclick="ldCopy('gsi',this)">Copy GSI URL</button>
           </div>
         </div>
 
-        <div class="ld-src" style="margin-top:14px">
+        <div class="ld-src cap-map-veto" style="margin-top:14px">
           <label class="ld-toggle"><input type="checkbox" id="ld-matchzy-enabled" onchange="ldSetEnabled('matchzy',this.checked)"> <span>MatchZy (game server)</span> <span class="ld-status" id="ld-matchzy-status">off</span></label>
           <p class="hint" style="margin:4px 0 8px">From the <strong>match server</strong>: authoritative map/series results. Point MatchZy's event/webhook URL at the address below (it carries the token).</p>
           <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
@@ -697,20 +700,32 @@
         </div>
 
         <div style="margin-top:14px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-          <span class="hint">Ingest token (shared by GSI/MatchZy):</span>
+          <span class="hint">Ingest token<span class="cap-map-veto"> (shared by GSI/MatchZy)</span>:</span>
           <code id="ld-token" style="font-size:11px">—</code>
-          <button class="btn btn-sm" onclick="ldRegenToken(this)" title="Rotate the token — you'll need to re-download the GSI config / update MatchZy">Regenerate</button>
+          <button class="btn btn-sm" onclick="ldRegenToken(this)" title="Rotate the token — you'll need to re-download the config / update MatchZy">Regenerate</button>
         </div>
       </div>
 
-      <div class="card" style="margin-top:16px">
+      <!-- Dota 2 live inspector (Phase A) — proves the pipe; shows the incoming feed. -->
+      <div class="card cap-hero-draft" id="ld-dota-card" style="margin-top:16px;display:none">
+        <div class="card-title">Live feed <span class="ld-status" id="ld-dota-status">no data</span></div>
+        <p class="hint" style="margin:0 0 10px">Latest values from the Dota GSI feed. Confirms the observer client is connected and lets us see the exact data shape before wiring graphics.</p>
+        <div id="ld-dota-fields" class="ld-dota-grid"></div>
+        <div style="margin-top:12px;display:flex;gap:8px;align-items:center">
+          <button class="btn btn-sm" id="ld-dota-raw-btn" onclick="ldToggleDotaRaw(this)">Show raw payload</button>
+          <span class="hint" id="ld-dota-raw-note"></span>
+        </div>
+        <pre id="ld-dota-raw" style="display:none;margin-top:10px;max-height:340px;overflow:auto;background:var(--panel-2,#0d1117);border:1px solid var(--border);border-radius:6px;padding:10px;font-size:11px;line-height:1.45"></pre>
+      </div>
+
+      <div class="card cap-map-veto" style="margin-top:16px">
         <div class="card-title">Live scores</div>
         <label class="ld-toggle"><input type="checkbox" id="ld-autoapply" onchange="ldSetAuto(this.checked)"> <span>Auto-apply scores (otherwise scores are suggested for you to apply)</span></label>
         <div id="ld-suggestions" style="margin-top:10px"></div>
         <p class="hint" style="margin-top:8px">Suggested scores can also be applied from <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup → Series Tracker</a>.</p>
       </div>
 
-      <div class="card" style="margin-top:16px">
+      <div class="card cap-map-veto" style="margin-top:16px">
         <div class="card-title">Player stats</div>
         <div id="ld-pview" class="btn-row" style="display:none;gap:6px;align-items:center">
           <span class="hint">Show:</span>
