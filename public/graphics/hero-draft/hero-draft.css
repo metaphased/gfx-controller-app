@@ -11,7 +11,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: 100vw; height: 100vh;
   display: grid;
   grid-template-columns: 30vw 40vw 30vw;
-  grid-template-rows: 1fr 15vh;
+  grid-template-rows: 1fr 9.2vh;
   grid-template-areas: "side-rad centre side-dire" "pbar pbar pbar";
   color: var(--gfx-c3, #fff);
   text-transform: var(--gfx-text-transform, uppercase);
@@ -88,43 +88,50 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
   font-size: 1.3vh; font-weight: 700; letter-spacing: 0.14em; color: rgba(255,255,255,0.62); white-space: nowrap;
 }
+/* Reserve-time numerical readout — sits above the bar (always visible), colour = acting team. */
+.series-timer {
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-size: 3.2vh; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.03em;
+  line-height: 1.05; margin-top: 0.5vh; text-shadow: 0 1px 5px rgba(0,0,0,0.85), 0 0 12px rgba(0,0,0,0.6);
+}
 
 /* ── Bottom bar: picks + clock ── */
 .player-bar { grid-area: pbar; display: flex; overflow: visible; }
 .picks-side { display: flex; flex: 1; min-width: 0; gap: 1px; }
 
-.pick-card {
-  flex: 1; position: relative; overflow: hidden; min-width: 0;
-  display: flex; flex-direction: column; justify-content: flex-start;
-}
-/* Hero art at native 16:9 so it stays crisp — no tall-card over-zoom. */
-.pick-img { width: 100%; aspect-ratio: 16 / 9; position: relative; overflow: hidden; background: rgba(var(--gfx-c4-rgb,10,14,22),0.9); }
-.pick-img .pick-bg { position: absolute; inset: 0; background-size: cover; background-position: center 28%; opacity: 0; transition: opacity calc(0.45s * var(--gfx-dur-scale,1)) ease; }
-.pick-img .pick-bg.loaded { opacity: 1; }
-.pick-card.side-rad  .pick-empty { position:absolute; inset:0; background: linear-gradient(to bottom, rgba(var(--hd-rad-rgb),0.30) 0%, rgba(var(--gfx-c4-rgb,5,8,22),0.9) 100%); }
-.pick-card.side-dire .pick-empty { position:absolute; inset:0; background: linear-gradient(to bottom, rgba(var(--hd-dire-rgb),0.30) 0%, rgba(var(--gfx-c4-rgb,5,6,18),0.9) 100%); }
-/* Body below the art fills the bar with the side colour + holds the name. */
-.pick-info { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.4vh 0.3vw; gap: 0.2vh; }
-.pick-card.side-rad  .pick-info { background: linear-gradient(to bottom, rgba(var(--hd-rad-rgb),0.16), rgba(0,0,0,0.35)); }
-.pick-card.side-dire .pick-info { background: linear-gradient(to bottom, rgba(var(--hd-dire-rgb),0.16), rgba(0,0,0,0.35)); }
-.pick-card.side-rad::after  { content:''; position:absolute; bottom:0; inset-inline:0; height:2px; background: var(--hd-rad);  opacity:0.7; z-index:2; }
-.pick-card.side-dire::after { content:''; position:absolute; bottom:0; inset-inline:0; height:2px; background: var(--hd-dire); opacity:0.7; z-index:2; }
+/* Pick card = just the hero image (the bar row height is tuned so the 16:9 art fills it
+   near-native → crisp). The name is an optional gradient overlay on the image (toggle). */
+.pick-card { flex: 1; position: relative; overflow: hidden; min-width: 0; }
+.pick-bg { position: absolute; inset: 0; background-size: cover; background-position: center 26%; opacity: 0; transition: opacity calc(0.45s * var(--gfx-dur-scale,1)) ease; }
+.pick-bg.loaded { opacity: 1; }
+.pick-card.side-rad  .pick-empty { position:absolute; inset:0; background: linear-gradient(to top, rgba(var(--hd-rad-rgb),0.35) 0%, rgba(var(--gfx-c4-rgb,5,8,22),0.95) 100%); }
+.pick-card.side-dire .pick-empty { position:absolute; inset:0; background: linear-gradient(to top, rgba(var(--hd-dire-rgb),0.35) 0%, rgba(var(--gfx-c4-rgb,5,6,18),0.95) 100%); }
+.pick-card.side-rad::after  { content:''; position:absolute; bottom:0; inset-inline:0; height:2px; background: var(--hd-rad);  opacity:0.7; z-index:3; }
+.pick-card.side-dire::after { content:''; position:absolute; bottom:0; inset-inline:0; height:2px; background: var(--hd-dire); opacity:0.7; z-index:3; }
 .pick-card.active { color: var(--hd-rad); }
 .pick-card.active.side-dire { color: var(--hd-dire); }
 .pick-card.active { box-shadow: inset 0 0 0 2px currentColor; }
 @keyframes hd-clock-pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.8; } }
-.pick-card.active::before { content:''; position:absolute; inset:0; z-index:3; box-shadow: inset 0 0 16px 1px currentColor; animation: hd-clock-pulse 1.3s ease-in-out infinite; pointer-events:none; }
+.pick-card.active::before { content:''; position:absolute; inset:0; z-index:2; box-shadow: inset 0 0 16px 1px currentColor; animation: hd-clock-pulse 1.3s ease-in-out infinite; pointer-events:none; }
+/* Name overlay — hidden unless #hd-root.show-names AND the card has a name. */
 .pick-name {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: none;
+  padding: 1.4vh 0.3vw 0.5vh; text-align: center;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.45) 55%, transparent 100%);
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
-  font-size: 1.6vh; font-weight: 700; letter-spacing: 0.03em; color: var(--gfx-c3, #fff);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center;
+  font-size: 1.5vh; font-weight: 700; letter-spacing: 0.03em; color: var(--gfx-c3, #fff);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
+#hd-root.show-names .pick-name.has-name { display: block; }
 
 /* Clock centre */
 .clock-center { width: 14vw; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.5vh 0.4vw; }
 .clock-logo-row { display: flex; align-items: center; justify-content: center; gap: 0.8vw; width: 100%; }
-.logo-wrap { position: relative; width: 9vw; height: 9vw; max-width: 132px; max-height: 132px; flex-shrink: 0; }
-.tourn-logo { position: absolute; inset: 8%; background-size: contain; background-repeat: no-repeat; background-position: center; }
+.logo-wrap { position: relative; width: 8vh; height: 8vh; max-width: 92px; max-height: 92px; flex-shrink: 0; }
+.timer-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
+.timer-track { fill: none; stroke: rgba(255,255,255,0.14); stroke-width: 4; }
+.timer-arc   { fill: none; stroke: var(--hd-rad); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.3s linear, stroke 0.4s ease; }
+.tourn-logo { position: absolute; inset: 14%; background-size: contain; background-repeat: no-repeat; background-position: center; }
 .tourn-logo::before {
   content: ''; position: absolute; inset: 0; background-image: inherit; background-size: contain; background-repeat: no-repeat; background-position: center;
   z-index: -1; opacity: 0; pointer-events: none;
@@ -133,7 +140,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .tourn-logo.on-rad::before  { filter: drop-shadow(0 0 12px var(--hd-rad))  drop-shadow(0 0 28px var(--hd-rad));  animation: hd-logo-glow 1.3s ease-in-out infinite; }
 .tourn-logo.on-dire::before { filter: drop-shadow(0 0 12px var(--hd-dire)) drop-shadow(0 0 28px var(--hd-dire)); animation: hd-logo-glow 1.3s ease-in-out infinite; }
 
-.clock-timer { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; font-size: 2.4vh; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; margin-top: 0.4vh; text-shadow: 0 1px 4px rgba(0,0,0,0.7); }
+.clock-timer { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; font-size: 3vh; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; margin-top: 0.6vh; text-shadow: 0 1px 5px rgba(0,0,0,0.85), 0 0 12px rgba(0,0,0,0.6); }
 .clock-arrow { font-family: var(--gfx-font), sans-serif; font-size: 3.2vh; font-weight: 900; opacity: 0; transition: opacity calc(0.3s * var(--gfx-dur-scale,1)) ease; flex-shrink: 0; }
 #clock-arrow-l { color: var(--hd-rad); }
 #clock-arrow-r { color: var(--hd-dire); }

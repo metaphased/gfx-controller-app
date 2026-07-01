@@ -33,6 +33,7 @@
     <div class="clock-series-block" id="series-block">
       <div class="series-game-row"><span class="clock-series-game" id="series-game">GAME 1</span></div>
       <span class="clock-series-phase" id="series-phase">—</span>
+      <span class="series-timer" id="series-timer"></span>
     </div>
   </div>
 
@@ -55,10 +56,15 @@
     <div class="clock-center" id="clock-center">
       <div class="clock-logo-row">
         <span class="clock-arrow" id="clock-arrow-l">◀</span>
-        <div class="logo-wrap"><div class="tourn-logo" id="tourn-logo"></div></div>
+        <div class="logo-wrap">
+          <svg class="timer-ring" id="timer-ring" viewBox="0 0 100 100" style="display:none">
+            <circle class="timer-track" cx="50" cy="50" r="44"/>
+            <circle class="timer-arc" id="timer-arc" cx="50" cy="50" r="44"/>
+          </svg>
+          <div class="tourn-logo" id="tourn-logo"></div>
+        </div>
         <span class="clock-arrow" id="clock-arrow-r">▶</span>
       </div>
-      <span class="clock-timer" id="clock-timer"></span>
     </div>
     <div class="picks-side picks-side-dire" id="picks-dire"></div>
   </div>

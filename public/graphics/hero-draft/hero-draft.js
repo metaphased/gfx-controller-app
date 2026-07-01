@@ -55,6 +55,7 @@ function renderPicks(container, entries, cur, side){
       else { empty.style.display=''; bg.classList.remove('loaded'); bg.style.backgroundImage=''; }
     }
     if (nm.textContent !== (e.hero||'')) nm.textContent = e.hero || '';
+    nm.classList.toggle('has-name', !!e.hero);
     card.classList.toggle('active', e.idx===cur);
   });
 }
@@ -101,23 +102,33 @@ function render(state){
 
   // Tournament logo (event logo from match)
   setBg('tourn-logo', m.tournamentLogo || '');
+  $('hd-root').classList.toggle('show-names', !!hd.showPickNames);
 
   updateTimer();
 }
 
 // Optional reserve-time countdown near the clock (showTimer). The acting team's remaining time
 // counts down from turnEndsAt (a server timestamp); ticks on an interval so it's smooth.
+var _RING_C = 2 * Math.PI * 44; // circle circumference for r=44
 function _fmt(ms){ ms=Math.max(0,ms|0); var s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
 function updateTimer(){
-  var el=$('clock-timer'); if(!el) return;
+  var el=$('series-timer'), ring=$('timer-ring'), arc=$('timer-arc'); if(!el||!ring) return;
   var st=_lastState||{}, hd=st.heroDraft||{};
   var steps=hd.steps||[], cur=hd.currentStep|0;
   var acting=(hd.started && cur<steps.length && steps[cur]) ? steps[cur].team : null;
-  var show = hd.visible && hd.showTimer && hd.started && acting && hd.turnEndsAt && !hd.timerPaused;
-  if(!show){ el.style.display='none'; return; }
-  el.style.display='';
-  el.textContent=_fmt(hd.turnEndsAt - Date.now());
-  el.style.color = acting==='team1' ? 'var(--hd-rad)' : 'var(--hd-dire)';
+  // Timer shows once started + on the clock (paused freezes the value). showTimer hides it on-air.
+  var show = hd.visible && hd.showTimer && hd.started && acting;
+  if(!show){ el.style.display='none'; ring.style.display='none'; return; }
+  var col = acting==='team1' ? 'var(--hd-rad)' : 'var(--hd-dire)';
+  var live = hd.turnEndsAt && !hd.timerPaused;
+  var remMs = live ? Math.max(0, hd.turnEndsAt - Date.now()) : ((hd.reserve && hd.reserve[acting]) || 0) * 1000;
+  el.style.display=''; el.textContent=_fmt(remMs); el.style.color=col;
+  // Ring depletes with the acting team's reserve out of the max (a clear "how much time left").
+  ring.style.display='';
+  var frac = Math.max(0, Math.min(1, (remMs/1000) / Math.max(1, hd.reserveTime|0)));
+  arc.style.strokeDasharray = _RING_C;
+  arc.style.strokeDashoffset = _RING_C * (1 - frac);
+  arc.style.stroke = acting==='team1' ? '#2fbf6b' : '#e14b3d';
 }
 setInterval(updateTimer, 250);
 

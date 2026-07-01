@@ -4271,6 +4271,7 @@ function hdStartDraft(){ api('/api/heroDraft/start', {}); }
 function hdTogglePause(){ api('/api/heroDraft/timer/pause', {}); }
 function hdSetReserve(v){ var n=Math.max(0, parseInt(v)||0); api('/api/heroDraft', { reserveTime:n }); }
 function hdToggleShowTimer(on){ api('/api/heroDraft', { showTimer: !!on }); }
+function hdToggleShowNames(on){ api('/api/heroDraft', { showPickNames: !!on }); }
 function hdSetPosition(team, pos, hero){ var key=team+'Positions'; var arr=(((window._state||{}).heroDraft||{})[key]||['','','','','']).slice(); arr[pos]=hero||''; var p={}; p[key]=arr; api('/api/heroDraft', p); }
 // Live reserve-time readout: format ms → M:SS.
 function _hdFmt(ms){ ms=Math.max(0,ms|0); var s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
@@ -4291,6 +4292,7 @@ function hdRenderDraft(state){
   const pauseBtn=g('hd-pause-btn'); if(pauseBtn) pauseBtn.textContent = hd.timerPaused ? '▶ Resume' : '⏸ Pause';
   const resEl=g('hd-reserve'); if(resEl && document.activeElement!==resEl) resEl.value = (hd.reserveTime!=null?hd.reserveTime:130);
   const stEl=g('hd-show-timer'); if(stEl) stEl.checked = !!hd.showTimer;
+  const snEl=g('hd-show-names'); if(snEl) snEl.checked = !!hd.showPickNames;
   const rn=g('hd-timer-rad-name'); if(rn) rn.textContent=tn1;
   const dn=g('hd-timer-dire-name'); if(dn) dn.textContent=tn2;
   const cl=g('hd-current-label');

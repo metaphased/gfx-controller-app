@@ -835,7 +835,7 @@ const makeDefault = () => ({
                  // has a reserve pool (seconds) that only drains during their turns and carries
                  // between them; turnEndsAt = ms timestamp the acting team's reserve hits 0.
                  started: false, reserveTime: 130, reserve: { team1: 130, team2: 130 },
-                 turnEndsAt: null, timerPaused: false, showTimer: false,
+                 turnEndsAt: null, timerPaused: false, showTimer: true, showPickNames: false,
                  // Hero → position (1–5) assignment, filled at draft end. One hero name per slot.
                  team1Positions: ['', '', '', '', ''], team2Positions: ['', '', '', '', ''] },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
