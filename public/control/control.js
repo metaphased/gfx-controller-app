@@ -79,6 +79,9 @@ function applyAdapterUI() {
     'cap-champ-draft': isChampDraft(),
     'cap-map-veto':    isMapVeto(),
     'cap-hero-draft':  isHeroDraft(),
+    // character draft = a champion OR hero pick/ban (LoL + Dota, NOT CS2's map pickEntity) — for
+    // shared graphics that show drafted characters (e.g. win-screen picks).
+    'cap-char-draft':  isChampDraft() || isHeroDraft(),
     'cap-opgg':        supportsOpgg(),
     'cap-assets':      supportsAssets(),
     'cap-heroes':      supportsHeroes(),
@@ -414,6 +417,7 @@ const GFX_PAGES = [
   ['Head to Head',  'graphics/head2head/'],
   ['Pre-show',      'graphics/pre-show/'],
   ['Draft',         'graphics/draft/'],
+  ['Hero Draft',    'graphics/hero-draft/'],
   ['Map Veto',      'graphics/map-veto/'],
   ['Bracket',       'graphics/bracket/'],
   ['Group Stage',           'graphics/group-stage/'],
@@ -431,7 +435,12 @@ const urlList = g('url-list');
 GFX_PAGES.forEach(([label, p]) => {
   const url = window.location.origin + '/' + p;
   const chip = document.createElement('div');
-  chip.className = 'url-chip' + (p.indexOf('map-veto/') !== -1 ? ' cap-map-veto' : ((p.indexOf('draft/') !== -1 || p.indexOf('head2head/') !== -1) ? ' cap-champ-draft' : ''));
+  // hero-draft/ must be tested before draft/ (it also contains 'draft/') so Dota's chip is scoped
+  // to cap-hero-draft, not cap-champ-draft.
+  chip.className = 'url-chip' + (
+    p.indexOf('hero-draft/') !== -1 ? ' cap-hero-draft' :
+    p.indexOf('map-veto/')  !== -1 ? ' cap-map-veto' :
+    (p.indexOf('draft/') !== -1 || p.indexOf('head2head/') !== -1) ? ' cap-champ-draft' : '');
   chip.title = 'Click to copy';
   chip.textContent = label;
   chip.addEventListener('click', () => {
@@ -4270,8 +4279,11 @@ function hdSetHero(i, hero){ api('/api/heroDraft/pick', { index:i, hero:(hero &&
 function hdStartDraft(){ api('/api/heroDraft/start', {}); }
 function hdTogglePause(){ api('/api/heroDraft/timer/pause', {}); }
 function hdSetReserve(v){ var n=Math.max(0, parseInt(v)||0); api('/api/heroDraft', { reserveTime:n }); }
+function hdSetPickTime(v){ var n=Math.max(0, parseInt(v)||0); api('/api/heroDraft', { pickTime:n }); }
 function hdToggleShowTimer(on){ api('/api/heroDraft', { showTimer: !!on }); }
+function hdSetTimerStyle(s){ api('/api/heroDraft', { timerStyle: s==='bar'?'bar':'ring' }); }
 function hdToggleShowNames(on){ api('/api/heroDraft', { showPickNames: !!on }); }
+function hdToggleShowGradient(on){ api('/api/heroDraft', { showPickGradient: !!on }); }
 function hdSetPosition(team, pos, hero){ var key=team+'Positions'; var arr=(((window._state||{}).heroDraft||{})[key]||['','','','','']).slice(); arr[pos]=hero||''; var p={}; p[key]=arr; api('/api/heroDraft', p); }
 // Live reserve-time readout: format ms → M:SS.
 function _hdFmt(ms){ ms=Math.max(0,ms|0); var s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
@@ -4291,8 +4303,12 @@ function hdRenderDraft(state){
   const startBtn=g('hd-start-btn'); if(startBtn) startBtn.disabled = !steps.length;
   const pauseBtn=g('hd-pause-btn'); if(pauseBtn) pauseBtn.textContent = hd.timerPaused ? '▶ Resume' : '⏸ Pause';
   const resEl=g('hd-reserve'); if(resEl && document.activeElement!==resEl) resEl.value = (hd.reserveTime!=null?hd.reserveTime:130);
+  const ptEl=g('hd-picktime'); if(ptEl && document.activeElement!==ptEl) ptEl.value = (hd.pickTime!=null?hd.pickTime:30);
   const stEl=g('hd-show-timer'); if(stEl) stEl.checked = !!hd.showTimer;
   const snEl=g('hd-show-names'); if(snEl) snEl.checked = !!hd.showPickNames;
+  const sgEl=g('hd-show-gradient'); if(sgEl) sgEl.checked = (hd.showPickGradient!==false);
+  const tsGrp=g('hd-timerstyle-group'); if(tsGrp){ const cur=(hd.timerStyle==='bar')?'bar':'ring';
+    Array.prototype.forEach.call(tsGrp.querySelectorAll('[data-hdts]'), function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-hdts')===cur); }); }
   const rn=g('hd-timer-rad-name'); if(rn) rn.textContent=tn1;
   const dn=g('hd-timer-dire-name'); if(dn) dn.textContent=tn2;
   const cl=g('hd-current-label');

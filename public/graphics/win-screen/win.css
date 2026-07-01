@@ -779,6 +779,14 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 #win-root.shape-angled .ws-comp-player { transform: translateX(calc(var(--comp-pw, 20vh) * -0.08));   padding-left:0.14em;padding-right:0.14em;margin-left:-0.14em;margin-right:-0.14em;
 }
 
+/* Dota — winning HEROES use landscape (16:9) art instead of the tall champion splash. Overrides
+   the fixed portrait heights (needs an id in the selector to beat #win-root.picks-on). Widened in
+   COMP so the heroes read as a showcase. */
+#win-root .ws-comp-row.hero-picks .ws-comp-portrait { height: auto; aspect-ratio: 16 / 9; }
+#win-root .ws-comp-row.hero-picks .ws-comp-portrait img { object-position: center 28%; }
+.style-comp .ws-comp-row.hero-picks .ws-comp-pick     { --comp-pw: 30vh; }
+#win-root.picks-on .ws-comp-row.hero-picks .ws-comp-pick { --comp-pw: 13vh; }
+
 @keyframes ws-comp-pick-in  { from { opacity: 0; transform: translateY(3.5vh); } to { opacity: 1; transform: translateY(0); } }
 @keyframes ws-comp-pick-out { from { opacity: 1; } to { opacity: 0; } }
 /* Hero — rise from the bottom on entry (daisychained left→right); drop down on exit. */

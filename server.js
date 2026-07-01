@@ -831,11 +831,14 @@ const makeDefault = () => ({
   // the active slot the graphic highlights. Order is editable in Tournament Settings.
   heroDraft:   { visible: false, title: 'DRAFT', currentStep: 0, steps: [], scale: 'normal',
                  showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left',
-                 // Draft flow + Dota reserve timer. started gates the on-clock/timer; each team
-                 // has a reserve pool (seconds) that only drains during their turns and carries
-                 // between them; turnEndsAt = ms timestamp the acting team's reserve hits 0.
-                 started: false, reserveTime: 130, reserve: { team1: 130, team2: 130 },
-                 turnEndsAt: null, timerPaused: false, showTimer: true, showPickNames: false,
+                 // Draft flow + Dota reserve timer. started gates the on-clock/timer. Two tiers:
+                 // pickTime = free time granted fresh each turn; reserve = the extra pool (seconds)
+                 // that only drains once the free time is spent, and carries between the team's turns.
+                 // turnEndsAt = ms timestamp when free+reserve for the acting team both hit 0;
+                 // turnPausedMs = remaining free+reserve captured while paused.
+                 started: false, reserveTime: 130, reserve: { team1: 130, team2: 130 }, pickTime: 30,
+                 turnEndsAt: null, turnPausedMs: null, timerPaused: false, showTimer: true,
+                 timerStyle: 'ring', showPickNames: false, showPickGradient: true,
                  // Hero → position (1–5) assignment, filled at draft end. One hero name per slot.
                  team1Positions: ['', '', '', '', ''], team2Positions: ['', '', '', '', ''] },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
@@ -2163,7 +2166,7 @@ app.post('/api/mapIntro',    (req, res) => { Object.assign(state.mapIntro,    re
 // Dota 2 hero draft: graphic options (visible/currentStep/title/logo/scale). `steps` are
 // reconciled from the order, not set here — heroes are entered via /api/heroDraft/pick.
 app.post('/api/heroDraft',   (req, res) => {
-  const b = req.body || {}; delete b.steps; delete b.reserve; delete b.turnEndsAt; // managed by the timer endpoints
+  const b = req.body || {}; delete b.steps; delete b.reserve; delete b.turnEndsAt; delete b.turnPausedMs; // managed by the timer endpoints
   Object.assign(state.heroDraft, b);
   const hd = state.heroDraft;
   if (b.reserveTime !== undefined && !hd.started) hd.reserve = { team1: hd.reserveTime | 0, team2: hd.reserveTime | 0 };
@@ -2184,30 +2187,32 @@ app.post('/api/heroDraft/pick', requireAdmin, (req, res) => {
   const newActing = _hdActing(hd);
   if (hd.started && !hd.timerPaused && prevActing !== newActing) {
     _hdBank(hd, prevActing);
-    hd.turnEndsAt = newActing ? (Date.now() + (hd.reserve[newActing] || 0) * 1000) : null;
+    hd.turnEndsAt = newActing ? (Date.now() + _hdTurnTotalMs(hd, newActing)) : null;
   }
   broadcast(); res.json({ ok: true });
 });
-// Start the draft: begin the clock on the first team (full reserve pools).
+// Start the draft: begin the clock on the first team (full reserve pools + fresh free time).
 app.post('/api/heroDraft/start', requireAdmin, (req, res) => {
   const hd = state.heroDraft;
-  hd.started = true; hd.timerPaused = false;
+  hd.started = true; hd.timerPaused = false; hd.turnPausedMs = null;
   hd.reserve = { team1: hd.reserveTime | 0, team2: hd.reserveTime | 0 };
   hd.currentStep = _hdFirstEmpty(hd);
   const acting = _hdActing(hd);
-  hd.turnEndsAt = acting ? (Date.now() + (hd.reserve[acting] || 0) * 1000) : null;
+  hd.turnEndsAt = acting ? (Date.now() + _hdTurnTotalMs(hd, acting)) : null;
   broadcast(); res.json({ ok: true });
 });
-// Pause / resume the reserve clock (banks the acting team's remaining time while paused).
+// Pause / resume the clock. Pause captures the remaining free+reserve time (turnPausedMs) so
+// resume restores exactly where it stopped — the reserve pool is only banked on a turn change.
 app.post('/api/heroDraft/timer/pause', requireAdmin, (req, res) => {
   const hd = state.heroDraft;
   if (!hd.started) return res.json({ ok: true });
   if (hd.timerPaused) {
     hd.timerPaused = false;
     const acting = _hdActing(hd);
-    hd.turnEndsAt = acting ? (Date.now() + (hd.reserve[acting] || 0) * 1000) : null;
+    hd.turnEndsAt = acting ? (Date.now() + (hd.turnPausedMs != null ? hd.turnPausedMs : _hdTurnTotalMs(hd, acting))) : null;
+    hd.turnPausedMs = null;
   } else {
-    _hdBank(hd, _hdActing(hd));
+    hd.turnPausedMs = hd.turnEndsAt ? Math.max(0, hd.turnEndsAt - Date.now()) : null;
     hd.timerPaused = true; hd.turnEndsAt = null;
   }
   broadcast(); res.json({ ok: true });
@@ -2216,7 +2221,7 @@ app.post('/api/heroDraft/timer/pause', requireAdmin, (req, res) => {
 app.post('/api/heroDraft/reset', requireAdmin, (req, res) => {
   const hd = state.heroDraft;
   (hd.steps || []).forEach(s => { s.hero = ''; s.img = ''; });
-  hd.currentStep = 0; hd.started = false; hd.timerPaused = false; hd.turnEndsAt = null;
+  hd.currentStep = 0; hd.started = false; hd.timerPaused = false; hd.turnEndsAt = null; hd.turnPausedMs = null;
   hd.reserve = { team1: hd.reserveTime | 0, team2: hd.reserveTime | 0 };
   hd.team1Positions = ['', '', '', '', '']; hd.team2Positions = ['', '', '', '', ''];
   broadcast(); res.json({ ok: true });
@@ -2945,8 +2950,16 @@ function reconcileHeroDraftSteps() {
 }
 // Hero-draft reserve-timer helpers. Acting team = the team of the current (unfilled) slot.
 function _hdActing(hd){ return (hd && hd.started && hd.steps && hd.steps[hd.currentStep]) ? hd.steps[hd.currentStep].team : null; }
-// Bank the acting team's remaining reserve (from turnEndsAt) back into their pool.
-function _hdBank(hd, team){ if (hd && team && hd.turnEndsAt) hd.reserve[team] = Math.max(0, Math.round((hd.turnEndsAt - Date.now()) / 1000)); }
+// A fresh turn = full free time (pickTime) + whatever's left in the team's reserve pool.
+function _hdTurnTotalMs(hd, team){ return (Math.max(0, hd.pickTime | 0) + ((hd.reserve && hd.reserve[team]) || 0)) * 1000; }
+// Bank the acting team's remaining reserve back into their pool at the end of their turn. Free
+// time is spent first, so only time beyond the reserve is free — clamp the remaining to the pool.
+function _hdBank(hd, team){
+  if (!hd || !team) return;
+  const remMs = hd.turnEndsAt ? (hd.turnEndsAt - Date.now()) : (hd.turnPausedMs || 0);
+  const remSecs = Math.ceil(Math.max(0, remMs) / 1000);
+  hd.reserve[team] = Math.max(0, Math.min((hd.reserve && hd.reserve[team]) || 0, remSecs));
+}
 function _hdFirstEmpty(hd){ const i = (hd.steps || []).findIndex(s => !s.hero); return i === -1 ? (hd.steps || []).length : i; }
 
 // CS2-style map-veto games: maintain match.mapResults as a fixed list of best-of game

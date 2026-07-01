@@ -93,7 +93,7 @@ svg.pg-rc-cond {
 .pg-col-logo { width: 4vh; height: 4vh; flex-shrink: 0; background-size: contain; background-repeat: no-repeat; background-position: center; }
 .pg-col-name { font-size: 2.8vh; font-weight: 900; letter-spacing: 0.02em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pg-win-badge {
-  margin-left: auto; font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  margin-left: auto; font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.4vh; font-weight: 800; letter-spacing: 0.12em;
   color: #07120a; background: var(--team-color); padding: 0.3vh 0.8vw; border-radius: calc(var(--gfx-radius, 3px) * 0.6);
 }
@@ -106,7 +106,7 @@ svg.pg-rc-cond {
 }
 .pg-row-head {
   height: 3vh; border-top: none;
-  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.15vh; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,0.4);
 }
 .pg-row-head .pg-stat, .pg-row-head .pg-pname { text-align: center; }
@@ -124,7 +124,7 @@ svg.pg-rc-cond {
 .pg-diff.neg { color: #e06868; }
 .pg-mvp { color: #f0cc44; font-size: 1.6vh; }
 .pg-mk {
-  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1vh; font-weight: 800; letter-spacing: 0.04em; color: #f0cc44;
   border: 1px solid rgba(240,204,68,0.45); border-radius: 2px; padding: 0 0.3vw; line-height: 1.5;
 }

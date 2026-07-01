@@ -44,7 +44,7 @@ function renderBans(container, entries, cur){
 function renderPicks(container, entries, cur, side){
   if (container._n !== entries.length) {
     container._n = entries.length;
-    container.innerHTML = entries.map(function(){ return '<div class="pick-card side-'+side+'"><div class="pick-img"><div class="pick-empty"></div><div class="pick-bg"></div></div><div class="pick-info"><span class="pick-name"></span></div></div>'; }).join('');
+    container.innerHTML = entries.map(function(){ return '<div class="pick-card side-'+side+'"><div class="pick-img"><div class="pick-empty"></div><div class="pick-bg"></div><div class="pick-scrim"></div></div><div class="pick-info"><span class="pick-name"></span></div></div>'; }).join('');
   }
   var cards = container.children;
   entries.forEach(function(e,i){
@@ -56,6 +56,7 @@ function renderPicks(container, entries, cur, side){
     }
     if (nm.textContent !== (e.hero||'')) nm.textContent = e.hero || '';
     nm.classList.toggle('has-name', !!e.hero);
+    card.classList.toggle('has-art', !!art);
     card.classList.toggle('active', e.idx===cur);
   });
 }
@@ -103,32 +104,70 @@ function render(state){
   // Tournament logo (event logo from match)
   setBg('tourn-logo', m.tournamentLogo || '');
   $('hd-root').classList.toggle('show-names', !!hd.showPickNames);
+  $('hd-root').classList.toggle('show-gradient', hd.showPickGradient !== false);
 
   updateTimer();
 }
 
-// Optional reserve-time countdown near the clock (showTimer). The acting team's remaining time
-// counts down from turnEndsAt (a server timestamp); ticks on an interval so it's smooth.
+// Two-tier draft clock (showTimer). Each turn grants a fresh block of FREE time (pickTime); once
+// that's spent the team's EXTRA/reserve pool drains. The primary countdown shows the free time
+// (then the extra time once free hits 0), with the extra pool shown below as "+M:SS". The ring /
+// horizontal bar depletes over the free time in the team colour, then switches to the extra colour
+// and depletes over the reserve. Ticks on an interval so it's smooth.
 var _RING_C = 2 * Math.PI * 44; // circle circumference for r=44
+var _HD_EXTRA = '#f5b23d';      // amber — the "extra / reserve time" colour (distinct from team colours)
 function _fmt(ms){ ms=Math.max(0,ms|0); var s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
-function updateTimer(){
-  var el=$('series-timer'), ring=$('timer-ring'), arc=$('timer-arc'); if(!el||!ring) return;
-  var st=_lastState||{}, hd=st.heroDraft||{};
+// Resolve the acting team's free + reserve time remaining from the current draft state. Text uses
+// whole seconds (freeRemain/reserveRemain); the ring/bar use the continuous `frac` (from raw ms) so
+// they glide smoothly rather than stepping once a second — the CSS transition interpolates ticks.
+function _hdClock(hd){
   var steps=hd.steps||[], cur=hd.currentStep|0;
   var acting=(hd.started && cur<steps.length && steps[cur]) ? steps[cur].team : null;
-  // Timer shows once started + on the clock (paused freezes the value). showTimer hides it on-air.
-  var show = hd.visible && hd.showTimer && hd.started && acting;
-  if(!show){ el.style.display='none'; ring.style.display='none'; return; }
-  var col = acting==='team1' ? 'var(--hd-rad)' : 'var(--hd-dire)';
+  if(!acting) return null;
   var live = hd.turnEndsAt && !hd.timerPaused;
-  var remMs = live ? Math.max(0, hd.turnEndsAt - Date.now()) : ((hd.reserve && hd.reserve[acting]) || 0) * 1000;
-  el.style.display=''; el.textContent=_fmt(remMs); el.style.color=col;
-  // Ring depletes with the acting team's reserve out of the max (a clear "how much time left").
-  ring.style.display='';
-  var frac = Math.max(0, Math.min(1, (remMs/1000) / Math.max(1, hd.reserveTime|0)));
-  arc.style.strokeDasharray = _RING_C;
-  arc.style.strokeDashoffset = _RING_C * (1 - frac);
-  arc.style.stroke = acting==='team1' ? '#2fbf6b' : '#e14b3d';
+  var totalMs = live ? Math.max(0, hd.turnEndsAt - Date.now())
+                     : (hd.timerPaused && hd.turnPausedMs!=null ? hd.turnPausedMs
+                        : ((Math.max(0, hd.pickTime|0) + ((hd.reserve && hd.reserve[acting]) || 0)) * 1000));
+  var poolMs = ((hd.reserve && hd.reserve[acting]) || 0) * 1000; // reserve pool at the start of this turn
+  var reserveMs = Math.min(poolMs, totalMs);                     // free time spent first, so reserve is the tail
+  var freeMs = Math.max(0, totalMs - poolMs);
+  var inFree = freeMs > 0;
+  var frac = inFree ? (freeMs / Math.max(1, (hd.pickTime|0) * 1000))
+                    : (reserveMs / Math.max(1, (hd.reserveTime|0) * 1000));
+  return { acting:acting, inFree:inFree, frac: Math.max(0, Math.min(1, frac)),
+           freeRemain: Math.ceil(freeMs/1000), reserveRemain: Math.ceil(reserveMs/1000) };
+}
+function updateTimer(){
+  var el=$('series-timer'), extra=$('series-extra'), ring=$('timer-ring'), arc=$('timer-arc'), bar=$('timer-bar'), barFill=$('timer-bar-fill');
+  if(!el||!ring) return;
+  var st=_lastState||{}, hd=st.heroDraft||{};
+  var c = (hd.visible && hd.showTimer && hd.started) ? _hdClock(hd) : null;
+  if(!c){ el.style.display='none'; if(extra) extra.style.display='none'; ring.style.display='none'; if(bar) bar.style.display='none'; return; }
+  var teamCol = c.acting==='team1' ? 'var(--hd-rad)' : 'var(--hd-dire)';
+  var teamHex = c.acting==='team1' ? '#2fbf6b' : '#e14b3d';
+  var activeCol = c.inFree ? teamCol : _HD_EXTRA;
+  var activeHex = c.inFree ? teamHex : _HD_EXTRA;
+  // Primary countdown = free time while it lasts, then the extra time.
+  el.style.display=''; el.textContent=_fmt((c.inFree ? c.freeRemain : c.reserveRemain) * 1000); el.style.color=activeCol;
+  // Extra-time readout below — shown while there's still free time (once free is gone it IS the primary).
+  if(extra){
+    if(c.inFree && c.reserveRemain>0){ extra.style.display=''; extra.textContent='+ '+_fmt(c.reserveRemain*1000); }
+    else extra.style.display='none';
+  }
+  // Continuous fraction of the current phase remaining (free out of pickTime, then reserve out of reserveTime).
+  var frac = c.frac;
+  var barStyle = (hd.timerStyle === 'bar');
+  // Ring (default) vs horizontal bar between the bans and the pick strip.
+  if(barStyle){
+    ring.style.display='none';
+    if(bar){ bar.style.display=''; barFill.style.transform='scaleX('+frac+')'; barFill.style.background=activeHex; }
+  } else {
+    if(bar) bar.style.display='none';
+    ring.style.display='';
+    arc.style.strokeDasharray = _RING_C;
+    arc.style.strokeDashoffset = _RING_C * (1 - frac);
+    arc.style.stroke = activeHex;
+  }
 }
 setInterval(updateTimer, 250);
 

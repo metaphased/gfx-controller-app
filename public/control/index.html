@@ -791,8 +791,23 @@
       <div class="ps-two-col">
         <div class="ps-col">
           <div class="card">
+            <div class="card-title">Look</div>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="hd-show-timer" onchange="hdToggleShowTimer(this.checked)"> <span style="font-size:13px">Show the draft timer on the overlay</span></label>
+            <div class="field-row" style="margin-top:12px"><label>Timer style</label>
+              <div class="btn-row" id="hd-timerstyle-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-hdts="ring" onclick="hdSetTimerStyle('ring')">Ring</button>
+                <button class="btn btn-sm" data-hdts="bar"  onclick="hdSetTimerStyle('bar')">Bar</button>
+              </div>
+            </div>
+            <p class="hint" style="margin-top:2px;margin-bottom:0">Ring wraps the centre logo; Bar is a horizontal bar between the bans and the pick strip. Both show free time in the team colour, then switch to amber for extra/reserve time.</p>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer"><input type="checkbox" id="hd-show-names" onchange="hdToggleShowNames(this.checked)"> <span style="font-size:13px">Show hero names on the pick images</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="hd-show-gradient" onchange="hdToggleShowGradient(this.checked)"> <span style="font-size:13px">Gradient over the pick images (helps the name pop)</span></label>
+          </div>
+        </div>
+        <div class="ps-col">
+          <div class="card">
             <div class="card-title">Hero Draft</div>
-            <p class="hint" style="margin-bottom:0">The Captains Mode pick/ban overlay — <strong>Radiant</strong> (team 1, green) vs <strong>Dire</strong> (team 2, red). Fill heroes as they're drafted in <a onclick="switchToTab('hero-draft')" href="#" style="color:var(--primary)">Game → Hero Draft</a>; the pick/ban order is set in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Captains Mode Order</a>. The overlay highlights whichever team is on the clock.</p>
+            <p class="hint" style="margin-bottom:0">The Captains Mode pick/ban overlay — <strong>Radiant</strong> (team 1, green) vs <strong>Dire</strong> (team 2, red). Fill heroes as they're drafted in <a onclick="switchToTab('hero-draft')" href="#" style="color:var(--primary)">Game → Hero Draft</a>; the pick/ban order is set in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Captains Mode Order</a>. The draft timer (free time per pick + extra/reserve pool) is configured in <a onclick="switchToTab('hero-draft')" href="#" style="color:var(--primary)">Game → Hero Draft</a>.</p>
           </div>
         </div>
       </div>
@@ -1173,7 +1188,8 @@
             <span class="gfx-ctrl-section-label">Options</span>
             <button id="pi-toggle-logo"   class="btn btn-sm btn-dim" onclick="togglePlayerIntroLogo()">Logo: On</button>
             <button id="pi-toggle-rank"   class="btn btn-sm btn-dim cap-opgg" onclick="togglePlayerIntroRank()">Rank: Off</button>
-            <button id="pi-toggle-champs" class="btn btn-sm btn-dim cap-picks" onclick="togglePlayerIntroChamps()">Champs: Off</button>
+            <!-- champ strip is only wired for champ-draft (LoL); hidden for Dota/CS2 (no wired pick art) -->
+            <button id="pi-toggle-champs" class="btn btn-sm btn-dim cap-champ-draft" onclick="togglePlayerIntroChamps()">Champs: Off</button>
           </div>
           <div class="gfx-ctrl-group">
             <span class="gfx-ctrl-section-label">Animation</span>
@@ -1786,15 +1802,19 @@
       <div class="tab-header"><h1>Hero Draft</h1></div>
 
       <div class="card" id="hd-setup-card" style="margin-bottom:16px">
-        <div class="card-title">Draft Setup &amp; Reserve Timer</div>
+        <div class="card-title">Draft Setup &amp; Timer</div>
         <div id="hd-match-info" class="hint" style="margin-bottom:12px"></div>
         <div class="field-row" style="flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap">
-          <label style="white-space:nowrap">Reserve time / team</label>
-          <input type="number" id="hd-reserve" min="0" max="600" value="130" style="width:80px" onchange="hdSetReserve(this.value)">
-          <span style="font-size:12px;color:var(--text-dim)">seconds (Captains Mode default 130)</span>
+          <label style="white-space:nowrap">Free time / pick</label>
+          <input type="number" id="hd-picktime" min="0" max="120" value="30" style="width:80px" onchange="hdSetPickTime(this.value)">
+          <span style="font-size:12px;color:var(--text-dim)">seconds — the standard countdown granted each turn</span>
         </div>
-        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="hd-show-timer" onchange="hdToggleShowTimer(this.checked)"> <span style="font-size:13px">Show reserve timer on the broadcast overlay</span></label>
-        <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="hd-show-names" onchange="hdToggleShowNames(this.checked)"> <span style="font-size:13px">Show hero names on the pick images</span></label>
+        <div class="field-row" style="flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px">
+          <label style="white-space:nowrap">Extra time / team</label>
+          <input type="number" id="hd-reserve" min="0" max="600" value="130" style="width:80px" onchange="hdSetReserve(this.value)">
+          <span style="font-size:12px;color:var(--text-dim)">seconds of reserve (Captains Mode default 130), drains after free time</span>
+        </div>
+        <p class="hint" style="margin-top:10px;margin-bottom:0">Timer appearance (ring/bar, show/hide) is on the <a onclick="switchToTab('hero-draft-gfx')" href="#" style="color:var(--primary)">Hero Draft Overlay</a> options.</p>
         <div id="hd-start-wrap" style="margin-top:12px">
           <button class="btn btn-sm btn-primary" id="hd-start-btn" onclick="hdStartDraft()">▶ Start Draft</button>
           <span class="hint" style="margin-left:8px">Begins the clock on the first team. Fill heroes as they're drafted.</span>
@@ -2458,9 +2478,10 @@
             </div>
           </div>
 
-          <div class="card cap-champ-draft">
-            <div class="card-title">Winning Draft Picks <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· LoL</span></div>
-            <p class="hint" style="margin-bottom:8px">Shows the winning team's champion picks from the game they won. The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
+          <div class="card cap-char-draft">
+            <div class="card-title">Winning Draft Picks</div>
+            <p class="hint cap-champ-draft" style="margin-bottom:8px">Shows the winning team's champion picks from the game they won. The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
+            <p class="hint cap-hero-draft" style="margin-bottom:8px;display:none">Shows the winning team's drafted <strong>heroes</strong> (from the current Captains Mode draft). The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
               <input type="checkbox" id="win-showpicks" onchange="patchWin({showPicks:this.checked})">
               <span>Show winning draft picks on full-screen styles</span>
@@ -2617,9 +2638,9 @@
               </div>
             </label>
 
-            <div class="win-style-group-label cap-champ-draft">League of Legends</div>
+            <div class="win-style-group-label cap-char-draft">Draft Comp</div>
 
-            <label class="win-style-option cap-champ-draft" id="win-style-comp">
+            <label class="win-style-option cap-char-draft" id="win-style-comp">
               <input type="radio" name="win-style" value="comp" onchange="patchWin({style:'comp'})">
               <div class="win-style-preview win-preview-comp">
                 <div class="win-preview-comp-head"></div>
@@ -2629,7 +2650,8 @@
               </div>
               <div>
                 <div class="win-style-name">COMP</div>
-                <div class="win-style-desc">Full-screen showcase of the winning team's champion picks + players. Needs a recorded game.</div>
+                <div class="win-style-desc cap-champ-draft">Full-screen showcase of the winning team's champion picks + players. Needs a recorded game.</div>
+                <div class="win-style-desc cap-hero-draft" style="display:none">Full-screen showcase of the winning team's drafted heroes (from the current Captains Mode draft).</div>
               </div>
             </label>
           </div>

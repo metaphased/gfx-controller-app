@@ -114,36 +114,66 @@ function applyCompBackground(ws, state) {
   }
 }
 
+// ── Dota: winning team's drafted HEROES ──────────────────────────────────────
+// Dota has no per-game seriesGames pick history, so the winning comp is sourced from the current
+// Captains Mode draft (heroDraft) — the winner's `action:'pick'` steps, in draft order, each
+// carrying landscape hero art (`img`). Labelled with the hero name (heroes aren't tied to players).
+function isHeroGame(state) { const a = state && state.adapter; return a ? a.pickEntity === 'hero' : ((state && state.match && state.match.game) === 'dota2'); }
+function winnerHeroPicks(state, winner) {
+  const steps = (state && state.heroDraft && state.heroDraft.steps) || [];
+  return steps.filter(s => s && s.team === winner && s.action === 'pick' && (s.hero || s.img))
+              .map(s => ({ name: s.hero || '', img: s.img || '' }));
+}
+
 let _compFp = '';
 function buildCompRow(ws, match) {
   const row = document.getElementById('ws-comp-row');
   if (!row) return;
-  if (!_wantCompRow(ws)) { if (_compFp !== '') { _compFp = ''; row.innerHTML = ''; } return; }
+  if (!_wantCompRow(ws)) { if (_compFp !== '') { _compFp = ''; row.innerHTML = ''; row.classList.remove('hero-picks'); } return; }
 
   const winner  = ws.team || 'team1';
-  const tk      = winner === 'team2' ? 't2' : 't1';   // seriesGames stores picks as t1/t2RolePicks
-  const game    = winningCompGame(ws, match);
-  const picks   = (game && game[tk + 'RolePicks']) || [];
-  const players  = (game && game.players && game.players[winner]) || [];   // players keyed team1/team2
-
-  // Only rebuild when the comp actually changes — otherwise the champion
-  // images re-fetch and flicker on every state broadcast.
-  const fp = JSON.stringify({ w: winner, st: _style, p: picks });
-  if (fp === _compFp) return;
-  _compFp = fp;
+  const heroMode = isHeroGame(_lastState);
+  row.classList.toggle('hero-picks', heroMode);
 
   let html = '';
-  for (let i = 0; i < 5; i++) {
-    const url = picks[i]; if (!url) continue;
-    const splash = champSplash(champNameFromUrl(url));
-    const byRole = players.find(p => _normRole(p.role) === _COMP_ROLE_ORDER[i]);
-    const handle = (byRole && byRole.handle) || (players[i] && players[i].handle) || '';
-    html += '<div class="ws-comp-pick">' +
-      '<div class="ws-comp-portrait">' +
-        (splash ? '<img src="' + splash + '" alt="" onerror="this.style.display=\'none\'">' : '') +
-      '</div>' +
-      (handle ? '<div class="ws-comp-player">' + esc(handle) + '</div>' : '') +
-      '</div>';
+  if (heroMode) {
+    // Dota — landscape hero art from the current draft; labelled by hero name.
+    const picks = winnerHeroPicks(_lastState, winner);
+    const fp = JSON.stringify({ w: winner, st: _style, hero: picks });
+    if (fp === _compFp) return;
+    _compFp = fp;
+    for (let i = 0; i < picks.length && i < 5; i++) {
+      const p = picks[i]; if (!p || !p.img) continue;
+      html += '<div class="ws-comp-pick">' +
+        '<div class="ws-comp-portrait"><img src="' + p.img + '" alt="" onerror="this.style.display=\'none\'"></div>' +
+        (p.name ? '<div class="ws-comp-player">' + esc(p.name) + '</div>' : '') +
+        '</div>';
+    }
+  } else {
+    // LoL — champion splashes from the recorded winning game's role picks.
+    const tk      = winner === 'team2' ? 't2' : 't1';   // seriesGames stores picks as t1/t2RolePicks
+    const game    = winningCompGame(ws, match);
+    const picks   = (game && game[tk + 'RolePicks']) || [];
+    const players  = (game && game.players && game.players[winner]) || [];   // players keyed team1/team2
+
+    // Only rebuild when the comp actually changes — otherwise the champion
+    // images re-fetch and flicker on every state broadcast.
+    const fp = JSON.stringify({ w: winner, st: _style, p: picks });
+    if (fp === _compFp) return;
+    _compFp = fp;
+
+    for (let i = 0; i < 5; i++) {
+      const url = picks[i]; if (!url) continue;
+      const splash = champSplash(champNameFromUrl(url));
+      const byRole = players.find(p => _normRole(p.role) === _COMP_ROLE_ORDER[i]);
+      const handle = (byRole && byRole.handle) || (players[i] && players[i].handle) || '';
+      html += '<div class="ws-comp-pick">' +
+        '<div class="ws-comp-portrait">' +
+          (splash ? '<img src="' + splash + '" alt="" onerror="this.style.display=\'none\'">' : '') +
+        '</div>' +
+        (handle ? '<div class="ws-comp-player">' + esc(handle) + '</div>' : '') +
+        '</div>';
+    }
   }
   row.innerHTML = html;
 }
@@ -153,7 +183,9 @@ socket.on('connect', () => {
   _style   = 'blade';
 });
 
+let _lastState = null;
 socket.on('state', state => {
+  _lastState = state;
   GfxSettings.applyTheme(document.documentElement, state);
   GfxSettings.applyAnimation(document.documentElement, state, 'winScreen');
   _accentHex = resolveWinAccent(state);

@@ -34,6 +34,7 @@
       <div class="series-game-row"><span class="clock-series-game" id="series-game">GAME 1</span></div>
       <span class="clock-series-phase" id="series-phase">—</span>
       <span class="series-timer" id="series-timer"></span>
+      <span class="series-extra" id="series-extra"></span>
     </div>
   </div>
 
@@ -49,6 +50,10 @@
     </div>
     <div class="bans-panel bans-panel-dire" id="dire-bans"></div>
   </div>
+
+  <!-- Optional horizontal timer bar (timerStyle='bar') — sits between the bans and the pick strip.
+       Fills the width and depletes over the free time, then switches to the extra-time colour. -->
+  <div class="timer-bar" id="timer-bar" style="display:none"><div class="timer-bar-fill" id="timer-bar-fill"></div></div>
 
   <!-- Bottom bar: picks per side + clock indicator (◀ [logo] ▶) -->
   <div class="player-bar" id="player-bar">
