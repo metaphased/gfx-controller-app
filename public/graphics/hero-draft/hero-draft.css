@@ -11,7 +11,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   width: 100vw; height: 100vh;
   display: grid;
   grid-template-columns: 30vw 40vw 30vw;
-  grid-template-rows: 1fr 22vh;
+  grid-template-rows: 1fr 15vh;
   grid-template-areas: "side-rad centre side-dire" "pbar pbar pbar";
   color: var(--gfx-c3, #fff);
   text-transform: var(--gfx-text-transform, uppercase);
@@ -58,15 +58,15 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .side-rad  .team-header.on-clock::before { background: linear-gradient(90deg, rgba(var(--hd-rad-rgb),0.55) 0%, rgba(var(--hd-rad-rgb),0.18) 55%, transparent 100%); }
 .side-dire .team-header.on-clock::before { background: linear-gradient(270deg, rgba(var(--hd-dire-rgb),0.55) 0%, rgba(var(--hd-dire-rgb),0.18) 55%, transparent 100%); }
 
-/* ── Ban row ── */
-.bans-panel { display: flex; align-items: center; gap: 0.22vw; padding: 0.6vh 0.6vw 0.9vh; flex-shrink: 0; }
+/* ── Ban row ── (landscape slots ~16:9 so the hero art fits with little crop) */
+.bans-panel { display: flex; align-items: center; gap: 0.28vw; padding: 0.6vh 0.6vw 0.9vh; flex-shrink: 0; }
 .bans-panel-dire { flex-direction: row-reverse; }
 .ban-slot {
-  width: 3.5vw; height: 3.5vw; max-width: 60px; max-height: 60px;
+  width: 3.8vw; height: 2.14vw; max-width: 74px; max-height: 42px;
   position: relative; overflow: hidden; flex-shrink: 0;
   background: rgba(var(--gfx-c4-rgb, 14,18,28),0.85);
 }
-.ban-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center; opacity: 0; transition: opacity calc(0.4s * var(--gfx-dur-scale,1)) ease; }
+.ban-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; opacity: 0; transition: opacity calc(0.4s * var(--gfx-dur-scale,1)) ease; filter: grayscale(0.55) brightness(0.7); }
 .ban-slot img.loaded { opacity: 1; }
 .ban-slot .ban-x { position: absolute; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; }
 .ban-slot .ban-x::after { content: '✕'; color: rgba(255,255,255,0.45); font-size: 1.6vh; font-weight: 700; }
@@ -95,29 +95,28 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 .pick-card {
   flex: 1; position: relative; overflow: hidden; min-width: 0;
-  display: flex; flex-direction: column; justify-content: flex-end;
+  display: flex; flex-direction: column; justify-content: flex-start;
 }
-.pick-bg { position: absolute; inset: 0; background-size: cover; background-position: center top; opacity: 0; transition: opacity calc(0.45s * var(--gfx-dur-scale,1)) ease; }
-.pick-bg.loaded { opacity: 1; }
-.pick-bg::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.15) 45%, transparent 100%); }
-.pick-card.side-rad  .pick-empty { background: linear-gradient(to top, rgba(var(--hd-rad-rgb),0.42) 0%, rgba(var(--gfx-c4-rgb,5,8,22),1) 100%); position:absolute; inset:0; }
-.pick-card.side-dire .pick-empty { background: linear-gradient(to top, rgba(var(--hd-dire-rgb),0.42) 0%, rgba(var(--gfx-c4-rgb,5,6,18),1) 100%); position:absolute; inset:0; }
-.pick-card.side-rad::after  { content:''; position:absolute; bottom:0; inset-inline:0; height:2px; background: var(--hd-rad);  opacity:0.6; }
-.pick-card.side-dire::after { content:''; position:absolute; bottom:0; inset-inline:0; height:2px; background: var(--hd-dire); opacity:0.6; }
-.pick-card.active { box-shadow: inset 0 0 0 2px currentColor; }
-.pick-card.active.side-rad  { color: var(--hd-rad); }
+/* Hero art at native 16:9 so it stays crisp — no tall-card over-zoom. */
+.pick-img { width: 100%; aspect-ratio: 16 / 9; position: relative; overflow: hidden; background: rgba(var(--gfx-c4-rgb,10,14,22),0.9); }
+.pick-img .pick-bg { position: absolute; inset: 0; background-size: cover; background-position: center 28%; opacity: 0; transition: opacity calc(0.45s * var(--gfx-dur-scale,1)) ease; }
+.pick-img .pick-bg.loaded { opacity: 1; }
+.pick-card.side-rad  .pick-empty { position:absolute; inset:0; background: linear-gradient(to bottom, rgba(var(--hd-rad-rgb),0.30) 0%, rgba(var(--gfx-c4-rgb,5,8,22),0.9) 100%); }
+.pick-card.side-dire .pick-empty { position:absolute; inset:0; background: linear-gradient(to bottom, rgba(var(--hd-dire-rgb),0.30) 0%, rgba(var(--gfx-c4-rgb,5,6,18),0.9) 100%); }
+/* Body below the art fills the bar with the side colour + holds the name. */
+.pick-info { flex: 1; position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.4vh 0.3vw; gap: 0.2vh; }
+.pick-card.side-rad  .pick-info { background: linear-gradient(to bottom, rgba(var(--hd-rad-rgb),0.16), rgba(0,0,0,0.35)); }
+.pick-card.side-dire .pick-info { background: linear-gradient(to bottom, rgba(var(--hd-dire-rgb),0.16), rgba(0,0,0,0.35)); }
+.pick-card.side-rad::after  { content:''; position:absolute; bottom:0; inset-inline:0; height:2px; background: var(--hd-rad);  opacity:0.7; z-index:2; }
+.pick-card.side-dire::after { content:''; position:absolute; bottom:0; inset-inline:0; height:2px; background: var(--hd-dire); opacity:0.7; z-index:2; }
+.pick-card.active { color: var(--hd-rad); }
 .pick-card.active.side-dire { color: var(--hd-dire); }
-@keyframes hd-clock-pulse { 0%,100% { opacity: 0.35; } 50% { opacity: 0.85; } }
-.pick-card.active::before { content:''; position:absolute; inset:0; z-index:2; box-shadow: inset 0 0 22px 2px currentColor; animation: hd-clock-pulse 1.3s ease-in-out infinite; pointer-events:none; }
-
-.pick-info { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; padding: 0 0.4vw 0.7vh; gap: 0.15vh; }
-.pick-pos {
-  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
-  font-size: 1.05vh; font-weight: 700; letter-spacing: 0.18em; color: rgba(255,255,255,0.55);
-}
+.pick-card.active { box-shadow: inset 0 0 0 2px currentColor; }
+@keyframes hd-clock-pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+.pick-card.active::before { content:''; position:absolute; inset:0; z-index:3; box-shadow: inset 0 0 16px 1px currentColor; animation: hd-clock-pulse 1.3s ease-in-out infinite; pointer-events:none; }
 .pick-name {
   font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
-  font-size: 1.5vh; font-weight: 700; letter-spacing: 0.04em; color: var(--gfx-c3, #fff);
+  font-size: 1.6vh; font-weight: 700; letter-spacing: 0.03em; color: var(--gfx-c3, #fff);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; text-align: center;
 }
 
@@ -134,6 +133,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .tourn-logo.on-rad::before  { filter: drop-shadow(0 0 12px var(--hd-rad))  drop-shadow(0 0 28px var(--hd-rad));  animation: hd-logo-glow 1.3s ease-in-out infinite; }
 .tourn-logo.on-dire::before { filter: drop-shadow(0 0 12px var(--hd-dire)) drop-shadow(0 0 28px var(--hd-dire)); animation: hd-logo-glow 1.3s ease-in-out infinite; }
 
+.clock-timer { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; font-size: 2.4vh; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; margin-top: 0.4vh; text-shadow: 0 1px 4px rgba(0,0,0,0.7); }
 .clock-arrow { font-family: var(--gfx-font), sans-serif; font-size: 3.2vh; font-weight: 900; opacity: 0; transition: opacity calc(0.3s * var(--gfx-dur-scale,1)) ease; flex-shrink: 0; }
 #clock-arrow-l { color: var(--hd-rad); }
 #clock-arrow-r { color: var(--hd-dire); }

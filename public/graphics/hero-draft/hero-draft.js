@@ -20,8 +20,9 @@ function heroArt(name){ return name ? (_heroImg[norm(name)] || '') : ''; }
 function teamMeta(m, key){ var t=(m&&m[key])||{}; return { name: t.name || (key==='team1'?'RADIANT':'DIRE'), tag: t.tag||'', logo: t.logo||'', score: t.score|0 }; }
 // Steps for one team + action, carrying the global step index (for the on-clock highlight).
 function slotsFor(steps, team, action){
-  var out=[]; (steps||[]).forEach(function(s,i){ if(s && s.team===team && s.action===action) out.push({ idx:i, hero:s.hero||'' }); }); return out;
+  var out=[]; (steps||[]).forEach(function(s,i){ if(s && s.team===team && s.action===action) out.push({ idx:i, hero:s.hero||'', img:s.img||'' }); }); return out;
 }
+function slotArt(e){ return e.img || heroArt(e.hero); }
 
 // ── Slot rendering (build once per count, then update src + active) ──────────────
 function renderBans(container, entries, cur){
@@ -32,7 +33,7 @@ function renderBans(container, entries, cur){
   var slots = container.children;
   entries.forEach(function(e,i){
     var slot=slots[i]; if(!slot) return;
-    var img=slot.querySelector('img'), x=slot.querySelector('.ban-x'), art=heroArt(e.hero);
+    var img=slot.querySelector('img'), x=slot.querySelector('.ban-x'), art=slotArt(e);
     if (slot._art !== art){ slot._art=art;
       if(art){ slot.classList.remove('empty'); img.classList.remove('loaded'); img.onload=function(){img.classList.add('loaded');}; img.src=art; x.style.display=''; }
       else { slot.classList.add('empty'); img.classList.remove('loaded'); img.removeAttribute('src'); x.style.display='none'; }
@@ -43,12 +44,12 @@ function renderBans(container, entries, cur){
 function renderPicks(container, entries, cur, side){
   if (container._n !== entries.length) {
     container._n = entries.length;
-    container.innerHTML = entries.map(function(){ return '<div class="pick-card side-'+side+'"><div class="pick-empty"></div><div class="pick-bg"></div><div class="pick-info"><span class="pick-name"></span></div></div>'; }).join('');
+    container.innerHTML = entries.map(function(){ return '<div class="pick-card side-'+side+'"><div class="pick-img"><div class="pick-empty"></div><div class="pick-bg"></div></div><div class="pick-info"><span class="pick-name"></span></div></div>'; }).join('');
   }
   var cards = container.children;
   entries.forEach(function(e,i){
     var card=cards[i]; if(!card) return;
-    var bg=card.querySelector('.pick-bg'), empty=card.querySelector('.pick-empty'), nm=card.querySelector('.pick-name'), art=heroArt(e.hero);
+    var bg=card.querySelector('.pick-bg'), empty=card.querySelector('.pick-empty'), nm=card.querySelector('.pick-name'), art=slotArt(e);
     if (card._art !== art){ card._art=art;
       if(art){ empty.style.display='none'; bg.classList.remove('loaded'); var im=new Image(); im.onload=function(){ bg.style.backgroundImage="url('"+art+"')"; bg.classList.add('loaded'); }; im.src=art; }
       else { empty.style.display=''; bg.classList.remove('loaded'); bg.style.backgroundImage=''; }
@@ -82,10 +83,12 @@ function render(state){
   // Series label + phase
   var fmt = m.format || 'Bo3';
   $('series-game').textContent = 'GAME ' + ((m.currentGameNum|0) || 1) + ' · ' + fmt;
+  // On-clock only once the admin has started the draft (pre-start = teams shown, no clock).
+  var started = !!hd.started;
   var done = cur >= steps.length;
-  var actTeam = done ? null : (steps[cur] && steps[cur].team);
+  var actTeam = (started && !done) ? (steps[cur] && steps[cur].team) : null;
   var actAction = done ? null : (steps[cur] && steps[cur].action);
-  $('series-phase').textContent = done ? 'DRAFT COMPLETE' : (actAction === 'pick' ? 'PICK PHASE' : 'BAN PHASE');
+  $('series-phase').textContent = !started ? 'DRAFT' : (done ? 'DRAFT COMPLETE' : (actAction === 'pick' ? 'PICK PHASE' : 'BAN PHASE'));
 
   // On-clock: acting team's header pulse + logo glow + arrow
   $('rad-header').classList.toggle('on-clock', actTeam === 'team1');
@@ -98,7 +101,25 @@ function render(state){
 
   // Tournament logo (event logo from match)
   setBg('tourn-logo', m.tournamentLogo || '');
+
+  updateTimer();
 }
+
+// Optional reserve-time countdown near the clock (showTimer). The acting team's remaining time
+// counts down from turnEndsAt (a server timestamp); ticks on an interval so it's smooth.
+function _fmt(ms){ ms=Math.max(0,ms|0); var s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
+function updateTimer(){
+  var el=$('clock-timer'); if(!el) return;
+  var st=_lastState||{}, hd=st.heroDraft||{};
+  var steps=hd.steps||[], cur=hd.currentStep|0;
+  var acting=(hd.started && cur<steps.length && steps[cur]) ? steps[cur].team : null;
+  var show = hd.visible && hd.showTimer && hd.started && acting && hd.turnEndsAt && !hd.timerPaused;
+  if(!show){ el.style.display='none'; return; }
+  el.style.display='';
+  el.textContent=_fmt(hd.turnEndsAt - Date.now());
+  el.style.color = acting==='team1' ? 'var(--hd-rad)' : 'var(--hd-dire)';
+}
+setInterval(updateTimer, 250);
 
 // ── Show / hide ───────────────────────────────────────────────────────────────
 function animateIn(){

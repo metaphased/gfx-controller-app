@@ -1784,20 +1784,40 @@
     ══════════════════════════════════════════════════════════════════════════ -->
     <section class="tab" id="tab-hero-draft">
       <div class="tab-header"><h1>Hero Draft</h1></div>
-      <div class="card" style="margin-bottom:16px">
-        <div id="hd-match-info" class="hint" style="font-size:14px"></div>
-      </div>
 
-      <div class="draft-status-bar">
-        <div id="hd-current-label" class="draft-status-text"></div>
-        <div class="draft-status-actions">
-          <button class="btn btn-sm btn-danger" onclick="hdResetDraft()" title="Clear every drafted hero and start over">↺ Reset Draft</button>
+      <div class="card" id="hd-setup-card" style="margin-bottom:16px">
+        <div class="card-title">Draft Setup &amp; Reserve Timer</div>
+        <div id="hd-match-info" class="hint" style="margin-bottom:12px"></div>
+        <div class="field-row" style="flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap">
+          <label style="white-space:nowrap">Reserve time / team</label>
+          <input type="number" id="hd-reserve" min="0" max="600" value="130" style="width:80px" onchange="hdSetReserve(this.value)">
+          <span style="font-size:12px;color:var(--text-dim)">seconds (Captains Mode default 130)</span>
+        </div>
+        <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="hd-show-timer" onchange="hdToggleShowTimer(this.checked)"> <span style="font-size:13px">Show reserve timer on the broadcast overlay</span></label>
+        <div id="hd-start-wrap" style="margin-top:12px">
+          <button class="btn btn-sm btn-primary" id="hd-start-btn" onclick="hdStartDraft()">▶ Start Draft</button>
+          <span class="hint" style="margin-left:8px">Begins the clock on the first team. Fill heroes as they're drafted.</span>
         </div>
       </div>
 
-      <div id="hd-board"></div>
+      <div class="draft-status-bar" id="hd-status-bar" style="display:none">
+        <div id="hd-current-label" class="draft-status-text"></div>
+        <div class="draft-status-actions">
+          <button class="btn btn-sm btn-secondary" id="hd-pause-btn" onclick="hdTogglePause()">⏸ Pause</button>
+          <button class="btn btn-sm btn-danger" onclick="hdResetDraft()" title="Clear every drafted hero, reset the timer and start over">↺ Reset Draft</button>
+        </div>
+      </div>
 
-      <p class="hint" style="margin-top:12px">Pick/ban order is set in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Captains Mode Order</a>. Fill each slot with the searchable hero picker as the draft happens — the highlighted slot advances automatically.</p>
+      <!-- Live reserve readout for the admin: each team's remaining time; acting team ticks live -->
+      <div id="hd-timer-row" class="hd-timer-row" style="display:none">
+        <div class="hd-timer-team side-rad" id="hd-timer-rad"><span class="hd-timer-name" id="hd-timer-rad-name">Radiant</span><span class="hd-timer-val" id="hd-timer-rad-val">2:10</span></div>
+        <div class="hd-timer-team side-dire" id="hd-timer-dire"><span class="hd-timer-name" id="hd-timer-dire-name">Dire</span><span class="hd-timer-val" id="hd-timer-dire-val">2:10</span></div>
+      </div>
+
+      <div id="hd-board"></div>
+      <div id="hd-assign"></div>
+
+      <p class="hint" style="margin-top:12px">Pick/ban order is set in <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament Setup → Captains Mode Order</a>. Fill each slot with the searchable hero picker as the draft happens — the highlighted slot advances automatically and the acting team's reserve counts down.</p>
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════

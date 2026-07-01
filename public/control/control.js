@@ -4266,15 +4266,38 @@ function tmRenderDraftOrder(state){
 // pick/ban sequence is the editable Captains Mode order (heroDraft.steps); picking a hero
 // auto-advances the active slot (server-side, like the LoL draft).
 var _hdPickerContainers = {};
-function hdSetHero(i, hero){ api('/api/heroDraft/pick', { index:i, hero:(hero && hero.name) || '' }); }
-function hdResetDraft(){ if(!confirm('Clear every drafted hero and start the draft over?'))return; api('/api/heroDraft/reset', {}); }
+function hdSetHero(i, hero){ api('/api/heroDraft/pick', { index:i, hero:(hero && hero.name) || '', img:(hero && hero.url) || '' }); }
+function hdStartDraft(){ api('/api/heroDraft/start', {}); }
+function hdTogglePause(){ api('/api/heroDraft/timer/pause', {}); }
+function hdSetReserve(v){ var n=Math.max(0, parseInt(v)||0); api('/api/heroDraft', { reserveTime:n }); }
+function hdToggleShowTimer(on){ api('/api/heroDraft', { showTimer: !!on }); }
+function hdSetPosition(team, pos, hero){ var key=team+'Positions'; var arr=(((window._state||{}).heroDraft||{})[key]||['','','','','']).slice(); arr[pos]=hero||''; var p={}; p[key]=arr; api('/api/heroDraft', p); }
+// Live reserve-time readout: format ms → M:SS.
+function _hdFmt(ms){ ms=Math.max(0,ms|0); var s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
+function hdResetDraft(){ if(!confirm('Clear every drafted hero, reset the timer, and start the draft over?'))return; api('/api/heroDraft/reset', {}); }
 function hdRenderDraft(state){
   const board=g('hd-board'); if(!board || !isHeroDraft()) return; // Dota-only; the tab is hidden otherwise
   const hd=(state&&state.heroDraft)||{steps:[],currentStep:0};
   const steps=hd.steps||[], cur=hd.currentStep|0;
   const tn1=_teamName('team1'), tn2=_teamName('team2');
-  const mi=g('hd-match-info'); if(mi) mi.innerHTML=esc(tn1)+' <span style="color:var(--text-faint)">vs</span> '+esc(tn2)+' · '+steps.length+' slots';
-  const cl=g('hd-current-label'); if(cl) cl.textContent = !steps.length ? '' : (cur>=steps.length ? 'Draft complete' : ('On the clock — slot '+(cur+1)));
+  const mi=g('hd-match-info'); if(mi) mi.innerHTML=esc(tn1)+' <span style="color:var(--text-faint)">vs</span> '+esc(tn2)+' · '+steps.length+' slots · Radiant / Dire';
+
+  // Draft flow: pre-start shows the Start button; started shows the status bar + reserve readout.
+  const started=!!hd.started, complete = steps.length>0 && cur>=steps.length;
+  const sw=g('hd-start-wrap'); if(sw) sw.style.display = started ? 'none' : '';
+  const sb=g('hd-status-bar');  if(sb) sb.style.display = started ? '' : 'none';
+  const tr=g('hd-timer-row');   if(tr) tr.style.display = started ? 'flex' : 'none';
+  const startBtn=g('hd-start-btn'); if(startBtn) startBtn.disabled = !steps.length;
+  const pauseBtn=g('hd-pause-btn'); if(pauseBtn) pauseBtn.textContent = hd.timerPaused ? '▶ Resume' : '⏸ Pause';
+  const resEl=g('hd-reserve'); if(resEl && document.activeElement!==resEl) resEl.value = (hd.reserveTime!=null?hd.reserveTime:130);
+  const stEl=g('hd-show-timer'); if(stEl) stEl.checked = !!hd.showTimer;
+  const rn=g('hd-timer-rad-name'); if(rn) rn.textContent=tn1;
+  const dn=g('hd-timer-dire-name'); if(dn) dn.textContent=tn2;
+  const cl=g('hd-current-label');
+  if(cl) cl.textContent = !started ? 'Not started' : (complete ? 'Draft complete' :
+    ((steps[cur].action==='pick'?'Pick':'Ban')+' — '+ (steps[cur].team==='team2'?tn2:tn1) +' on the clock'));
+  hdTick();
+  hdRenderAssign(hd, state.match||{}, tn1, tn2);
 
   // Build the board + pickers once (or when the order / team names change), then only update
   // values + active state each tick — mirrors renderDraftTab so we don't rebuild pickers live.
@@ -4312,6 +4335,46 @@ function hdRenderDraft(state){
     if(row) row.className='draft-step-row'+(i===cur?' draft-step-active':'')+(s.hero?' draft-step-done':'');
     const clk=g('hd-clock-'+i); if(clk) clk.style.display=(i===cur)?'inline-block':'none';
   });
+}
+// Live reserve-time readout (both teams). The acting team ticks down from turnEndsAt; the other
+// shows its banked pool. Runs on a 250ms interval + every render.
+function hdTick(){
+  const hd=(window._state||{}).heroDraft; if(!hd || !g('hd-timer-rad-val')) return;
+  const acting=(hd.started && hd.steps && hd.steps[hd.currentStep|0]) ? hd.steps[hd.currentStep|0].team : null;
+  ['team1','team2'].forEach(function(tk){
+    const live = acting===tk && !hd.timerPaused && hd.turnEndsAt;
+    const ms = live ? Math.max(0, hd.turnEndsAt - Date.now()) : (((hd.reserve||{})[tk])||0)*1000;
+    const val=g(tk==='team1'?'hd-timer-rad-val':'hd-timer-dire-val'); if(val) val.textContent=_hdFmt(ms);
+    const box=g(tk==='team1'?'hd-timer-rad':'hd-timer-dire'); if(box) box.classList.toggle('acting', acting===tk && hd.started && !hd.timerPaused);
+  });
+}
+setInterval(function(){ if(typeof isHeroDraft==='function' && isHeroDraft()) hdTick(); }, 250);
+
+// Hero → position assignment (draft complete) — dropdown per position, saved to heroDraft.
+function hdRenderAssign(hd, m, tn1, tn2){
+  const host=g('hd-assign'); if(!host) return;
+  const steps=hd.steps||[], complete = steps.length>0 && (hd.currentStep|0)>=steps.length;
+  if(!complete){ if(host.innerHTML){ host.innerHTML=''; host._sig=''; } return; }
+  const pk=function(team){ return steps.filter(function(s){return s.team===team && s.action==='pick' && s.hero;}).map(function(s){return {name:s.hero,img:s.img||''};}); };
+  const t1=pk('team1'), t2=pk('team2');
+  const pos1=(hd.team1Positions||['','','','','']), pos2=(hd.team2Positions||['','','','','']);
+  const sig=JSON.stringify({t1:t1,t2:t2,p1:pos1,p2:pos2,n:[tn1,tn2]}); if(sig===host._sig) return; host._sig=sig;
+  const POSs=((gameAdapter()||{}).positions)||['Carry','Mid','Offlane','Soft Support','Hard Support'];
+  const col=function(team, picks, pos, label, side){
+    const c = side==='rad' ? '#2fbf6b' : '#e14b3d';
+    const rows=POSs.map(function(p,ri){
+      const curName=pos[ri]||'';
+      const pkm=picks.filter(function(x){return x.name===curName;})[0];
+      const thumb = (curName && pkm && pkm.img) ? '<div class="ra-thumb" style="background-image:url(\''+esc(pkm.img)+'\')"></div>' : '<div class="ra-thumb empty"></div>';
+      const opts='<option value="">—</option>'+picks.map(function(x){return '<option value="'+esc(x.name)+'"'+(x.name===curName?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
+      return '<div class="ra-row ra-row-role"><span class="ra-role-label">'+esc(p||('Pos '+(ri+1)))+'</span>'+thumb+
+        '<select class="ra-role-select" onchange="hdSetPosition(\''+team+'\','+ri+',this.value)">'+opts+'</select></div>';
+    }).join('');
+    return '<div class="ra-col"><div class="ra-col-label">'+esc(label)+' <span class="ra-side-tag" style="color:'+c+';border-color:'+c+'">'+(side==='rad'?'RADIANT':'DIRE')+'</span></div>'+rows+'</div>';
+  };
+  host.innerHTML='<div class="card" style="margin-top:16px"><div class="card-title">Assign Heroes to Players</div>'+
+    '<p class="hint" style="margin-bottom:12px">Draft complete — assign each drafted hero to a position. Saved for downstream graphics (player intro, spotlight).</p>'+
+    '<div style="display:flex;gap:28px;flex-wrap:wrap">'+col('team1',t1,pos1,tn1,'rad')+col('team2',t2,pos2,tn2,'dire')+'</div></div>';
 }
 
 // Veto data entry (GAME → Map Veto) — guided sequence following the official Bo1/Bo3/Bo5
