@@ -274,6 +274,7 @@ socket.on('state', async (state) => {
   tmRenderMapPool(state);
   tmRenderDraftOrder(state);
   hdRenderDraft(state);
+  hdRenderAutoFill(state);
   ldRender(state);
   mvRenderVeto(state);
   mvRenderGfx(state);
@@ -4358,6 +4359,33 @@ function hdToggleShowTimer(on){ api('/api/heroDraft', { showTimer: !!on }); }
 function hdSetTimerStyle(s){ api('/api/heroDraft', { timerStyle: s==='bar'?'bar':'ring' }); }
 function hdToggleShowNames(on){ api('/api/heroDraft', { showPickNames: !!on }); }
 function hdToggleShowGradient(on){ api('/api/heroDraft', { showPickGradient: !!on }); }
+// Phase C: live-GSI draft auto-fill.
+function hdSetAutoFillMode(m){ api('/api/heroDraft', { autoFill: { mode: m } }); }
+function hdSetAutoFillDelay(v){ api('/api/heroDraft', { autoFill: { delaySec: Math.max(0, parseInt(v)||0) } }); }
+function hdApplyLive(){ api('/api/heroDraft/apply-live', {}); }
+function hdRenderAutoFill(state){
+  const card=g('hd-autofill-card'); if(!card || !isHeroDraft()) return;
+  const hd=(state&&state.heroDraft)||{}, af=hd.autoFill||{mode:'off'}, dota=(state.live&&state.live.dota)||{};
+  const mode=af.mode||'off';
+  const grp=g('hd-af-mode'); if(grp) Array.prototype.forEach.call(grp.querySelectorAll('[data-afmode]'), function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-afmode')===mode); });
+  const dw=g('hd-af-delay-wrap'); if(dw) dw.style.display = (mode==='delayed') ? 'flex' : 'none';
+  const de=g('hd-af-delay'); if(de && document.activeElement!==de) de.value = (af.delaySec!=null?af.delaySec:30);
+  // Feed status: live (fresh GSI) / off. Mirrors the Live Data badge.
+  const fresh = dota.lastSeen && (Date.now()-dota.lastSeen < 8000);
+  const stat=g('hd-af-status'); if(stat){ stat.textContent = mode==='off' ? 'off' : (fresh ? 'feed live' : 'waiting for feed'); stat.classList.toggle('on', !!(mode!=='off'&&fresh)); stat.classList.toggle('idle', !!(mode!=='off'&&!fresh)); }
+  // Staged live draft → summary + apply (primary in Suggest; a manual pull otherwise).
+  const box=g('hd-af-suggest'); if(!box) return;
+  const sug=dota.draftSuggest;
+  if(mode==='off' || !sug){ box.style.display='none'; box.innerHTML=''; return; }
+  const cnt=function(o){ return ((o&&o.team1)||[]).length + ((o&&o.team2)||[]).length; };
+  const nPick=cnt(sug.picks), nBan=cnt(sug.bans);
+  box.style.display='';
+  box.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+    '<span class="hint" style="margin:0">Live draft detected: <b>'+nPick+'</b> pick'+(nPick===1?'':'s')+' · <b>'+nBan+'</b> ban'+(nBan===1?'':'s')+'</span>'+
+    '<button class="btn btn-sm btn-primary" onclick="hdApplyLive()">Apply to board now</button>'+
+    (mode==='live'?'<span class="hint" style="margin:0;color:#7ee2a8">⟳ auto-applying live</span>':mode==='delayed'?'<span class="hint" style="margin:0;color:#f0c674">⟳ auto-applying after buffer</span>':'')+
+    '</div>';
+}
 function hdSetPosition(team, pos, hero){ var key=team+'Positions'; var arr=(((window._state||{}).heroDraft||{})[key]||['','','','','']).slice(); arr[pos]=hero||''; var p={}; p[key]=arr; api('/api/heroDraft', p); }
 // Live reserve-time readout: format ms → M:SS.
 function _hdFmt(ms){ ms=Math.max(0,ms|0); var s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }

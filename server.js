@@ -343,11 +343,104 @@ function ingestDotaGsi(b, res) {
   const tl = _dotaTimeline, lastS = tl.samples[tl.samples.length - 1];
   d.samples = tl.samples.length;
   d.nwLead  = lastS ? (lastS.rnw - lastS.dnw) : 0;      // Radiant net-worth lead (+ = Radiant ahead)
+  const dchg = handleDotaDraftAuto(b);                  // Phase C: stage / apply the live draft
   const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players, d.samples].join('|');
   const now = Date.now();
-  if (sig !== _dotaSig || now - _dotaLastBcast > 3000) { _dotaSig = sig; _dotaLastBcast = now; broadcast(); }
+  if (dchg || sig !== _dotaSig || now - _dotaLastBcast > 3000) { _dotaSig = sig; _dotaLastBcast = now; broadcast(); }
   return res.json({ ok: true });
 }
+
+// ── Phase C: Dota GSI draft → hero-draft auto-fill ───────────────────────────────
+// Hero slug/class → { name, img } via the synced heroes manifest (cached, mtime-checked). GSI
+// `pickN_class` is the Valve short name (== manifest slug), e.g. "undying", "antimage".
+let _heroBySlug = null, _heroBySlugMtime = 0;
+function _heroManifestMap() {
+  try {
+    const st = fs.statSync(heroSync.MANIFEST);
+    if (_heroBySlug && st.mtimeMs === _heroBySlugMtime) return _heroBySlug;
+    const list = JSON.parse(fs.readFileSync(heroSync.MANIFEST, 'utf8'));
+    const m = {};
+    (list || []).forEach(h => { if (h && h.slug) m[String(h.slug).toLowerCase()] = { name: h.name || h.slug, img: h.img || '' }; });
+    _heroBySlug = m; _heroBySlugMtime = st.mtimeMs; return m;
+  } catch (e) { return _heroBySlug || {}; }
+}
+function _heroFromClass(cls) {
+  if (!cls) return null;
+  const slug = String(cls).replace(/^npc_dota_hero_/, '').toLowerCase();
+  return { slug, ...(_heroManifestMap()[slug] || { name: slug, img: '' }) };
+}
+// ⚠️ CONFIRM AGAINST A REAL PAYLOAD (inspector raw viewer) before trusting: the Captains Mode
+// draft block is assumed to be draft.{team2=Radiant,team3=Dire}.{pickN_class,banN_class} +
+// draft.activeteam (2/3) + draft.pick (bool). App teams: Radiant=team1, Dire=team2.
+function parseDotaDraft(b) {
+  const dr = b && b.draft; if (!dr || typeof dr !== 'object') return null;
+  const readTeam = (tk) => {
+    const t = dr[tk] || {}, picks = [], bans = [];
+    for (let i = 0; i < 12; i++) {
+      const pc = t['pick' + i + '_class'] || t['pick' + i + '_hero'];
+      const bc = t['ban' + i + '_class']  || t['ban' + i + '_hero'];
+      if (pc) picks.push(pc);
+      if (bc) bans.push(bc);
+    }
+    return { picks, bans };
+  };
+  const rad = readTeam('team2'), dire = readTeam('team3');
+  const at = dr.activeteam | 0;
+  return {
+    activeTeam: at === 2 ? 'team1' : at === 3 ? 'team2' : null, isPick: !!dr.pick,
+    picks: { team1: rad.picks, team2: dire.picks },
+    bans:  { team1: rad.bans,  team2: dire.bans },
+  };
+}
+// Resolve every class → { slug, name, img } so the preview + apply carry hero art.
+function buildDotaDraftSuggest(b) {
+  const p = parseDotaDraft(b); if (!p) return null;
+  const R = arr => (arr || []).map(c => _heroFromClass(c));
+  const anyHero = p.picks.team1.length + p.picks.team2.length + p.bans.team1.length + p.bans.team2.length;
+  if (!anyHero) return null;
+  return { activeTeam: p.activeTeam, isPick: p.isPick,
+    picks: { team1: R(p.picks.team1), team2: R(p.picks.team2) },
+    bans:  { team1: R(p.bans.team1),  team2: R(p.bans.team2) }, ts: Date.now() };
+}
+// Fill heroDraft.steps from a suggestion, PRESERVING the editable Captains Mode order: assign the
+// Nth pick/ban of a team (in step order) to that team's Nth GSI pick/ban. Operator can still edit.
+function applyDotaDraftToHeroDraft(sug) {
+  if (!sug || !state.heroDraft) return false;
+  const steps = state.heroDraft.steps || [];
+  const cnt = { team1: { pick: 0, ban: 0 }, team2: { pick: 0, ban: 0 } };
+  let changed = false;
+  steps.forEach(s => {
+    const team = s.team === 'team2' ? 'team2' : 'team1', action = s.action === 'pick' ? 'pick' : 'ban';
+    const list = (action === 'pick' ? sug.picks : sug.bans)[team] || [];
+    const hero = list[cnt[team][action]++];
+    if (hero && hero.name && (s.hero !== hero.name || s.img !== (hero.img || ''))) { s.hero = hero.name; s.img = hero.img || ''; changed = true; }
+  });
+  const cur = _hdFirstEmpty(state.heroDraft);
+  if (state.heroDraft.currentStep !== cur) { state.heroDraft.currentStep = cur; changed = true; }
+  return changed;
+}
+// Mode handler run on each GSI post. Always stages the latest suggestion; live applies now, delayed
+// applies delaySec after the content last changed (integrity buffer). Returns true if state changed.
+let _dotaDelayKey = '', _dotaDelayAt = 0, _dotaDelayPending = null;
+function handleDotaDraftAuto(b) {
+  const af = (state.heroDraft && state.heroDraft.autoFill) || {};
+  const mode = af.mode || 'off';
+  if (mode === 'off') return false;
+  const sug = buildDotaDraftSuggest(b);
+  if (!sug) return false;
+  state.live.dota.draftSuggest = sug;                 // stage for preview / Suggest-mode apply
+  if (mode === 'live') return applyDotaDraftToHeroDraft(sug);
+  if (mode === 'delayed') {
+    const key = JSON.stringify({ p: sug.picks, b: sug.bans });
+    if (key !== _dotaDelayKey) { _dotaDelayKey = key; _dotaDelayAt = Date.now() + Math.max(0, af.delaySec | 0) * 1000; _dotaDelayPending = sug; }
+  }
+  return true;   // suggestion staged → broadcast so the operator sees it
+}
+setInterval(() => {
+  if (!_dotaDelayPending || Date.now() < _dotaDelayAt) return;
+  const s = _dotaDelayPending; _dotaDelayPending = null;
+  if (((state.heroDraft || {}).autoFill || {}).mode === 'delayed' && applyDotaDraftToHeroDraft(s)) broadcast();
+}, 1000);
 
 // ── Phase B: Dota match timeline recorder ────────────────────────────────────────
 // GSI reports snapshots; sample per-team totals over the match (keyed by matchid) so later
@@ -837,7 +930,8 @@ const makeDefault = () => ({
     suggested: {},   // phase B: { mapResults?, seriesScore? } awaiting operator Apply
     players: {},     // phase C: per-steamid live stats { [steamid]: { name, team, kills, deaths, assists, mvps } }
     // Dota 2 GSI (Phase A: ingest pipe + inspector; parsed summary only — raw + timeline held server-side).
-    dota:    { lastSeen: 0, matchId: '', gameState: '', clockTime: 0, gameTime: 0, radiantScore: 0, direScore: 0, paused: false, draft: false, players: 0, provider: '', samples: 0, nwLead: 0 },
+    // draftSuggest (Phase C) = latest parsed live draft awaiting operator apply / preview.
+    dota:    { lastSeen: 0, matchId: '', gameState: '', clockTime: 0, gameTime: 0, radiantScore: 0, direScore: 0, paused: false, draft: false, players: 0, provider: '', samples: 0, nwLead: 0, draftSuggest: null },
   },
   players: {
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),
@@ -915,7 +1009,11 @@ const makeDefault = () => ({
                  turnEndsAt: null, turnPausedMs: null, timerPaused: false, showTimer: true,
                  timerStyle: 'ring', showPickNames: false, showPickGradient: true,
                  // Hero → position (1–5) assignment, filled at draft end. One hero name per slot.
-                 team1Positions: ['', '', '', '', ''], team2Positions: ['', '', '', '', ''] },
+                 team1Positions: ['', '', '', '', ''], team2Positions: ['', '', '', '', ''],
+                 // Phase C: auto-fill picks/bans from the Dota GSI draft block. mode = off | suggest
+                 // (stage for operator apply) | live (apply immediately) | delayed (apply after delaySec —
+                 // an integrity buffer for online events). Operator can always still edit manually.
+                 autoFill: { mode: 'off', delaySec: 30 } },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
   // design: angled|bleed|framed, mode: single|duo|compare. players[0]=A (team1 side),
   // players[1]=C (team2 side); champ='' = auto (most-played); statOverrides keyed by stat.
@@ -2283,10 +2381,22 @@ app.post('/api/mapIntro',    (req, res) => { Object.assign(state.mapIntro,    re
 // reconciled from the order, not set here — heroes are entered via /api/heroDraft/pick.
 app.post('/api/heroDraft',   (req, res) => {
   const b = req.body || {}; delete b.steps; delete b.reserve; delete b.turnEndsAt; delete b.turnPausedMs; // managed by the timer endpoints
+  const af = b.autoFill; delete b.autoFill;   // sanitised below (don't let a bad shape through)
   Object.assign(state.heroDraft, b);
   const hd = state.heroDraft;
+  if (af && typeof af === 'object') {
+    if (!hd.autoFill) hd.autoFill = { mode: 'off', delaySec: 30 };
+    if (af.mode !== undefined) hd.autoFill.mode = ['suggest', 'live', 'delayed'].includes(af.mode) ? af.mode : 'off';
+    if (af.delaySec !== undefined) hd.autoFill.delaySec = Math.max(0, Math.min(600, af.delaySec | 0));
+  }
   if (b.reserveTime !== undefined && !hd.started) hd.reserve = { team1: hd.reserveTime | 0, team2: hd.reserveTime | 0 };
   broadcast(); res.json({ ok: true });
+});
+// Apply the latest live-GSI draft suggestion into the hero-draft board (Suggest mode / manual pull).
+app.post('/api/heroDraft/apply-live', requireAdmin, (req, res) => {
+  const sug = state.live && state.live.dota && state.live.dota.draftSuggest;
+  if (!sug) return res.json({ ok: false, reason: 'no live draft suggestion' });
+  applyDotaDraftToHeroDraft(sug); broadcast(); res.json({ ok: true });
 });
 // Set the hero at one draft slot (ban/pick). index is the step ordinal; hero = '' clears it.
 app.post('/api/heroDraft/pick', requireAdmin, (req, res) => {

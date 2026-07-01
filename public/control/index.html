@@ -1837,6 +1837,27 @@
         </div>
       </div>
 
+      <!-- Live-GSI draft auto-fill (Phase C) — Dota only; needs the GSI feed connected. -->
+      <div class="card cap-live-data" id="hd-autofill-card" style="margin-bottom:16px">
+        <div class="card-title">Auto-fill from live GSI <span class="ld-status" id="hd-af-status">off</span></div>
+        <p class="hint" style="margin:0 0 10px">Pull picks &amp; bans straight from the Dota <a onclick="switchToTab('live-data')" href="#" style="color:var(--primary)">GSI feed</a>. You can always edit any slot by hand afterwards.</p>
+        <div class="field-row" style="align-items:center;gap:8px">
+          <label style="white-space:nowrap">Mode</label>
+          <div class="btn-row" id="hd-af-mode" style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-sm" data-afmode="off"     onclick="hdSetAutoFillMode('off')">Off</button>
+            <button class="btn btn-sm" data-afmode="suggest" onclick="hdSetAutoFillMode('suggest')">Suggest</button>
+            <button class="btn btn-sm" data-afmode="live"    onclick="hdSetAutoFillMode('live')">Live</button>
+            <button class="btn btn-sm" data-afmode="delayed" onclick="hdSetAutoFillMode('delayed')">Delayed</button>
+          </div>
+          <div id="hd-af-delay-wrap" style="display:none;align-items:center;gap:6px">
+            <input type="number" id="hd-af-delay" min="0" max="600" value="30" style="width:70px" onchange="hdSetAutoFillDelay(this.value)">
+            <span class="hint" style="margin:0">sec buffer</span>
+          </div>
+        </div>
+        <p class="hint" style="margin:8px 0 0"><strong>Suggest</strong> stages the live draft for you to apply · <strong>Live</strong> fills instantly · <strong>Delayed</strong> fills after the buffer (use it to match your broadcast delay so picks don't leak early on online events).</p>
+        <div id="hd-af-suggest" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)"></div>
+      </div>
+
       <div class="draft-status-bar" id="hd-status-bar" style="display:none">
         <div id="hd-current-label" class="draft-status-text"></div>
         <div class="draft-status-actions">
