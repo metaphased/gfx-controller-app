@@ -339,10 +339,46 @@ function ingestDotaGsi(b, res) {
   d.draft        = !!b.draft;
   d.players      = _dotaPlayerCount(b);
   d.provider     = String(prov.name || '');
-  const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players].join('|');
+  recordDotaSample(b);                                  // Phase B: append to the match timeline
+  const tl = _dotaTimeline, lastS = tl.samples[tl.samples.length - 1];
+  d.samples = tl.samples.length;
+  d.nwLead  = lastS ? (lastS.rnw - lastS.dnw) : 0;      // Radiant net-worth lead (+ = Radiant ahead)
+  const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players, d.samples].join('|');
   const now = Date.now();
   if (sig !== _dotaSig || now - _dotaLastBcast > 3000) { _dotaSig = sig; _dotaLastBcast = now; broadcast(); }
   return res.json({ ok: true });
+}
+
+// ── Phase B: Dota match timeline recorder ────────────────────────────────────────
+// GSI reports snapshots; sample per-team totals over the match (keyed by matchid) so later
+// phases can draw net-worth-over-time / gold-lead / a match-story board. DATA-ONLY, held
+// server-side (not broadcast — fetched on demand via /api/live/dota/timeline). Dota's internal
+// team numbers: 2 = Radiant, 3 = Dire (spectator player block: player.team2.player0 …).
+const DOTA_SAMPLE_INTERVAL = 15;   // seconds of game clock between samples
+let _dotaTimeline = { matchId: '', samples: [] };
+function _dotaTeamAgg(b, teamKey) {
+  const t = b && b.player && b.player[teamKey]; if (!t || typeof t !== 'object') return null;
+  let nw = 0, k = 0, lvl = 0, n = 0;
+  Object.keys(t).forEach(pk => { const p = t[pk]; if (!p || typeof p !== 'object') return;
+    nw += (p.net_worth | 0); k += (p.kills | 0); lvl += (p.level | 0); n++; });
+  return n ? { nw, k, lvl } : null;
+}
+function recordDotaSample(b) {
+  const map = b.map || {};
+  if (!/GAME_IN_PROGRESS/.test(String(map.game_state || ''))) return;   // only once the match is running
+  const rad = _dotaTeamAgg(b, 'team2'), dire = _dotaTeamAgg(b, 'team3');
+  if (!rad && !dire) return;                                            // no spectator player data (own-client feed)
+  const mid = String(map.matchid || '');
+  if (mid && mid !== _dotaTimeline.matchId) _dotaTimeline = { matchId: mid, samples: [] };  // new match
+  const t = (map.clock_time != null ? map.clock_time : 0) | 0;
+  let s = _dotaTimeline.samples;
+  if (s.length && t < s[s.length - 1].t - 2) { s = _dotaTimeline.samples = []; }             // replay rewound → restart
+  const rk = map.radiant_score | 0, dk = map.dire_score | 0;
+  const last = s[s.length - 1];
+  const scoreChanged = last && (rk !== last.rk || dk !== last.dk);
+  if (last && t - last.t < DOTA_SAMPLE_INTERVAL && !scoreChanged) return;
+  s.push({ t, rnw: (rad && rad.nw) || 0, dnw: (dire && dire.nw) || 0, rk, dk, rl: (rad && rad.lvl) || 0, dl: (dire && dire.lvl) || 0 });
+  if (s.length > 800) s.splice(0, s.length - 800);                                            // safety cap
 }
 
 // ── Live score derivation (Phase B) ─────────────────────────────────────────────
@@ -800,8 +836,8 @@ const makeDefault = () => ({
     matchzy: { lastSeen: 0, event: '', map: '' },
     suggested: {},   // phase B: { mapResults?, seriesScore? } awaiting operator Apply
     players: {},     // phase C: per-steamid live stats { [steamid]: { name, team, kills, deaths, assists, mvps } }
-    // Dota 2 GSI (Phase A: ingest pipe + inspector; parsed summary only — raw held server-side).
-    dota:    { lastSeen: 0, matchId: '', gameState: '', clockTime: 0, gameTime: 0, radiantScore: 0, direScore: 0, paused: false, draft: false, players: 0, provider: '' },
+    // Dota 2 GSI (Phase A: ingest pipe + inspector; parsed summary only — raw + timeline held server-side).
+    dota:    { lastSeen: 0, matchId: '', gameState: '', clockTime: 0, gameTime: 0, radiantScore: 0, direScore: 0, paused: false, draft: false, players: 0, provider: '', samples: 0, nwLead: 0 },
   },
   players: {
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),
@@ -1636,6 +1672,10 @@ app.get('/api/live/gsi-dota.cfg', requireAdmin, (req, res) => {
 // Live inspector: the last full Dota GSI payload (admin only) so we can confirm field shapes.
 app.get('/api/live/dota/raw', requireAdmin, (req, res) => {
   res.json({ lastSeen: (state.live.dota && state.live.dota.lastSeen) || 0, raw: _dotaGsiRaw });
+});
+// Match timeline (Phase B) — sampled per-team net worth / kills / levels over the match.
+app.get('/api/live/dota/timeline', requireAdmin, (req, res) => {
+  res.json({ matchId: _dotaTimeline.matchId, samples: _dotaTimeline.samples });
 });
 
 // ── State API ──────────────────────────────────────────────────────────────────

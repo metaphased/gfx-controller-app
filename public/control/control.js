@@ -595,6 +595,32 @@ function ldRenderDota(state) {
     cell('Provider', d.provider || '—'),
   ].join('');
   if (host._h !== html) { host._h = html; host.innerHTML = html; }
+  // Phase B: keep the net-worth timeline sparkline fresh while the card is on screen.
+  if (!_ldTlTimer) { _ldTlTimer = setInterval(ldFetchDotaTimeline, 3000); ldFetchDotaTimeline(); }
+}
+// Net-worth-over-time sparkline (Phase B confirmation + a taste of the Phase E graphic).
+let _ldTlTimer = null;
+async function ldFetchDotaTimeline() {
+  try { ldRenderDotaTimeline(await (await fetch('/api/live/dota/timeline')).json()); } catch (e) {}
+}
+function ldRenderDotaTimeline(d) {
+  const host = document.getElementById('ld-dota-tl'); if (!host) return;
+  const s = (d && d.samples) || [];
+  if (s.length < 2) { host.innerHTML = '<span class="hint">Net-worth timeline builds once a match is in progress (needs the spectator player data).</span>'; return; }
+  const diffs = s.map(x => (x.rnw | 0) - (x.dnw | 0));
+  const t0 = s[0].t, t1 = s[s.length - 1].t, span = Math.max(1, t1 - t0);
+  const maxAbs = Math.max(1000, ...diffs.map(v => Math.abs(v)));
+  const W = 560, H = 90, pad = 6, midY = H / 2;
+  const pts = s.map((x, i) => (pad + (x.t - t0) / span * (W - 2 * pad)).toFixed(1) + ',' + (midY - diffs[i] / maxAbs * (midY - pad)).toFixed(1)).join(' ');
+  const last = diffs[diffs.length - 1], lead = last >= 0 ? 'Radiant' : 'Dire', col = last >= 0 ? '#4dcc90' : '#e06868';
+  host.innerHTML =
+    '<div class="hint" style="margin:0 0 6px">Net-worth timeline · ' + s.length + ' samples · ' + esc(_ldFmtClock(t1)) +
+      ' · lead <b style="color:' + col + '">' + lead + ' +' + (Math.abs(last) / 1000).toFixed(1) + 'k</b></div>' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="width:100%;height:72px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:6px">' +
+      '<line x1="0" y1="' + midY + '" x2="' + W + '" y2="' + midY + '" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>' +
+      '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="2" vector-effect="non-scaling-stroke"/>' +
+    '</svg>' +
+    '<div class="hint" style="display:flex;justify-content:space-between;margin-top:2px"><span>Radiant ahead ↑ · Dire ahead ↓</span><span>' + esc(_ldFmtClock(t0)) + ' → ' + esc(_ldFmtClock(t1)) + '</span></div>';
 }
 let _ldRawOpen = false, _ldRawTimer = null;
 function ldToggleDotaRaw(btn) {
