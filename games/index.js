@@ -38,7 +38,8 @@ function adapterDescriptor(gameId) {
     label:            a.label,
     positions:        a.roster.positions.slice(),
     teamSize:         a.roster.teamSize,
-    rosterIds:        a.roster.idScheme || null, // 'steam' (CS2) → Steam ID + HLTV roster fields; else op.gg/none
+    rosterIds:        a.roster.idScheme || null, // 'steam' (CS2, Dota) → Steam ID roster field for live-data match
+    rosterLinks:      a.roster.links || null,    // 'hltv' (CS2) → HLTV.org roster link column
     pregameKind:      a.pregame.kind,      // 'champ-draft' | 'none' | (later) 'map-veto' | …
     pickEntity:       a.pregame.pickEntity, // 'champion' | null | (later) 'hero' | 'agent' | …
     supportsFearless: !!a.pregame.fearless,

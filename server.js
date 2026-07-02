@@ -344,7 +344,9 @@ function ingestDotaGsi(b, res) {
   d.samples = tl.samples.length;
   d.nwLead  = lastS ? (lastS.rnw - lastS.dnw) : 0;      // Radiant net-worth lead (+ = Radiant ahead)
   const dchg = handleDotaDraftAuto(b);                  // Phase C: stage / apply the live draft
-  const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players, d.samples].join('|');
+  d.matchPlayers = dotaMatchPlayers(b);                 // Phase D: per-player hero + stats (by steamid)
+  d.winTeam = map.win_team === 'radiant' ? 'team1' : (map.win_team === 'dire' ? 'team2' : '');
+  const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players, d.samples, d.winTeam].join('|');
   const now = Date.now();
   if (dchg || sig !== _dotaSig || now - _dotaLastBcast > 3000) { _dotaSig = sig; _dotaLastBcast = now; broadcast(); }
   return res.json({ ok: true });
@@ -479,10 +481,36 @@ const DOTA_SAMPLE_INTERVAL = 15;   // seconds of game clock between samples
 let _dotaTimeline = { matchId: '', samples: [] };
 function _dotaTeamAgg(b, teamKey) {
   const t = b && b.player && b.player[teamKey]; if (!t || typeof t !== 'object') return null;
+  const h = (b.hero && b.hero[teamKey]) || {};   // level lives in the hero block, not the player block
   let nw = 0, k = 0, lvl = 0, n = 0;
   Object.keys(t).forEach(pk => { const p = t[pk]; if (!p || typeof p !== 'object') return;
-    nw += (p.net_worth | 0); k += (p.kills | 0); lvl += (p.level | 0); n++; });
+    nw += (p.net_worth | 0); k += (p.kills | 0); lvl += ((h[pk] && h[pk].level) | 0); n++; });
   return n ? { nw, k, lvl } : null;
+}
+// Per-player match data (Phase D): pair the player block (stats + steamid) with the hero block
+// (hero + level), keyed to OUR teams (GSI team2=Radiant→team1, team3=Dire→team2). gsiName is kept
+// ONLY for name-fallback matching to the roster — it is never shown on air (roster name wins).
+function dotaMatchPlayers(b) {
+  const pl = b.player || {}, he = b.hero || {}, out = { team1: [], team2: [] };
+  const teamMap = { team2: 'team1', team3: 'team2' };
+  ['team2', 'team3'].forEach(gk => {
+    const pteam = pl[gk]; if (!pteam || typeof pteam !== 'object') return;
+    const hteam = he[gk] || {};
+    Object.keys(pteam).forEach(pk => {
+      const p = pteam[pk]; if (!p || typeof p !== 'object') return;
+      const h = hteam[pk] || {};
+      const hero = h.name ? _heroFromClass(h.name) : null;
+      out[teamMap[gk]].push({
+        steamid: String(p.steamid || ''), gsiName: String(p.name || ''), slot: p.team_slot | 0,
+        hero: hero ? hero.name : '', heroImg: hero ? hero.img : '', level: h.level | 0, alive: h.alive !== false,
+        kills: p.kills | 0, deaths: p.deaths | 0, assists: p.assists | 0,
+        netWorth: p.net_worth | 0, gpm: p.gpm | 0, xpm: p.xpm | 0,
+        lastHits: p.last_hits | 0, denies: p.denies | 0, heroDamage: p.hero_damage | 0,
+      });
+    });
+    out[teamMap[gk]].sort((a, b) => a.slot - b.slot);
+  });
+  return out;
 }
 function recordDotaSample(b) {
   const map = b.map || {};
@@ -959,7 +987,7 @@ const makeDefault = () => ({
     players: {},     // phase C: per-steamid live stats { [steamid]: { name, team, kills, deaths, assists, mvps } }
     // Dota 2 GSI (Phase A: ingest pipe + inspector; parsed summary only — raw + timeline held server-side).
     // draftSuggest (Phase C) = latest parsed live draft awaiting operator apply / preview.
-    dota:    { lastSeen: 0, matchId: '', gameState: '', clockTime: 0, gameTime: 0, radiantScore: 0, direScore: 0, paused: false, draft: false, players: 0, provider: '', samples: 0, nwLead: 0, draftSuggest: null },
+    dota:    { lastSeen: 0, matchId: '', gameState: '', clockTime: 0, gameTime: 0, radiantScore: 0, direScore: 0, paused: false, draft: false, players: 0, provider: '', samples: 0, nwLead: 0, draftSuggest: null, matchPlayers: { team1: [], team2: [] }, winTeam: '' },
   },
   players: {
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),

@@ -12,6 +12,7 @@ module.exports = {
     positions: ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'], // Dota positions 1–5
     teamSize:  5,
     hasSubs:   true,
+    idScheme:  'steam',  // roster carries optional Steam ID → match GSI live players (name never shown)
   },
   pregame: {
     kind:       'hero-draft',  // Captains Mode pick/ban, shown as a broadcast scene (later sub-step)

@@ -12,6 +12,7 @@ module.exports = {
     teamSize:  5,
     hasSubs:   true,
     idScheme:  'steam',  // roster carries optional Steam ID (live-data match override) + HLTV link
+    links:     'hltv',   // roster shows an HLTV.org link field (CS2-specific)
   },
   pregame: {
     kind:       'map-veto',  // shown as a broadcast scene; operator-entered

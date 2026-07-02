@@ -51,6 +51,7 @@ function isHeroDraft()      { const a = gameAdapter(); return a ? a.pregameKind 
 function supportsFearless() { const a = gameAdapter(); return a ? !!a.supportsFearless : true; }
 function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvider === 'opgg'  : true; }
 function supportsSteamId()  { const a = gameAdapter(); return a ? a.rosterIds === 'steam'     : false; }
+function supportsHltv()     { const a = gameAdapter(); return a ? a.rosterLinks === 'hltv'    : false; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
 function supportsHeroes()   { const a = gameAdapter(); return a ? a.assetSource === 'dota-heroes' : false; }
 function supportsLiveData()  { const a = gameAdapter(); return a ? !!a.liveData : false; } // has a GSI feed (CS2, Dota 2)
@@ -3459,7 +3460,7 @@ function renderPlayerEditors(players) {
 
     starterSec.querySelectorAll('.hltv-link').forEach(function(link) {
       const p = list[parseInt(link.dataset.index)];
-      const url = (p && supportsSteamId()) ? hltvUrlOf(p.hltvUrl) : '';
+      const url = (p && supportsHltv()) ? hltvUrlOf(p.hltvUrl) : '';
       if (url) { link.href = url; link.style.display = ''; }
       else      { link.href = '#'; link.style.display = 'none'; }
     });
@@ -3984,7 +3985,8 @@ function renderEditPlayers(players, subs) {
   let html='<div class="roster-section-label">STARTING LINEUP</div>';
   const showOpgg = supportsOpgg();   // Region / Riot ID columns only for op.gg-intel games
   const showRoles = hasRoles();      // Role column only for games with defined positions
-  const showSteam = supportsSteamId(); // Steam ID / HLTV columns only for CS2-style rosters
+  const showSteam = supportsSteamId(); // Steam ID column for steam-roster games (CS2, Dota)
+  const showHltv  = supportsHltv();    // HLTV.org link column — CS2 only
   html+=adapterRoles().map(function(role,i){
     const p=players[i]||{};
     return '<div class="player-row-edit">'+
@@ -3998,11 +4000,13 @@ function renderEditPlayers(players, subs) {
         '<input type="text" class="ep-riot-id" data-index="'+i+'" placeholder="Name#TAG" value="'+esc(p.riotId||'')+'">'+
       '</div>') : '')+
       (showSteam ? (
-      // Steam ID = optional live-data match override (matching is by in-game name otherwise);
-      // HLTV URL = manual link only (no scraping) surfaced as an operator shortcut.
+      // Steam ID = optional live-data match key (matching falls back to in-game name; the roster
+      // name is always what's shown on air).
       '<div><div class="player-num">Steam ID</div>'+
         '<input type="text" class="ep-steamid" data-index="'+i+'" placeholder="765… (optional)" value="'+esc(p.steamid||'')+'">'+
-      '</div>'+
+      '</div>') : '')+
+      (showHltv ? (
+      // HLTV URL = manual link only (no scraping) surfaced as an operator shortcut (CS2).
       '<div><div class="player-num">HLTV URL</div>'+
         '<input type="text" class="ep-hltv" data-index="'+i+'" placeholder="hltv.org/… (optional)" value="'+esc(p.hltvUrl||'')+'">'+
       '</div>') : '')+
