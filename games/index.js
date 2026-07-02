@@ -48,6 +48,7 @@ function adapterDescriptor(gameId) {
     defaultMapPool:   a.defaultMapPool || null, // for "load default pool" in map-veto control
     defaultDraftOrder: a.defaultDraftOrder || null, // for "load default order" in hero-draft control
     liveData:         !!(a.liveData && a.liveData.gsi), // has a GSI live-data integration (CS2, Dota 2)
+    hiddenGraphics:   (a.hiddenGraphics || []).slice(), // graphics hidden for this game (nav/bar/bus/keybinds)
     maturity:         gameMaturity(gameId),     // control-room badge only; never on-air
   };
 }

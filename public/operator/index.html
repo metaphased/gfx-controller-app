@@ -1331,9 +1331,11 @@ function _gfxKeyLabel(state, key) {
 // relevant to the active game (their assignments are preserved in the config).
 const _OPS_GFX_CAP = { headToHead:'champ-draft', draft:'champ-draft', mapVeto:'map-veto', postGame:'map-veto', mapIntro:'map-veto', heroDraft:'hero-draft' };
 function _opsGfxKeyActive(key) {
-  const cap = _OPS_GFX_CAP[String(key).split(':')[0]];
-  if (!cap) return true;
+  const k = String(key).split(':')[0];
   const a = gameAdapter();
+  if (a && (a.hiddenGraphics || []).indexOf(k) >= 0) return false;   // hidden for this game (e.g. Dota spotlight)
+  const cap = _OPS_GFX_CAP[k];
+  if (!cap) return true;
   if (cap === 'champ-draft') return a ? a.pregameKind === 'champ-draft' : true;
   if (cap === 'map-veto')    return a ? a.pregameKind === 'map-veto'    : false;
   if (cap === 'hero-draft')  return a ? a.pregameKind === 'hero-draft'  : false;

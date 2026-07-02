@@ -55,6 +55,7 @@ function supportsHltv()     { const a = gameAdapter(); return a ? a.rosterLinks 
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
 function supportsHeroes()   { const a = gameAdapter(); return a ? a.assetSource === 'dota-heroes' : false; }
 function supportsLiveData()  { const a = gameAdapter(); return a ? !!a.liveData : false; } // has a GSI feed (CS2, Dota 2)
+function _gfxHidden(key)     { const a = gameAdapter(); return !!(a && (a.hiddenGraphics || []).indexOf(key) >= 0); } // graphic hidden for this game
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
 function hasRoles()         { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
 // Map-veto games don't advance match.currentGameNum; the current game is the first map
@@ -97,6 +98,15 @@ function applyAdapterUI() {
     // that should appear where the LoL `cap-<x>` copy is hidden).
     var notCls = cls.replace('cap-', 'cap-not-');
     document.querySelectorAll('.' + notCls).forEach(function(el){ el.style.display = caps[cls] ? 'none' : ''; });
+  });
+  // Per-game hidden graphics (adapter.hiddenGraphics): hide the nav item + live-bar group for each,
+  // and restore them for games that don't hide it. Only touches cap-less graphics (cap'd ones are
+  // owned by the loop above), so it's safe to force display on/off here.
+  (typeof GRAPHIC_MAP !== 'undefined' ? GRAPHIC_MAP : []).forEach(function(gfx){
+    if (gfx.cap) return;
+    var hide = _gfxHidden(gfx.key), disp = hide ? 'none' : '';
+    var nav = document.querySelector('.nav-item[data-tab="' + gfx.tab + '"]'); if (nav) nav.style.display = disp;
+    var grp = document.getElementById('lbar-group-' + gfx.key); if (grp) grp.style.display = disp;
   });
 }
 
@@ -891,7 +901,7 @@ function syncBusConfig(s) {
 
   // Only offer the current game's graphics for assignment (mirrors the output-URL list);
   // the other game's graphics stay hidden, and their assignments are preserved on save.
-  const assignableGfx = GRAPHIC_MAP.filter(function(gfx){ return !gfx.noBus && _gfxCapActive(gfx.cap); });
+  const assignableGfx = GRAPHIC_MAP.filter(function(gfx){ return !gfx.noBus && !_gfxHidden(gfx.key) && _gfxCapActive(gfx.cap); });
 
   const _busCheckbox = function(i, key, label, checked) {
     return '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap">' +
@@ -1130,8 +1140,10 @@ function renderDashboard(s) {
     gfxEl.innerHTML = '<div class="card-title">Live Graphics</div>' +
       '<div class="dash-gfx-grid">' +
         GRAPHIC_MAP.filter(function(gfx) {
+          if (_gfxHidden(gfx.key)) return false;
           if (gfx.key === 'draft' || gfx.key === 'headToHead') return isChampDraft();
-          if (gfx.key === 'mapVeto') return isMapVeto();
+          if (gfx.key === 'mapVeto' || gfx.key === 'postGame' || gfx.key === 'mapIntro') return isMapVeto();
+          if (gfx.key === 'heroDraft') return isHeroDraft();
           return true;
         }).map(function(gfx) {
           var active = s[gfx.key] && s[gfx.key].visible;
