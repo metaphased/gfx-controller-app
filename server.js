@@ -601,6 +601,37 @@ function recordDotaKillEvents(b, t) {
   } else if (tf.win && t - tf.win.last > TEAMFIGHT_WINDOW) tf.win = null;
   tf.total = total;
 }
+// Building destructions from the GSI `buildings` block. Confirmed vs a real payload: keyed radiant/dire
+// (NOT team2/team3), each building { health, max_health }, and DESTROYED buildings VANISH from the block —
+// so a key alive last payload but absent (or health 0) now = destroyed. Classify by key: fort=ancient,
+// rax=barracks, tower=tower; side goodguys/good_=Radiant→team1, badguys/bad_=Dire→team2 (side = owner).
+function _classifyBuilding(key) {
+  const k = String(key);
+  const side = /badguys|bad_/.test(k) ? 'team2' : 'team1';
+  const type = /fort/.test(k) ? 'ancient' : /rax/.test(k) ? 'barracks' : /tower/.test(k) ? 'tower' : null;
+  return type ? { type, side } : null;
+}
+function recordDotaBuildings(b, t) {
+  const bl = b.buildings; if (!bl || typeof bl !== 'object') return;   // no buildings block this payload → skip
+  const tl = _dotaTimeline;
+  const cur = {}; let sawSide = false;                                 // current alive set: "<side>|<key>"
+  ['radiant', 'dire'].forEach(sd => {
+    const grp = bl[sd]; if (!grp || typeof grp !== 'object') return;
+    sawSide = true;
+    Object.keys(grp).forEach(key => { const bd = grp[key]; if (bd && (bd.health == null || bd.health > 0)) cur[sd + '|' + key] = true; });
+  });
+  if (!sawSide) return;
+  if (!tl._buildings) { tl._buildings = cur; return; }                 // first snapshot = baseline, no events
+  Object.keys(tl._buildings).forEach(sk => {                           // was alive → now gone = destroyed
+    const sd = sk.split('|')[0];
+    if (!bl[sd] || cur[sk]) return;                                    // side absent this payload, or still alive
+    const info = _classifyBuilding(sk.slice(sk.indexOf('|') + 1));
+    if (info) tl.events.push({ t, type: info.type, clock: t, side: info.side });
+  });
+  const merged = {};                                                   // retain keys for sides not reported this payload
+  Object.keys(tl._buildings).forEach(sk => { if (!bl[sk.split('|')[0]]) merged[sk] = true; });
+  tl._buildings = Object.assign(merged, cur);
+}
 function recordDotaSample(b) {
   const map = b.map || {};
   if (!/GAME_IN_PROGRESS/.test(String(map.game_state || ''))) return;   // only once the match is running
@@ -613,10 +644,11 @@ function recordDotaSample(b) {
   if (s.length && t < s[s.length - 1].t - 2) {                                                // replay rewound → restart
     s = _dotaTimeline.samples = []; _dotaTimeline.events = [];
     _dotaTimeline._roshanState = _dotaTimeline._tormentorState = undefined;
-    _dotaTimeline._kills = _dotaTimeline._tf = undefined;
+    _dotaTimeline._kills = _dotaTimeline._tf = _dotaTimeline._buildings = undefined;
   }
   recordDotaEvents(map, t);                                                                   // every payload (not throttled)
   recordDotaKillEvents(b, t);                                                                 // multikill + teamfight markers
+  recordDotaBuildings(b, t);                                                                  // tower / barracks / ancient markers
   const rk = map.radiant_score | 0, dk = map.dire_score | 0;
   const last = s[s.length - 1];
   const scoreChanged = last && (rk !== last.rk || dk !== last.dk);
