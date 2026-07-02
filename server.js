@@ -554,6 +554,53 @@ function recordDotaEvents(map, t) {
     _dotaTimeline[prevKey] = cur;
   });
 }
+// Kill-derived markers (GSI has no native multikill/teamfight event, so infer from kill deltas):
+//  • MULTIKILL — one hero gains ≥3 kills within a short game-clock window (triple/ultra/rampage). Emitted
+//    once per window, count upgraded in place as the streak grows.
+//  • TEAMFIGHT — combined hero kills (both sides) within a window cross a threshold = a big fight swing.
+// Both windows chain further kills while active and expire after the window with no new kills. Runs every
+// payload (not sample-throttled) for resolution; tracking state lives on _dotaTimeline (reset w/ match/rewind).
+const MULTIKILL_WINDOW = 18, TEAMFIGHT_WINDOW = 20, TEAMFIGHT_MIN = 3;
+function recordDotaKillEvents(b, t) {
+  const tl = _dotaTimeline, pl = b.player || {}, he = b.hero || {};
+  const teamMap = { team2: 'team1', team3: 'team2' };
+  const track = tl._kills || (tl._kills = {});
+  ['team2', 'team3'].forEach(gk => {
+    const pteam = pl[gk]; if (!pteam || typeof pteam !== 'object') return;
+    const hteam = he[gk] || {};
+    Object.keys(pteam).forEach(pk => {
+      const p = pteam[pk]; if (!p || typeof p !== 'object') return;
+      const id = String(p.steamid || (gk + pk)), k = p.kills | 0, st = track[id];
+      if (!st) { track[id] = { k, win: null }; return; }
+      const delta = k - st.k;
+      if (delta > 0) {
+        if (st.win && t - st.win.last <= MULTIKILL_WINDOW) { st.win.count += delta; st.win.last = t; }
+        else st.win = { count: delta, start: t, last: t, ev: null };
+        const w = st.win;
+        if (w.count >= 3) {
+          if (!w.ev) {
+            const hero = (hteam[pk] && hteam[pk].name) ? _heroFromClass(hteam[pk].name) : null;
+            w.ev = { t: w.start, type: 'multikill', clock: w.start, team: teamMap[gk], hero: hero ? hero.name : '', count: w.count };
+            tl.events.push(w.ev);
+          } else w.ev.count = w.count;    // upgrade triple → ultra → rampage in place
+        }
+      } else if (st.win && t - st.win.last > MULTIKILL_WINDOW) st.win = null;
+      st.k = k;
+    });
+  });
+  const map = b.map || {}, total = (map.radiant_score | 0) + (map.dire_score | 0);
+  const tf = tl._tf || (tl._tf = { total, win: null }), d = total - tf.total;
+  if (d > 0) {
+    if (tf.win && t - tf.win.last <= TEAMFIGHT_WINDOW) { tf.win.count += d; tf.win.last = t; }
+    else tf.win = { count: d, start: t, last: t, ev: null };
+    const w = tf.win;
+    if (w.count >= TEAMFIGHT_MIN) {
+      if (!w.ev) { w.ev = { t: w.start, type: 'teamfight', clock: w.start, kills: w.count }; tl.events.push(w.ev); }
+      else w.ev.kills = w.count;
+    }
+  } else if (tf.win && t - tf.win.last > TEAMFIGHT_WINDOW) tf.win = null;
+  tf.total = total;
+}
 function recordDotaSample(b) {
   const map = b.map || {};
   if (!/GAME_IN_PROGRESS/.test(String(map.game_state || ''))) return;   // only once the match is running
@@ -566,8 +613,10 @@ function recordDotaSample(b) {
   if (s.length && t < s[s.length - 1].t - 2) {                                                // replay rewound → restart
     s = _dotaTimeline.samples = []; _dotaTimeline.events = [];
     _dotaTimeline._roshanState = _dotaTimeline._tormentorState = undefined;
+    _dotaTimeline._kills = _dotaTimeline._tf = undefined;
   }
   recordDotaEvents(map, t);                                                                   // every payload (not throttled)
+  recordDotaKillEvents(b, t);                                                                 // multikill + teamfight markers
   const rk = map.radiant_score | 0, dk = map.dire_score | 0;
   const last = s[s.length - 1];
   const scoreChanged = last && (rk !== last.rk || dk !== last.dk);
