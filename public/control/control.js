@@ -891,7 +891,7 @@ function syncBusConfig(s) {
 
   // Only offer the current game's graphics for assignment (mirrors the output-URL list);
   // the other game's graphics stay hidden, and their assignments are preserved on save.
-  const assignableGfx = GRAPHIC_MAP.filter(function(gfx){ return _gfxCapActive(gfx.cap); });
+  const assignableGfx = GRAPHIC_MAP.filter(function(gfx){ return !gfx.noBus && _gfxCapActive(gfx.cap); });
 
   const _busCheckbox = function(i, key, label, checked) {
     return '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap">' +
@@ -4236,7 +4236,7 @@ const GRAPHIC_MAP = [
   { key: 'tournamentStructure', tab: 'tournament-structure-gfx', label: 'Tournament Structure' },
   { key: 'prizepool',           tab: 'prizepool',                label: 'Prizepool'            },
   { key: 'breakScreen',         tab: 'break',                    label: 'Break Screen'         },
-  { key: 'ticker',      tab: 'ticker',      label: 'Ticker'      },
+  { key: 'ticker',      tab: 'ticker',      label: 'Ticker', noBus: true }, // persistent lower band — run as its own browser source, not a swap-in bus graphic
   { key: 'winScreen',   tab: 'win',         label: 'Win Screen'  },
   { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
   { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game', cap: 'map-veto' },
