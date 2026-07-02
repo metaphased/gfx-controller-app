@@ -1142,7 +1142,8 @@ function renderDashboard(s) {
         GRAPHIC_MAP.filter(function(gfx) {
           if (_gfxHidden(gfx.key)) return false;
           if (gfx.key === 'draft' || gfx.key === 'headToHead') return isChampDraft();
-          if (gfx.key === 'mapVeto' || gfx.key === 'postGame' || gfx.key === 'mapIntro') return isMapVeto();
+          if (gfx.key === 'mapVeto' || gfx.key === 'mapIntro') return isMapVeto();
+          if (gfx.key === 'postGame') return supportsLiveData();
           if (gfx.key === 'heroDraft') return isHeroDraft();
           return true;
         }).map(function(gfx) {
@@ -4251,14 +4252,14 @@ const GRAPHIC_MAP = [
   { key: 'ticker',      tab: 'ticker',      label: 'Ticker', noBus: true }, // persistent lower band — run as its own browser source, not a swap-in bus graphic
   { key: 'winScreen',   tab: 'win',         label: 'Win Screen'  },
   { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
-  { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game', cap: 'map-veto' },
+  { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game', cap: 'live-data' }, // CS2 + Dota (both have GSI)
   { key: 'mapIntro',    tab: 'map-intro-gfx', label: 'Map Intro', cap: 'map-veto' },
   { key: 'heroDraft',   tab: 'hero-draft-gfx', label: 'Hero Draft', cap: 'hero-draft' },
 ];
 // Is a graphic's capability active for the current game? (champ-draft = LoL-style draft,
 // map-veto = CS2-style pre-game). Used to scope output URLs + bus routing per game.
 function _gfxCapActive(cap) {
-  return cap === 'champ-draft' ? isChampDraft() : cap === 'map-veto' ? isMapVeto() : cap === 'hero-draft' ? isHeroDraft() : true;
+  return cap === 'champ-draft' ? isChampDraft() : cap === 'map-veto' ? isMapVeto() : cap === 'hero-draft' ? isHeroDraft() : cap === 'live-data' ? supportsLiveData() : true;
 }
 
 // ── Map Veto (CS2 etc.) ──────────────────────────────────────────────────────

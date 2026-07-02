@@ -118,10 +118,68 @@ function roundsHtml(state, row) {
   return '<div class="pg-rounds-inner">' + cells + '</div>';
 }
 
+// ── Dota post-game (hero scoreboard from live GSI, Phase D) ──────────────────────
+function isDotaGame(state) { var a = state.adapter; return a ? a.pickEntity === 'hero' : ((state.match || {}).game === 'dota2'); }
+// Resolve a GSI match-player to the ROSTER display name (by Steam ID, then by name) — the roster
+// name is ALWAYS what's shown; the GSI in-game name is only ever used to find the match.
+function dotaRosterName(state, teamKey, p) {
+  var roster = ((state.players || {})[teamKey]) || [];
+  var sid = String(p.steamid || '');
+  if (sid) { var bySid = roster.filter(function (r) { return String(r.steamid || '') === sid; })[0]; if (bySid && bySid.handle) return bySid.handle; }
+  var gn = norm(p.gsiName);
+  if (gn) { var byName = roster.filter(function (r) { return norm(r.handle) === gn || norm(r.name) === gn; })[0]; if (byName && byName.handle) return byName.handle; }
+  return '';   // no roster match → fall back to the hero name (never the GSI name)
+}
+function fmtNw(n) { n = n | 0; return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
+function dotaRowHtml(state, teamKey, p) {
+  var name = dotaRosterName(state, teamKey, p) || p.hero || '';
+  var thumb = p.heroImg ? '<span class="pg-hero" style="background-image:url(' + esc(p.heroImg) + ')"></span>' : '<span class="pg-hero"></span>';
+  return '<div class="pg-row">' +
+    '<span class="pg-pname">' + thumb + '<span class="pg-pn-txt">' + esc(name) + (p.hero ? '<span class="pg-hero-sub">' + esc(p.hero) + '</span>' : '') + '</span></span>' +
+    '<span class="pg-stat pg-k">' + (p.kills | 0) + '</span>' +
+    '<span class="pg-stat pg-d">' + (p.deaths | 0) + '</span>' +
+    '<span class="pg-stat pg-a">' + (p.assists | 0) + '</span>' +
+    '<span class="pg-stat pg-nw">' + fmtNw(p.netWorth) + '</span>' +
+    '<span class="pg-stat pg-gpm">' + (p.gpm | 0) + '</span>' +
+  '</div>';
+}
+function dotaColHtml(state, key, players, isWinner) {
+  var tm = teamMeta(state, key), showLogos = !(state.postGame && state.postGame.showLogos === false);
+  var color = key === 'team1' ? 'var(--hd-rad,#2fbf6b)' : 'var(--hd-dire,#e14b3d)';   // Radiant green / Dire red
+  var head = '<div class="pg-col-head" style="--team-color:' + color + '">' +
+    (showLogos && tm.logo ? '<div class="pg-col-logo" style="background-image:url(' + esc(tm.logo) + ')"></div>' : '') +
+    '<span class="pg-col-name">' + esc(tm.name) + '</span>' +
+    '<span class="pg-col-side">' + (key === 'team1' ? 'RADIANT' : 'DIRE') + '</span>' +
+    (isWinner ? '<span class="pg-win-badge">WIN</span>' : '') +
+  '</div>';
+  var header = '<div class="pg-row pg-row-head">' +
+    '<span class="pg-pname">Player</span>' +
+    '<span class="pg-stat">K</span><span class="pg-stat">D</span><span class="pg-stat">A</span>' +
+    '<span class="pg-stat">NET</span><span class="pg-stat">GPM</span>' +
+  '</div>';
+  var rows = players.length ? players.map(function (p) { return dotaRowHtml(state, key, p); }).join('') : '<div class="pg-empty">No live data</div>';
+  return '<div class="pg-col-inner' + (isWinner ? ' pg-winner' : '') + '" style="--team-color:' + color + '">' + head + header + rows + '</div>';
+}
+function renderDota(state) {
+  var d = (state.live && state.live.dota) || {}, mp = d.matchPlayers || { team1: [], team2: [] };
+  var t1 = teamMeta(state, 'team1'), t2 = teamMeta(state, 'team2'), win = d.winTeam || '';
+  $('pg-map').textContent = '';
+  $('pg-h-t1').textContent = t1.name; $('pg-h-t2').textContent = t2.name;
+  $('pg-h-t1').className = 'pg-h-team' + (win === 'team1' ? ' pg-h-win' : '');
+  $('pg-h-t2').className = 'pg-h-team' + (win === 'team2' ? ' pg-h-win' : '');
+  $('pg-h-score').innerHTML = '<b class="' + (win === 'team1' ? 'pg-sc-win' : '') + '">' + (d.radiantScore | 0) + '</b>' +
+    '<span class="pg-sc-sep">:</span><b class="' + (win === 'team2' ? 'pg-sc-win' : '') + '">' + (d.direScore | 0) + '</b>';
+  $('pg-rounds').innerHTML = '';
+  $('pg-col-t1').innerHTML = dotaColHtml(state, 'team1', mp.team1 || [], win === 'team1');
+  $('pg-col-t2').innerHTML = dotaColHtml(state, 'team2', mp.team2 || [], win === 'team2');
+}
+
 function renderAll(state) {
-  var row = resolveRow(state);
   var pg = state.postGame || {};
   $('pg-title').textContent = pg.title || 'POST-GAME';
+  var root = $('pg-root'); if (root) root.classList.toggle('pg-dota', isDotaGame(state));
+  if (isDotaGame(state)) { renderDota(state); return; }
+  var row = resolveRow(state);
   if (!row) {
     $('pg-map').textContent = '';
     $('pg-h-score').textContent = '';
@@ -147,6 +205,12 @@ function renderAll(state) {
 
 // A signature so we only re-render the inner content (not re-fire the entrance) when data changes.
 function contentSig(state) {
+  if (isDotaGame(state)) {
+    var d = (state.live && state.live.dota) || {};
+    return JSON.stringify(['dota', d.winTeam, d.radiantScore, d.direScore, d.matchPlayers,
+      (state.postGame || {}).showLogos, (state.match && state.match.team1 && state.match.team1.name),
+      (state.match && state.match.team2 && state.match.team2.name)]);
+  }
   var row = resolveRow(state);
   return JSON.stringify([row && row.map, row && row.t1Rounds, row && row.t2Rounds, row && row.winner,
     row && (row.roundHistory || []).length, (state.postGame || {}).showRounds, (state.postGame || {}).showLogos,
