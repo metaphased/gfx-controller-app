@@ -5299,6 +5299,31 @@ async function syncHeroes() {
   renderAssetResults(res.results);
 }
 
+// CS2 map assets — the /api/mapart proxy downloads each pool map's art from the community repo on
+// demand + caches it; "refresh" re-fetches the CURRENT tournament map pool only (never every map).
+function _mapPoolNames() {
+  return (((window._state || {}).tournament || {}).mapPool || []).map(function (m) { return m && m.name; }).filter(Boolean);
+}
+function checkMapAssets() {
+  const el = g('map-asset-status'); if (!el) return;
+  const pool = _mapPoolNames();
+  el.innerHTML = pool.length
+    ? '<span>Map pool (' + pool.length + '): ' + escHtml(pool.join(', ')) + '</span>'
+    : '<span style="color:var(--text-dim)">No map pool set yet — add maps in Tournament Setup → Map Pool.</span>';
+}
+async function syncMapAssets(btn) {
+  const el = g('map-asset-status'); const pool = _mapPoolNames();
+  if (!pool.length) { checkMapAssets(); return; }
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Downloading…'; }
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Downloading art for ' + pool.length + ' pool map' + (pool.length === 1 ? '' : 's') + '…</span>';
+  const res = await api('/api/mapart/refresh', {});
+  if (btn) { btn.disabled = false; btn.textContent = orig; }
+  if (el) el.innerHTML = (res && res.ok)
+    ? '<span style="color:#7ee2a8">✓ Downloaded / refreshed ' + (res.maps || 0) + ' pool map' + ((res.maps || 0) === 1 ? '' : 's') + '.</span>'
+    : '<span style="color:var(--danger,#f87171)">Refresh failed.</span>';
+}
+
 function loadUsersTab() {
   _editingUserId = null;
   fetch('/api/users').then(r => r.json()).then(data => {

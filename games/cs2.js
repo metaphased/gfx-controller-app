@@ -26,5 +26,5 @@ module.exports = {
   // exists (settings.mapPoolDefaults.cs2 overrides this). Names only: the map-veto graphic
   // auto-resolves each map's image/icon from its `de_<name>` slug (community
   // MurkyYT/cs2-map-icons repo), with the per-map image field as a custom override.
-  defaultMapPool: ['Mirage', 'Inferno', 'Nuke', 'Ancient', 'Anubis', 'Dust II', 'Overpass'],
+  defaultMapPool: ['Mirage', 'Inferno', 'Nuke', 'Ancient', 'Anubis', 'Dust II', 'Cache'],
 };

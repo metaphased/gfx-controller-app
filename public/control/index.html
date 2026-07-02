@@ -2852,6 +2852,39 @@
             <div id="gfx-url-list" style="margin-top:10px;display:flex;flex-direction:column;gap:6px"></div>
           </div>
 
+          <!-- Broadcast Assets — download/update the active game's art from its source repo.
+               Only the current game's card shows (Champions=LoL, Heroes=Dota, Maps=CS2). -->
+          <div class="card cap-assets" style="margin-bottom:16px">
+            <div class="card-title">Champion Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· League of Legends</span></div>
+            <p class="hint" style="margin-bottom:12px">Downloads champion tiles, centered images, and role icons from DDragon. Only missing files are fetched — existing files are never overwritten unless you force-update roles.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button class="btn btn-sm" onclick="checkAssets()">Check Status</button>
+              <button class="btn btn-primary btn-sm" onclick="syncAssets(false)">Sync Missing</button>
+              <button class="btn btn-sm" onclick="syncAssets(true)">Sync + Force Roles</button>
+            </div>
+            <div id="asset-status" style="font-size:12px;color:var(--text-dim)"></div>
+          </div>
+
+          <div class="card cap-heroes" style="margin-bottom:16px">
+            <div class="card-title">Hero Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· Dota 2</span></div>
+            <p class="hint" style="margin-bottom:12px">Downloads Dota 2 hero portraits + icons from Valve's CDN (hero list via OpenDota). Only missing files are fetched — existing files are never overwritten.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button class="btn btn-sm" onclick="checkHeroes()">Check Status</button>
+              <button class="btn btn-primary btn-sm" onclick="syncHeroes()">Sync Missing</button>
+            </div>
+            <div id="hero-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
+          </div>
+
+          <div class="card cap-map-veto" style="margin-bottom:16px">
+            <div class="card-title">Map Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· CS2</span></div>
+            <p class="hint" style="margin-bottom:12px">Downloads map art for the maps in your <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament map pool</a> only — not every CS2 map. Run this if a map's art is missing or outdated (e.g. after a map pool change).</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button class="btn btn-sm" onclick="checkMapAssets()">Check Pool</button>
+              <button class="btn btn-primary btn-sm" onclick="syncMapAssets(this)">Download / Update Pool Maps</button>
+            </div>
+            <div id="map-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
+          </div>
+
           <!-- Appearance / UI theme (per-user) -->
           <div class="card">
             <div class="card-title">Appearance</div>
@@ -2917,31 +2950,8 @@
 
         </div><!-- /ps-col left -->
 
-        <!-- Right col: Champion Assets + Accounts -->
+        <!-- Right col: Accounts (broadcast asset downloads moved to Settings → Broadcast Assets) -->
         <div class="ps-col">
-          <!-- Champion Assets -->
-          <div class="card cap-assets" style="margin-bottom:16px">
-            <div class="card-title">Champion Assets</div>
-            <p class="hint" style="margin-bottom:12px">Downloads champion tiles, centered images, and role icons from DDragon. Only missing files are fetched — existing files are never overwritten unless you force-update roles.</p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-              <button class="btn btn-sm" onclick="checkAssets()">Check Status</button>
-              <button class="btn btn-primary btn-sm" onclick="syncAssets(false)">Sync Missing</button>
-              <button class="btn btn-sm" onclick="syncAssets(true)">Sync + Force Roles</button>
-            </div>
-            <div id="asset-status" style="font-size:12px;color:var(--text-dim)"></div>
-          </div>
-
-          <!-- Hero Assets (Dota 2) -->
-          <div class="card cap-heroes" style="margin-bottom:16px">
-            <div class="card-title">Hero Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· Dota 2</span></div>
-            <p class="hint" style="margin-bottom:12px">Downloads Dota 2 hero portraits + icons from Valve's CDN (hero list via OpenDota). Only missing files are fetched — existing files are never overwritten.</p>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
-              <button class="btn btn-sm" onclick="checkHeroes()">Check Status</button>
-              <button class="btn btn-primary btn-sm" onclick="syncHeroes()">Sync Missing</button>
-            </div>
-            <div id="hero-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
-          </div>
-
           <!-- New user form -->
           <div class="card" id="new-user-form" style="display:none;margin-bottom:16px">
             <div class="card-title">New User</div>
