@@ -2876,6 +2876,16 @@
             <div id="hero-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
           </div>
 
+          <div class="card cap-heroes" style="margin-bottom:16px">
+            <div class="card-title">Item Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· Dota 2</span></div>
+            <p class="hint" style="margin-bottom:12px">Downloads Dota 2 item icons from Valve's CDN (item list via OpenDota). Used for the inventory row on the post-game scoreboard. Only missing files are fetched — existing files are never overwritten.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button class="btn btn-sm" onclick="checkItems()">Check Status</button>
+              <button class="btn btn-primary btn-sm" onclick="syncItems()">Sync Missing</button>
+            </div>
+            <div id="item-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
+          </div>
+
           <div class="card cap-map-veto" style="margin-bottom:16px">
             <div class="card-title">Map Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· CS2</span></div>
             <p class="hint" style="margin-bottom:12px">Downloads map art for the maps in your <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament map pool</a> only — not every CS2 map. Run this if a map's art is missing or outdated (e.g. after a map pool change).</p>

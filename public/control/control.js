@@ -5300,6 +5300,32 @@ async function syncHeroes() {
   renderAssetResults(res.results);
 }
 
+// Dota 2 item assets — same flow as hero assets, targeting the Item Assets card.
+async function checkItems() {
+  _assetStatusElId = 'item-asset-status';
+  const el = g(_assetStatusElId);
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Checking…</span>';
+  const res = await api('/api/items/check', {});
+  if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
+  renderAssetResults(res.results);
+}
+async function syncItems() {
+  if (_assetTargetStates !== null) return; // already running
+  _assetStatusElId = 'item-asset-status';
+  const el = g(_assetStatusElId);
+  _assetTargetStates = {};
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
+  socket.on('assets:progress', _onAssetProgress);
+  const res = await api('/api/items/sync', {});
+  socket.off('assets:progress', _onAssetProgress);
+  _assetTargetStates = null;
+  if (!res || res.error) {
+    if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml((res && res.error) || 'Request failed') + '</span>';
+    return;
+  }
+  renderAssetResults(res.results);
+}
+
 // CS2 map assets — the /api/mapart proxy downloads each pool map's art from the community repo on
 // demand + caches it; "refresh" re-fetches the CURRENT tournament map pool only (never every map).
 function _mapPoolNames() {

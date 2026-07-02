@@ -14,6 +14,8 @@ public/graphics/head2head/champions/
 public/graphics/head2head/champions-splash/
 # Dota 2 hero art — downloaded via Settings → Hero Assets / scripts/sync-heroes.js
 public/heroes/
+# Dota 2 item icons — downloaded via Settings → Item Assets / scripts/sync-items.js
+public/items/
 
 # Logs
 *.log

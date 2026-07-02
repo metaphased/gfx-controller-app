@@ -371,6 +371,34 @@ function _heroFromClass(cls) {
   const slug = String(cls).replace(/^npc_dota_hero_/, '').toLowerCase();
   return { slug, ...(_heroManifestMap()[slug] || { name: slug, img: '' }) };
 }
+// Item slug → { name, img } via the synced item manifest (cached, mtime-checked). GSI reports an
+// inventory item as `item_<slug>` (e.g. item_blink); stripping the prefix yields the manifest slug.
+let _itemBySlug = null, _itemBySlugMtime = 0;
+function _itemManifestMap() {
+  try {
+    const st = fs.statSync(itemSync.MANIFEST);
+    if (_itemBySlug && st.mtimeMs === _itemBySlugMtime) return _itemBySlug;
+    const list = JSON.parse(fs.readFileSync(itemSync.MANIFEST, 'utf8'));
+    const m = {};
+    (list || []).forEach(it => { if (it && it.slug) m[String(it.slug).toLowerCase()] = { name: it.name || it.slug, img: it.img || '' }; });
+    _itemBySlug = m; _itemBySlugMtime = st.mtimeMs; return m;
+  } catch (e) { return _itemBySlug || {}; }
+}
+function _itemFromName(name) {
+  if (!name || name === 'empty') return null;
+  const slug = String(name).replace(/^item_/, '').toLowerCase();
+  const meta = _itemManifestMap()[slug] || { name: slug, img: '/items/' + slug + '.png' };
+  return { slug, name: meta.name, img: meta.img || '/items/' + slug + '.png' };
+}
+// A player's on-air items from the GSI `items` block (nested items.teamN.playerM like player/hero).
+// Main inventory slot0–slot5 (empties dropped) + the neutral item; backpack/stash omitted.
+function _dotaPlayerItems(itemsTeam, pk) {
+  const inv = itemsTeam && itemsTeam[pk]; if (!inv || typeof inv !== 'object') return [];
+  const out = [];
+  for (let i = 0; i < 6; i++) { const it = _itemFromName(inv['slot' + i] && inv['slot' + i].name); if (it) out.push(it); }
+  const neutral = _itemFromName(inv.neutral0 && inv.neutral0.name); if (neutral) neutral.neutral = true;
+  return neutral ? out.concat([neutral]) : out;
+}
 // ⚠️ CONFIRM AGAINST A REAL PAYLOAD (inspector raw viewer) before trusting: the Captains Mode
 // draft block is assumed to be draft.{team2=Radiant,team3=Dire}.{pickN_class,banN_class} +
 // draft.activeteam (2/3) + draft.pick (bool). App teams: Radiant=team1, Dire=team2.
@@ -478,7 +506,7 @@ setInterval(() => {
 // server-side (not broadcast — fetched on demand via /api/live/dota/timeline). Dota's internal
 // team numbers: 2 = Radiant, 3 = Dire (spectator player block: player.team2.player0 …).
 const DOTA_SAMPLE_INTERVAL = 15;   // seconds of game clock between samples
-let _dotaTimeline = { matchId: '', samples: [] };
+let _dotaTimeline = { matchId: '', samples: [], events: [] };
 function _dotaTeamAgg(b, teamKey) {
   const t = b && b.player && b.player[teamKey]; if (!t || typeof t !== 'object') return null;
   const h = (b.hero && b.hero[teamKey]) || {};   // level lives in the hero block, not the player block
@@ -491,11 +519,11 @@ function _dotaTeamAgg(b, teamKey) {
 // (hero + level), keyed to OUR teams (GSI team2=Radiant→team1, team3=Dire→team2). gsiName is kept
 // ONLY for name-fallback matching to the roster — it is never shown on air (roster name wins).
 function dotaMatchPlayers(b) {
-  const pl = b.player || {}, he = b.hero || {}, out = { team1: [], team2: [] };
+  const pl = b.player || {}, he = b.hero || {}, it = b.items || {}, out = { team1: [], team2: [] };
   const teamMap = { team2: 'team1', team3: 'team2' };
   ['team2', 'team3'].forEach(gk => {
     const pteam = pl[gk]; if (!pteam || typeof pteam !== 'object') return;
-    const hteam = he[gk] || {};
+    const hteam = he[gk] || {}, iteam = it[gk] || {};
     Object.keys(pteam).forEach(pk => {
       const p = pteam[pk]; if (!p || typeof p !== 'object') return;
       const h = hteam[pk] || {};
@@ -506,11 +534,25 @@ function dotaMatchPlayers(b) {
         kills: p.kills | 0, deaths: p.deaths | 0, assists: p.assists | 0,
         netWorth: p.net_worth | 0, gpm: p.gpm | 0, xpm: p.xpm | 0,
         lastHits: p.last_hits | 0, denies: p.denies | 0, heroDamage: p.hero_damage | 0,
+        items: _dotaPlayerItems(iteam, pk),
       });
     });
     out[teamMap[gk]].sort((a, b) => a.slot - b.slot);
   });
   return out;
+}
+// Detect Roshan / Tormentor KILLS from GSI `map` objective state (roshan_state / tormentor_state):
+// a transition FROM "alive" to any respawn/gone state is a kill. Recorded once per transition onto
+// the timeline (with the game clock) so Phase E can draw event markers on the net-worth graph.
+function recordDotaEvents(map, t) {
+  const objectives = [['roshan', map.roshan_state], ['tormentor', map.tormentor_state]];
+  objectives.forEach(([type, raw]) => {
+    const cur = String(raw || '');
+    if (!cur) return;
+    const prevKey = '_' + type + 'State', prev = _dotaTimeline[prevKey];
+    if (prev === 'alive' && cur !== 'alive') _dotaTimeline.events.push({ t, type, clock: t });
+    _dotaTimeline[prevKey] = cur;
+  });
 }
 function recordDotaSample(b) {
   const map = b.map || {};
@@ -518,10 +560,14 @@ function recordDotaSample(b) {
   const rad = _dotaTeamAgg(b, 'team2'), dire = _dotaTeamAgg(b, 'team3');
   if (!rad && !dire) return;                                            // no spectator player data (own-client feed)
   const mid = String(map.matchid || '');
-  if (mid && mid !== _dotaTimeline.matchId) _dotaTimeline = { matchId: mid, samples: [] };  // new match
+  if (mid && mid !== _dotaTimeline.matchId) _dotaTimeline = { matchId: mid, samples: [], events: [] };  // new match
   const t = (map.clock_time != null ? map.clock_time : 0) | 0;
   let s = _dotaTimeline.samples;
-  if (s.length && t < s[s.length - 1].t - 2) { s = _dotaTimeline.samples = []; }             // replay rewound → restart
+  if (s.length && t < s[s.length - 1].t - 2) {                                                // replay rewound → restart
+    s = _dotaTimeline.samples = []; _dotaTimeline.events = [];
+    _dotaTimeline._roshanState = _dotaTimeline._tormentorState = undefined;
+  }
+  recordDotaEvents(map, t);                                                                   // every payload (not throttled)
   const rk = map.radiant_score | 0, dk = map.dire_score | 0;
   const last = s[s.length - 1];
   const scoreChanged = last && (rk !== last.rk || dk !== last.dk);
@@ -1829,7 +1875,7 @@ app.get('/api/live/dota/raw', requireAdmin, (req, res) => {
 });
 // Match timeline (Phase B) — sampled per-team net worth / kills / levels over the match.
 app.get('/api/live/dota/timeline', requireAdmin, (req, res) => {
-  res.json({ matchId: _dotaTimeline.matchId, samples: _dotaTimeline.samples });
+  res.json({ matchId: _dotaTimeline.matchId, samples: _dotaTimeline.samples, events: _dotaTimeline.events || [] });
 });
 
 // ── State API ──────────────────────────────────────────────────────────────────
@@ -3189,6 +3235,40 @@ app.post('/api/heroes/sync', requireAdmin, async (req, res) => {
       results.push(result);
     }
     heroSync.writeManifest(await heroSync.heroList());   // refresh name↔slug manifest after a sync
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Dota 2 item assets (post-game inventory icons; same dota-heroes gate) ─────────
+const itemSync = require('./scripts/sync-items');
+app.get('/api/items', (req, res) => {
+  try {
+    if (!fs.existsSync(itemSync.MANIFEST)) return res.json({ items: [] });
+    res.json({ items: JSON.parse(fs.readFileSync(itemSync.MANIFEST, 'utf8')) });
+  } catch (e) { res.json({ items: [] }); }
+});
+app.post('/api/items/check', requireAdmin, async (req, res) => {
+  if (!adapterSupports('dota-heroes')) return res.json({ skipped: true, reason: 'Active game has no Dota item asset source' });
+  try { res.json({ ok: true, results: await itemSync.syncAll({ dryRun: true }) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/items/sync', requireAdmin, async (req, res) => {
+  if (!adapterSupports('dota-heroes')) return res.json({ skipped: true, reason: 'Active game has no Dota item asset source' });
+  try {
+    const targets = itemSync.TARGETS;
+    io.emit('assets:progress', { phase: 'init', targets });   // reuse the asset-sync progress channel
+    const results = [];
+    for (const target of targets) {
+      io.emit('assets:progress', { phase: 'start', key: target.key });
+      const result = await itemSync.syncTargetByKey(target.key, {
+        onProgress: (key, n, total, name) => io.emit('assets:progress', { phase: 'file', key, n, total, name }),
+      });
+      io.emit('assets:progress', { phase: 'done', key: target.key, result });
+      results.push(result);
+    }
+    itemSync.writeManifest(await itemSync.itemList());   // refresh slug↔name manifest after a sync
     res.json({ ok: true, results });
   } catch (e) {
     res.status(500).json({ error: e.message });
