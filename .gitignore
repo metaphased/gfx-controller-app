@@ -6,6 +6,9 @@ data/
 public/uploads/
 code/
 .claude/
+# Local GSI payload dumps (contain real Steam IDs)
+dota data output.txt
+*.gsi.json
 
 # Champion art — downloaded by users via Settings → Champion Assets / scripts/sync-assets.js
 # (kept out of git; small role icons under graphics/*/roles DO ship with the app)
