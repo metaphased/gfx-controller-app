@@ -392,15 +392,22 @@ function parseDotaDraft(b) {
     bans:  { team1: rad.bans,  team2: dire.bans },
   };
 }
-// Resolve every class → { slug, name, img } so the preview + apply carry hero art.
+// Resolve every class → { slug, name, img } so the preview + apply carry hero art. Also carries the
+// live draft timer: turnTime = the acting team's current turn countdown (activeteam_time_remaining),
+// bonus = each team's reserve pool (radiant/dire_bonus_time). Maps onto our two-tier draft timer.
 function buildDotaDraftSuggest(b) {
   const p = parseDotaDraft(b); if (!p) return null;
   const R = arr => (arr || []).map(c => _heroFromClass(c));
   const anyHero = p.picks.team1.length + p.picks.team2.length + p.bans.team1.length + p.bans.team2.length;
   if (!anyHero) return null;
+  const dr = b.draft || {};
+  const tt = (dr.activeteam_time_remaining != null) ? dr.activeteam_time_remaining
+           : (dr.activeteam_time != null ? dr.activeteam_time : null);
   return { activeTeam: p.activeTeam, isPick: p.isPick,
     picks: { team1: R(p.picks.team1), team2: R(p.picks.team2) },
-    bans:  { team1: R(p.bans.team1),  team2: R(p.bans.team2) }, ts: Date.now() };
+    bans:  { team1: R(p.bans.team1),  team2: R(p.bans.team2) },
+    turnTime: tt != null ? (tt | 0) : null,
+    bonus: { team1: dr.radiant_bonus_time | 0, team2: dr.dire_bonus_time | 0 }, ts: Date.now() };
 }
 // Fill heroDraft.steps from a suggestion, PRESERVING the editable Captains Mode order: assign the
 // Nth pick/ban of a team (in step order) to that team's Nth GSI pick/ban. Operator can still edit.
@@ -415,8 +422,29 @@ function applyDotaDraftToHeroDraft(sug) {
     const hero = list[cnt[team][action]++];
     if (hero && hero.name && (s.hero !== hero.name || s.img !== (hero.img || ''))) { s.hero = hero.name; s.img = hero.img || ''; changed = true; }
   });
-  const cur = _hdFirstEmpty(state.heroDraft);
-  if (state.heroDraft.currentStep !== cur) { state.heroDraft.currentStep = cur; changed = true; }
+  const hd = state.heroDraft;
+  // On-clock: the acting team's next empty slot of the CURRENT action (pick/ban) — robust to whatever
+  // interleaving the editable order uses. Falls back to the first empty slot.
+  let cur = -1;
+  if (sug.activeTeam) {
+    const wantAct = sug.isPick ? 'pick' : 'ban';
+    for (let i = 0; i < steps.length; i++) { const s = steps[i]; if (!s.hero && s.team === sug.activeTeam && s.action === wantAct) { cur = i; break; } }
+  }
+  if (cur < 0) cur = _hdFirstEmpty(hd);
+  if (hd.currentStep !== cur) { hd.currentStep = cur; changed = true; }
+  // Live two-tier draft timer from GSI: reserve = each team's bonus pool; the acting team's turn =
+  // its free time (turnTime) + its reserve, so our _hdClock shows free-then-extra exactly like Dota.
+  if (sug.activeTeam) { if (!hd.started) { hd.started = true; changed = true; } }
+  if (sug.bonus) {
+    hd.reserve = { team1: sug.bonus.team1 | 0, team2: sug.bonus.team2 | 0 };
+    hd.reserveTime = Math.max(hd.reserveTime | 0, sug.bonus.team1 | 0, sug.bonus.team2 | 0, 1);
+  }
+  if (sug.activeTeam && sug.turnTime != null) {
+    const bonusActing = (sug.bonus && sug.bonus[sug.activeTeam]) | 0;
+    hd.timerPaused = false; hd.turnPausedMs = null;
+    hd.turnEndsAt = Date.now() + (Math.max(0, sug.turnTime) + bonusActing) * 1000;
+    changed = true;
+  }
   return changed;
 }
 // Mode handler run on each GSI post. Always stages the latest suggestion; live applies now, delayed
