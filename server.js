@@ -337,7 +337,9 @@ function ingestDotaGsi(b, res) {
   const hasMatch = (mp.team1.length + mp.team2.length) > 0;
   d.lastSeen     = Date.now();
   d.paused       = !!map.paused;
-  d.draft        = !!b.draft;
+  // Menu heartbeats carry EMPTY player/draft objects (confirmed vs a real capture) — an empty
+  // {} is truthy, so require actual keys before reporting a draft to the inspector.
+  d.draft        = !!(b.draft && Object.keys(b.draft).length);
   d.players      = _dotaPlayerCount(b);
   d.provider     = String(prov.name || '');
   if (hasMatch || !((d.matchPlayers.team1 || []).length + (d.matchPlayers.team2 || []).length)) {
