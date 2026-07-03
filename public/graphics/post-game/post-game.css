@@ -131,8 +131,15 @@ svg.pg-rc-cond {
 .pg-mk-ace { color: #ff7a45; border-color: rgba(255,122,69,0.55); }
 .pg-empty { padding: 2vh 1.4vw; color: rgba(255,255,255,0.4); font-size: 1.6vh; }
 
-/* ── Dota post-game — hero scoreboard (player+hero | K D A | Net worth | GPM) ── */
-.pg-dota .pg-row { grid-template-columns: 1fr 4.4vw 4.4vw 4.4vw 6vw 5.4vw; }
+/* ── Dota post-game — hero scoreboard (player+hero | K D A | Net worth | GPM | items) ── */
+.pg-dota .pg-row { grid-template-columns: 1fr 3vw 3vw 3vw 4.6vw 4vw minmax(0, 11.6vw); }
+.pg-items { display: flex; gap: 3px; justify-content: flex-end; align-items: center; min-width: 0; overflow: hidden; }
+.pg-item {
+  width: 2.6vh; height: 2vh; flex-shrink: 0; border-radius: 2px;
+  background-size: cover; background-position: center; background-color: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.pg-item.pg-item-neutral { border-radius: 50%; width: 2.2vh; height: 2.2vh; border-color: rgba(240,204,68,0.5); margin-left: 0.25vw; }
 .pg-dota .pg-hero {
   width: 5.4vh; height: 3vh; flex-shrink: 0; border-radius: 2px;
   background-size: cover; background-position: center 30%; background-color: rgba(255,255,255,0.06);

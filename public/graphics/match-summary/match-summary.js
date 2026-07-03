@@ -125,28 +125,31 @@ function stripHtml(state, d, mp) {
 // ── Net-worth-over-time graph (SVG) ──────────────────────────────────────────────
 // Differential (Radiant − Dire) around a zero baseline: green area above (Radiant lead),
 // red below (Dire lead) — position + side labels carry identity, not colour alone.
+// Every event TYPE has its own dedicated chip colour (user 2026-07-03) — bright badge fills
+// with dark ink glyphs (CVD separation + contrast validated vs the dark surface; the series
+// lightness band doesn't apply to labelled badge chips). The team an event FAVOURS shows on
+// the marker's STEM instead (green/red), so chip = what happened, stem = who it was good for.
 var MARKS = {
   roshan:    { opt: 'markRoshan',    label: 'ROSHAN',    glyph: 'R',  fill: '#f0cc44', ink: '#07120a' },
   tormentor: { opt: 'markTormentor', label: 'TORMENTOR', glyph: 'T',  fill: '#3ec8e8', ink: '#07120a' },
-  tower:     { opt: 'markTower',     label: 'TOWER',     glyph: 'TW', fill: '',        ink: '#07120a' },
-  barracks:  { opt: 'markBarracks',  label: 'BARRACKS',  glyph: 'RX', fill: '',        ink: '#07120a' },
-  ancient:   { opt: 'markAncient',   label: 'ANCIENT',   glyph: 'GG', fill: '#ffffff', ink: '#07120a' },
-  multikill: { opt: 'markMultikill', label: 'MULTIKILL', glyph: '',   fill: '',        ink: '#07120a' },
-  teamfight: { opt: 'markTeamfight', label: 'TEAMFIGHT', glyph: 'TF', fill: '#c9d4e0', ink: '#07120a' },
+  tower:     { opt: 'markTower',     label: 'TOWER',     glyph: 'TW', fill: '#f08c3e', ink: '#07120a' },
+  barracks:  { opt: 'markBarracks',  label: 'BARRACKS',  glyph: 'RX', fill: '#b07ce8', ink: '#07120a' },
+  ancient:   { opt: 'markAncient',   label: 'ANCIENT',   glyph: 'GG', fill: '#c9d4e0', ink: '#07120a' },
+  multikill: { opt: 'markMultikill', label: 'MULTIKILL', glyph: '',   fill: '#e86cb8', ink: '#07120a' },
+  teamfight: { opt: 'markTeamfight', label: 'TEAMFIGHT', glyph: 'TF', fill: '#7c9ce8', ink: '#07120a' },
 };
 var RAD = '#26aa5a', DIRE = '#e14b3d';   // validated chart pair (see match-summary.css)
-// Building/multikill chips are coloured by the team the event FAVOURS: a destroyed
-// building favours the destroyer (opposite of the owning `side`); a multikill favours
-// the killer's own `team`.
-function markFill(e) {
-  var m = MARKS[e.type] || {};
+function markFill(e) { return (MARKS[e.type] || {}).fill || '#c9d4e0'; }
+// Stem colour = the team the event favoured: a destroyed building favours the destroyer
+// (opposite of the owning `side`); a multikill favours the killer's own `team`. Neutral
+// objectives (roshan/tormentor) and teamfights keep a type-coloured stem.
+function markStem(e) {
   if (e.type === 'tower' || e.type === 'barracks' || e.type === 'ancient') {
     if (e.side === 'team1') return DIRE;
     if (e.side === 'team2') return RAD;
-    return m.fill || '#c9d4e0';
   }
   if (e.type === 'multikill') return e.team === 'team2' ? DIRE : RAD;
-  return m.fill || '#c9d4e0';
+  return markFill(e);
 }
 function markGlyph(e) {
   if (e.type === 'multikill') { var c = Math.min(5, Math.max(3, e.count | 0)); return c + 'K'; }
@@ -157,15 +160,11 @@ function enabledEvents() {
   return (_tl.events || []).filter(function (e) { var m = MARKS[e.type]; return m && !!_msOpts[m.opt]; });
 }
 function legendHtml() {
-  // Side-coloured types (tower/rax/ancient/multikill) take either team colour per event, so
-  // their legend chip stays neutral — the chip explains the GLYPH, the event carries the team.
-  var SIDED = { tower: 1, barracks: 1, ancient: 1, multikill: 1 };
   var seen = {}, out = '';
   enabledEvents().forEach(function (e) {
     if (seen[e.type]) return; seen[e.type] = 1;
     var m = MARKS[e.type];
-    var fill = SIDED[e.type] ? '#c9d4e0' : markFill(e);
-    out += '<span class="ms-lg"><span class="chip" style="background:' + fill + '"></span>' + m.label + '</span>';
+    out += '<span class="ms-lg"><span class="chip" style="background:' + m.fill + '"></span>' + m.label + '</span>';
   });
   return out;
 }
@@ -242,7 +241,7 @@ function renderGraph() {
     var x = X(Math.min(t1, Math.max(t0, e.clock != null ? e.clock : e.t)));
     lane = (x - lastX < 30) ? 1 - lane : 0; lastX = x;
     var cy = 14 + lane * 26, fill = markFill(e), glyph = markGlyph(e);
-    svg += '<line x1="' + x + '" y1="' + (cy + 11) + '" x2="' + x + '" y2="' + (H - B) + '" stroke="' + fill + '" stroke-opacity="0.35" stroke-width="1" stroke-dasharray="2 3"/>';
+    svg += '<line x1="' + x + '" y1="' + (cy + 11) + '" x2="' + x + '" y2="' + (H - B) + '" stroke="' + markStem(e) + '" stroke-opacity="0.45" stroke-width="1.5" stroke-dasharray="2 3"/>';
     svg += '<circle cx="' + x + '" cy="' + cy + '" r="11" fill="' + fill + '" stroke="#070e16" stroke-width="2"/>';
     svg += '<text x="' + x + '" y="' + (cy + 3.5) + '" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-size="10.5" font-weight="800" fill="' + (MARKS[e.type] || {}).ink + '">' + glyph + '</text>';
   });

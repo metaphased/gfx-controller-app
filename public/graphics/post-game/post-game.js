@@ -131,6 +131,15 @@ function dotaRosterName(state, teamKey, p) {
   return '';   // no roster match → fall back to the hero name (never the GSI name)
 }
 function fmtNw(n) { n = n | 0; return n >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
+// End-game inventory icons (E3) — captured into matchPlayers by the server (slot0–5 + circled
+// neutral). Empty until items are synced in Settings → Broadcast Assets → Item Assets.
+function dotaItemsHtml(p) {
+  var items = p.items || [];
+  return '<span class="pg-items">' + items.map(function (it) {
+    return '<span class="pg-item' + (it.neutral ? ' pg-item-neutral' : '') + '" title="' + esc(it.name) + '"' +
+      (it.img ? ' style="background-image:url(' + esc(it.img) + ')"' : '') + '></span>';
+  }).join('') + '</span>';
+}
 function dotaRowHtml(state, teamKey, p) {
   var name = dotaRosterName(state, teamKey, p) || p.hero || '';
   var thumb = p.heroImg ? '<span class="pg-hero" style="background-image:url(' + esc(p.heroImg) + ')"></span>' : '<span class="pg-hero"></span>';
@@ -141,6 +150,7 @@ function dotaRowHtml(state, teamKey, p) {
     '<span class="pg-stat pg-a">' + (p.assists | 0) + '</span>' +
     '<span class="pg-stat pg-nw">' + fmtNw(p.netWorth) + '</span>' +
     '<span class="pg-stat pg-gpm">' + (p.gpm | 0) + '</span>' +
+    dotaItemsHtml(p) +
   '</div>';
 }
 function dotaColHtml(state, key, players, isWinner) {
@@ -156,6 +166,7 @@ function dotaColHtml(state, key, players, isWinner) {
     '<span class="pg-pname">Player</span>' +
     '<span class="pg-stat">K</span><span class="pg-stat">D</span><span class="pg-stat">A</span>' +
     '<span class="pg-stat">NET</span><span class="pg-stat">GPM</span>' +
+    '<span class="pg-stat" style="text-align:right">ITEMS</span>' +
   '</div>';
   var rows = players.length ? players.map(function (p) { return dotaRowHtml(state, key, p); }).join('') : '<div class="pg-empty">No live data</div>';
   return '<div class="pg-col-inner' + (isWinner ? ' pg-winner' : '') + '" style="--team-color:' + color + '">' + head + header + rows + '</div>';
