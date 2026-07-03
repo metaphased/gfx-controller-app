@@ -7809,8 +7809,94 @@ function renderSeriesTrackerCS2(s, container) {
   container.innerHTML = html;
 }
 
+// ── Dota series tracker (Game Setup) ─────────────────────────────────────────────
+// LoL-style seriesGames flow (not CS2 map rows): the operator records each game's winner;
+// the SERVER attaches the hero-draft snapshot + the played game's GSI stats (players/items/
+// score) to the record and folds hero-performance lines into tournament.dotaStats.
+function recordDotaGame(btn, winner) {
+  const m = (window._state || {}).match || {};
+  const name = winner === 'team1' ? (m.team1.tag || m.team1.name || 'Team 1') : (m.team2.tag || m.team2.name || 'Team 2');
+  confirmDestructive(btn, name + ' won game ' + (m.currentGameNum || 1), function () {
+    api('/api/match/record-game', { winner: winner });
+  });
+}
+function buildHeroDraftSnapshot(sg, t1Tag, t2Tag) {
+  const steps = (sg.heroDraft && sg.heroDraft.steps) || [];
+  const dp = (sg.dota && sg.dota.players) || null;
+  if (!steps.some(function (st) { return st.hero; }) && !dp) return '<p class="hint" style="margin:4px 0;font-size:11px">No draft data recorded.</p>';
+  const chip = function (st) {
+    return '<span class="sg-pick-chip" style="display:inline-flex;align-items:center;gap:4px">' +
+      (st.img ? '<span style="width:26px;height:15px;border-radius:2px;background:url(' + escHtml(st.img) + ') center 30%/cover"></span>' : '') +
+      escHtml(st.hero || '—') + '</span>';
+  };
+  const side = function (tk, tag) {
+    const picks = steps.filter(function (st) { return st.team === tk && st.action === 'pick'; });
+    const bans  = steps.filter(function (st) { return st.team === tk && st.action === 'ban'; });
+    let h = '<div style="margin:6px 0 2px;font-weight:700;font-size:12px">' + escHtml(tag) + '</div>' +
+      '<div style="font-size:10px;color:var(--text-faint);letter-spacing:0.04em">PICKS</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 4px">' + picks.map(chip).join('') + '</div>' +
+      '<div style="font-size:10px;color:var(--text-faint);letter-spacing:0.04em">BANS</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px;opacity:0.75">' + bans.map(chip).join('') + '</div>';
+    if (dp && (dp[tk] || []).length) {
+      h += '<div style="display:grid;grid-template-columns:1fr 60px 44px 40px;gap:4px;font-size:10px;color:var(--text-faint);letter-spacing:0.04em;margin-top:6px"><span>PLAYER</span><span style="text-align:center">K/D/A</span><span style="text-align:right">NET</span><span style="text-align:right">GPM</span></div>' +
+        dp[tk].map(function (p) {
+          return '<div style="display:grid;grid-template-columns:1fr 60px 44px 40px;gap:4px;font-size:12px;padding:1px 0">' +
+            '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.name || p.hero || '?') + ' <span style="color:var(--text-faint)">' + escHtml(p.hero || '') + '</span></span>' +
+            '<span style="text-align:center">' + (p.kills | 0) + '/' + (p.deaths | 0) + '/' + (p.assists | 0) + '</span>' +
+            '<span style="text-align:right;color:#f0cc44">' + ((p.netWorth | 0) >= 1000 ? ((p.netWorth | 0) / 1000).toFixed(1) + 'k' : (p.netWorth | 0)) + '</span>' +
+            '<span style="text-align:right;color:var(--text-dim)">' + (p.gpm | 0) + '</span></div>';
+        }).join('');
+    }
+    return '<div style="min-width:0">' + h + '</div>';
+  };
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' + side('team1', t1Tag) + side('team2', t2Tag) + '</div>';
+}
+function renderSeriesTrackerDota(s, container) {
+  const m = s.match || {};
+  const format = m.format || 'Bo3';
+  const formatNum = parseInt(format.replace(/Bo/i, '')) || 3;
+  const winsNeeded = Math.ceil(formatNum / 2);
+  const t1n = escHtml(m.team1.tag || m.team1.name || 'T1'), t2n = escHtml(m.team2.tag || m.team2.name || 'T2');
+  const t1wins = m.team1.score || 0, t2wins = m.team2.score || 0;
+  const seriesOver = t1wins >= winsNeeded || t2wins >= winsNeeded;
+  const seriesGames = m.seriesGames || [];
+  const fmtEl = g('gs-format'); if (fmtEl) fmtEl.disabled = false;
+  const editBtn = g('gs-edit-btn'); if (editBtn) editBtn.style.display = 'none';
+  const resetBtn = g('gs-reset-series-btn'); if (resetBtn) resetBtn.style.display = 'none';   // per-game Clear below
+
+  let html = '<div class="series-header"><span class="series-score-disp">' +
+    t1n + ' <strong>' + t1wins + '</strong> — <strong>' + t2wins + '</strong> ' + t2n +
+    '</span><span class="series-game-disp">' + format + (seriesOver ? ' · Series Complete' : ' · Game ' + (m.currentGameNum || 1)) + '</span></div>';
+  html += '<p class="hint" style="margin:2px 0 12px">Record each game\'s <strong>winner</strong> once it ends — the draft board and the live GSI stats (score, players, items) are snapshotted onto the game automatically, and player-hero lines accumulate for the tournament.</p>';
+
+  seriesGames.forEach(function (sg, idx) {
+    const winner = sg.winner === 'team1' ? t1n : t2n;
+    const score = sg.dota ? (' <span class="sg-sides">' + (sg.dota.radiantScore | 0) + ' : ' + (sg.dota.direScore | 0) + ' kills</span>') : '';
+    const draftId = 'dh-sg-' + sg.gameNum + '-' + (m.currentGameNum || 0);
+    const hasData = (sg.heroDraft && (sg.heroDraft.steps || []).some(function (st) { return st.hero; })) || sg.dota;
+    html += '<div class="series-game-row completed"><div class="sg-summary-row">' +
+      '<span class="sg-label">Game ' + sg.gameNum + '</span>' +
+      '<span class="sg-winner' + (sg.isBye ? ' sg-winner-bye' : '') + '">' + winner + ' WON' + (sg.isBye ? ' (BYE)' : '') + '</span>' + score +
+      (hasData ? '<button class="btn btn-xs ds-toggle-btn" id="dh-btn-' + draftId + '" onclick="toggleDraftHistory(\'' + draftId + '\')">▼ Draft</button>' : '') +
+      '<button class="btn btn-xs btn-danger" onclick="clearSeriesGame(this,' + idx + ')">Clear</button>' +
+    '</div>' +
+    (hasData ? '<div id="' + draftId + '" class="ds-snapshot" style="display:none">' + buildHeroDraftSnapshot(sg, t1n, t2n) + '</div>' : '') +
+    '</div>';
+  });
+
+  if (!seriesOver) {
+    html += '<div class="series-game-row current"><div class="sg-summary-row">' +
+      '<span class="sg-label">Game ' + (m.currentGameNum || 1) + '</span>' +
+      '<span style="font-size:12px;color:var(--text-dim)">Winner:</span>' +
+      '<button class="btn btn-sm" onclick="recordDotaGame(this,\'team1\')">' + t1n + '</button>' +
+      '<button class="btn btn-sm" onclick="recordDotaGame(this,\'team2\')">' + t2n + '</button>' +
+    '</div></div>';
+  }
+  container.innerHTML = html;
+}
+
 function renderSeriesTracker(s) {
   const container = g('gs-series-tracker'); if (!container) return;
+  // Dota (hero-draft) uses the LoL-style seriesGames flow with server-side snapshots.
+  if (isHeroDraft()) { renderSeriesTrackerDota(s, container); return; }
   // Map-veto games (CS2 etc.) track per-map ROUND scores, not a LoL draft/side flow.
   if (!isChampDraft()) { renderSeriesTrackerCS2(s, container); return; }
   const m = s.match;

@@ -675,6 +675,8 @@ function renderSeries() {
 
   // CS2 (map-veto): per-map round scores + winners, not a draft series.
   if (casterIsMapVeto()) { renderSeriesCS(el, m, t1name, t2name); return; }
+  // Dota (hero-draft): recorded games carry the CM draft + GSI stat snapshots.
+  if (casterIsDota()) { renderSeriesDota(el, m, t1name, t2name); return; }
 
   const formatNum   = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
   const winsNeeded  = Math.ceil(formatNum / 2);
@@ -972,6 +974,70 @@ function renderSeriesCS(el, m, t1name, t2name) {
       '</div>' + topHtml +
     '</div>';
   }).join('');
+  el.innerHTML = html;
+}
+
+// ── SERIES TAB (Dota) ─────────────────────────────────────────────────────────────
+// One card per recorded game: winner + kill score + duration, the CM draft (picks + bans
+// per team from the snapshot), and expandable per-player stat lines. Data = the snapshots
+// /api/match/record-game attaches (heroDraft + GSI archive), so it survives feed loss.
+function renderSeriesDota(el, m, t1name, t2name) {
+  const formatNum  = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
+  const winsNeeded = Math.ceil(formatNum / 2);
+  const t1wins = (m.team1 && m.team1.score) || 0, t2wins = (m.team2 && m.team2.score) || 0;
+  const seriesOver = t1wins >= winsNeeded || t2wins >= winsNeeded;
+  const games = m.seriesGames || [];
+
+  let html = '<div class="series-header">' +
+    '<span class="series-title">' + esc(t1name) + ' vs ' + esc(t2name) + '</span>' +
+    '<span class="series-title" style="color:var(--text-faint)">·</span>' +
+    '<span class="series-title" style="font-size:15px;color:var(--text-dim)">' + esc(m.format || '') + (seriesOver ? ' · Series complete' : '') + '</span>' +
+  '</div>';
+  html += '<div class="cs-series-score">' + esc(t1name) + ' <b>' + t1wins + '</b> — <b>' + t2wins + '</b> ' + esc(t2name) + '</div>';
+
+  if (!games.length) { el.innerHTML = html + '<div class="empty-state">No games recorded yet</div>'; return; }
+
+  const chip = st => '<span class="sd-chip' + (st.action === 'ban' ? ' sd-chip-ban' : '') + '">' +
+    (st.img ? '<span class="sd-chip-img" style="background-image:url(' + esc(st.img) + ')"></span>' : '') +
+    esc(st.hero || '—') + '</span>';
+  const playerRows = ps => ps.map(p =>
+    '<div class="sd-p-row">' +
+      '<span class="sd-p-name">' + esc(p.name || p.hero || '?') + '<span class="sd-p-hero">' + esc(p.hero || '') + '</span></span>' +
+      '<span class="sd-p-kda"><b>' + (p.kills | 0) + '</b> / ' + (p.deaths | 0) + ' / ' + (p.assists | 0) + '</span>' +
+      '<span class="sd-p-nw">' + dlFmtNw(p.netWorth) + '</span>' +
+      '<span class="sd-p-gpm">' + (p.gpm | 0) + '</span>' +
+    '</div>').join('');
+
+  html += games.map(gm => {
+    const winName = gm.winner === 'team1' ? t1name : t2name;
+    const steps = (gm.heroDraft && gm.heroDraft.steps) || [];
+    const dp = (gm.dota && gm.dota.players) || null;
+    const score = gm.dota ? '<span class="sd-score"><b class="dl-rad">' + (gm.dota.radiantScore | 0) + '</b> : <b class="dl-dire">' + (gm.dota.direScore | 0) + '</b></span>' : '';
+    const dur = gm.dota && gm.dota.clockTime ? '<span class="sd-dur">' + dlFmtClock(gm.dota.clockTime) + '</span>' : '';
+    const teamBlock = (tk, name) => {
+      const picks = steps.filter(st => st.team === tk && st.action === 'pick');
+      const bans  = steps.filter(st => st.team === tk && st.action === 'ban');
+      if (!picks.length && !bans.length) return '';
+      return '<div class="sd-team"><div class="sd-team-name ' + (tk === 'team1' ? 'dl-rad' : 'dl-dire') + '">' + esc(name) + '</div>' +
+        '<div class="sd-picks">' + picks.map(chip).join('') + '</div>' +
+        (bans.length ? '<div class="sd-bans">' + bans.map(chip).join('') + '</div>' : '') +
+      '</div>';
+    };
+    let statsHtml = '';
+    if (dp && ((dp.team1 || []).length || (dp.team2 || []).length)) {
+      statsHtml = '<details class="sd-stats"><summary>Player stats</summary><div class="sd-stats-cols">' +
+        '<div>' + playerRows(dp.team1 || []) + '</div><div>' + playerRows(dp.team2 || []) + '</div>' +
+      '</div></details>';
+    }
+    return '<div class="card sd-game">' +
+      '<div class="sd-head"><span class="sd-gnum">GAME ' + gm.gameNum + '</span>' +
+        '<span class="sd-win">' + esc(winName) + ' win' + (gm.isBye ? ' (BYE)' : '') + '</span>' + score + dur + '</div>' +
+      (steps.some(st => st.hero) ? '<div class="sd-teams">' + teamBlock('team1', t1name) + teamBlock('team2', t2name) + '</div>' : '') +
+      statsHtml +
+    '</div>';
+  }).join('');
+
+  if (!seriesOver) html += '<div class="empty-state" style="padding:14px">Game ' + (m.currentGameNum || games.length + 1) + ' — up next</div>';
   el.innerHTML = html;
 }
 

@@ -1146,6 +1146,7 @@ const makeDefault = () => ({
     mapPool:         [],   // CS2 etc. map pool [{ name, image }] — set in Tournament Setup; rotates
     heroDraftOrder:  [],   // Dota 2 Captains Mode order [{ team, action:'ban'|'pick' }] — editable in Tournament Setup
     csStats:         [],   // CS2 per-map player stat lines accumulated over the event (live-data Phase C2)
+    dotaStats:       [],   // Dota per-game player/hero lines accumulated over the event (recorded with each series game)
     groups: [],
     schedule: []
   },
@@ -1940,7 +1941,7 @@ app.post('/api/live/apply', requireAdmin, (req, res) => {
 app.get('/api/cs-stats', (req, res) => res.json(buildCsStats()));
 // Clear the accumulated tournament stat log (admin) — for a fresh event / mistaken entries.
 app.post('/api/cs-stats/clear', requireAdmin, (req, res) => {
-  if (state.tournament) state.tournament.csStats = [];
+  if (state.tournament) { state.tournament.csStats = []; state.tournament.dotaStats = []; }
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'cs-stats-clear', '');
   broadcast(); res.json({ ok: true });
 });
@@ -3945,6 +3946,17 @@ function _persistSeriesProgress() {
   }
 }
 
+// Roster display handle for a GSI match-player (steamid first, then name) — record-time
+// resolution so the stored snapshot never leaks a smurf/in-game name to any later view.
+function dotaRosterHandle(teamKey, p) {
+  const roster = (state.players || {})[teamKey] || [];
+  const sid = String(p.steamid || '');
+  if (sid) { const r = roster.find(x => String(x.steamid || '') === sid); if (r && r.handle) return r.handle; }
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const gn = norm(p.gsiName);
+  if (gn) { const r = roster.find(x => norm(x.handle) === gn || norm(x.name) === gn); if (r && r.handle) return r.handle; }
+  return '';
+}
 app.post('/api/match/record-game', (req, res) => {
   const { winner, t1Side, t2Side, t1Picks, t2Picks, t1RolePicks, t2RolePicks } = req.body;
   if (!winner || !['team1','team2'].includes(winner)) return res.status(400).json({ error: 'winner must be team1 or team2' });
@@ -3964,6 +3976,54 @@ app.post('/api/match/record-game', (req, res) => {
       team2: (state.players.team2 || []).map(function(p) { return { handle: p.handle || '', role: p.role || '' }; }),
     },
   });
+  // Dota: attach the hero-draft + the played game's stats to the record (mirrors the LoL
+  // draft snapshot above), fold player/hero lines into tournament.dotaStats, and reset the
+  // hero-draft board for the next game. Sources: the operator's heroDraft board + the
+  // per-game GSI archive (latest ended game — best-effort, recording follows the game).
+  if ((state.match.game || '') === 'dota2') {
+    const rec = state.match.seriesGames[state.match.seriesGames.length - 1];
+    const hd = state.heroDraft || {};
+    rec.heroDraft = {
+      steps: (hd.steps || []).map(s => ({ team: s.team, action: s.action, hero: s.hero || '', img: s.img || '' })),
+      team1Positions: (hd.team1Positions || []).slice(), team2Positions: (hd.team2Positions || []).slice(),
+    };
+    // Attach the newest archive entry not already snapshotted onto an earlier series game —
+    // prefer one that reached its end (winTeam), but fall back to an unfinished entry so a
+    // feed that died before the post-game payload still yields the game's stats.
+    const used = new Set(state.match.seriesGames.slice(0, -1).map(x => x.dota && x.dota.matchId).filter(Boolean));
+    const cands = _dotaGames.filter(x => !used.has(x.matchId));
+    const src = cands.slice().reverse().find(x => x.winTeam) || cands[cands.length - 1] || null;
+    if (src) {
+      rec.dota = { matchId: src.matchId, radiantScore: src.radiantScore | 0, direScore: src.direScore | 0,
+        clockTime: src.clockTime | 0, players: { team1: [], team2: [] } };
+      ['team1', 'team2'].forEach(tk => {
+        rec.dota.players[tk] = ((src.matchPlayers || {})[tk] || []).map(p => ({
+          steamid: p.steamid, name: dotaRosterHandle(tk, p) || p.hero || '', hero: p.hero, heroImg: p.heroImg,
+          level: p.level, kills: p.kills, deaths: p.deaths, assists: p.assists, netWorth: p.netWorth,
+          gpm: p.gpm, xpm: p.xpm, lastHits: p.lastHits, denies: p.denies, heroDamage: p.heroDamage,
+          items: p.items || [],
+        }));
+      });
+      // Tournament-wide hero-performance lines (mirrors csStats; upsert by series+game+steamid
+      // so re-recording a game updates rather than duplicates).
+      const log = state.tournament.dotaStats || (state.tournament.dotaStats = []);
+      const sk = csSeriesKey(), gameNum = rec.gameNum;
+      ['team1', 'team2'].forEach(tk => rec.dota.players[tk].forEach(p => {
+        const key = sk + ':' + gameNum + ':' + p.steamid;
+        const line = { key, seriesKey: sk, gameNum, matchId: rec.dota.matchId, steamid: p.steamid, name: p.name,
+          team: tk, hero: p.hero, win: winner === tk, kills: p.kills, deaths: p.deaths, assists: p.assists,
+          netWorth: p.netWorth, gpm: p.gpm, xpm: p.xpm, lastHits: p.lastHits, heroDamage: p.heroDamage };
+        const i = log.findIndex(l => l.key === key);
+        if (i >= 0) log[i] = line; else log.push(line);
+      }));
+    }
+    // Reset the hero-draft board for the next game (mirrors the LoL draft auto-reset below).
+    (hd.steps || []).forEach(s => { s.hero = ''; s.img = ''; });
+    hd.currentStep = 0; hd.started = false; hd.timerPaused = false;
+    hd.turnEndsAt = null; hd.turnPausedMs = null;
+    hd.reserve = { team1: hd.reserveTime | 0, team2: hd.reserveTime | 0 };
+    hd.team1Positions = ['', '', '', '', '']; hd.team2Positions = ['', '', '', '', ''];
+  }
   if (winner === 'team1') state.match.team1.score = (state.match.team1.score || 0) + 1;
   else state.match.team2.score = (state.match.team2.score || 0) + 1;
   const formatNum = parseInt((state.match.format || 'Bo3').replace('Bo','')) || 3;
