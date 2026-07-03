@@ -7947,8 +7947,11 @@ function renderSeriesTrackerDota(s, container) {
       '<button class="btn btn-sm" onclick="recordDotaGame(this,\'team2\')">' + t2n + '</button>' +
     '</div></div>';
   }
-  container.innerHTML = html;
+  // Rebuild only when the content actually changed — unrelated broadcasts (live feed,
+  // presence) otherwise reset transient UI state like the expanded Draft sections.
+  if (_gsDotaTrackerSig !== html) { _gsDotaTrackerSig = html; container.innerHTML = html; _dhApplyOpen(container); }
 }
+let _gsDotaTrackerSig = '', _gsLolTrackerSig = '';
 
 function renderSeriesTracker(s) {
   const container = g('gs-series-tracker'); if (!container) return;
@@ -8095,7 +8098,12 @@ function renderSeriesTracker(s) {
       }).join('') + '</div></div>';
   }
 
+  // Rebuild only on real content change (see the Dota tracker note — broadcasts otherwise
+  // reset expanded Draft sections and any in-progress picker interaction).
+  if (_gsLolTrackerSig === html) return;
+  _gsLolTrackerSig = html;
   container.innerHTML = html;
+  _dhApplyOpen(container);
 
   // Build champion pickers for fearless picks — only rendered when in edit mode
   if (!seriesOver && fearless && supportsFearless() && _gsEditMode) {
@@ -8112,13 +8120,28 @@ function renderSeriesTracker(s) {
   }
 }
 
+// Which draft-history snapshots are expanded — kept OUTSIDE the DOM because the series
+// trackers rebuild their innerHTML when data changes, which used to slam every open
+// section shut on the next broadcast (user report: auto-closed every ~10s).
+const _dhOpen = new Set();
 function toggleDraftHistory(id) {
   const el = document.getElementById(id);
   if (!el) return;
   const isOpen = el.style.display !== 'none';
   el.style.display = isOpen ? 'none' : 'block';
+  if (isOpen) _dhOpen.delete(id); else _dhOpen.add(id);
   const btn = document.getElementById('dh-btn-' + id);
   if (btn) btn.textContent = isOpen ? '▼ Draft' : '▲ Draft';
+}
+// Re-apply the expanded state after a tracker rebuild (prunes ids that no longer exist).
+function _dhApplyOpen(container) {
+  _dhOpen.forEach(function(id) {
+    const el = container.querySelector('#' + id);
+    if (!el) { _dhOpen.delete(id); return; }
+    el.style.display = 'block';
+    const btn = container.querySelector('#dh-btn-' + id);
+    if (btn) btn.textContent = '▲ Draft';
+  });
 }
 
 function buildDraftSnapshot(sg, t1Tag, t2Tag) {

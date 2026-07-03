@@ -329,26 +329,34 @@ function ingestDotaGsi(b, res) {
   _dotaGsiRaw = b;
   const map = b.map || {}, prov = b.provider || {};
   const d = state.live.dota;
+  // After a game the observer client idles in the MENU, still heartbeating (~10s) with no
+  // map/player data. Those payloads must NOT wipe the finished match off every board — the
+  // last real match state stays up until a NEW match actually feeds (draft/game payloads
+  // carry spectator players again, which replaces it naturally).
+  const mp = dotaMatchPlayers(b);
+  const hasMatch = (mp.team1.length + mp.team2.length) > 0;
   d.lastSeen     = Date.now();
-  d.matchId      = String(map.matchid || '');
-  d.gameState    = String(map.game_state || '').replace(/^DOTA_GAMERULES_STATE_/, '');
-  d.clockTime    = (map.clock_time != null ? map.clock_time : 0) | 0;
-  d.gameTime     = (map.game_time  != null ? map.game_time  : 0) | 0;
-  d.radiantScore = (map.radiant_score != null ? map.radiant_score : 0) | 0;
-  d.direScore    = (map.dire_score    != null ? map.dire_score    : 0) | 0;
   d.paused       = !!map.paused;
   d.draft        = !!b.draft;
   d.players      = _dotaPlayerCount(b);
   d.provider     = String(prov.name || '');
+  if (hasMatch || !((d.matchPlayers.team1 || []).length + (d.matchPlayers.team2 || []).length)) {
+    d.matchId      = String(map.matchid || '');
+    d.gameState    = String(map.game_state || '').replace(/^DOTA_GAMERULES_STATE_/, '');
+    d.clockTime    = (map.clock_time != null ? map.clock_time : 0) | 0;
+    d.gameTime     = (map.game_time  != null ? map.game_time  : 0) | 0;
+    d.radiantScore = (map.radiant_score != null ? map.radiant_score : 0) | 0;
+    d.direScore    = (map.dire_score    != null ? map.dire_score    : 0) | 0;
+    d.matchPlayers = mp;
+    d.winTeam      = map.win_team === 'radiant' ? 'team1' : (map.win_team === 'dire' ? 'team2' : '');
+  }
   recordDotaSample(b);                                  // Phase B: append to the match timeline
   const tl = _dotaTimeline, lastS = tl.samples[tl.samples.length - 1];
   d.samples = tl.samples.length;
   d.nwLead  = lastS ? (lastS.rnw - lastS.dnw) : 0;      // Radiant net-worth lead (+ = Radiant ahead)
   const dchg = handleDotaDraftAuto(b);                  // Phase C: stage / apply the live draft
-  d.matchPlayers = dotaMatchPlayers(b);                 // Phase D: per-player hero + stats (by steamid)
-  d.winTeam = map.win_team === 'radiant' ? 'team1' : (map.win_team === 'dire' ? 'team2' : '');
   recordDotaGameEnd(d.winTeam, map);                    // ancient/GG marker — anchored to the win_team flip
-  upsertDotaGame(d);                                    // archive this game continuously (BoX insurance)
+  if (hasMatch) upsertDotaGame(d);                      // archive this game continuously (BoX insurance)
   applyDotaSelectedGame();                              // operator-selected game overlays the display fields
   const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players, d.samples, d.winTeam].join('|');
   const now = Date.now();
