@@ -1007,6 +1007,8 @@ input[type=checkbox]:checked::after {
 #edit-team-players .player-row-edit {
   grid-template-columns: 1fr 1fr 1fr 1fr;
 }
+/* Live roster rows grow a Steam ID column for steam-roster games (CS2, Dota). */
+.player-row-edit.has-steam { grid-template-columns: 1fr 0.8fr 1.1fr 1fr; }
 .player-row-edit:last-child { border-bottom: none; }
 .player-val-display {
   display: block;

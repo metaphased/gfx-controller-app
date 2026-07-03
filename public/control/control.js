@@ -91,6 +91,7 @@ function applyAdapterUI() {
     'cap-heroes':      supportsHeroes(),
     'cap-picks':       hasPickEntity(),
     'cap-roles':       hasRoles(),
+    'cap-steamid':     supportsSteamId(),     // Steam-ID roster fields (CS2, Dota — live-data match key)
   };
   Object.keys(caps).forEach(function(cls){
     document.querySelectorAll('.' + cls).forEach(function(el){ el.style.display = caps[cls] ? '' : 'none'; });
@@ -3433,6 +3434,10 @@ function renderPlayerEditors(players) {
           '</div>' +
           '<div class="cap-roles"><div class="player-num">Role</div>' +
             '<div class="player-val-display" data-index="'+i+'" data-field="role"></div></div>' +
+          // Steam ID = the live-data match key (CS2/Dota) — editable HERE so match-day fixes
+          // don't need the Teams DB modal. Saves on change (blur/enter) via /api/players.
+          '<div class="cap-steamid"><div class="player-num">Steam ID</div>' +
+            '<input type="text" class="ep-live-steamid" data-index="'+i+'" placeholder="765… (optional)"></div>' +
           '<div>' +
             '<select class="sub-swap-sel" data-team="'+team+'" data-player-index="'+i+'">' +
               '<option value="">Swap sub...</option>' +
@@ -3444,6 +3449,10 @@ function renderPlayerEditors(players) {
 
       starterSec.addEventListener('change', function(e) {
         const sel = e.target;
+        if (sel.classList.contains('ep-live-steamid')) {
+          api('/api/players', { team, index: parseInt(sel.dataset.index), data: { steamid: sel.value.trim() } });
+          return;
+        }
         if (!sel.classList.contains('sub-swap-sel')) return;
         const playerIndex = parseInt(sel.dataset.playerIndex);
         const subIndex    = parseInt(sel.value);
@@ -3499,6 +3508,16 @@ function renderPlayerEditors(players) {
     starterSec.querySelectorAll('.player-val-display').forEach(function(div) {
       const p = list[parseInt(div.dataset.index)];
       div.textContent = (p && p[div.dataset.field]) || '';
+    });
+
+    // Steam ID inputs: sync from state unless the operator is mid-edit; the row grid
+    // gains a 4th column only while the cell is visible (steam-roster games).
+    const steamOn = supportsSteamId();
+    starterSec.querySelectorAll('.player-row-edit').forEach(function(row) { row.classList.toggle('has-steam', steamOn); });
+    starterSec.querySelectorAll('.ep-live-steamid').forEach(function(inp) {
+      if (document.activeElement === inp) return;
+      const p = list[parseInt(inp.dataset.index)];
+      inp.value = (p && p.steamid) || '';
     });
 
     starterSec.querySelectorAll('.opgg-link').forEach(function(link) {
