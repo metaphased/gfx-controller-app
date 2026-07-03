@@ -149,9 +149,11 @@ function applyCasterAdapterUI() {
   const champDraft = a ? a.pregameKind === 'champ-draft' : true;
   const mapVeto    = a ? a.pregameKind === 'map-veto'    : false;
   const liveData   = a ? !!a.liveData                    : false;   // GSI feed (CS2 + Dota) → Live tab
+  const heroDraft  = a ? a.pregameKind === 'hero-draft'  : false;   // Dota CM draft → Draft tab
   document.querySelectorAll('.cap-champ-draft').forEach(function(el){ el.style.display = champDraft ? '' : 'none'; });
   document.querySelectorAll('.cap-map-veto').forEach(function(el){ el.style.display = mapVeto ? '' : 'none'; });
   document.querySelectorAll('.cap-live-data').forEach(function(el){ el.style.display = liveData ? '' : 'none'; });
+  document.querySelectorAll('.cap-hero-draft').forEach(function(el){ el.style.display = heroDraft ? '' : 'none'; });
   // If the active tab just got hidden by a game switch, fall back to Roster.
   const activeBtn = document.querySelector('.tab-btn.active');
   if (activeBtn && activeBtn.offsetParent === null) {
@@ -335,6 +337,7 @@ function renderAll() {
   renderTeams();
   renderSeries();
   renderDraft();
+  renderHeroDraft();
   renderMapVeto();
   renderLive();
   renderStandings();
@@ -1200,6 +1203,93 @@ function renderLiveDota(el) {
   };
   const graph = '<div class="card dl-graph-card"><div class="dl-graph-title">NET WORTH OVER TIME</div>' + dlGraphSvg() + '</div>';
   el.innerHTML = head + '<div class="cs-sb-cols">' + col('team1', t1n) + col('team2', t2n) + '</div>' + graph;
+}
+
+// ── HERO DRAFT TAB (Dota Captains Mode — caster reference) ───────────────────────
+// Mirrors state.heroDraft (operator board / GSI auto-fill): picks + bans per team in CM
+// order, the on-clock slot, the two-tier timer (free time + each team's reserve pool),
+// and the step sequence so casters can say "two bans, then it's a pick".
+function hdCastClockTxt() {
+  const hd = (_state && _state.heroDraft) || {};
+  if (!hd.started) return '';
+  const step = (hd.steps || [])[hd.currentStep | 0];
+  const acting = step ? step.team : null;
+  const reserve = (hd.reserve && acting) ? (hd.reserve[acting] | 0) : 0;
+  let remain = null;
+  if (hd.timerPaused && hd.turnPausedMs != null) remain = hd.turnPausedMs / 1000;
+  else if (hd.turnEndsAt) remain = (hd.turnEndsAt - Date.now()) / 1000;
+  if (remain == null) return '';
+  remain = Math.max(0, Math.ceil(remain));
+  const free = Math.max(0, remain - reserve);
+  const mmss = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  const txt = free > 0 ? mmss(free) + ' free' : '<span class="hdc-reserve-live">' + mmss(remain) + ' reserve</span>';
+  return txt + (hd.timerPaused ? ' <span class="hdc-paused">· paused</span>' : '');
+}
+setInterval(function () {
+  const el = document.getElementById('hdc-clock');
+  if (el) el.innerHTML = hdCastClockTxt();
+}, 500);
+function renderHeroDraft() {
+  const el = document.getElementById('hdraft-content'); if (!el) return;
+  if (!casterIsDota()) return;
+  const s = _state, hd = s.heroDraft || {}, m = s.match || {};
+  const steps = hd.steps || [];
+  if (!steps.length) { el.innerHTML = '<div class="empty-state">No draft configured — the board fills once the draft starts (or via GSI auto-fill).</div>'; return; }
+  const t1n = (m.team1 && (m.team1.name || m.team1.tag)) || 'Radiant';
+  const t2n = (m.team2 && (m.team2.name || m.team2.tag)) || 'Dire';
+  const cur = hd.currentStep | 0;
+  const complete = steps.every(st => !!st.hero);
+  const curStep = !complete ? steps[cur] : null;
+
+  // Header: who's on the clock + the live two-tier timer.
+  let head = '<div class="hdc-head">';
+  if (complete) head += '<span class="hdc-onclock hdc-done">DRAFT COMPLETE</span>';
+  else if (hd.started && curStep) {
+    head += '<span class="hdc-onclock ' + (curStep.team === 'team1' ? 'hdc-t1' : 'hdc-t2') + '">' +
+      esc(curStep.team === 'team1' ? t1n : t2n) + ' · ' + (curStep.action === 'pick' ? 'PICK' : 'BAN') + '</span>' +
+      '<span class="hdc-clock" id="hdc-clock">' + hdCastClockTxt() + '</span>';
+  } else head += '<span class="hdc-onclock hdc-idle">Draft not started</span>';
+  head += '</div>';
+
+  // Step sequence strip — every CM step in order, done/current/pending.
+  const strip = '<div class="hdc-seq">' + steps.map((st, i) => {
+    const cls = 'hdc-sq ' + (st.team === 'team1' ? 't1' : 't2') + (st.hero ? ' done' : '') + (!complete && i === cur ? ' cur' : '');
+    return '<span class="' + cls + '" title="' + esc((st.team === 'team1' ? t1n : t2n) + ' ' + st.action) + '">' + (st.action === 'pick' ? 'P' : 'B') + '</span>';
+  }).join('') + '</div>';
+
+  const posLookup = tk => {
+    const arr = (tk === 'team1' ? hd.team1Positions : hd.team2Positions) || [];
+    const map = {}; arr.forEach((h, i) => { if (h) map[h] = i + 1; });
+    return map;
+  };
+  const col = (tk, name) => {
+    const picks = [], bans = [];
+    steps.forEach((st, i) => { if (st.team === tk) (st.action === 'pick' ? picks : bans).push({ st, i }); });
+    const pos = posLookup(tk);
+    const reserve = (hd.reserve || {})[tk] | 0;
+    const pickRows = picks.map((p, n) => {
+      const active = !complete && p.i === cur;
+      return '<div class="hdc-pick' + (active ? ' hdc-active' : '') + '">' +
+        '<span class="hdc-pick-n">' + (n + 1) + '</span>' +
+        '<span class="hdc-pick-img"' + (p.st.img ? ' style="background-image:url(' + esc(p.st.img) + ')"' : '') + '></span>' +
+        '<span class="hdc-pick-name">' + (p.st.hero ? esc(p.st.hero) : (active ? 'On the clock…' : '—')) + '</span>' +
+        (p.st.hero && pos[p.st.hero] ? '<span class="hdc-pos">P' + pos[p.st.hero] + '</span>' : '') +
+      '</div>';
+    }).join('');
+    const banChips = bans.map(b => {
+      const active = !complete && b.i === cur;
+      return '<span class="hdc-ban' + (b.st.hero ? '' : ' empty') + (active ? ' hdc-active' : '') + '">' +
+        '<span class="hdc-ban-img"' + (b.st.img ? ' style="background-image:url(' + esc(b.st.img) + ')"' : '') + '></span>' +
+        (b.st.hero ? esc(b.st.hero) : (active ? '…' : '—')) + '</span>';
+    }).join('');
+    return '<div class="card hdc-col ' + (tk === 'team1' ? 'hdc-col-t1' : 'hdc-col-t2') + '">' +
+      '<div class="cs-sb-hdr">' + esc(name) + '<span class="dl-side-tag">' + (tk === 'team1' ? 'RADIANT' : 'DIRE') + '</span>' +
+      '<span class="hdc-reserve" title="Reserve time pool">RESERVE ' + Math.floor(reserve / 60) + ':' + String(reserve % 60).padStart(2, '0') + '</span></div>' +
+      '<div class="hdc-picks">' + pickRows + '</div>' +
+      '<div class="hdc-bans-label">Bans</div><div class="hdc-bans">' + banChips + '</div>' +
+    '</div>';
+  };
+  el.innerHTML = head + strip + '<div class="cs-sb-cols">' + col('team1', t1n) + col('team2', t2n) + '</div>';
 }
 
 const DRAFT_ROLE_NAMES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];

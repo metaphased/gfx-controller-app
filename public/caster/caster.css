@@ -2022,3 +2022,48 @@ html, body {
   letter-spacing: 0.06em; color: var(--text-dim); }
 .dl-lg-chip { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
 @media (max-width: 900px) { .dl-head-row, .dl-row { grid-template-columns: 44px 1fr 76px 48px 40px; } .dl-items, .dl-items-h { display: none; } }
+
+/* ── Draft tab — Dota Captains Mode (caster reference) ─────────────────────────── */
+.hdc-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+.hdc-onclock { font-family: var(--data-font); font-size: 14px; font-weight: 800; letter-spacing: 0.05em;
+  padding: 4px 12px; border-radius: 3px; background: var(--surface2); }
+.hdc-onclock.hdc-t1 { color: #2fbf6b; box-shadow: inset 0 0 0 1px rgba(47,191,107,0.4); }
+.hdc-onclock.hdc-t2 { color: #e14b3d; box-shadow: inset 0 0 0 1px rgba(225,75,61,0.4); }
+.hdc-onclock.hdc-done { color: var(--text); }
+.hdc-onclock.hdc-idle { color: var(--text-faint); }
+.hdc-clock { font-family: var(--data-font); font-size: 16px; font-weight: 800; color: var(--text); }
+.hdc-reserve-live { color: #f0cc44; }
+.hdc-paused { font-size: 11px; color: var(--text-faint); font-weight: 600; }
+.hdc-seq { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 14px; }
+.hdc-sq { width: 22px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 3px; font-family: var(--data-font); font-size: 10px; font-weight: 800;
+  background: var(--surface2); color: var(--text-faint); opacity: 0.55; }
+.hdc-sq.t1 { box-shadow: inset 0 -2px 0 #2fbf6b; }
+.hdc-sq.t2 { box-shadow: inset 0 -2px 0 #e14b3d; }
+.hdc-sq.done { opacity: 1; color: var(--text); }
+.hdc-sq.cur { opacity: 1; background: var(--text); color: var(--bg); }
+.hdc-col { padding: 0 0 12px; }
+.hdc-col-t1 .cs-sb-hdr { border-top: 3px solid #2fbf6b; }
+.hdc-col-t2 .cs-sb-hdr { border-top: 3px solid #e14b3d; }
+.hdc-reserve { float: right; font-family: var(--data-font); font-size: 11px; font-weight: 700;
+  color: #f0cc44; letter-spacing: 0.05em; }
+.hdc-picks { padding: 6px 14px; }
+.hdc-pick { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.hdc-pick:last-child { border-bottom: none; }
+.hdc-pick-n { width: 16px; font-family: var(--data-font); font-size: 11px; font-weight: 800; color: var(--text-faint); }
+.hdc-pick-img { width: 56px; height: 31px; border-radius: 2px; background-size: cover;
+  background-position: center 30%; background-color: var(--surface2); flex-shrink: 0; }
+.hdc-pick-name { font-size: 14px; font-weight: 700; color: var(--text); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hdc-pos { margin-left: auto; font-family: var(--data-font); font-size: 10px; font-weight: 800;
+  color: var(--text-dim); background: var(--surface2); border-radius: 2px; padding: 2px 6px; }
+.hdc-active { background: rgba(255,255,255,0.05); border-radius: 3px; }
+.hdc-pick.hdc-active .hdc-pick-name { color: var(--text-dim); font-style: italic; animation: hdc-pulse 1.2s ease-in-out infinite; }
+@keyframes hdc-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+.hdc-bans-label { padding: 4px 14px 2px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+.hdc-bans { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 14px; }
+.hdc-ban { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
+  color: var(--text-dim); background: var(--surface2); border-radius: 3px; padding: 2px 8px 2px 2px; }
+.hdc-ban.empty { color: var(--text-faint); }
+.hdc-ban-img { width: 30px; height: 18px; border-radius: 2px; background-size: cover;
+  background-position: center 30%; background-color: var(--bg); filter: grayscale(0.5); }
