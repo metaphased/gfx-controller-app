@@ -7867,12 +7867,15 @@ function renderSeriesTrackerCS2(s, container) {
 // LoL-style seriesGames flow (not CS2 map rows): the operator records each game's winner;
 // the SERVER attaches the hero-draft snapshot + the played game's GSI stats (players/items/
 // score) to the record and folds hero-performance lines into tournament.dotaStats.
+// Modal confirm (NOT confirmDestructive): the tracker re-renders on every state broadcast,
+// and with a live GSI feed pushing ~1/sec the inline confirm button gets wiped before its
+// 2s arm-delay elapses — the button looked completely dead. The modal survives re-renders.
 function recordDotaGame(btn, winner) {
   const m = (window._state || {}).match || {};
   const name = winner === 'team1' ? (m.team1.tag || m.team1.name || 'Team 1') : (m.team2.tag || m.team2.name || 'Team 2');
-  confirmDestructive(btn, name + ' won game ' + (m.currentGameNum || 1), function () {
+  showConfirm('Record game ' + (m.currentGameNum || 1) + ': ' + name + ' won? The draft board and live GSI stats are snapshotted onto the game.', function () {
     api('/api/match/record-game', { winner: winner });
-  });
+  }, { okLabel: 'Record win' });
 }
 function buildHeroDraftSnapshot(sg, t1Tag, t2Tag) {
   const steps = (sg.heroDraft && sg.heroDraft.steps) || [];
@@ -8283,10 +8286,13 @@ function recordBye(winner, seriesWalkover) {
 
 // Clear a single recorded game in the series (vs RESET SERIES which wipes all).
 // Server recomputes the series score from the remaining games and renumbers them.
+// Modal confirm — the inline confirmDestructive button gets wiped by the tracker's
+// per-broadcast re-render before its 2s arm-delay elapses (guaranteed with a live GSI
+// feed, intermittent otherwise), which made the button appear dead.
 function clearSeriesGame(btn, idx) {
-  confirmDestructive(btn, 'Clear Game ' + (idx + 1), function() {
+  showConfirm('Clear Game ' + (idx + 1) + '? The series score is recomputed from the remaining games.', function() {
     api('/api/match/game/' + idx + '/clear', {});
-  });
+  }, { okLabel: 'Clear game', danger: true });
 }
 
 // Countdown ticker for the live bar display
