@@ -1901,6 +1901,14 @@
           <input type="number" id="hd-reserve" min="0" max="600" value="130" style="width:80px" onchange="hdSetReserve(this.value)">
           <span style="font-size:12px;color:var(--text-dim)">seconds of reserve (Captains Mode default 130), drains after free time</span>
         </div>
+        <div class="field-row" style="flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px">
+          <label style="white-space:nowrap">First pick</label>
+          <div class="btn-row" style="display:flex;gap:6px">
+            <button class="btn btn-sm" id="hd-fp-team1" onclick="hdSetFirstPick('team1')">Team 1</button>
+            <button class="btn btn-sm" id="hd-fp-team2" onclick="hdSetFirstPick('team2')">Team 2</button>
+          </div>
+          <span style="font-size:12px;color:var(--text-dim)">who opens the draft (coin flip) — mirrors the whole CM order; live GSI auto-corrects it if mis-set</span>
+        </div>
         <p class="hint" style="margin-top:10px;margin-bottom:0">Timer appearance (ring/bar, show/hide) is on the <a onclick="switchToTab('hero-draft-gfx')" href="#" style="color:var(--primary)">Hero Draft Overlay</a> options.</p>
         <div id="hd-start-wrap" style="margin-top:12px">
           <button class="btn btn-sm btn-primary" id="hd-start-btn" onclick="hdStartDraft()">▶ Start Draft</button>

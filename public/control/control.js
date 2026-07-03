@@ -287,6 +287,7 @@ socket.on('state', async (state) => {
   tmRenderDraftOrder(state);
   hdRenderDraft(state);
   hdRenderAutoFill(state);
+  hdSyncFirstPick(state);
   ldRender(state);
   mvRenderVeto(state);
   mvRenderGfx(state);
@@ -4388,6 +4389,23 @@ function hdAddStep(){ const o=_hdOrder().slice(); o.push({ team:'team1', action:
 function hdRemoveStep(i){ const o=_hdOrder().slice(); o.splice(i,1); hdCommitOrder(o); }
 function hdMoveStep(i,d){ const o=_hdOrder().slice(); const j=i+d; if(j<0||j>=o.length)return; const t=o[i]; o[i]=o[j]; o[j]=t; hdCommitOrder(o); }
 function hdSwapTeams(){ hdCommitOrder(_hdOrder().map(function(s){ return { team:s.team==='team1'?'team2':'team1', action:s.action }; })); }
+// First-pick toggle (Draft Setup card): mirrors the whole CM order so the chosen team opens the
+// draft — settable BEFORE the draft so the graphic is air-ready from step 1; GSI auto-orient
+// corrects a mis-set side once the real draft feeds.
+function hdSetFirstPick(team){
+  const o=_hdOrder(); if(!o.length||o[0].team===team) return;
+  hdCommitOrder(o.map(function(s){ return { team:s.team==='team1'?'team2':'team1', action:s.action }; }));
+}
+function hdSyncFirstPick(state){
+  const o=(state&&state.tournament&&state.tournament.heroDraftOrder)||[];
+  const m=(state&&state.match)||{};
+  const b1=g('hd-fp-team1'), b2=g('hd-fp-team2'); if(!b1||!b2) return;
+  b1.textContent=(m.team1&&(m.team1.tag||m.team1.name))||'Team 1';
+  b2.textContent=(m.team2&&(m.team2.tag||m.team2.name))||'Team 2';
+  const first=o.length?o[0].team:'';
+  b1.classList.toggle('btn-primary', first==='team1');
+  b2.classList.toggle('btn-primary', first==='team2');
+}
 function hdSetStep(i,field,val){ const o=_hdOrder().slice(); if(!o[i])return; o[i]=Object.assign({},o[i]); o[i][field]=val; hdCommitOrder(o); }
 function hdLoadDefaultOrder(){ const def=_hdDefaultOrder(); if(!def.length)return;
   if(_hdOrder().length && !confirm('Replace the current Captains Mode order with the default?'))return;

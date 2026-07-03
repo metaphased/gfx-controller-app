@@ -402,6 +402,9 @@ function _itemManifestMap() {
 function _itemFromName(name) {
   if (!name || name === 'empty') return null;
   const slug = String(name).replace(/^item_/, '').toLowerCase();
+  // GSI reports an in-progress build as its recipe (item_recipe_aether_lens etc.) — Dota shows
+  // every recipe as the same generic scroll, so map them all to the one synced recipe icon.
+  if (slug.indexOf('recipe_') === 0) return { slug: 'recipe', name: 'Recipe', img: '/items/recipe.png' };
   const meta = _itemManifestMap()[slug] || { name: slug, img: '/items/' + slug + '.png' };
   return { slug, name: meta.name, img: meta.img || '/items/' + slug + '.png' };
 }
@@ -492,6 +495,44 @@ function applyDotaDraftToHeroDraft(sug) {
   }
   return changed;
 }
+// FIRST-PICK side is decided per match (coin flip) — the stored CM order is a TEMPLATE whose
+// orientation may need mirroring when the other side picks first (user hit this live: Dire had
+// first pick, so the real draft opened with team2's double ban while the board expected team1).
+// Detect the orientation from GSI — at draft start by who acts first, mid-draft by which
+// orientation of the template matches the per-team ban/pick counts — and mirror the tournament
+// order ONCE per match when it's confidently backwards. The operator's manual "Swap teams"
+// stays authoritative afterwards (we only evaluate once per matchid).
+let _dotaOrderChecked = '';
+function autoOrientDraftOrder(p, dr) {
+  const mid = (state.live.dota && state.live.dota.matchId) || 'nomatch';
+  if (_dotaOrderChecked === mid) return false;
+  const order = (state.tournament && state.tournament.heroDraftOrder) || [];
+  if (!order.length) return false;
+  const rB = p.bans.team1.length, rP = p.picks.team1.length;   // team1 = Radiant in the suggestion
+  const dB = p.bans.team2.length, dP = p.picks.team2.length;
+  const total = rB + rP + dB + dP;
+  let verdict = null;
+  if (total === 0) {
+    const at = dr.activeteam | 0;
+    if (at === 2 || at === 3) {
+      const acting = at === 2 ? 'team1' : 'team2';
+      verdict = acting === order[0].team ? 'straight' : 'swapped';
+    }
+  } else if (total <= order.length) {
+    const c = { t1b: 0, t1p: 0, t2b: 0, t2p: 0 };
+    order.slice(0, total).forEach(s => c[(s.team === 'team1' ? 't1' : 't2') + (s.action === 'pick' ? 'p' : 'b')]++);
+    const straight = c.t1b === rB && c.t1p === rP && c.t2b === dB && c.t2p === dP;
+    const swapped  = c.t1b === dB && c.t1p === dP && c.t2b === rB && c.t2p === rP;
+    if (straight !== swapped) verdict = straight ? 'straight' : 'swapped';
+  }
+  if (!verdict) return false;                        // ambiguous (mid-action jitter) — retry next payload
+  _dotaOrderChecked = mid;
+  if (verdict === 'straight') return false;
+  state.tournament.heroDraftOrder = order.map(s => ({ team: s.team === 'team1' ? 'team2' : 'team1', action: s.action }));
+  reconcileHeroDraftSteps();
+  console.log('[dota] draft order auto-mirrored — GSI shows the other side has first pick (match ' + mid + ')');
+  return true;
+}
 // Mode handler run on each GSI post. Always stages the latest suggestion; live applies now, delayed
 // applies delaySec after the content last changed (integrity buffer). Returns true if state changed.
 let _dotaDelayKey = '', _dotaDelayAt = 0, _dotaDelayPending = null;
@@ -499,8 +540,15 @@ function handleDotaDraftAuto(b) {
   const af = (state.heroDraft && state.heroDraft.autoFill) || {};
   const mode = af.mode || 'off';
   if (mode === 'off') return false;
+  // Orient the order BEFORE mapping content into slots (needs only the draft block, so it
+  // also runs while the draft is still empty and the first team is merely on the clock).
+  let oriented = false;
+  if (b.draft && typeof b.draft === 'object' && Object.keys(b.draft).length) {
+    const parsed = parseDotaDraft(b);
+    if (parsed) oriented = autoOrientDraftOrder(parsed, b.draft);
+  }
   const sug = buildDotaDraftSuggest(b);
-  if (!sug) return false;
+  if (!sug) return oriented;
   state.live.dota.draftSuggest = sug;                 // stage for preview / Suggest-mode apply
   if (mode === 'live') return applyDotaDraftToHeroDraft(sug);
   if (mode === 'delayed') {

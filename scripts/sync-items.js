@@ -44,6 +44,9 @@ async function itemList() {
     })
     .filter(it => it.imgUrl && !/\/recipe\.png$/.test(it.imgUrl))
     .sort((a, b) => a.name.localeCompare(b.name));
+  // One GENERIC recipe entry — GSI reports in-progress builds as item_recipe_*, and the server
+  // maps them all to this single scroll icon (Dota shows every recipe the same way).
+  _items.push({ slug: 'recipe', name: 'Recipe', imgUrl: CDN_BASE + '/apps/dota2/images/dota_react/items/recipe.png' });
   return _items;
 }
 
