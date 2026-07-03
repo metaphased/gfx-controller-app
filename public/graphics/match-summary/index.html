@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Match Summary</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<script src="/graphics/gfx-settings.js"></script>
+<link rel="stylesheet" href="match-summary.css">
+</head>
+<body>
+<!-- Dota 2 match summary — whole-match analysis board (Phase E2). Layout (user-locked):
+     two team scoreboards (hero + roster name + K/D/A + GPM + item row) top-left/centre,
+     a full-height ranked net-worth list down the right, a score · timer · net-worth
+     distribution strip under the team panels, and the full-width net-worth-over-time
+     graph (from /api/live/dota/timeline) with toggleable event markers across the bottom. -->
+<div id="ms-root" style="display:none">
+  <div id="ms-stage">
+    <div id="ms-title"></div>
+    <div id="ms-grid">
+      <div class="ms-panel" id="ms-team1"></div>
+      <div class="ms-panel" id="ms-team2"></div>
+      <div id="ms-nw-col" class="ms-panel"></div>
+      <div id="ms-strip" class="ms-panel"></div>
+    </div>
+    <div id="ms-graph-wrap" class="ms-panel">
+      <div id="ms-graph-head">
+        <span id="ms-graph-title">NET WORTH OVER TIME</span>
+        <span id="ms-graph-legend"></span>
+      </div>
+      <div id="ms-graph"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script src="match-summary.js"></script>
+</body>
+</html>

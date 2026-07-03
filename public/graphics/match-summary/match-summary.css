@@ -1,0 +1,178 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+body { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; }
+
+/* Radiant / Dire team colors. --ms-rad/-dire are the CHART pair (validated for CVD +
+   contrast on the dark surface); panel chrome uses the shared --hd-* tokens. */
+#ms-root {
+  --ms-rad: #26aa5a; --ms-dire: #e14b3d;
+  --ms-rad-chrome: var(--hd-rad, #2fbf6b); --ms-dire-chrome: var(--hd-dire, #e14b3d);
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--gfx-c3, #fff);
+}
+#ms-stage {
+  width: 92vw; max-width: 1780px;
+  display: flex; flex-direction: column; gap: 1.6vh;
+}
+#ms-title {
+  text-align: center;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.7vh; font-weight: 700; letter-spacing: 0.42em;
+  color: var(--gfx-c1, #1ffaff); opacity: 0.9;
+}
+
+/* ── Grid: team1 | team2 | net-worth column; strip spans under the team panels ── */
+#ms-grid {
+  display: grid; gap: 1vw;
+  grid-template-columns: 1fr 1fr 24%;
+  grid-template-rows: 1fr auto;
+  grid-template-areas: "t1 t2 nw" "strip strip nw";
+}
+#ms-team1 { grid-area: t1; } #ms-team2 { grid-area: t2; }
+#ms-nw-col { grid-area: nw; } #ms-strip { grid-area: strip; }
+.ms-panel {
+  background: var(--gfx-panel-bg, rgba(7,15,18,0.82));
+  border: var(--gfx-panel-border, 1px solid rgba(255,255,255,0.08));
+  border-radius: var(--gfx-radius, 3px);
+  overflow: hidden;
+}
+
+/* ── Team scoreboards ─────────────────────────────────────────────────────────── */
+#ms-team1 { border-top: 3px solid var(--ms-rad-chrome); }
+#ms-team2 { border-top: 3px solid var(--ms-dire-chrome); }
+.ms-t-head {
+  display: flex; align-items: center; gap: 0.6vw; padding: 1vh 1vw;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--team-color) 22%, transparent), transparent);
+}
+.ms-t-logo { width: 3.4vh; height: 3.4vh; flex-shrink: 0; background-size: contain; background-repeat: no-repeat; background-position: center; }
+.ms-t-name { font-size: 2.4vh; font-weight: 900; letter-spacing: 0.02em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-t-side { font-size: 1.1vh; font-weight: 800; letter-spacing: 0.14em; color: var(--team-color); margin-left: 0.5vw; flex-shrink: 0; }
+.ms-win-badge {
+  margin-left: auto; font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.3vh; font-weight: 800; letter-spacing: 0.12em;
+  color: #07120a; background: var(--team-color); padding: 0.25vh 0.7vw; border-radius: calc(var(--gfx-radius, 3px) * 0.6);
+}
+
+.ms-row {
+  display: grid;
+  grid-template-columns: 3.2vw 1fr 4.2vw 3vw minmax(0, 12.5vw);
+  align-items: center; gap: 0.5vw; padding: 0 1vw; height: 6.4vh;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+.ms-row-head {
+  height: 2.8vh; border-top: none;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.1vh; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,0.4);
+}
+.ms-row-head span { text-align: center; }
+.ms-row-head .ms-cell-hero, .ms-row-head .ms-cell-name { text-align: left; }
+.ms-cell-hero { position: relative; }
+.ms-hero {
+  display: block; width: 3.2vw; height: 3.6vh; border-radius: 2px;
+  background-size: cover; background-position: center 30%; background-color: rgba(255,255,255,0.06);
+}
+.ms-lvl {
+  position: absolute; right: -0.35vw; bottom: -0.5vh;
+  min-width: 1.9vh; height: 1.9vh; padding: 0 0.25vh;
+  display: flex; align-items: center; justify-content: center;
+  background: #0b1420; border: 1px solid rgba(255,255,255,0.25); border-radius: 2px;
+  font-size: 1.15vh; font-weight: 800; color: #fff; font-variant-numeric: tabular-nums;
+}
+.ms-cell-name { min-width: 0; display: flex; flex-direction: column; line-height: 1.08; overflow: hidden; }
+.ms-pname { font-size: 1.9vh; font-weight: 700; letter-spacing: 0.02em; color: var(--gfx-c3, #fff); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-hero-sub { font-size: 1.15vh; font-weight: 600; text-transform: none; color: rgba(255,255,255,0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-kda { text-align: center; font-size: 1.8vh; font-weight: 700; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.86); white-space: nowrap; }
+.ms-kda b { color: #fff; font-weight: 800; }
+.ms-gpm { text-align: center; font-size: 1.7vh; font-weight: 700; font-variant-numeric: tabular-nums; color: #f0cc44; }
+.ms-items { display: flex; gap: 3px; justify-content: flex-end; align-items: center; min-width: 0; }
+.ms-item {
+  width: 2.9vh; height: 2.2vh; flex-shrink: 0; border-radius: 2px;
+  background-size: cover; background-position: center; background-color: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.ms-item.ms-item-neutral { border-radius: 50%; width: 2.4vh; height: 2.4vh; border-color: rgba(240,204,68,0.5); margin-left: 0.25vw; }
+.ms-empty { padding: 2vh 1vw; color: rgba(255,255,255,0.4); font-size: 1.6vh; }
+
+/* ── Ranked net-worth column ──────────────────────────────────────────────────── */
+#ms-nw-col { display: flex; flex-direction: column; }
+.ms-nw-head {
+  padding: 1vh 1vw 0.6vh;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.3vh; font-weight: 800; letter-spacing: 0.22em; color: rgba(255,255,255,0.55);
+}
+.ms-nw-list { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; padding: 0 1vw 0.8vh; }
+.ms-nw-row { display: grid; grid-template-columns: 2.6vw 1fr 3.6vw; align-items: center; gap: 0.5vw; }
+.ms-nw-hero { width: 2.6vw; height: 2.9vh; border-radius: 2px; background-size: cover; background-position: center 30%; background-color: rgba(255,255,255,0.06); }
+.ms-nw-bar-wrap { height: 1.6vh; border-radius: 2px; background: rgba(255,255,255,0.06); overflow: hidden; }
+.ms-nw-bar { display: block; height: 100%; border-radius: 2px; min-width: 2px; }
+.ms-nw-row.t1 .ms-nw-bar { background: var(--ms-rad); }
+.ms-nw-row.t2 .ms-nw-bar { background: var(--ms-dire); }
+.ms-nw-val { text-align: right; font-size: 1.55vh; font-weight: 700; font-variant-numeric: tabular-nums; color: rgba(255,255,255,0.85); }
+
+/* ── Score · timer · net-worth distribution strip ─────────────────────────────── */
+#ms-strip { display: flex; align-items: center; gap: 1.2vw; padding: 1.1vh 1.2vw; }
+.ms-s-team { display: flex; align-items: center; gap: 0.55vw; min-width: 0; flex: 1 1 0; }
+.ms-s-team.right { flex-direction: row-reverse; }
+.ms-s-logo { width: 3vh; height: 3vh; flex-shrink: 0; background-size: contain; background-repeat: no-repeat; background-position: center; }
+.ms-s-name { font-size: 2vh; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-s-kills { font-size: 3.4vh; font-weight: 900; font-variant-numeric: tabular-nums; }
+.ms-s-team.left  .ms-s-kills { color: var(--ms-rad-chrome); }
+.ms-s-team.right .ms-s-kills { color: var(--ms-dire-chrome); }
+.ms-s-clock {
+  flex: 0 0 auto; text-align: center; padding: 0.4vh 0.9vw;
+  border: 1px solid rgba(255,255,255,0.14); border-radius: var(--gfx-radius, 3px);
+  font-size: 2.5vh; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.06em;
+}
+#ms-nwbar-zone { flex: 2.2 1 0; display: flex; flex-direction: column; gap: 0.5vh; min-width: 0; }
+#ms-nwbar-labels { display: flex; justify-content: space-between; align-items: baseline; }
+.ms-nwbar-val { font-size: 1.7vh; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ms-nwbar-val.t1 { color: var(--ms-rad-chrome); } .ms-nwbar-val.t2 { color: var(--ms-dire-chrome); }
+#ms-nwbar-lead {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.35vh; font-weight: 800; letter-spacing: 0.08em; padding: 0.1vh 0.6vw;
+  border-radius: 2px; background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.85);
+}
+#ms-nwbar { height: 1.9vh; border-radius: 2px; overflow: hidden; display: flex; background: rgba(255,255,255,0.06); }
+#ms-nwbar .seg-t1 { background: var(--ms-rad); }
+#ms-nwbar .seg-t2 { background: var(--ms-dire); }
+#ms-nwbar .seg-gap { width: 2px; background: #070e16; flex-shrink: 0; }   /* 2px surface gap between fills */
+
+/* ── Net-worth-over-time graph ────────────────────────────────────────────────── */
+#ms-graph-wrap { padding: 1.1vh 1.2vw 0.9vh; }
+#ms-graph-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.5vh; }
+#ms-graph-title {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.3vh; font-weight: 800; letter-spacing: 0.22em; color: rgba(255,255,255,0.55);
+}
+#ms-graph-legend { display: flex; gap: 1vw; align-items: center; }
+.ms-lg { display: inline-flex; align-items: center; gap: 0.3vw; font-size: 1.2vh; font-weight: 700; letter-spacing: 0.06em; color: rgba(255,255,255,0.65); }
+.ms-lg .chip { width: 1.7vh; height: 1.7vh; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+#ms-graph { width: 100%; }
+#ms-graph svg { display: block; width: 100%; height: 25vh; }
+.ms-axis-lbl { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif; font-size: 12px; font-weight: 700; fill: rgba(255,255,255,0.4); letter-spacing: 0.04em; }
+.ms-side-lbl { font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif; font-size: 12px; font-weight: 800; letter-spacing: 0.12em; }
+.ms-graph-empty { padding: 6vh 0; text-align: center; color: rgba(255,255,255,0.4); font-size: 1.8vh; }
+
+/* ── Animation (theme easing + duration tokens) ───────────────────────────────── */
+#ms-root.ms-entering #ms-stage { animation: ms-rise calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#ms-root.ms-entering .ms-row,
+#ms-root.ms-entering .ms-nw-row { animation: ms-row-in calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#ms-root.ms-entering .ms-row:nth-child(2), #ms-root.ms-entering .ms-nw-row:nth-child(2) { animation-delay: calc(0.18s * var(--gfx-dur-scale, 1)); }
+#ms-root.ms-entering .ms-row:nth-child(3), #ms-root.ms-entering .ms-nw-row:nth-child(3) { animation-delay: calc(0.23s * var(--gfx-dur-scale, 1)); }
+#ms-root.ms-entering .ms-row:nth-child(4), #ms-root.ms-entering .ms-nw-row:nth-child(4) { animation-delay: calc(0.28s * var(--gfx-dur-scale, 1)); }
+#ms-root.ms-entering .ms-row:nth-child(5), #ms-root.ms-entering .ms-nw-row:nth-child(5) { animation-delay: calc(0.33s * var(--gfx-dur-scale, 1)); }
+#ms-root.ms-entering .ms-row:nth-child(6), #ms-root.ms-entering .ms-nw-row:nth-child(6) { animation-delay: calc(0.38s * var(--gfx-dur-scale, 1)); }
+#ms-root.ms-entering .ms-nw-row:nth-child(7)  { animation-delay: calc(0.43s * var(--gfx-dur-scale, 1)); }
+#ms-root.ms-entering .ms-nw-row:nth-child(8)  { animation-delay: calc(0.48s * var(--gfx-dur-scale, 1)); }
+#ms-root.ms-entering .ms-nw-row:nth-child(9)  { animation-delay: calc(0.53s * var(--gfx-dur-scale, 1)); }
+#ms-root.ms-entering .ms-nw-row:nth-child(10) { animation-delay: calc(0.58s * var(--gfx-dur-scale, 1)); }
+#ms-root.ms-entering .ms-nw-row:nth-child(11) { animation-delay: calc(0.63s * var(--gfx-dur-scale, 1)); }
+#ms-root.ms-entering #ms-graph-wrap { animation: ms-fade calc(0.6s * var(--gfx-dur-scale, 1)) calc(0.25s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#ms-root.ms-exiting #ms-stage { animation: ms-fall calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, cubic-bezier(0.5,0,0.75,0)) forwards; }
+
+@keyframes ms-rise { from { opacity: 0; transform: translateY(3vh) scale(0.99); } to { opacity: 1; transform: none; } }
+@keyframes ms-fall { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(2vh); } }
+@keyframes ms-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ms-row-in { from { opacity: 0; transform: translateX(-1vw); } to { opacity: 1; transform: none; } }

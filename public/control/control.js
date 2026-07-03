@@ -291,6 +291,7 @@ socket.on('state', async (state) => {
   mvRenderGfx(state);
   ldRenderDota(state);
   renderPostGame(state);
+  renderMatchSummary(state);
   renderMapIntro(state);
   applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
@@ -739,9 +740,10 @@ const GFX_OUTPUTS = [
   { label: 'Break Screen',          path: 'graphics/break-screen/' },
   { label: 'Win Screen',            path: 'graphics/win-screen/' },
   { label: 'Player Spotlight',      path: 'graphics/player-spotlight/' },
-  { label: 'Post-Game',             path: 'graphics/post-game/', cap: 'map-veto' },
+  { label: 'Post-Game',             path: 'graphics/post-game/', cap: 'live-data' },   // CS2 + Dota (D2 re-gate; this row was missed)
   { label: 'Map Intro',             path: 'graphics/map-intro/', cap: 'map-veto' },
   { label: 'Hero Draft',            path: 'graphics/hero-draft/', cap: 'hero-draft' },
+  { label: 'Match Summary',         path: 'graphics/match-summary/', cap: 'hero-draft' },
   // Lower Third outputs are appended dynamically (one row per output) in syncGfxToken.
 ];
 
@@ -1144,7 +1146,7 @@ function renderDashboard(s) {
           if (gfx.key === 'draft' || gfx.key === 'headToHead') return isChampDraft();
           if (gfx.key === 'mapVeto' || gfx.key === 'mapIntro') return isMapVeto();
           if (gfx.key === 'postGame') return supportsLiveData();
-          if (gfx.key === 'heroDraft') return isHeroDraft();
+          if (gfx.key === 'heroDraft' || gfx.key === 'matchSummary') return isHeroDraft();
           return true;
         }).map(function(gfx) {
           var active = s[gfx.key] && s[gfx.key].visible;
@@ -4255,6 +4257,7 @@ const GRAPHIC_MAP = [
   { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game', cap: 'live-data' }, // CS2 + Dota (both have GSI)
   { key: 'mapIntro',    tab: 'map-intro-gfx', label: 'Map Intro', cap: 'map-veto' },
   { key: 'heroDraft',   tab: 'hero-draft-gfx', label: 'Hero Draft', cap: 'hero-draft' },
+  { key: 'matchSummary', tab: 'match-summary-gfx', label: 'Match Summary', cap: 'hero-draft' }, // Dota (net-worth board needs the Dota GSI feed)
 ];
 // Is a graphic's capability active for the current game? (champ-draft = LoL-style draft,
 // map-veto = CS2-style pre-game). Used to scope output URLs + bus routing per game.
@@ -4734,6 +4737,27 @@ function pgRenderPreview(state){
   // Stack the two teams vertically — the preview card is narrow, so side-by-side overflowed.
   html+=col('team1')+col('team2');
   el.innerHTML=html;
+}
+
+// ── Match Summary control (Dota) ────────────────────────────────────────────────
+// Sync the tab's inputs + the 7 event-marker toggles to state.matchSummary, plus a
+// small live-feed readout so the operator can see the graph has data before airing.
+const _MS_MARKS = ['markRoshan','markTormentor','markTower','markBarracks','markAncient','markMultikill','markTeamfight'];
+function renderMatchSummary(state){
+  if(typeof isHeroDraft==='function' && !isHeroDraft()) return; // Dota-only surface
+  const ms=(state&&state.matchSummary)||{};
+  setInpSafe('ms-title', ms.title||'MATCH SUMMARY');
+  document.querySelectorAll('#ms-bg-group [data-msbg]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-msbg')===(ms.bg||'dark')); });
+  const sl=g('ms-show-logos'); if(sl) sl.checked=ms.showLogos!==false;
+  _MS_MARKS.forEach(function(k){ const el=g('ms-'+k); if(el) el.checked=!!ms[k]; });
+  const st=g('ms-feed-status');
+  if(st){
+    const d=(state.live&&state.live.dota)||{};
+    const fresh=d.lastSeen&&(Date.now()-d.lastSeen<15000);
+    st.innerHTML=fresh
+      ? '<span style="color:var(--ok,#4dcc90)">● Live feed</span> — '+(d.samples|0)+' timeline samples · '+(d.radiantScore|0)+':'+(d.direScore|0)+' · '+((d.matchPlayers&&d.matchPlayers.team1&&d.matchPlayers.team1.length)|0)+'v'+((d.matchPlayers&&d.matchPlayers.team2&&d.matchPlayers.team2.length)|0)+' players'
+      : '<span style="color:var(--text-dim)">○ No live GSI data — the board fills from the observer feed (see Live Data tab).</span>';
+  }
 }
 
 // ── Map Intro control ───────────────────────────────────────────────────────────
@@ -7421,6 +7445,7 @@ const _GFX_ANIM_PAGES = {
   'tournament-structure-gfx': ['tournamentStructure', 'Tournament Structure'], 'prizepool': ['prizepool', 'Prizepool'],
   'player-spotlight': ['playerSpotlight', 'Player Spotlight'], 'post-game-gfx': ['postGame', 'Post-Game'],
   'map-intro-gfx': ['mapIntro', 'Map Intro'], 'hero-draft-gfx': ['heroDraft', 'Hero Draft'],
+  'match-summary-gfx': ['matchSummary', 'Match Summary'],
 };
 function _graphicAnimCardHtml(key) {
   const sp = (v, t) => `<button class="theme-pill" data-sp="${v}" onclick="setGfxAnimSpeed('${key}','${v}')">${t}</button>`;

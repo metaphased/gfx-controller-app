@@ -19,6 +19,7 @@ const GRAPHIC_PATHS = {
   postGame:            '/graphics/post-game/',
   mapIntro:            '/graphics/map-intro/',
   heroDraft:           '/graphics/hero-draft/',
+  matchSummary:        '/graphics/match-summary/',
 };
 
 const busId  = location.pathname.split('/').filter(Boolean).pop();

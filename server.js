@@ -217,6 +217,7 @@ app.use('/graphics', express.static(path.join(__dirname, 'public', 'graphics'), 
 app.use('/uploads',  express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
 app.use('/heroes',   express.static(path.join(__dirname, 'public', 'heroes'))); // Dota 2 hero art
+app.use('/items',    express.static(path.join(__dirname, 'public', 'items')));  // Dota 2 item icons (match-summary board)
 app.use('/fonts',    express.static(path.join(__dirname, 'public', 'fonts')));
 app.use('/shared',   express.static(path.join(__dirname, 'public', 'shared')));  // design tokens — needed by login (pre-auth) too
 
@@ -346,6 +347,7 @@ function ingestDotaGsi(b, res) {
   const dchg = handleDotaDraftAuto(b);                  // Phase C: stage / apply the live draft
   d.matchPlayers = dotaMatchPlayers(b);                 // Phase D: per-player hero + stats (by steamid)
   d.winTeam = map.win_team === 'radiant' ? 'team1' : (map.win_team === 'dire' ? 'team2' : '');
+  recordDotaGameEnd(d.winTeam, map);                    // ancient/GG marker — anchored to the win_team flip
   const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players, d.samples, d.winTeam].join('|');
   const now = Date.now();
   if (dchg || sig !== _dotaSig || now - _dotaLastBcast > 3000) { _dotaSig = sig; _dotaLastBcast = now; broadcast(); }
@@ -631,6 +633,17 @@ function recordDotaBuildings(b, t) {
   const merged = {};                                                   // retain keys for sides not reported this payload
   Object.keys(tl._buildings).forEach(sk => { if (!bl[sk.split('|')[0]]) merged[sk] = true; });
   tl._buildings = Object.assign(merged, cur);
+}
+// Ancient / game-end marker. The buildings detector catches a fort seen vanishing mid-game, but
+// in practice the fort usually disappears on a payload that is already POST_GAME — which the
+// sample recorder ignores. So the definitive game-end marker anchors to map.win_team flipping
+// (side = the LOSING team, matching the buildings events' "owner of the destroyed building").
+function recordDotaGameEnd(winTeam, map) {
+  const tl = _dotaTimeline;
+  if (!winTeam || tl.matchId !== String(map.matchid || '') || !tl.samples.length) return;
+  if (tl.events.some(e => e.type === 'ancient')) return;                // fort fall already recorded in-game
+  const t = tl.samples[tl.samples.length - 1].t;
+  tl.events.push({ t, type: 'ancient', clock: t, side: winTeam === 'team1' ? 'team2' : 'team1' });
 }
 function recordDotaSample(b) {
   const map = b.map || {};
@@ -1175,6 +1188,12 @@ const makeDefault = () => ({
   // mapArtSlug of the chosen map (''=latest finalized); the graphic resolves players from
   // tournament.csStats + the map's mapResults row (+ its snapshot roundHistory). DATA-ONLY.
   postGame:    { visible: false, selectedSlug: '', design: 'split', bg: 'dark', showRounds: true, showLogos: true, title: 'POST-GAME' },
+  // Dota 2 match summary — whole-match analysis board: both team scoreboards (+ item rows),
+  // ranked net-worth list, score/timer strip and the net-worth-over-time graph with toggleable
+  // event markers (from /api/live/dota/timeline). High-signal markers default ON, dense ones OFF.
+  matchSummary: { visible: false, bg: 'dark', showLogos: true, title: 'MATCH SUMMARY',
+                  markRoshan: true, markTormentor: true, markTower: false, markBarracks: true,
+                  markAncient: true, markMultikill: false, markTeamfight: false },
   // CS2 map intro — cinematic pre-map card (map art hero + veto story + optional lineups).
   // selectedSlug = mapArtSlug of the chosen map (''=current/next, the first non-final map row).
   mapIntro:    { visible: false, selectedSlug: '', showLineups: false, bg: 'art', title: '', animVariant: 'cinematic', flyby: false },
@@ -1557,6 +1576,7 @@ const GRAPHIC_PATHS = {
   postGame: 'graphics/post-game',
   mapIntro: 'graphics/map-intro',
   heroDraft: 'graphics/hero-draft',
+  matchSummary: 'graphics/match-summary',
 };
 const GRAPHIC_LABELS = {
   lowerThird: 'lower third', headToHead: 'head to head', playerIntro: 'player intro',
@@ -1564,6 +1584,7 @@ const GRAPHIC_LABELS = {
   tournamentStructure: 'tournament structure', prizepool: 'prize', winScreen: 'win screen',
   breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker', playerSpotlight: 'player spotlight',
   mapVeto: 'map veto', postGame: 'post game', mapIntro: 'map intro', heroDraft: 'hero draft',
+  matchSummary: 'match summary',
 };
 function _switcherByUrl(url) {
   if (!url) return null;
@@ -1636,7 +1657,7 @@ function broadcast() {
 
 // ── SSE (Server-Sent Events) for Companion / external integrations ─────────────
 const _sseClients = new Set();
-const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto','postGame','mapIntro','heroDraft'];
+const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto','postGame','mapIntro','heroDraft','matchSummary'];
 function buildSSEPayload() {
   const visibilities = {};
   SSE_GRAPHIC_KEYS.forEach(k => { if (state[k]) visibilities[k] = !!state[k].visible; });
@@ -1955,7 +1976,8 @@ app.get('/api/live/dota/raw', requireAdmin, (req, res) => {
   res.json({ lastSeen: (state.live.dota && state.live.dota.lastSeen) || 0, raw: _dotaGsiRaw });
 });
 // Match timeline (Phase B) — sampled per-team net worth / kills / levels over the match.
-app.get('/api/live/dota/timeline', requireAdmin, (req, res) => {
+// requireAuth (not Admin): the match-summary GRAPHIC fetches this with the graphics token.
+app.get('/api/live/dota/timeline', requireAuth, (req, res) => {
   res.json({ matchId: _dotaTimeline.matchId, samples: _dotaTimeline.samples, events: _dotaTimeline.events || [] });
 });
 
@@ -2028,7 +2050,8 @@ const GRAPHIC_PAGE_KEYS = {
   winScreen: 'win-screen', preShow: 'pre-show',
   tournamentStructure: 'tournament-structure', groupStage: 'standings',
   prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight',
-  mapVeto: 'map-veto', postGame: 'post-game', mapIntro: 'map-intro', heroDraft: 'hero-draft'
+  mapVeto: 'map-veto', postGame: 'post-game', mapIntro: 'map-intro', heroDraft: 'hero-draft',
+  matchSummary: 'match-summary'
 };
 
 function findBusForGraphic(graphicName) {
@@ -2559,6 +2582,7 @@ app.post('/api/bgOutput', requireAdmin, (req, res) => { deepMerge(state.bgOutput
 app.post('/api/breakScreen', (req, res) => { Object.assign(state.breakScreen, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/winScreen',   (req, res) => { Object.assign(state.winScreen,   req.body); reconcileWinSeriesScore(); broadcast(); res.json({ok:true}); });
 app.post('/api/postGame',    (req, res) => { Object.assign(state.postGame,    req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/matchSummary',(req, res) => { Object.assign(state.matchSummary,req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/mapIntro',    (req, res) => { Object.assign(state.mapIntro,    req.body); broadcast(); res.json({ok:true}); });
 // Dota 2 hero draft: graphic options (visible/currentStep/title/logo/scale). `steps` are
 // reconciled from the order, not set here — heroes are entered via /api/heroDraft/pick.

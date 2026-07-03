@@ -110,6 +110,10 @@
         <span id="nav-dot-map-intro-gfx" class="nav-status-dot"></span>
         Map Intro
       </a>
+      <a class="nav-item cap-hero-draft" data-tab="match-summary-gfx">
+        <span id="nav-dot-match-summary-gfx" class="nav-status-dot"></span>
+        Match Summary
+      </a>
 
       <div class="nav-section-label">SYSTEM</div>
       <a class="nav-item" data-tab="profiles" id="nav-item-profiles">Profiles</a>
@@ -784,6 +788,54 @@
           <div class="card">
             <div class="card-title">Confirm data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· before you go live</span></div>
             <div id="pg-preview"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         MATCH SUMMARY — whole-match analysis board (GRAPHICS section, Dota 2)
+    ══════════════════════════════════════════════════════════════════════════ -->
+    <section class="tab" id="tab-match-summary-gfx">
+      <div class="tab-header"><h1>Match Summary</h1></div>
+      <div class="gfx-ctrl-bar">
+        <div class="gfx-ctrl-title">Match Summary Controls</div>
+        <div class="gfx-ctrl-row">
+          <div class="gfx-ctrl-group" id="ctrlgrp-matchSummary">
+            <span class="gfx-ctrl-section-label">Output</span>
+            <button class="lbar-toggle" id="ctrlbtn-matchSummary" onclick="toggleGraphic('matchSummary')">
+              <span class="lbar-dot" id="ctrl-dot-matchSummary"></span>MATCH SUMMARY
+            </button>
+          </div>
+        </div>
+      </div>
+      <p class="hint" style="margin-bottom:12px">Whole-match analysis board: both team scoreboards with end-game items, ranked net worth, and the net-worth-over-time graph with event markers — all live from the Dota GSI feed. Best shown post-game or between games.</p>
+      <div class="ps-two-col">
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Look</div>
+            <div class="field-row"><label>Title</label><input type="text" id="ms-title" placeholder="MATCH SUMMARY" oninput="api('/api/matchSummary',{title:this.value})"></div>
+            <div class="field-row"><label>Background</label>
+              <div class="btn-row" id="ms-bg-group" style="display:flex;gap:6px">
+                <button class="btn btn-sm" data-msbg="dark" onclick="api('/api/matchSummary',{bg:'dark'})">Dark</button>
+                <button class="btn btn-sm" data-msbg="transparent" onclick="api('/api/matchSummary',{bg:'transparent'})">Transparent</button>
+              </div>
+            </div>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="ms-show-logos" onchange="api('/api/matchSummary',{showLogos:this.checked})"> <span style="font-size:13px">Show team logos</span></label>
+            <div id="ms-feed-status" style="margin-top:12px;font-size:12px"></div>
+          </div>
+        </div>
+        <div class="ps-col">
+          <div class="card">
+            <div class="card-title">Graph event markers</div>
+            <p class="hint" style="margin-bottom:10px">Choose which match events appear on the net-worth graph. Towers and kill events can crowd a bloody game — switch off what you don't need.</p>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer"><input type="checkbox" id="ms-markRoshan" onchange="api('/api/matchSummary',{markRoshan:this.checked})"> <span style="font-size:13px">Roshan kills</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer"><input type="checkbox" id="ms-markTormentor" onchange="api('/api/matchSummary',{markTormentor:this.checked})"> <span style="font-size:13px">Tormentor kills</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer"><input type="checkbox" id="ms-markBarracks" onchange="api('/api/matchSummary',{markBarracks:this.checked})"> <span style="font-size:13px">Barracks destroyed</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer"><input type="checkbox" id="ms-markAncient" onchange="api('/api/matchSummary',{markAncient:this.checked})"> <span style="font-size:13px">Ancient / game end</span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer"><input type="checkbox" id="ms-markTower" onchange="api('/api/matchSummary',{markTower:this.checked})"> <span style="font-size:13px">Tower destroyed <span style="color:var(--text-dim)">(dense)</span></span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer"><input type="checkbox" id="ms-markMultikill" onchange="api('/api/matchSummary',{markMultikill:this.checked})"> <span style="font-size:13px">Multikills 3K/4K/5K <span style="color:var(--text-dim)">(dense)</span></span></label>
+            <label style="display:flex;align-items:center;gap:8px;margin-top:6px;cursor:pointer"><input type="checkbox" id="ms-markTeamfight" onchange="api('/api/matchSummary',{markTeamfight:this.checked})"> <span style="font-size:13px">Teamfight swings <span style="color:var(--text-dim)">(dense)</span></span></label>
           </div>
         </div>
       </div>
@@ -3155,6 +3207,9 @@
     </div>
     <div class="lbar-group cap-live-data" id="lbar-group-postGame">
       <button class="lbar-toggle" id="lbar-toggle-postGame" onclick="toggleGraphic('postGame')"><span class="lbar-dot" id="lbar-dot-postGame"></span>POST-GAME</button>
+    </div>
+    <div class="lbar-group cap-hero-draft" id="lbar-group-matchSummary">
+      <button class="lbar-toggle" id="lbar-toggle-matchSummary" onclick="toggleGraphic('matchSummary')"><span class="lbar-dot" id="lbar-dot-matchSummary"></span>MATCH SUMMARY</button>
     </div>
 
     <!-- Win screen + winner selector -->

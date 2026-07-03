@@ -825,6 +825,16 @@ body.layout-edit .win-team-btns, body.layout-edit .ops-panel-title { pointer-eve
         </div>
       </div>
 
+      <!-- Match Summary (Dota) -->
+      <div class="ops-ctrl-row cap-hero-draft">
+        <div class="ops-ctrl-group" id="ops-grp-matchSummary">
+          <span class="ops-ctrl-label">Match Summary</span>
+          <button class="lbar-toggle" id="ops-btn-matchSummary" onclick="toggleGfx('matchSummary')">
+            <span class="lbar-dot" id="ops-dot-matchSummary"></span>Match Summary
+          </button>
+        </div>
+      </div>
+
       <!-- Bracket -->
       <div class="ops-ctrl-row">
         <div class="ops-ctrl-group" id="ops-grp-bracket">
@@ -968,7 +978,7 @@ socket.on('presence:list', function(users) {
 });
 
 /* ── Graphic list for bulk sync ── */
-const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','heroDraft','mapVeto','mapIntro','postGame','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
+const GFX_SIMPLE = ['lowerThird','headToHead','playerIntro','draft','heroDraft','mapVeto','mapIntro','postGame','matchSummary','bracket','groupStage','tournamentStructure','prizepool','ticker','breakScreen','winScreen','preShow'];
 
 socket.on('state', state => {
   window._state = state;
@@ -1315,7 +1325,7 @@ const GFX_LABELS = {
   groupStage:'Group Stage', tournamentStructure:'Structure', breakScreen:'Break Screen',
   winScreen:'Win Screen', prizepool:'Prizepool', bgOutput:'BG Output', champSelect:'Champ Select',
   ticker:'Ticker', playerSpotlight:'Player Spotlight',
-  mapVeto:'Map Veto', postGame:'Post-Game', mapIntro:'Map Intro',
+  mapVeto:'Map Veto', postGame:'Post-Game', mapIntro:'Map Intro', matchSummary:'Match Summary',
 };
 
 function _gfxKeyLabel(state, key) {
@@ -1330,7 +1340,7 @@ function _gfxKeyLabel(state, key) {
 // Per-game capability of a graphic (champ-draft = LoL draft/H2H, map-veto = CS2 pre-game set).
 // Routing buttons for the other game's graphics are hidden so the matrix only shows what's
 // relevant to the active game (their assignments are preserved in the config).
-const _OPS_GFX_CAP = { headToHead:'champ-draft', draft:'champ-draft', mapVeto:'map-veto', postGame:'live-data', mapIntro:'map-veto', heroDraft:'hero-draft' };
+const _OPS_GFX_CAP = { headToHead:'champ-draft', draft:'champ-draft', mapVeto:'map-veto', postGame:'live-data', mapIntro:'map-veto', heroDraft:'hero-draft', matchSummary:'hero-draft' };
 function _opsGfxKeyActive(key) {
   const k = String(key).split(':')[0];
   const a = gameAdapter();
