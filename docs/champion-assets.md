@@ -16,7 +16,7 @@ Source: the [DDragon mirror](https://github.com/noxelisdev/LoL_DDragon). Only **
 
 ## Syncing from the app (admins)
 
-**Settings → Champion Assets**:
+**Settings → Broadcast Assets** — the **Champion Assets · League of Legends** card (each game's art card lives here; only the active game's shows — Dota 2 tournaments get Hero + Item Assets cards ([Hero Draft](hero-draft.md) / [Match Summary](match-summary.md)), CS2 gets [Map Assets](map-intro.md)):
 
 ![Champion Assets card on the Settings tab](img/tool-champion-assets.jpg)
 

@@ -1,6 +1,6 @@
 # Match & draft control
 
-This is show-day driving: load the match that's on air, manage rosters and ranks, run the pick/ban draft, and track the series. It spans three control tabs — **Game Setup**, **Players / Rosters** and **Draft** — under the **GAME** section.
+This is show-day driving: load the match that's on air, manage rosters and ranks, run the pick/ban draft, and track the series. It spans the control tabs under the **GAME** section — **Game Setup** and **Players / Rosters** for every game, plus the game's own draft tab: **Draft** for League of Legends, [Hero Draft](hero-draft.md) for Dota 2, or the [Map Veto](map-veto.md) for CS2.
 
 The live match state these tabs produce is what every team/draft/win graphic reads, so this is the hub once the [tournament](tournament-setup.md) and [schedule](schedule.md) exist.
 
@@ -43,6 +43,26 @@ The tracker lists each game in the series with its result and draft snapshot. Se
 
 **Reset All** (top right) wipes the current match state back to empty — use between unrelated matches if you're not loading from the schedule.
 
+The tracker adapts to the tournament's game:
+
+#### Dota 2
+
+![Dota series tracker — recorded games with draft snapshots](img/md-series-dota.jpg)
+
+Each game row has **winner buttons** — click the team that won (a confirm follows). Recording a winner snapshots that game automatically:
+
+- the **hero draft** (full pick/ban board) and position assignments;
+- the **live GSI stats** — kill score, duration, and every player's hero, K/D/A, net worth and items (when [live data](dota-live-data.md) is connected);
+- per-player **hero lines** that accumulate across the tournament.
+
+Expand a recorded game's **▼ Draft** to review its snapshot, or **Clear** a single game to re-record it.
+
+> **Record in order.** The GSI snapshot attaches the most recent *unrecorded* game from the archive — so record each game's winner before you start feeding the next one (right after the ancient falls is the natural moment). If you forget, record it before the next game ends and it still attaches correctly.
+
+#### CS2
+
+For CS2 the tracker works per **map** with round scores rather than draft snapshots, and sits beside a small **Live Data** card (CT side + suggested-score apply) — see [Live Data (CS2)](live-data.md#scores--review--apply).
+
 ## Players / Rosters
 
 **Game → Players / Rosters** shows the two loaded rosters side by side for last-minute edits, and is where you pull live data.
@@ -60,6 +80,10 @@ Riot IDs (`Name#TAG`) and **op.gg region** are set per player in the [Teams Data
 
 Ranks and pools feed graphics like [Player Intro](player-intro.md), [Player Spotlight](player-spotlight.md) and [Head to Head](head-to-head.md).
 
+### Steam IDs (CS2 / Dota 2)
+
+For CS2 and Dota 2 tournaments the roster rows show a **Steam ID** column instead of the Riot fields. It's editable right on the panel — even mid-broadcast — and it's how [live-data](dota-live-data.md#names-on-air--the-roster-rule) stats are matched to the right player. Fill it in once per player (the [Teams Database](tournament-setup.md#creating--editing-a-team) editor has the same field) and matching is exact.
+
 ### Match Intel
 
 **Game → Match Intel** is a denser read-only view of both rosters — ranks, Riot IDs and champion pools with op.gg deep links — handy to keep open for the casters. It has its own **↻ Ranks** / **↻ Champ Pools** buttons.
@@ -68,7 +92,7 @@ Ranks and pools feed graphics like [Player Intro](player-intro.md), [Player Spot
 
 ## Draft
 
-**Game → Draft** runs the live League of Legends pick/ban draft that drives the [Draft Overlay](draft.md) graphic. (This section covers *operating* the draft; the overlay's look/animation options live in the [Draft graphic guide](draft.md).)
+**Game → Draft** runs the live **League of Legends** pick/ban draft that drives the [Draft Overlay](draft.md) graphic. (This section covers *operating* the draft; the overlay's look/animation options live in the [Draft graphic guide](draft.md). Dota 2 tournaments get the [Hero Draft](hero-draft.md) tab instead; CS2 gets the [Map Veto](map-veto.md).)
 
 ![Draft tab — side assignment, timer and the pick/ban board](img/tool-draft.jpg)
 
@@ -96,6 +120,6 @@ The **Side Assignment & Timer** card:
 ## See also
 
 - [Schedule](schedule.md) — where matches are planned and loaded from.
-- [Draft Overlay](draft.md) — the draft *graphic* and its styling.
+- [Draft Overlay](draft.md) — the LoL draft *graphic* and its styling; [Hero Draft](hero-draft.md) is the Dota 2 equivalent.
 - [Win Screen](win-screen.md) — uses the series result and (in COMP style) the winning team's picks.
 - [Caster view](caster-view.md) — read-only roster/draft/series dashboard for the casters.

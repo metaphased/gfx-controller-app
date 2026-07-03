@@ -13,7 +13,7 @@ The first card. Sets the broad identity used across overlays:
 ![Tournament Info card](img/ts-info.jpg)
 
 - **Tournament Name** — shown on structure/break/pre-show graphics.
-- **Game** — League of Legends, VALORANT, CS2 or Generic. LoL unlocks the draft board, champion art and op.gg/Riot features.
+- **Game** — League of Legends, CS2, Dota 2, VALORANT, Rainbow Six Siege or Generic. The choice tailors the whole control panel: LoL unlocks the draft board, champion art and op.gg/Riot features; CS2 the [map veto](map-veto.md) and [live data](live-data.md); Dota 2 the [hero draft](hero-draft.md) and its [live data](dota-live-data.md). Newer games carry an **alpha/beta badge** in the control room (never on air) so operators know how production-ready that game's support is. The game locks once the tournament is underway — Reset to change it.
 - **Tournament Logo** — paste a URL or **Upload**. Used where a tournament mark is shown.
 
 ## Sponsor Logos
@@ -33,6 +33,18 @@ The teams playing in **this** tournament — a *pool* drawn from your [Teams Dat
 - **+ Add Team** lets you pick an existing team from the database or create a new one.
 - Only teams in this pool appear in the **Schedule**, **Bracket**, **Groups** and **Game Setup** pickers — so the pickers stay short and relevant.
 - Your full Teams Database stays separate and untouched; the pool is just "who's in this event".
+
+## Map Pool (CS2)
+
+For CS2 tournaments, a **Map Pool** card holds the maps this event plays on — it feeds the [Map Veto](map-veto.md) board and [Map Intro](map-intro.md). It ships with the current active-duty pool:
+
+- **+ Add Map** / remove to match your event's pool (the active-duty pool rotates).
+- **Load default pool** / **Set as default** — restore or save the default used for new CS2 tournaments.
+- **Refresh images** — re-download and rebuild the map art (use if art is outdated or a map was updated). Each map can also carry an optional **Image URL** override and a **Video URL** for the veto's accordion view.
+
+## Captains Mode Order (Dota 2)
+
+For Dota 2 tournaments, the **Captains Mode Order** card holds the pick/ban sequence the [Hero Draft](hero-draft.md) runs. It ships with the current Captains Mode preset, so normally there's nothing to do here — edit it only if Valve re-tunes the order in a patch (then **Set as default** to keep it for future tournaments). Day-to-day draft controls, including who has **first pick**, live on the [Hero Draft page](hero-draft.md) itself.
 
 ## Tournament Structure
 
@@ -100,6 +112,7 @@ Per-stage default series formats (e.g. groups = Bo1, playoffs = Bo3, finals = Bo
 
 - **Team Name**, **Tag** (short acronym, max 6 chars), **Logo** (URL or upload — square ~200×200 recommended; overlays show it at ~34px).
 - **Players** — one row per roster slot. Per player you can set the handle, **role**, **op.gg region** and **Riot ID** (`Name#TAG`). Riot ID + region power rank lookups and op.gg links; see [Match & draft control](match-and-draft.md#ranks-and-champion-pools).
+- **CS2 / Dota 2 teams** get a **Steam ID** field per player instead of the Riot fields — it's the precise key that matches [live-data](live-data.md) stats to the right player (CS2 also gets an optional **HLTV URL** link field). See [names on air](dota-live-data.md#names-on-air--the-roster-rule) for why the Steam ID matters for Dota broadcasts.
 
 ### Importing teams
 

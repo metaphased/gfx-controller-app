@@ -24,9 +24,12 @@ Click any player to expand full prep detail — Riot ID, this-game draft pick wi
 | **Teams** | Every team in the tournament — not just the two on air — with full rosters and substitutes, so casters can pull up any team on demand. |
 | **Series** | The current series: score, format, per-game results and draft history (incl. the **fearless** champion pool used so far). |
 | **Draft** | A live pick/ban board mirroring the [draft](draft.md) as it happens. |
+| **Live** | *(CS2 / Dota 2, with [live data](dota-live-data.md) connected)* — live in-game scores and player stats. |
 | **Standings** | Group-stage standings, with advancing positions and the qualification cut-off marked. |
 | **Bracket** | The playoff bracket — single- or double-elimination, with scores and winners. |
 | **Schedule** | The broadcast schedule. |
+
+The tabs adapt to the tournament's game — the table above describes a League of Legends event; see [Dota 2](#dota-2) below for how the Draft, Live and Series tabs change.
 
 ### Teams
 
@@ -55,6 +58,22 @@ The bracket splits into **Upper / Lower / Grand Final** for double-elimination, 
 ![Caster view — Bracket tab](img/caster-bracket.jpg)
 
 ![Caster view — Schedule tab](img/caster-schedule.jpg)
+
+## Dota 2
+
+On a Dota 2 tournament with [live data](dota-live-data.md) connected, three tabs give casters live match reference — all at the observer's delay, which matches what viewers see:
+
+- **Live** — the game as it stands: clock, kill score, the net-worth split bar with the gold lead, both team scoreboards (hero + level, roster name, K/D/A, net worth, GPM, items) and a compact net-worth-over-time graph with event markers. It refreshes every few seconds while open.
+
+![Caster view — Dota Live tab](img/caster-dota-live.jpg)
+
+- **Draft** — the Captains Mode draft in real time: who's on the clock, the two-tier timer (free time, then each team's reserve pool), the full pick/ban sequence, and each team's picks with hero art and position tags.
+
+![Caster view — Dota Draft tab](img/caster-dota-draft.jpg)
+
+- **Series** — per-game cards with the picks/bans, kill score, duration and expandable player stat lines for every recorded game of the series.
+
+![Caster view — Dota Series tab](img/caster-dota-series.jpg)
 
 ## How to use it
 

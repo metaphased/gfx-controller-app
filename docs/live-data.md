@@ -1,5 +1,7 @@
 # Live Data — CS2 GSI / MatchZy ingest
 
+> **Beta.** CS2 live data is feature-complete and being exercised in live productions; details below may still be refined. (Dota 2 has its own live-data pipeline — see [Live Data (Dota 2)](dota-live-data.md).)
+
 MetaGFX can pull **live CS2 data** to fill in **map/series scores** and **per-player stats** for you, instead of typing them by hand. Two independent sources feed it:
 
 - **Game State Integration (GSI)** — runs on a **CS2 client** (your observer / GOTV machine). Sends live round/score and per-player K/D/A as the match plays.
@@ -35,14 +37,14 @@ GSI and MatchZy authenticate with a single **ingest token**, shown on the Live D
 
 GSI runs on a **CS2 client** — typically your **observer** or a **GOTV** spectator client — because it needs `allplayers` data, which only a spectator sees.
 
-1. On the Live Data tab, click **Download GSI config** (`gamestate_integration_metagfx.cfg`).
+1. On the Live Data tab, under **Game runs on**, say where the CS2 client runs (see below), then click **Download GSI config** (`gamestate_integration_metagfx.cfg`).
 2. Copy it into:
    `…\Steam\steamapps\common\Counter-Strike Global Offensive\game\csgo\cfg\`
 3. Restart CS2 (or the spectator client).
 
 The config points CS2 at MetaGFX's `/api/live/gsi` endpoint and requests provider/map/round/player and `allplayers` match stats.
 
-> **Reachability.** The URL must be reachable **from the CS2 machine**. If that's a different PC, the app must be addressable over the network — set **`EXTERNAL_URL`** (or use this machine's **LAN IP**), not `localhost`. The **Copy GSI URL** button copies the exact address the config uses. See [Getting started → Environment variables](getting-started.md#environment-variables) for `EXTERNAL_URL`.
+> **Reachability.** The URL must be reachable **from the CS2 machine**, and the **Game runs on** selector writes the right address into the config: **This PC** (same machine, `127.0.0.1`), **Another PC on this network** (this machine's LAN address, prefilled and editable), or **A remote PC** (a public address / `EXTERNAL_URL` — behind CGNAT you'll need a tunnel or VPS). Re-download the config after changing it. The **Copy GSI URL** button copies the exact address in use. See [Getting started → Environment variables](getting-started.md#environment-variables) for `EXTERNAL_URL`.
 
 ## MatchZy setup (game server)
 
@@ -80,6 +82,7 @@ Stats are matched to your roster **by in-game name** (clan prefixes are ignored)
 
 - **[Player Spotlight](player-spotlight.md)** — the featured player's CS stats (tournament K/D · ADR · maps, else the live K/D/A line) in place of the LoL champion stats.
 - **[Player Intro](player-intro.md)** — a compact stat line under each player's handle (tournament `KD 1.75 · 95 ADR`, else live `24 / 11 / 6`) in all three layouts.
+- **[Post-Game Scoreboard](post-game.md)** — the end-of-map player board, with an optional round-by-round tracker (GSI).
 
 You still bring these graphics on air yourself — Live Data only fills the numbers.
 
