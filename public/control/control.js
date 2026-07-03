@@ -445,6 +445,7 @@ const GFX_PAGES = [
   ['Player Spotlight', 'graphics/player-spotlight/'],
   ['Post-Game',     'graphics/post-game/'],
   ['Map Intro',     'graphics/map-intro/'],
+  ['Match Summary', 'graphics/match-summary/'],
   ['Lower Third',   'graphics/lower-third/'],
 ];
 const urlList = g('url-list');
@@ -454,7 +455,7 @@ GFX_PAGES.forEach(([label, p]) => {
   // hero-draft/ must be tested before draft/ (it also contains 'draft/') so Dota's chip is scoped
   // to cap-hero-draft, not cap-champ-draft.
   chip.className = 'url-chip' + (
-    p.indexOf('hero-draft/') !== -1 ? ' cap-hero-draft' :
+    (p.indexOf('hero-draft/') !== -1 || p.indexOf('match-summary/') !== -1) ? ' cap-hero-draft' :
     p.indexOf('map-veto/')  !== -1 ? ' cap-map-veto' :
     (p.indexOf('draft/') !== -1 || p.indexOf('head2head/') !== -1) ? ' cap-champ-draft' : '');
   chip.title = 'Click to copy';
@@ -4750,13 +4751,26 @@ function renderMatchSummary(state){
   document.querySelectorAll('#ms-bg-group [data-msbg]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-msbg')===(ms.bg||'dark')); });
   const sl=g('ms-show-logos'); if(sl) sl.checked=ms.showLogos!==false;
   _MS_MARKS.forEach(function(k){ const el=g('ms-'+k); if(el) el.checked=!!ms[k]; });
+  const d=(state.live&&state.live.dota)||{};
+  // "Game shown" picker — the archived-game snapshots every Dota board (incl. caster) displays.
+  const gs=g('ms-game-select');
+  if(gs){
+    const games=(d.games||[]);
+    const tn=function(k){const t=state.match&&state.match[k];return (t&&(t.name||t.tag))||(k==='team1'?'Radiant':'Dire');};
+    const opts='<option value="">Live (current game)</option>'+games.map(function(x,i){
+      const win=x.winTeam?(' · '+tn(x.winTeam)+' win'):' · in progress';
+      return '<option value="'+escHtml(x.matchId)+'">Game '+(i+1)+' — '+(x.radiantScore|0)+':'+(x.direScore|0)+win+'</option>';
+    }).join('');
+    if(gs.dataset.sig!==opts){ gs.dataset.sig=opts; gs.innerHTML=opts; }
+    gs.value=d.selectedGame||'';
+  }
   const st=g('ms-feed-status');
   if(st){
-    const d=(state.live&&state.live.dota)||{};
     const fresh=d.lastSeen&&(Date.now()-d.lastSeen<15000);
-    st.innerHTML=fresh
+    const viewing=d.viewingArchived?'<span style="color:var(--warn,#f0cc44)">▣ Showing an ARCHIVED game</span> — boards are frozen to the selected game; pick "Live" to follow the feed.<br>':'';
+    st.innerHTML=viewing+(fresh
       ? '<span style="color:var(--ok,#4dcc90)">● Live feed</span> — '+(d.samples|0)+' timeline samples · '+(d.radiantScore|0)+':'+(d.direScore|0)+' · '+((d.matchPlayers&&d.matchPlayers.team1&&d.matchPlayers.team1.length)|0)+'v'+((d.matchPlayers&&d.matchPlayers.team2&&d.matchPlayers.team2.length)|0)+' players'
-      : '<span style="color:var(--text-dim)">○ No live GSI data — the board fills from the observer feed (see Live Data tab).</span>';
+      : '<span style="color:var(--text-dim)">○ No live GSI data — the board fills from the observer feed (see Live Data tab).</span>');
   }
 }
 

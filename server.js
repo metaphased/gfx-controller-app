@@ -348,6 +348,8 @@ function ingestDotaGsi(b, res) {
   d.matchPlayers = dotaMatchPlayers(b);                 // Phase D: per-player hero + stats (by steamid)
   d.winTeam = map.win_team === 'radiant' ? 'team1' : (map.win_team === 'dire' ? 'team2' : '');
   recordDotaGameEnd(d.winTeam, map);                    // ancient/GG marker — anchored to the win_team flip
+  upsertDotaGame(d);                                    // archive this game continuously (BoX insurance)
+  applyDotaSelectedGame();                              // operator-selected game overlays the display fields
   const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players, d.samples, d.winTeam].join('|');
   const now = Date.now();
   if (dchg || sig !== _dotaSig || now - _dotaLastBcast > 3000) { _dotaSig = sig; _dotaLastBcast = now; broadcast(); }
@@ -644,6 +646,54 @@ function recordDotaGameEnd(winTeam, map) {
   if (tl.events.some(e => e.type === 'ancient')) return;                // fort fall already recorded in-game
   const t = tl.samples[tl.samples.length - 1].t;
   tl.events.push({ t, type: 'ancient', clock: t, side: winTeam === 'team1' ? 'team2' : 'team1' });
+}
+// ── Dota per-game ARCHIVE ─────────────────────────────────────────────────────────
+// Insurance for BoX series: the live slice + timeline are otherwise overwritten the moment
+// the next game feeds (and the timeline was memory-only). Every ingest UPSERTS the current
+// game's full snapshot (players/items/scores + timeline) keyed by matchid — so nothing
+// depends on the observer surviving to deliver a final post-game payload. Persisted to
+// data/dota-games.json (throttled), capped at the last 7 games (a BoX max). The operator
+// picks which game the Dota boards display via state.live.dota.selectedGame ('' = live);
+// the selection overlays the broadcast slice so every graphic/caster surface just works.
+const DOTA_GAMES_FILE = path.join(DATA_DIR, 'dota-games.json');
+let _dotaGames = [];
+try { if (fs.existsSync(DOTA_GAMES_FILE)) _dotaGames = JSON.parse(fs.readFileSync(DOTA_GAMES_FILE, 'utf8')) || []; }
+catch (e) { console.error('Dota games archive load:', e.message); }
+let _dotaGamesDirty = false;
+setInterval(() => {
+  if (!_dotaGamesDirty) return;
+  _dotaGamesDirty = false;
+  fs.writeFile(DOTA_GAMES_FILE, JSON.stringify(_dotaGames), err => { if (err) console.error('Dota games archive save:', err.message); });
+}, 5000);
+function dotaGameByld(id) { return _dotaGames.find(g => g.matchId === id) || null; }
+function upsertDotaGame(d) {
+  if (!d.matchId) return;
+  const hasPlayers = ((d.matchPlayers.team1 || []).length + (d.matchPlayers.team2 || []).length) > 0;
+  if (!hasPlayers) return;                        // hero-select / own-client payloads carry nothing to keep
+  let g = dotaGameByld(d.matchId);
+  if (!g) { g = { matchId: d.matchId }; _dotaGames.push(g); }
+  g.updatedAt    = Date.now();
+  g.winTeam      = d.winTeam || g.winTeam || '';
+  if (d.winTeam && !g.endedAt) g.endedAt = Date.now();
+  g.radiantScore = d.radiantScore; g.direScore = d.direScore;
+  g.clockTime    = d.clockTime;    g.matchPlayers = d.matchPlayers;
+  if (_dotaTimeline.matchId === d.matchId) { g.samples = _dotaTimeline.samples; g.events = _dotaTimeline.events; }
+  _dotaGames.sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
+  if (_dotaGames.length > 7) _dotaGames.splice(0, _dotaGames.length - 7);
+  _dotaGamesDirty = true;
+  // Light index for the operator's game picker (full snapshots stay OUT of the broadcast).
+  state.live.dota.games = _dotaGames.map(x => ({ matchId: x.matchId, updatedAt: x.updatedAt, endedAt: x.endedAt || 0,
+    winTeam: x.winTeam || '', radiantScore: x.radiantScore | 0, direScore: x.direScore | 0, clockTime: x.clockTime | 0 }));
+}
+// Overlay an archived game onto the display fields of the live slice (selection active).
+function applyDotaSelectedGame() {
+  const d = state.live.dota, g = d.selectedGame ? dotaGameByld(d.selectedGame) : null;
+  d.viewingArchived = !!g;
+  if (!g) return;
+  d.matchPlayers = g.matchPlayers; d.winTeam = g.winTeam;
+  d.radiantScore = g.radiantScore; d.direScore = g.direScore; d.clockTime = g.clockTime;
+  const last = (g.samples || [])[(g.samples || []).length - 1];
+  d.nwLead = last ? (last.rnw - last.dnw) : d.nwLead; d.samples = (g.samples || []).length;
 }
 function recordDotaSample(b) {
   const map = b.map || {};
@@ -1127,7 +1177,7 @@ const makeDefault = () => ({
     players: {},     // phase C: per-steamid live stats { [steamid]: { name, team, kills, deaths, assists, mvps } }
     // Dota 2 GSI (Phase A: ingest pipe + inspector; parsed summary only — raw + timeline held server-side).
     // draftSuggest (Phase C) = latest parsed live draft awaiting operator apply / preview.
-    dota:    { lastSeen: 0, matchId: '', gameState: '', clockTime: 0, gameTime: 0, radiantScore: 0, direScore: 0, paused: false, draft: false, players: 0, provider: '', samples: 0, nwLead: 0, draftSuggest: null, matchPlayers: { team1: [], team2: [] }, winTeam: '' },
+    dota:    { lastSeen: 0, matchId: '', gameState: '', clockTime: 0, gameTime: 0, radiantScore: 0, direScore: 0, paused: false, draft: false, players: 0, provider: '', samples: 0, nwLead: 0, draftSuggest: null, matchPlayers: { team1: [], team2: [] }, winTeam: '', games: [], selectedGame: '', viewingArchived: false },
   },
   players: {
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),
@@ -1977,8 +2027,25 @@ app.get('/api/live/dota/raw', requireAdmin, (req, res) => {
 });
 // Match timeline (Phase B) — sampled per-team net worth / kills / levels over the match.
 // requireAuth (not Admin): the match-summary GRAPHIC fetches this with the graphics token.
+// Serves the ARCHIVED game's timeline when one is selected (or ?match=<id> asks explicitly).
 app.get('/api/live/dota/timeline', requireAuth, (req, res) => {
+  const want = String(req.query.match || (state.live.dota && state.live.dota.selectedGame) || '');
+  if (want) {
+    const g = dotaGameByld(want);
+    if (g) return res.json({ matchId: g.matchId, samples: g.samples || [], events: g.events || [], archived: true });
+  }
   res.json({ matchId: _dotaTimeline.matchId, samples: _dotaTimeline.samples, events: _dotaTimeline.events || [] });
+});
+// Pick which archived game the Dota boards display ('' = live). The overlay is applied
+// immediately so it works after the feed is gone (the usual case: between games / post-series).
+app.post('/api/live/dota/select', requireAuth, (req, res) => {
+  const id = String((req.body || {}).matchId || '');
+  if (id && !dotaGameByld(id)) return res.status(404).json({ error: 'No archived game ' + id });
+  const d = state.live.dota;
+  d.selectedGame = id;
+  if (!id) d.viewingArchived = false;   // back to live — next ingest refreshes the slice
+  applyDotaSelectedGame();
+  broadcast(); res.json({ ok: true, selectedGame: id });
 });
 
 // ── State API ──────────────────────────────────────────────────────────────────

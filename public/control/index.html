@@ -807,6 +807,10 @@
               <span class="lbar-dot" id="ctrl-dot-matchSummary"></span>MATCH SUMMARY
             </button>
           </div>
+          <div class="gfx-ctrl-group">
+            <span class="gfx-ctrl-section-label">Game shown</span>
+            <select id="ms-game-select" onchange="api('/api/live/dota/select',{matchId:this.value})" style="min-width:220px"></select>
+          </div>
         </div>
       </div>
       <p class="hint" style="margin-bottom:12px">Whole-match analysis board: both team scoreboards with end-game items, ranked net worth, and the net-worth-over-time graph with event markers — all live from the Dota GSI feed. Best shown post-game or between games.</p>
