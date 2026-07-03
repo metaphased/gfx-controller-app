@@ -1989,6 +1989,7 @@ html, body {
 .dl-head-row, .dl-row { display: grid; grid-template-columns: 44px 1fr 76px 48px 40px minmax(0, 172px);
   gap: 8px; align-items: center; padding: 6px 14px; }
 .dl-head-row { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+.dl-head-row span:nth-child(4), .dl-head-row span:nth-child(5),   /* NET + GPM — match the right-aligned values */
 .dl-head-row .dl-items-h { text-align: right; }
 .dl-row { border-bottom: 1px solid var(--border); }
 .dl-row:last-child { border-bottom: none; }
