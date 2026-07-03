@@ -1970,3 +1970,54 @@ html, body {
 .cs-mkb-ace { color: #ff7a45; border-color: rgba(255,122,69,0.5); }
 
 @media (max-width: 760px) { .cs-sb-cols { grid-template-columns: 1fr; } }
+
+/* ── Live tab — Dota (match-summary info set, live) ─────────────────────────────── */
+.dl-rad  { color: #2fbf6b; }
+.dl-dire { color: #e14b3d; }
+.dl-col-team1 .cs-sb-hdr { border-top: 3px solid #2fbf6b; }
+.dl-col-team2 .cs-sb-hdr { border-top: 3px solid #e14b3d; }
+.dl-side-tag { font-size: 10px; letter-spacing: 0.1em; color: var(--text-faint); margin-left: 8px; }
+.dl-nwbar-wrap { margin-bottom: 14px; }
+.dl-nwbar-labels { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;
+  font-family: var(--data-font); font-size: 13px; font-weight: 700; }
+.dl-nw-lead { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; color: var(--text-dim);
+  background: var(--surface2); border-radius: 3px; padding: 1px 8px; }
+.dl-nwbar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--surface2); }
+.dl-nwbar .dl-nw-t1 { background: #26aa5a; display: block; }
+.dl-nwbar .dl-nw-gap { width: 2px; background: var(--bg); flex-shrink: 0; }
+.dl-nwbar .dl-nw-t2 { background: #e14b3d; flex: 1; }
+.dl-head-row, .dl-row { display: grid; grid-template-columns: 44px 1fr 76px 48px 40px minmax(0, 172px);
+  gap: 8px; align-items: center; padding: 6px 14px; }
+.dl-head-row { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+.dl-head-row .dl-items-h { text-align: right; }
+.dl-row { border-bottom: 1px solid var(--border); }
+.dl-row:last-child { border-bottom: none; }
+.dl-hero { position: relative; width: 44px; height: 25px; border-radius: 2px; background-size: cover;
+  background-position: center 30%; background-color: var(--surface2); display: block; }
+.dl-lvl { position: absolute; right: -4px; bottom: -4px; min-width: 15px; height: 15px; padding: 0 2px;
+  display: flex; align-items: center; justify-content: center; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 2px; font-family: var(--data-font);
+  font-size: 9px; font-weight: 800; color: var(--text); }
+.dl-name { min-width: 0; display: flex; flex-direction: column; line-height: 1.15;
+  font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; }
+.dl-name > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-hero-sub { font-size: 10px; font-weight: 500; color: var(--text-faint); }
+.dl-kda { font-family: var(--data-font); font-size: 13px; color: var(--text-dim); white-space: nowrap; }
+.dl-kda b { color: var(--text); }
+.dl-nw { font-family: var(--data-font); font-size: 12px; font-weight: 700; color: #f0cc44; text-align: right; }
+.dl-gpm { font-family: var(--data-font); font-size: 12px; color: var(--text-dim); text-align: right; }
+.dl-items { display: flex; gap: 2px; justify-content: flex-end; align-items: center; min-width: 0; overflow: hidden; }
+.dl-item { width: 22px; height: 17px; flex-shrink: 0; border-radius: 2px; background-size: cover;
+  background-position: center; background-color: var(--surface2); border: 1px solid var(--border); }
+.dl-item-neutral { border-radius: 50%; width: 18px; height: 18px; border-color: rgba(240,204,68,0.5); margin-left: 3px; }
+.dl-graph-card { margin-top: 14px; padding: 12px 14px; }
+.dl-graph-title { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; color: var(--text-faint); margin-bottom: 8px; }
+.dl-graph-svg { display: block; width: 100%; height: auto; }
+.dl-ax { font-family: var(--data-font); font-size: 10px; font-weight: 600; fill: var(--text-faint); }
+.dl-side { font-family: var(--data-font); font-size: 10px; font-weight: 800; letter-spacing: 0.1em; }
+.dl-chip-txt { font-family: var(--data-font); font-size: 8.5px; font-weight: 800; fill: #10161d; }
+.dl-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.dl-lg { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; color: var(--text-dim); }
+.dl-lg-chip { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+@media (max-width: 900px) { .dl-head-row, .dl-row { grid-template-columns: 44px 1fr 76px 48px 40px; } .dl-items, .dl-items-h { display: none; } }
