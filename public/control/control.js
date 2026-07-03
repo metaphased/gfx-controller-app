@@ -3438,7 +3438,8 @@ function renderPlayerEditors(players) {
           // don't need the Teams DB modal. Saves on change (blur/enter) via /api/players.
           '<div class="cap-steamid"><div class="player-num">Steam ID</div>' +
             '<input type="text" class="ep-live-steamid" data-index="'+i+'" placeholder="765… (optional)"></div>' +
-          '<div>' +
+          // Empty label keeps the select on the same baseline as the labelled inputs beside it.
+          '<div><div class="player-num">&nbsp;</div>' +
             '<select class="sub-swap-sel" data-team="'+team+'" data-player-index="'+i+'">' +
               '<option value="">Swap sub...</option>' +
             '</select>' +
