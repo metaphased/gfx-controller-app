@@ -688,6 +688,20 @@
           <label class="ld-toggle"><input type="checkbox" id="ld-gsi-enabled" onchange="ldSetEnabled('gsi',this.checked)"> <span>Game State Integration (GSI)</span> <span class="ld-status" id="ld-gsi-status">off</span></label>
           <p class="hint cap-map-veto" style="margin:4px 0 8px">From a CS2 <strong>observer / GOTV client</strong>: live round score, bomb, and per-player K/D/A. Download the config and drop it in <code>…\\Counter-Strike Global Offensive\\game\\csgo\\cfg\\</code>, then (re)start CS2.</p>
           <p class="hint cap-hero-draft" style="margin:4px 0 8px;display:none">From a Dota 2 <strong>observer / GOTV (spectator) client</strong> — that's what carries both teams + the draft. Drop the config in <code>…\\dota 2 beta\\game\\dota\\cfg\\gamestate_integration\\</code> (create the folder if missing), add <code>-gamestateintegration</code> to Dota's launch options, then (re)start Dota. Tip: you can test it by watching a downloaded replay.</p>
+          <div style="margin:2px 0 8px;max-width:640px">
+            <div class="field-row" style="margin-bottom:6px"><label>Game runs on</label>
+              <select id="ld-cfg-loc" onchange="ldCfgLocChanged()">
+                <option value="server">This PC (same machine as MetaGFX)</option>
+                <option value="lan">Another PC on this network (LAN)</option>
+                <option value="remote">A remote PC (over the internet)</option>
+              </select>
+            </div>
+            <div class="field-row" id="ld-cfg-host-row" style="display:none;margin-bottom:6px">
+              <label>Server address</label>
+              <input type="text" id="ld-cfg-host" placeholder="192.168.1.50:3000" oninput="ldCfgApplyHost()">
+            </div>
+            <p class="hint" id="ld-cfg-loc-hint" style="margin:2px 0 4px"></p>
+          </div>
           <div class="btn-row" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
             <a class="btn btn-sm cap-map-veto" id="ld-gsi-download" href="/api/live/gsi.cfg" download>Download GSI config</a>
             <a class="btn btn-sm cap-hero-draft" id="ld-gsi-download-dota" href="/api/live/gsi-dota.cfg" download style="display:none">Download GSI config</a>

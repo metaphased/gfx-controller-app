@@ -498,6 +498,7 @@ async function ldFetchInfo() {
   try { const r = await fetch('/api/live/info'); if (r.ok) _ldInfo = await r.json(); } catch (e) {}
   const t = document.getElementById('ld-token');
   if (t) t.textContent = (_ldInfo && _ldInfo.token) ? (_ldInfo.token.slice(0, 6) + '…' + _ldInfo.token.slice(-4)) : '—';
+  if (typeof ldCfgLocChanged === 'function') ldCfgLocChanged();   // (re)prime the cfg location selector
 }
 function ldAgo(ms) { const s = Math.round(ms / 1000); if (s < 60) return s + 's'; const m = Math.round(s / 60); if (m < 60) return m + 'm'; return Math.round(m / 60) + 'h'; }
 function ldStatusEl(src, enabled, info) {
@@ -663,6 +664,39 @@ function ldCopy(src, btn) {
   copyText(src === 'gsi' ? _ldInfo.gsiUrl : _ldInfo.matchzyUrl).then(() => {
     const o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => { btn.textContent = o; }, 1500);
   });
+}
+
+// ── GSI cfg "where does the game run?" selector ─────────────────────────────────
+// The generated cfg's URI must be reachable FROM THE GAME PC, so the operator picks the
+// scenario and we bake the right address into the download (?host= on the cfg endpoints).
+const _LD_LOC_HINTS = {
+  server: 'The config will point at 127.0.0.1 — right only when the game / observer client runs on this same machine.',
+  lan:    'Use this server\'s LAN IP (prefilled when detected). The game PC must reach it on your network — allow the app through Windows Firewall on this port.',
+  remote: 'Enter your network\'s PUBLIC address (IP or domain, add :port if it differs) and port-forward it to this server. ⚠ Many ISPs use CGNAT, which means no true public IP — if port-forwarding never connects, use a tunnel (Cloudflare Tunnel, ngrok, Tailscale) or host the server on a VPS, and enter that address here.',
+};
+function _ldCfgHostFor(mode) {
+  const info = _ldInfo || {};
+  if (mode === 'server') return '127.0.0.1:' + (info.port || location.port || 80);
+  if (mode === 'lan')    return info.lanIp ? (info.lanIp + ':' + (info.port || location.port || 80)) : '';
+  if (mode === 'remote') return info.externalUrl ? info.externalUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '') : '';
+  return '';
+}
+function ldCfgLocChanged() {
+  const sel = g('ld-cfg-loc'); if (!sel) return;
+  const mode = sel.value;
+  const row = g('ld-cfg-host-row'), hint = g('ld-cfg-loc-hint'), hostEl = g('ld-cfg-host');
+  if (row) row.style.display = mode === 'server' ? 'none' : '';
+  if (hint) hint.textContent = _LD_LOC_HINTS[mode] || '';
+  if (hostEl && mode !== 'server') hostEl.value = _ldCfgHostFor(mode);
+  ldCfgApplyHost();
+}
+function ldCfgApplyHost() {
+  const sel = g('ld-cfg-loc'); if (!sel) return;
+  const mode = sel.value;
+  const host = mode === 'server' ? _ldCfgHostFor('server') : ((g('ld-cfg-host') || {}).value || '').trim();
+  const q = host ? '?host=' + encodeURIComponent(host) : '';
+  const a1 = g('ld-gsi-download');      if (a1) a1.href = '/api/live/gsi.cfg' + q;
+  const a2 = g('ld-gsi-download-dota'); if (a2) a2.href = '/api/live/gsi-dota.cfg' + q;
 }
 // Decay status to idle + refresh accumulated stats (when shown) without a fresh broadcast.
 setInterval(async () => { if (!window._state) return; if (_ldView !== 'live') await ldFetchCs(); ldRender(window._state); }, 5000);

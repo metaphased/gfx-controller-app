@@ -1907,6 +1907,26 @@ app.get('/api/config', (req, res) => res.json({ externalUrl: EXTERNAL_URL }));
 
 // ── CS2 live-data: admin config + setup helpers (the ingest endpoints are above, pre-auth) ──
 function liveBaseUrl(req) { return EXTERNAL_URL || (req.protocol + '://' + req.get('host')); }
+// Base URL for a GENERATED GSI cfg. The game client posts to this address, so it must be
+// reachable from wherever the game runs — the control UI asks (same PC / LAN / remote) and
+// passes the right host as ?host=<ip[:port]> (or a full http(s):// origin). Sanitised hard:
+// the value lands inside a quoted VDF string in a downloaded file.
+function cfgBaseUrl(req) {
+  let h = String((req.query && req.query.host) || '').trim().replace(/["\\{}\s]/g, '');
+  if (!h) return liveBaseUrl(req);
+  if (/^https?:\/\//i.test(h)) return h.replace(/\/+$/, '');
+  if (!/^[A-Za-z0-9.\-:\[\]]+$/.test(h)) return liveBaseUrl(req);   // reject anything not host-shaped
+  if (!/:\d+$/.test(h)) h += ':' + PORT;                            // default to this server's port
+  return 'http://' + h;
+}
+// First non-internal IPv4 — the LAN prefill for the "another PC on this network" option.
+function lanIp() {
+  const ifs = require('os').networkInterfaces();
+  for (const k of Object.keys(ifs)) for (const a of ifs[k] || []) {
+    if (a && a.family === 'IPv4' && !a.internal) return a.address;
+  }
+  return '';
+}
 // Toggle sources / options + optionally rotate the ingest token.
 app.post('/api/live/config', requireAdmin, (req, res) => {
   const ld = state.settings.liveData || (state.settings.liveData = {});
@@ -1956,13 +1976,14 @@ app.get('/api/live/info', requireAdmin, (req, res) => {
     matchzyUrl: base + '/api/live/matchzy?token=' + encodeURIComponent(token),
     cfgUrl:     '/api/live/gsi.cfg',
     cfgDotaUrl: '/api/live/gsi-dota.cfg',
+    lanIp: lanIp(), port: Number(PORT) || PORT, externalUrl: EXTERNAL_URL || '',
     note: 'The URL must be reachable from the CS2 PC / game server — set EXTERNAL_URL (or use this machine\'s LAN IP), not localhost, for a separate machine.',
   });
 });
 // Downloadable GSI config — drop in ...\\Counter-Strike Global Offensive\\game\\csgo\\cfg\\
 app.get('/api/live/gsi.cfg', requireAdmin, (req, res) => {
   const ld = state.settings.liveData || {};
-  const uri = liveBaseUrl(req) + '/api/live/gsi?token=' + encodeURIComponent(ld.liveToken || '');
+  const uri = cfgBaseUrl(req) + '/api/live/gsi?token=' + encodeURIComponent(ld.liveToken || '');
   const cfg =
 `"MetaGFX Live"
 {
@@ -1995,7 +2016,7 @@ app.get('/api/live/gsi.cfg', requireAdmin, (req, res) => {
 // OBSERVER / GOTV (spectator) client for full both-team + draft data.
 app.get('/api/live/gsi-dota.cfg', requireAdmin, (req, res) => {
   const ld = state.settings.liveData || {};
-  const uri = liveBaseUrl(req) + '/api/live/gsi?token=' + encodeURIComponent(ld.liveToken || '');
+  const uri = cfgBaseUrl(req) + '/api/live/gsi?token=' + encodeURIComponent(ld.liveToken || '');
   const cfg =
 `"MetaGFX Dota Live"
 {
