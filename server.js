@@ -355,12 +355,13 @@ function ingestDotaGsi(b, res) {
   d.samples = tl.samples.length;
   d.nwLead  = lastS ? (lastS.rnw - lastS.dnw) : 0;      // Radiant net-worth lead (+ = Radiant ahead)
   const dchg = handleDotaDraftAuto(b);                  // Phase C: stage / apply the live draft
+  const pchg = hasMatch && applyDotaPositionsFromMatch(d);   // hero → roster-position assignment
   recordDotaGameEnd(d.winTeam, map);                    // ancient/GG marker — anchored to the win_team flip
   if (hasMatch) upsertDotaGame(d);                      // archive this game continuously (BoX insurance)
   applyDotaSelectedGame();                              // operator-selected game overlays the display fields
   const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players, d.samples, d.winTeam].join('|');
   const now = Date.now();
-  if (dchg || sig !== _dotaSig || now - _dotaLastBcast > 3000) { _dotaSig = sig; _dotaLastBcast = now; broadcast(); }
+  if (dchg || pchg || sig !== _dotaSig || now - _dotaLastBcast > 3000) { _dotaSig = sig; _dotaLastBcast = now; broadcast(); }
   return res.json({ ok: true });
 }
 
@@ -702,6 +703,32 @@ function applyDotaSelectedGame() {
   d.radiantScore = g.radiantScore; d.direScore = g.direScore; d.clockTime = g.clockTime;
   const last = (g.samples || [])[(g.samples || []).length - 1];
   d.nwLead = last ? (last.rnw - last.dnw) : d.nwLead; d.samples = (g.samples || []).length;
+}
+// Auto-assign drafted heroes to roster POSITIONS (the "Assign heroes to players" card) from
+// the GSI player↔hero pairing: resolve each match player to a roster row (steamid, then name),
+// read that row's role, and place their hero in the matching position slot. Rides the same
+// opt-in as the draft board (heroDraft.autoFill.mode !== 'off'); the operator can still edit.
+function applyDotaPositionsFromMatch(d) {
+  const hd = state.heroDraft;
+  if (!hd || (((hd.autoFill || {}).mode) || 'off') === 'off') return false;
+  const positions = games.adapterDescriptor(state.match && state.match.game).positions || [];
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  let changed = false;
+  ['team1', 'team2'].forEach(tk => {
+    const key = tk + 'Positions';
+    const arr = hd[key] && hd[key].length === positions.length ? hd[key] : (hd[key] = positions.map(() => ''));
+    const roster = (state.players || {})[tk] || [];
+    ((d.matchPlayers || {})[tk] || []).forEach(p => {
+      if (!p.hero) return;
+      const sid = String(p.steamid || '');
+      let r = sid ? roster.find(x => String(x.steamid || '') === sid) : null;
+      if (!r) { const gn = norm(p.gsiName); if (gn) r = roster.find(x => norm(x.handle) === gn || norm(x.name) === gn); }
+      if (!r || !r.role) return;
+      const idx = positions.findIndex(pos => norm(pos) === norm(r.role));
+      if (idx >= 0 && arr[idx] !== p.hero) { arr[idx] = p.hero; changed = true; }
+    });
+  });
+  return changed;
 }
 function recordDotaSample(b) {
   const map = b.map || {};
