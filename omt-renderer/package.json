@@ -1,0 +1,7 @@
+{
+  "name": "metagfx-omt-renderer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MetaGFX OMT renderer sidecar — graphics pages out as native OMT video with alpha. Spawned by the app, or run standalone on a render-node PC.",
+  "main": "main.js"
+}
