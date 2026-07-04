@@ -77,6 +77,30 @@ function applyPicksClasses(root, ws) {
   root.classList.toggle('shape-angled', ws.compShape === 'angled');
 }
 
+// 'Below' the card is a moving target: the card's height varies with logo, score
+// row and message, and the Dota hero row is shorter than the LoL portraits — the
+// old fixed 63vh top overlapped the card text for both games. Every centred style
+// rests the card at top:50% / translate(-50%,-50%), so its resting bottom is
+// H/2 + offsetHeight/2 — offset metrics ignore the entrance transforms, so this
+// is stable even while the card is still animating in.
+function positionPicksRow() {
+  const root = document.getElementById('win-root');
+  const row  = document.getElementById('ws-comp-row');
+  const card = document.getElementById('ws-card');
+  if (!root || !row || !card) return;
+  if (!root.classList.contains('picks-on') || !root.classList.contains('picks-pos-below')) {
+    row.style.top = '';                      // bottom mode / comp use the CSS rules
+    return;
+  }
+  const H = window.innerHeight, vh = H / 100;
+  const restingBottom = H / 2 + card.offsetHeight / 2;
+  let top = Math.max(63 * vh, restingBottom + 2.5 * vh);
+  top = Math.min(top, H - row.offsetHeight - 3 * vh);   // keep the row on screen
+  row.style.top = (top / vh).toFixed(2) + 'vh';
+}
+window.addEventListener('resize', positionPicksRow);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => positionPicksRow());
+
 // COMP built-in background. Bespoke = a CSS accent-energy animation; otherwise
 // reuse the shared BG engine to render a premade style into the comp bg element.
 // Only runs while the COMP win screen is on screen.
@@ -279,6 +303,7 @@ function populateContent(ws, match) {
 
   renderWinMaps(match, teamKey);
   buildCompRow(ws, match);
+  requestAnimationFrame(positionPicksRow);   // after the row/card layout commits
 }
 
 // Per-map round scores (CS2 / map-veto games). match.mapResults is only populated
