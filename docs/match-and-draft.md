@@ -1,8 +1,8 @@
 # Match & draft control
 
-This is show-day driving: load the match that's on air, manage rosters and ranks, run the pick/ban draft, and track the series. It spans three control tabs — **Game Setup**, **Players / Rosters** and **Draft** — under the **GAME** section.
+This is show-day driving: load the match that's on air, manage rosters, run the draft or veto, and track the series. It spans the control tabs under the **GAME** section — **Game Setup** and **Players / Rosters** for every game, plus the game's own draft tab: **Draft** for League of Legends, **Hero Draft** for Dota 2, or the **Map Veto** for CS2.
 
-The live match state these tabs produce is what every team/draft/win graphic reads, so this is the hub once the [tournament](tournament-setup.md) and [schedule](schedule.md) exist.
+The live match state these tabs produce is what every team/draft/win graphic reads, so this is the hub once the [tournament](tournament-setup.md) and [schedule](schedule.md) exist. Everything on this page is game-agnostic unless it sits under a game's own subheading.
 
 ## Game Setup
 
@@ -31,71 +31,104 @@ The two team cards show the loaded **Team 1 / Team 2** (logo, name, tag) and the
 
 ### Series Tracker
 
+The tracker lists each game in the series with its result and (per game) its draft snapshot. **Format** (Bo1/Bo3/Bo5) sits in its header; **Reset All** (top right of the tab) wipes the current match state back to empty — use between unrelated matches if you're not loading from the schedule.
+
+Series progress is **persisted onto the linked schedule game** automatically, so switching matches or restarting the server doesn't lose where you were — and a completed series pushes its result back to the [bracket](schedule.md#bracket-linking).
+
+The tracker itself adapts to the tournament's game:
+
+#### League of Legends
+
 ![Series Tracker — Bo3 with a completed game, the live game and the fearless pool](img/md-series-tracker.jpg)
 
 Click **Edit** to unlock the series controls:
 
-- **Format** — Bo1 / Bo3 / Bo5.
 - **Fearless Draft** — when on, champions used earlier in the series are flagged as unavailable in later games' drafts.
 - **Reset Series** — clears the series scores and per-game history (confirm prompt).
 
-The tracker lists each game in the series with its result and draft snapshot. Series progress is **persisted onto the linked schedule game** automatically, so switching matches or restarting the server doesn't lose where you were — and a completed series pushes its result back to the [bracket](schedule.md#bracket-linking).
+Game results are pushed from the [draft](#draft-league-of-legends) (**Push Picks to Series Tracker**) or entered on the tracker, and each game keeps its draft snapshot for the fearless pool and the [COMP win screen](win-screen.md).
 
-**Reset All** (top right) wipes the current match state back to empty — use between unrelated matches if you're not loading from the schedule.
+#### Dota 2
+
+![Dota series tracker — recorded games with draft snapshots](img/md-series-dota.jpg)
+
+Each game row has **winner buttons** — click the team that won (a confirm follows). Recording a winner snapshots that game automatically:
+
+- the **hero draft** (full pick/ban board) and position assignments;
+- the **live GSI stats** — kill score, duration, and every player's hero, K/D/A, net worth and items (when [live data](dota-live-data.md) is connected);
+- per-player **hero lines** that accumulate across the tournament.
+
+Expand a recorded game's **▼ Draft** to review its snapshot, or **Clear** a single game to re-record it.
+
+> **Record in order.** The GSI snapshot attaches the most recent *unrecorded* game from the archive — so record each game's winner before you start feeding the next one (right after the ancient falls is the natural moment). If you forget, record it before the next game ends and it still attaches correctly.
+
+#### Counter-Strike 2
+
+For CS2 the tracker works per **map** with round scores rather than draft snapshots, and sits beside a small **Live Data** card (CT side + suggested-score apply) — see [Live Data (CS2)](live-data.md#scores--review--apply).
 
 ## Players / Rosters
 
-**Game → Players / Rosters** shows the two loaded rosters side by side for last-minute edits, and is where you pull live data.
+**Game → Players / Rosters** shows the two loaded rosters side by side for last-minute edits, and is where you refresh each game's player data. The handle you enter here is the name every graphic shows.
 
 ![Players / Rosters tab](img/tool-players.jpg)
 
-### Ranks and champion pools
+### League of Legends — ranks and champion pools
 
 Two refresh buttons sit at the top:
 
-- **↻ Refresh Ranks from Riot API** — fetches Solo Queue rank for every player who has a **Riot ID** set. Needs a persistent `RIOT_API_KEY` (see [Getting started](getting-started.md#riot-api-key)).
+- **↻ Refresh Ranks from Riot API** — fetches Solo Queue rank for every player who has a **Riot ID** set. Needs a persistent `RIOT_API_KEY` (see [Getting started](getting-started.md#league-of-legends)).
 - **↻ Refresh Champion Pools from op.gg** — pulls recent champion pools from op.gg (no Riot key needed).
 
-Riot IDs (`Name#TAG`) and **op.gg region** are set per player in the [Teams Database](tournament-setup.md#creating--editing-a-team) team editor; they also power op.gg links in [Match Intel](#match-intel) and the [Caster view](caster-view.md). Without a Riot ID a player simply shows no rank.
+Riot IDs (`Name#TAG`) and **op.gg region** are set per player in the [Teams Database](tournament-setup.md#creating--editing-a-team) team editor; they also power op.gg links in Match Intel (below) and the [Caster view](caster-view.md). Without a Riot ID a player simply shows no rank. Ranks and pools feed graphics like [Player Intro](player-intro.md), [Player Spotlight](player-spotlight.md) and [Head to Head](head-to-head.md).
 
-Ranks and pools feed graphics like [Player Intro](player-intro.md), [Player Spotlight](player-spotlight.md) and [Head to Head](head-to-head.md).
-
-### Match Intel
-
-**Game → Match Intel** is a denser read-only view of both rosters — ranks, Riot IDs and champion pools with op.gg deep links — handy to keep open for the casters. It has its own **↻ Ranks** / **↻ Champ Pools** buttons.
+**Match Intel** (its own tab, **Game → Match Intel**) is a denser read-only view of the same data — both rosters' ranks, Riot IDs and champion pools with op.gg deep links — handy to keep open for the casters. It has its own **↻ Ranks** / **↻ Champ Pools** buttons.
 
 ![Match Intel — both rosters with Solo Queue ranks, LP and win rates](img/md-match-intel.jpg)
 
-## Draft
+### CS2 & Dota 2 — Steam IDs
 
-**Game → Draft** runs the live League of Legends pick/ban draft that drives the [Draft Overlay](draft.md) graphic. (This section covers *operating* the draft; the overlay's look/animation options live in the [Draft graphic guide](draft.md).)
+For CS2 and Dota 2 tournaments the roster rows show a **Steam ID** column instead of the Riot fields. It's editable right on the panel — even mid-broadcast — and it's how live-data stats are matched to the right player. Fill it in once per player (the [Teams Database](tournament-setup.md#creating--editing-a-team) editor has the same field) and matching is exact. For Dota it's also what keeps roster handles, not in-game names, on air — see [names on air](dota-live-data.md#names-on-air--the-roster-rule).
+
+## Running the draft
+
+Each game has its own pre-game ritual and its own tab for it. The graphics side of each (looks, animation, output) lives on that graphic's own page.
+
+### Draft (League of Legends)
+
+**Game → Draft** runs the live pick/ban draft that drives the [Draft Overlay](draft.md) graphic.
 
 ![Draft tab — side assignment, timer and the pick/ban board](img/tool-draft.jpg)
 
-### Set up the draft
-
-The **Side Assignment & Timer** card:
+**Set up** — the **Side Assignment & Timer** card:
 
 - **Blue Side** — which team (Team 1/2) is on blue.
 - **Side Chosen By** — which team picked side (shown on the overlay).
 - **Bans First** — Blue or Red bans first.
 - **Pick/Ban Timer** — tick **Use pick/ban timer** and set **Seconds per step** to show a per-step countdown on the overlay.
 
-### Run it
+**Run it:**
 
 1. **▶ Start Draft** begins the sequence. A status bar shows the current step ("Blue Ban 1", etc.).
 2. Fill picks/bans **in order** on the draft board; the overlay updates live each step.
 3. The status bar has **↺ Timer** (restart the step timer), **⏸ Pause** and **↺ Reset Draft**.
 4. **↺ Replay Intro** (top right) re-triggers the overlay's intro animation without changing any draft data.
 
-### Roles & committing
+**Roles & committing:**
 
 - A **role-assignment** block lets you map each pick to a role (Top → Support) for graphics that show role.
 - **Commit to Series Tracker → Push Picks to Series Tracker** pushes this game's picks into the series' fearless pool, so a [fearless](#series-tracker) series knows which champions are now used up.
 
+### Hero Draft (Dota 2)
+
+**Game → Hero Draft** runs the Captains Mode pick/ban — the sequence board, first-pick side, the two-tier timer (free time + reserve pools), auto-fill from live GSI, and hero→position assignment. It has its own full guide: **[Hero Draft](hero-draft.md)**.
+
+### Map Veto (CS2)
+
+**Game → Map Veto** records the ban/pick/decider sequence and starting sides that drive the veto board and map intro. Guide: **[Map Veto](map-veto.md)**.
+
 ## See also
 
 - [Schedule](schedule.md) — where matches are planned and loaded from.
-- [Draft Overlay](draft.md) — the draft *graphic* and its styling.
+- [Draft Overlay](draft.md) / [Hero Draft](hero-draft.md) / [Map Veto](map-veto.md) — each game's draft *graphic* and its styling.
 - [Win Screen](win-screen.md) — uses the series result and (in COMP style) the winning team's picks.
 - [Caster view](caster-view.md) — read-only roster/draft/series dashboard for the casters.

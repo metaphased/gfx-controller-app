@@ -1,0 +1,187 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width: 100vw; height: 100vh; overflow: hidden; background: transparent; }
+
+:root {
+  --hd-rad:  #2fbf6b;  --hd-rad-rgb:  47,191,107;   /* Radiant = green (team1) */
+  --hd-dire: #e14b3d;  --hd-dire-rgb: 225,75,61;     /* Dire = red (team2) */
+}
+
+/* ── Root grid: 30vw | 40vw | 30vw  ×  1fr | 22vh (same shape as the LoL draft) ── */
+.draft-root {
+  width: 100vw; height: 100vh;
+  display: grid;
+  grid-template-columns: 30vw 40vw 30vw;
+  grid-template-rows: 1fr 9.2vh;
+  grid-template-areas: "side-rad centre side-dire" "pbar pbar pbar";
+  color: var(--gfx-c3, #fff);
+  text-transform: var(--gfx-text-transform, uppercase);
+  transition: opacity calc(0.4s * var(--gfx-dur-scale, 1)) var(--gfx-ease-exit, ease);
+}
+#hd-root.hd-hiding { opacity: 0; }
+
+/* ── Side panels — bans + header pushed to the bottom, camera space above ── */
+.team-panel { display: flex; flex-direction: column; justify-content: flex-end; overflow: hidden; }
+.side-rad  { grid-area: side-rad; }
+.side-dire { grid-area: side-dire; }
+
+.team-header { position: relative; display: flex; align-items: center; height: 6.8vh; padding: 0 1.2vw; gap: 0.8vw; flex-shrink: 0; }
+.team-header > * { position: relative; z-index: 1; }
+.side-rad .team-header {
+  background: linear-gradient(90deg, rgba(var(--hd-rad-rgb),0.92) 0%, rgba(var(--hd-rad-rgb),0.26) 55%, transparent 100%);
+  border-top: 2px solid var(--hd-rad);
+}
+.side-dire .team-header {
+  flex-direction: row-reverse;
+  background: linear-gradient(270deg, rgba(var(--hd-dire-rgb),0.92) 0%, rgba(var(--hd-dire-rgb),0.26) 55%, transparent 100%);
+  border-top: 2px solid var(--hd-dire);
+}
+.team-logo { width: 4.4vh; height: 4.4vh; background-size: contain; background-repeat: no-repeat; background-position: center; flex-shrink: 0; }
+.team-logo.no-logo { display: none; }
+.team-id { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; }
+.side-dire .team-id { align-items: flex-end; }
+.team-name {
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-size: 2.7vh; font-weight: 800; letter-spacing: 0.05em; line-height: 1.05;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;
+}
+.team-side {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.25vh; font-weight: 700; letter-spacing: 0.24em; margin-top: 0.1vh;
+}
+.side-rad  .team-side { color: var(--hd-rad); }
+.side-dire .team-side { color: var(--hd-dire); }
+.team-score { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; font-size: 2.7vh; font-weight: 800; color: rgba(255,255,255,0.6); flex-shrink: 0; }
+
+/* On-clock pulse on the acting team's header */
+@keyframes hd-header-pulse { 0%,100% { opacity: 0; } 50% { opacity: 1; } }
+.team-header.on-clock::before { content: ''; position: absolute; inset: 0; animation: hd-header-pulse 1.3s ease-in-out infinite; pointer-events: none; }
+.side-rad  .team-header.on-clock::before { background: linear-gradient(90deg, rgba(var(--hd-rad-rgb),0.55) 0%, rgba(var(--hd-rad-rgb),0.18) 55%, transparent 100%); }
+.side-dire .team-header.on-clock::before { background: linear-gradient(270deg, rgba(var(--hd-dire-rgb),0.55) 0%, rgba(var(--hd-dire-rgb),0.18) 55%, transparent 100%); }
+
+/* ── Ban row ── (landscape slots ~16:9 so the hero art fits with little crop) */
+.bans-panel { display: flex; align-items: center; gap: 0.28vw; padding: 0.6vh 0.6vw 0.9vh; flex-shrink: 0; }
+.bans-panel-dire { flex-direction: row-reverse; }
+.ban-slot {
+  width: 3.8vw; height: 2.14vw; max-width: 74px; max-height: 42px;
+  position: relative; overflow: hidden; flex-shrink: 0;
+  background: rgba(var(--gfx-c4-rgb, 14,18,28),0.85);
+}
+.ban-slot img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; opacity: 0; transition: opacity calc(0.4s * var(--gfx-dur-scale,1)) ease; filter: grayscale(0.55) brightness(0.7); }
+.ban-slot img.loaded { opacity: 1; }
+.ban-slot .ban-x { position: absolute; inset: 0; background: rgba(0,0,0,0.55); display: flex; align-items: center; justify-content: center; }
+.ban-slot .ban-x::after { content: '✕'; color: rgba(255,255,255,0.45); font-size: 1.6vh; font-weight: 700; }
+.ban-slot.empty {
+  background-image: repeating-linear-gradient(135deg, transparent 0 7px, rgba(0,0,0,0.3) 7px 9px);
+}
+.side-rad  .ban-slot.active { outline: 2px solid var(--hd-rad); outline-offset: -2px; }
+.side-dire .ban-slot.active { outline: 2px solid var(--hd-dire); outline-offset: -2px; }
+
+/* ── Centre: camera space + series label ── */
+.centre-col { grid-area: centre; display: flex; flex-direction: column; justify-content: flex-end; pointer-events: none; }
+.clock-series-block { display: flex; flex-direction: column; align-items: center; width: 100%; padding: 0 2vw 0.8vh; }
+.series-game-row { display: flex; align-items: center; justify-content: center; width: 100%; }
+.clock-series-game {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.7vh; font-weight: 800; letter-spacing: 0.16em; color: rgba(255,255,255,0.9); white-space: nowrap;
+}
+.clock-series-phase {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.3vh; font-weight: 700; letter-spacing: 0.14em; color: rgba(255,255,255,0.62); white-space: nowrap;
+}
+/* Primary countdown — free time (then extra time once free hits 0). Colour = acting team / amber. */
+.series-timer {
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-size: 3.2vh; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.03em;
+  line-height: 1.05; margin-top: 0.5vh; text-shadow: 0 1px 5px rgba(0,0,0,0.85), 0 0 12px rgba(0,0,0,0.6);
+}
+/* Extra / reserve-time readout — sits just below the primary countdown while free time remains. */
+.series-extra {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.55vh; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.08em;
+  line-height: 1; margin-top: 0.15vh; color: #f5b23d; text-shadow: 0 1px 4px rgba(0,0,0,0.85);
+}
+
+/* ── Bottom bar: picks + clock ── */
+.player-bar { grid-area: pbar; display: flex; overflow: visible; }
+.picks-side { display: flex; flex: 1; min-width: 0; gap: 1px; }
+
+/* Pick card = just the hero image (the bar row height is tuned so the 16:9 art fills it
+   near-native → crisp). The name is an optional gradient overlay on the image (toggle). */
+.pick-card { flex: 1; position: relative; overflow: hidden; min-width: 0; }
+.pick-bg { position: absolute; inset: 0; background-size: cover; background-position: center 26%; opacity: 0; transition: opacity calc(0.45s * var(--gfx-dur-scale,1)) ease; }
+.pick-bg.loaded { opacity: 1; }
+.pick-card.side-rad  .pick-empty { position:absolute; inset:0; background: linear-gradient(to top, rgba(var(--hd-rad-rgb),0.35) 0%, rgba(var(--gfx-c4-rgb,5,8,22),0.95) 100%); }
+.pick-card.side-dire .pick-empty { position:absolute; inset:0; background: linear-gradient(to top, rgba(var(--hd-dire-rgb),0.35) 0%, rgba(var(--gfx-c4-rgb,5,6,18),0.95) 100%); }
+.pick-card.side-rad::after  { content:''; position:absolute; bottom:0; inset-inline:0; height:2px; background: var(--hd-rad);  opacity:0.7; z-index:3; }
+.pick-card.side-dire::after { content:''; position:absolute; bottom:0; inset-inline:0; height:2px; background: var(--hd-dire); opacity:0.7; z-index:3; }
+.pick-card.active { color: var(--hd-rad); }
+.pick-card.active.side-dire { color: var(--hd-dire); }
+.pick-card.active { box-shadow: inset 0 0 0 2px currentColor; }
+@keyframes hd-clock-pulse { 0%,100% { opacity: 0.3; } 50% { opacity: 0.8; } }
+.pick-card.active::before { content:''; position:absolute; inset:0; z-index:2; box-shadow: inset 0 0 16px 1px currentColor; animation: hd-clock-pulse 1.3s ease-in-out infinite; pointer-events:none; }
+/* Bottom→top gradient scrim on the hero art (optional, default on) so an overlaid name pops and the
+   pick reads as a card rather than a bare crop. Shown when #hd-root.show-gradient AND the card has art. */
+.pick-scrim {
+  position: absolute; inset: 0; z-index: 1; pointer-events: none; opacity: 0;
+  transition: opacity calc(0.4s * var(--gfx-dur-scale,1)) ease;
+  background: linear-gradient(to top, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.32) 42%, transparent 72%);
+}
+#hd-root.show-gradient .pick-card.has-art .pick-scrim { opacity: 1; }
+
+/* Name overlay — hidden unless #hd-root.show-names AND the card has a name. */
+.pick-name {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 2; display: none;
+  padding: 1.4vh 0.3vw 0.5vh; text-align: center;
+  background: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.45) 55%, transparent 100%);
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-size: 1.5vh; font-weight: 700; letter-spacing: 0.03em; color: var(--gfx-c3, #fff);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+#hd-root.show-names .pick-name.has-name { display: block; }
+
+/* ── Horizontal timer bar (timerStyle='bar') ── spans the width just above the pick strip.
+   The fill scales from the centre outward and is coloured by phase (team → amber for extra). */
+.timer-bar {
+  position: absolute; left: 0; right: 0; bottom: 9.2vh; height: 0.62vh; z-index: 4;
+  background: rgba(var(--gfx-c4-rgb, 8,11,20), 0.72);
+  box-shadow: 0 -1px 6px rgba(0,0,0,0.5);
+}
+.timer-bar-fill {
+  width: 100%; height: 100%; transform-origin: center; transform: scaleX(1);
+  background: var(--hd-rad);
+  transition: transform 0.3s linear, background 0.4s ease;
+}
+
+/* Clock centre */
+.clock-center { width: 14vw; flex-shrink: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0.5vh 0.4vw; }
+.clock-logo-row { display: flex; align-items: center; justify-content: center; gap: 0.8vw; width: 100%; }
+.logo-wrap { position: relative; width: 8vh; height: 8vh; max-width: 92px; max-height: 92px; flex-shrink: 0; }
+.timer-ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); pointer-events: none; }
+.timer-track { fill: none; stroke: rgba(255,255,255,0.14); stroke-width: 4; }
+.timer-arc   { fill: none; stroke: var(--hd-rad); stroke-width: 4; stroke-linecap: round; transition: stroke-dashoffset 0.3s linear, stroke 0.4s ease; }
+.tourn-logo { position: absolute; inset: 14%; background-size: contain; background-repeat: no-repeat; background-position: center; }
+.tourn-logo::before {
+  content: ''; position: absolute; inset: 0; background-image: inherit; background-size: contain; background-repeat: no-repeat; background-position: center;
+  z-index: -1; opacity: 0; pointer-events: none;
+}
+@keyframes hd-logo-glow { 0%,100% { opacity: 0.5; } 50% { opacity: 1; } }
+.tourn-logo.on-rad::before  { filter: drop-shadow(0 0 12px var(--hd-rad))  drop-shadow(0 0 28px var(--hd-rad));  animation: hd-logo-glow 1.3s ease-in-out infinite; }
+.tourn-logo.on-dire::before { filter: drop-shadow(0 0 12px var(--hd-dire)) drop-shadow(0 0 28px var(--hd-dire)); animation: hd-logo-glow 1.3s ease-in-out infinite; }
+
+.clock-timer { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; font-size: 3vh; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: 0.04em; margin-top: 0.6vh; text-shadow: 0 1px 5px rgba(0,0,0,0.85), 0 0 12px rgba(0,0,0,0.6); }
+.clock-arrow { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; font-size: 3.2vh; font-weight: 900; opacity: 0; transition: opacity calc(0.3s * var(--gfx-dur-scale,1)) ease; flex-shrink: 0; }
+#clock-arrow-l { color: var(--hd-rad); }
+#clock-arrow-r { color: var(--hd-dire); }
+@keyframes hd-arrow-l { 0%,100% { transform: translateX(0); } 50% { transform: translateX(-5px); } }
+@keyframes hd-arrow-r { 0%,100% { transform: translateX(0); } 50% { transform: translateX(5px); } }
+#clock-arrow-l.show { opacity: 1; animation: hd-arrow-l 1.3s ease-in-out infinite; }
+#clock-arrow-r.show { opacity: 1; animation: hd-arrow-r 1.3s ease-in-out infinite; }
+
+/* ── Entry animation (theme tokens) ── */
+#hd-root.hd-entering .team-header { animation: hd-slide-down calc(0.55s * var(--gfx-dur-scale,1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#hd-root.hd-entering .bans-panel  { animation: hd-fade calc(0.6s * var(--gfx-dur-scale,1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; animation-delay: calc(0.12s * var(--gfx-dur-scale,1)); }
+#hd-root.hd-entering .player-bar  { animation: hd-slide-up calc(0.6s * var(--gfx-dur-scale,1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }
+#hd-root.hd-entering .clock-series-block { animation: hd-fade calc(0.6s * var(--gfx-dur-scale,1)) var(--gfx-ease-enter) both; animation-delay: calc(0.2s * var(--gfx-dur-scale,1)); }
+@keyframes hd-slide-down { from { transform: translateY(-100%); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes hd-slide-up   { from { transform: translateY(100%);  opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes hd-fade       { from { opacity: 0; } to { opacity: 1; } }

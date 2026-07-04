@@ -40,7 +40,7 @@ From the Player Intro ctrl-bar:
 
 - **Show / hide** the graphic (entrance/exit animate).
 - **Layout** — Nameplate · Team Stack · Bar.
-- **Options: Logo / Rank / Champs** — toggle each data row. Ranks come from the Riot API ([Players / Rosters](match-and-draft.md#ranks-and-champion-pools)). **Champs** blends each player's **top 3 most-played** champions (from their op.gg pool) along their row as overlapping splash crops that fade toward the name — players with no pool data fall back to a clean name. Available on the **Nameplate** and **Team Stack** layouts; the **Bar** layout is always name-only.
+- **Options: Logo / Rank / Champs** — toggle each data row. Ranks come from the Riot API ([Players / Rosters](match-and-draft.md#league-of-legends--ranks-and-champion-pools)). **Champs** blends each player's **top 3 most-played** champions (from their op.gg pool) along their row as overlapping splash crops that fade toward the name — players with no pool data fall back to a clean name. Available on the **Nameplate** and **Team Stack** layouts; the **Bar** layout is always name-only.
 - **Animation** — the entrance style (*Rise · Stagger · Fade*); the layout picks a sensible default.
 - **Background** — transparent by default, or a **Dark** backdrop; the centre logo can be overridden per broadcast.
 

@@ -47,10 +47,15 @@ function gameAdapter()      { return (window._state && window._state.adapter) ||
 function adapterRoles()     { const a = gameAdapter(); return (a && a.positions && a.positions.length) ? a.positions : DEFAULT_ROLES; }
 function isChampDraft()     { const a = gameAdapter(); return a ? a.pregameKind === 'champ-draft' : true; }
 function isMapVeto()        { const a = gameAdapter(); return a ? a.pregameKind === 'map-veto'    : false; }
+function isHeroDraft()      { const a = gameAdapter(); return a ? a.pregameKind === 'hero-draft'  : false; }
 function supportsFearless() { const a = gameAdapter(); return a ? !!a.supportsFearless : true; }
 function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvider === 'opgg'  : true; }
 function supportsSteamId()  { const a = gameAdapter(); return a ? a.rosterIds === 'steam'     : false; }
+function supportsHltv()     { const a = gameAdapter(); return a ? a.rosterLinks === 'hltv'    : false; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
+function supportsHeroes()   { const a = gameAdapter(); return a ? a.assetSource === 'dota-heroes' : false; }
+function supportsLiveData()  { const a = gameAdapter(); return a ? !!a.liveData : false; } // has a GSI feed (CS2, Dota 2)
+function _gfxHidden(key)     { const a = gameAdapter(); return !!(a && (a.hiddenGraphics || []).indexOf(key) >= 0); } // graphic hidden for this game
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
 function hasRoles()         { const a = gameAdapter(); return a ? (a.positions || []).some(function(p){return !!p;}) : true; }
 // Map-veto games don't advance match.currentGameNum; the current game is the first map
@@ -76,10 +81,17 @@ function applyAdapterUI() {
   const caps = {
     'cap-champ-draft': isChampDraft(),
     'cap-map-veto':    isMapVeto(),
+    'cap-hero-draft':  isHeroDraft(),
+    // character draft = a champion OR hero pick/ban (LoL + Dota, NOT CS2's map pickEntity) — for
+    // shared graphics that show drafted characters (e.g. win-screen picks).
+    'cap-char-draft':  isChampDraft() || isHeroDraft(),
+    'cap-live-data':   supportsLiveData(),   // games with a GSI live feed (CS2, Dota 2)
     'cap-opgg':        supportsOpgg(),
     'cap-assets':      supportsAssets(),
+    'cap-heroes':      supportsHeroes(),
     'cap-picks':       hasPickEntity(),
     'cap-roles':       hasRoles(),
+    'cap-steamid':     supportsSteamId(),     // Steam-ID roster fields (CS2, Dota — live-data match key)
   };
   Object.keys(caps).forEach(function(cls){
     document.querySelectorAll('.' + cls).forEach(function(el){ el.style.display = caps[cls] ? '' : 'none'; });
@@ -87,6 +99,15 @@ function applyAdapterUI() {
     // that should appear where the LoL `cap-<x>` copy is hidden).
     var notCls = cls.replace('cap-', 'cap-not-');
     document.querySelectorAll('.' + notCls).forEach(function(el){ el.style.display = caps[cls] ? 'none' : ''; });
+  });
+  // Per-game hidden graphics (adapter.hiddenGraphics): hide the nav item + live-bar group for each,
+  // and restore them for games that don't hide it. Only touches cap-less graphics (cap'd ones are
+  // owned by the loop above), so it's safe to force display on/off here.
+  (typeof GRAPHIC_MAP !== 'undefined' ? GRAPHIC_MAP : []).forEach(function(gfx){
+    if (gfx.cap) return;
+    var hide = _gfxHidden(gfx.key), disp = hide ? 'none' : '';
+    var nav = document.querySelector('.nav-item[data-tab="' + gfx.tab + '"]'); if (nav) nav.style.display = disp;
+    var grp = document.getElementById('lbar-group-' + gfx.key); if (grp) grp.style.display = disp;
   });
 }
 
@@ -263,10 +284,16 @@ socket.on('state', async (state) => {
   applyAdapterUI();
   applyTournamentCreateLock();
   tmRenderMapPool(state);
+  tmRenderDraftOrder(state);
+  hdRenderDraft(state);
+  hdRenderAutoFill(state);
+  hdSyncFirstPick(state);
   ldRender(state);
   mvRenderVeto(state);
   mvRenderGfx(state);
+  ldRenderDota(state);
   renderPostGame(state);
+  renderMatchSummary(state);
   renderMapIntro(state);
   applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
@@ -309,11 +336,11 @@ let _myId = null;
 // ── Navigation ─────────────────────────────────────────────────────────────────
 const TAB_LABELS = {
   home:'Dashboard', tournament:'Tournament Setup', teams:'Teams', talent:'Talent Roster', schedule:'Schedule',
-  groups:'Groups', playoffs:'Playoffs', game:'Game Setup', draft:'Draft',
+  groups:'Groups', playoffs:'Playoffs', game:'Game Setup', draft:'Draft', 'hero-draft':'Hero Draft',
   players:'Players', intel:'Match Intel', theme:'Theme', bgoutput:'BG Output',
   preshow:'Pre-show', break:'Break Screen', lowerthird:'Lower Thirds',
   h2h:'Head to Head', 'player-intro':'Player Intro', ticker:'Ticker',
-  'draft-gfx':'Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', 'live-data':'Live Data', 'post-game-gfx':'Post-Game', 'map-intro-gfx':'Map Intro', bracket:'Bracket', 'groups-gfx':'Group Stage',
+  'draft-gfx':'Draft GFX', 'hero-draft-gfx':'Hero Draft GFX', 'map-veto':'Map Veto', 'map-veto-gfx':'Map Veto GFX', 'live-data':'Live Data', 'post-game-gfx':'Post-Game', 'map-intro-gfx':'Map Intro', bracket:'Bracket', 'groups-gfx':'Group Stage',
   'tournament-structure-gfx':'Tournament Structure', prizepool:'Prizepool',
   win:'Win Screen', profiles:'Profiles', routing:'Routing', users:'Settings', log:'Log',
 };
@@ -324,7 +351,7 @@ const GFX_TAB_CLAIM_KEY = {
   'win':'win-screen', 'break':'break-screen', 'preshow':'pre-show',
   'tournament-structure-gfx':'tournament-structure', 'groups-gfx':'standings',
   'bracket':'bracket', 'h2h':'h2h', 'ticker':'ticker', 'prizepool':'prizepool',
-  'player-spotlight':'player-spotlight', 'post-game-gfx':'post-game', 'map-intro-gfx':'map-intro',
+  'player-spotlight':'player-spotlight', 'post-game-gfx':'post-game', 'map-intro-gfx':'map-intro', 'hero-draft-gfx':'hero-draft',
 };
 let _currentClaimTab = null; // tabKey currently claimed
 
@@ -408,6 +435,7 @@ const GFX_PAGES = [
   ['Head to Head',  'graphics/head2head/'],
   ['Pre-show',      'graphics/pre-show/'],
   ['Draft',         'graphics/draft/'],
+  ['Hero Draft',    'graphics/hero-draft/'],
   ['Map Veto',      'graphics/map-veto/'],
   ['Bracket',       'graphics/bracket/'],
   ['Group Stage',           'graphics/group-stage/'],
@@ -419,13 +447,19 @@ const GFX_PAGES = [
   ['Player Spotlight', 'graphics/player-spotlight/'],
   ['Post-Game',     'graphics/post-game/'],
   ['Map Intro',     'graphics/map-intro/'],
+  ['Match Summary', 'graphics/match-summary/'],
   ['Lower Third',   'graphics/lower-third/'],
 ];
 const urlList = g('url-list');
 GFX_PAGES.forEach(([label, p]) => {
   const url = window.location.origin + '/' + p;
   const chip = document.createElement('div');
-  chip.className = 'url-chip' + (p.indexOf('map-veto/') !== -1 ? ' cap-map-veto' : ((p.indexOf('draft/') !== -1 || p.indexOf('head2head/') !== -1) ? ' cap-champ-draft' : ''));
+  // hero-draft/ must be tested before draft/ (it also contains 'draft/') so Dota's chip is scoped
+  // to cap-hero-draft, not cap-champ-draft.
+  chip.className = 'url-chip' + (
+    (p.indexOf('hero-draft/') !== -1 || p.indexOf('match-summary/') !== -1) ? ' cap-hero-draft' :
+    p.indexOf('map-veto/')  !== -1 ? ' cap-map-veto' :
+    (p.indexOf('draft/') !== -1 || p.indexOf('head2head/') !== -1) ? ' cap-champ-draft' : '');
   chip.title = 'Click to copy';
   chip.textContent = label;
   chip.addEventListener('click', () => {
@@ -466,6 +500,7 @@ async function ldFetchInfo() {
   try { const r = await fetch('/api/live/info'); if (r.ok) _ldInfo = await r.json(); } catch (e) {}
   const t = document.getElementById('ld-token');
   if (t) t.textContent = (_ldInfo && _ldInfo.token) ? (_ldInfo.token.slice(0, 6) + '…' + _ldInfo.token.slice(-4)) : '—';
+  if (typeof ldCfgLocChanged === 'function') ldCfgLocChanged();   // (re)prime the cfg location selector
 }
 function ldAgo(ms) { const s = Math.round(ms / 1000); if (s < 60) return s + 's'; const m = Math.round(s / 60); if (m < 60) return m + 'm'; return Math.round(m / 60) + 'h'; }
 function ldStatusEl(src, enabled, info) {
@@ -548,6 +583,77 @@ function ldRenderPlayers(state) {
     px.innerHTML = '<div class="hint" style="margin:8px 0 4px">' + (_ldView === 'series' ? 'This series' : 'Tournament') + ' (maps · K/D/A · KD):</div><div class="ld-pcols">' + col('team1') + col('team2') + '</div>';
   }
 }
+// Dota 2 live inspector (Phase A) — parsed summary from state.live.dota + on-demand raw payload.
+function _ldFmtClock(s) { s = s | 0; const neg = s < 0; s = Math.abs(s); return (neg ? '-' : '') + Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2); }
+function ldRenderDota(state) {
+  const card = document.getElementById('ld-dota-card'); if (!card || !isHeroDraft()) return;
+  const d = (state && state.live && state.live.dota) || {};
+  const ld = (state.settings && state.settings.liveData) || {};
+  const fresh = d.lastSeen && (Date.now() - d.lastSeen < 8000);
+  const stat = document.getElementById('ld-dota-status');
+  if (stat) { stat.textContent = fresh ? 'live' : (d.lastSeen ? 'stale' : 'no data'); stat.classList.toggle('on', !!fresh); }
+  // Top GSI toggle status reflects the DOTA feed here (ldRender's ldStatusEl reads the CS2 slice).
+  const top = document.getElementById('ld-gsi-status');
+  if (top) {
+    top.textContent = !ld.gsiEnabled ? 'off' : (fresh ? 'live' : 'waiting…');
+    top.classList.toggle('on', !!(ld.gsiEnabled && fresh));
+    top.classList.toggle('idle', !!(ld.gsiEnabled && !fresh));
+  }
+  const host = document.getElementById('ld-dota-fields'); if (!host) return;
+  const cell = (k, v) => '<div class="ld-dota-cell"><span class="ld-dk">' + esc(k) + '</span><span class="ld-dv">' + esc(String(v)) + '</span></div>';
+  const html = [
+    cell('Game state', d.gameState || '—'),
+    cell('Clock', d.lastSeen ? _ldFmtClock(d.clockTime) : '—'),
+    cell('Score (R–D)', d.lastSeen ? ((d.radiantScore | 0) + ' – ' + (d.direScore | 0)) : '—'),
+    cell('Draft data', d.draft ? 'yes' : 'no'),
+    cell('Players', d.players | 0),
+    cell('Paused', d.paused ? 'yes' : 'no'),
+    cell('Match ID', d.matchId || '—'),
+    cell('Provider', d.provider || '—'),
+  ].join('');
+  if (host._h !== html) { host._h = html; host.innerHTML = html; }
+  // Phase B: keep the net-worth timeline sparkline fresh while the card is on screen.
+  if (!_ldTlTimer) { _ldTlTimer = setInterval(ldFetchDotaTimeline, 3000); ldFetchDotaTimeline(); }
+}
+// Net-worth-over-time sparkline (Phase B confirmation + a taste of the Phase E graphic).
+let _ldTlTimer = null;
+async function ldFetchDotaTimeline() {
+  try { ldRenderDotaTimeline(await (await fetch('/api/live/dota/timeline')).json()); } catch (e) {}
+}
+function ldRenderDotaTimeline(d) {
+  const host = document.getElementById('ld-dota-tl'); if (!host) return;
+  const s = (d && d.samples) || [];
+  if (s.length < 2) { host.innerHTML = '<span class="hint">Net-worth timeline builds once a match is in progress (needs the spectator player data).</span>'; return; }
+  const diffs = s.map(x => (x.rnw | 0) - (x.dnw | 0));
+  const t0 = s[0].t, t1 = s[s.length - 1].t, span = Math.max(1, t1 - t0);
+  const maxAbs = Math.max(1000, ...diffs.map(v => Math.abs(v)));
+  const W = 560, H = 90, pad = 6, midY = H / 2;
+  const pts = s.map((x, i) => (pad + (x.t - t0) / span * (W - 2 * pad)).toFixed(1) + ',' + (midY - diffs[i] / maxAbs * (midY - pad)).toFixed(1)).join(' ');
+  const last = diffs[diffs.length - 1], lead = last >= 0 ? 'Radiant' : 'Dire', col = last >= 0 ? '#4dcc90' : '#e06868';
+  host.innerHTML =
+    '<div class="hint" style="margin:0 0 6px">Net-worth timeline · ' + s.length + ' samples · ' + esc(_ldFmtClock(t1)) +
+      ' · lead <b style="color:' + col + '">' + lead + ' +' + (Math.abs(last) / 1000).toFixed(1) + 'k</b></div>' +
+    '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none" style="width:100%;height:72px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:6px">' +
+      '<line x1="0" y1="' + midY + '" x2="' + W + '" y2="' + midY + '" stroke="rgba(255,255,255,0.18)" stroke-width="1"/>' +
+      '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="2" vector-effect="non-scaling-stroke"/>' +
+    '</svg>' +
+    '<div class="hint" style="display:flex;justify-content:space-between;margin-top:2px"><span>Radiant ahead ↑ · Dire ahead ↓</span><span>' + esc(_ldFmtClock(t0)) + ' → ' + esc(_ldFmtClock(t1)) + '</span></div>';
+}
+let _ldRawOpen = false, _ldRawTimer = null;
+function ldToggleDotaRaw(btn) {
+  _ldRawOpen = !_ldRawOpen;
+  const pre = document.getElementById('ld-dota-raw'); if (pre) pre.style.display = _ldRawOpen ? '' : 'none';
+  if (btn) btn.textContent = _ldRawOpen ? 'Hide raw payload' : 'Show raw payload';
+  if (_ldRawOpen) { ldFetchDotaRaw(); if (!_ldRawTimer) _ldRawTimer = setInterval(ldFetchDotaRaw, 2000); }
+  else if (_ldRawTimer) { clearInterval(_ldRawTimer); _ldRawTimer = null; }
+}
+async function ldFetchDotaRaw() {
+  try {
+    const d = await (await fetch('/api/live/dota/raw')).json();
+    const pre = document.getElementById('ld-dota-raw'); if (pre) pre.textContent = d && d.raw ? JSON.stringify(d.raw, null, 2) : '(no payload received yet)';
+    const note = document.getElementById('ld-dota-raw-note'); if (note) note.textContent = d && d.lastSeen ? ('updated ' + new Date(d.lastSeen).toLocaleTimeString()) : '';
+  } catch (e) {}
+}
 async function ldSetEnabled(src, on) { await api('/api/live/config', src === 'gsi' ? { gsiEnabled: on } : { matchzyEnabled: on }); }
 async function ldSetCt(team) { await api('/api/live/config', { ctTeam: team }); }
 async function ldSetAuto(on) { await api('/api/live/config', { autoApplyScores: on }); }
@@ -560,6 +666,39 @@ function ldCopy(src, btn) {
   copyText(src === 'gsi' ? _ldInfo.gsiUrl : _ldInfo.matchzyUrl).then(() => {
     const o = btn.textContent; btn.textContent = 'Copied ✓'; setTimeout(() => { btn.textContent = o; }, 1500);
   });
+}
+
+// ── GSI cfg "where does the game run?" selector ─────────────────────────────────
+// The generated cfg's URI must be reachable FROM THE GAME PC, so the operator picks the
+// scenario and we bake the right address into the download (?host= on the cfg endpoints).
+const _LD_LOC_HINTS = {
+  server: 'The config will point at 127.0.0.1 — right only when the game / observer client runs on this same machine.',
+  lan:    'Use this server\'s LAN IP (prefilled when detected). The game PC must reach it on your network — allow the app through Windows Firewall on this port.',
+  remote: 'Enter your network\'s PUBLIC address (IP or domain, add :port if it differs) and port-forward it to this server. ⚠ Many ISPs use CGNAT, which means no true public IP — if port-forwarding never connects, use a tunnel (Cloudflare Tunnel, ngrok, Tailscale) or host the server on a VPS, and enter that address here.',
+};
+function _ldCfgHostFor(mode) {
+  const info = _ldInfo || {};
+  if (mode === 'server') return '127.0.0.1:' + (info.port || location.port || 80);
+  if (mode === 'lan')    return info.lanIp ? (info.lanIp + ':' + (info.port || location.port || 80)) : '';
+  if (mode === 'remote') return info.externalUrl ? info.externalUrl.replace(/^https?:\/\//, '').replace(/\/+$/, '') : '';
+  return '';
+}
+function ldCfgLocChanged() {
+  const sel = g('ld-cfg-loc'); if (!sel) return;
+  const mode = sel.value;
+  const row = g('ld-cfg-host-row'), hint = g('ld-cfg-loc-hint'), hostEl = g('ld-cfg-host');
+  if (row) row.style.display = mode === 'server' ? 'none' : '';
+  if (hint) hint.textContent = _LD_LOC_HINTS[mode] || '';
+  if (hostEl && mode !== 'server') hostEl.value = _ldCfgHostFor(mode);
+  ldCfgApplyHost();
+}
+function ldCfgApplyHost() {
+  const sel = g('ld-cfg-loc'); if (!sel) return;
+  const mode = sel.value;
+  const host = mode === 'server' ? _ldCfgHostFor('server') : ((g('ld-cfg-host') || {}).value || '').trim();
+  const q = host ? '?host=' + encodeURIComponent(host) : '';
+  const a1 = g('ld-gsi-download');      if (a1) a1.href = '/api/live/gsi.cfg' + q;
+  const a2 = g('ld-gsi-download-dota'); if (a2) a2.href = '/api/live/gsi-dota.cfg' + q;
 }
 // Decay status to idle + refresh accumulated stats (when shown) without a fresh broadcast.
 setInterval(async () => { if (!window._state) return; if (_ldView !== 'live') await ldFetchCs(); ldRender(window._state); }, 5000);
@@ -638,8 +777,10 @@ const GFX_OUTPUTS = [
   { label: 'Break Screen',          path: 'graphics/break-screen/' },
   { label: 'Win Screen',            path: 'graphics/win-screen/' },
   { label: 'Player Spotlight',      path: 'graphics/player-spotlight/' },
-  { label: 'Post-Game',             path: 'graphics/post-game/', cap: 'map-veto' },
+  { label: 'Post-Game',             path: 'graphics/post-game/', cap: 'live-data' },   // CS2 + Dota (D2 re-gate; this row was missed)
   { label: 'Map Intro',             path: 'graphics/map-intro/', cap: 'map-veto' },
+  { label: 'Hero Draft',            path: 'graphics/hero-draft/', cap: 'hero-draft' },
+  { label: 'Match Summary',         path: 'graphics/match-summary/', cap: 'hero-draft' },
   // Lower Third outputs are appended dynamically (one row per output) in syncGfxToken.
 ];
 
@@ -799,7 +940,7 @@ function syncBusConfig(s) {
 
   // Only offer the current game's graphics for assignment (mirrors the output-URL list);
   // the other game's graphics stay hidden, and their assignments are preserved on save.
-  const assignableGfx = GRAPHIC_MAP.filter(function(gfx){ return _gfxCapActive(gfx.cap); });
+  const assignableGfx = GRAPHIC_MAP.filter(function(gfx){ return !gfx.noBus && !_gfxHidden(gfx.key) && _gfxCapActive(gfx.cap); });
 
   const _busCheckbox = function(i, key, label, checked) {
     return '<label style="display:flex;align-items:center;gap:4px;font-size:11px;cursor:pointer;white-space:nowrap">' +
@@ -1038,8 +1179,11 @@ function renderDashboard(s) {
     gfxEl.innerHTML = '<div class="card-title">Live Graphics</div>' +
       '<div class="dash-gfx-grid">' +
         GRAPHIC_MAP.filter(function(gfx) {
+          if (_gfxHidden(gfx.key)) return false;
           if (gfx.key === 'draft' || gfx.key === 'headToHead') return isChampDraft();
-          if (gfx.key === 'mapVeto') return isMapVeto();
+          if (gfx.key === 'mapVeto' || gfx.key === 'mapIntro') return isMapVeto();
+          if (gfx.key === 'postGame') return supportsLiveData();
+          if (gfx.key === 'heroDraft' || gfx.key === 'matchSummary') return isHeroDraft();
           return true;
         }).map(function(gfx) {
           var active = s[gfx.key] && s[gfx.key].visible;
@@ -3291,7 +3435,12 @@ function renderPlayerEditors(players) {
           '</div>' +
           '<div class="cap-roles"><div class="player-num">Role</div>' +
             '<div class="player-val-display" data-index="'+i+'" data-field="role"></div></div>' +
-          '<div>' +
+          // Steam ID = the live-data match key (CS2/Dota) — editable HERE so match-day fixes
+          // don't need the Teams DB modal. Saves on change (blur/enter) via /api/players.
+          '<div class="cap-steamid"><div class="player-num">Steam ID</div>' +
+            '<input type="text" class="ep-live-steamid" data-index="'+i+'" placeholder="765… (optional)"></div>' +
+          // Empty label keeps the select on the same baseline as the labelled inputs beside it.
+          '<div><div class="player-num">&nbsp;</div>' +
             '<select class="sub-swap-sel" data-team="'+team+'" data-player-index="'+i+'">' +
               '<option value="">Swap sub...</option>' +
             '</select>' +
@@ -3302,6 +3451,10 @@ function renderPlayerEditors(players) {
 
       starterSec.addEventListener('change', function(e) {
         const sel = e.target;
+        if (sel.classList.contains('ep-live-steamid')) {
+          api('/api/players', { team, index: parseInt(sel.dataset.index), data: { steamid: sel.value.trim() } });
+          return;
+        }
         if (!sel.classList.contains('sub-swap-sel')) return;
         const playerIndex = parseInt(sel.dataset.playerIndex);
         const subIndex    = parseInt(sel.value);
@@ -3359,6 +3512,16 @@ function renderPlayerEditors(players) {
       div.textContent = (p && p[div.dataset.field]) || '';
     });
 
+    // Steam ID inputs: sync from state unless the operator is mid-edit; the row grid
+    // gains a 4th column only while the cell is visible (steam-roster games).
+    const steamOn = supportsSteamId();
+    starterSec.querySelectorAll('.player-row-edit').forEach(function(row) { row.classList.toggle('has-steam', steamOn); });
+    starterSec.querySelectorAll('.ep-live-steamid').forEach(function(inp) {
+      if (document.activeElement === inp) return;
+      const p = list[parseInt(inp.dataset.index)];
+      inp.value = (p && p.steamid) || '';
+    });
+
     starterSec.querySelectorAll('.opgg-link').forEach(function(link) {
       const p = list[parseInt(link.dataset.index)];
       const url = (p && supportsOpgg()) ? opggUrl(p.opggRegion, p.riotId) : '';
@@ -3368,7 +3531,7 @@ function renderPlayerEditors(players) {
 
     starterSec.querySelectorAll('.hltv-link').forEach(function(link) {
       const p = list[parseInt(link.dataset.index)];
-      const url = (p && supportsSteamId()) ? hltvUrlOf(p.hltvUrl) : '';
+      const url = (p && supportsHltv()) ? hltvUrlOf(p.hltvUrl) : '';
       if (url) { link.href = url; link.style.display = ''; }
       else      { link.href = '#'; link.style.display = 'none'; }
     });
@@ -3893,7 +4056,8 @@ function renderEditPlayers(players, subs) {
   let html='<div class="roster-section-label">STARTING LINEUP</div>';
   const showOpgg = supportsOpgg();   // Region / Riot ID columns only for op.gg-intel games
   const showRoles = hasRoles();      // Role column only for games with defined positions
-  const showSteam = supportsSteamId(); // Steam ID / HLTV columns only for CS2-style rosters
+  const showSteam = supportsSteamId(); // Steam ID column for steam-roster games (CS2, Dota)
+  const showHltv  = supportsHltv();    // HLTV.org link column — CS2 only
   html+=adapterRoles().map(function(role,i){
     const p=players[i]||{};
     return '<div class="player-row-edit">'+
@@ -3907,11 +4071,13 @@ function renderEditPlayers(players, subs) {
         '<input type="text" class="ep-riot-id" data-index="'+i+'" placeholder="Name#TAG" value="'+esc(p.riotId||'')+'">'+
       '</div>') : '')+
       (showSteam ? (
-      // Steam ID = optional live-data match override (matching is by in-game name otherwise);
-      // HLTV URL = manual link only (no scraping) surfaced as an operator shortcut.
+      // Steam ID = optional live-data match key (matching falls back to in-game name; the roster
+      // name is always what's shown on air).
       '<div><div class="player-num">Steam ID</div>'+
         '<input type="text" class="ep-steamid" data-index="'+i+'" placeholder="765… (optional)" value="'+esc(p.steamid||'')+'">'+
-      '</div>'+
+      '</div>') : '')+
+      (showHltv ? (
+      // HLTV URL = manual link only (no scraping) surfaced as an operator shortcut (CS2).
       '<div><div class="player-num">HLTV URL</div>'+
         '<input type="text" class="ep-hltv" data-index="'+i+'" placeholder="hltv.org/… (optional)" value="'+esc(p.hltvUrl||'')+'">'+
       '</div>') : '')+
@@ -4124,6 +4290,8 @@ function jsq(str) { return String(str||'').replace(/\\/g,'\\\\').replace(/'/g,"\
 
 // ── Init ───────────────────────────────────────────────────────────────────────
 Champions.load();
+// Re-render the hero draft board once the hero list lands so the pickers show their art.
+Heroes.load().then(function(){ if (typeof isHeroDraft==='function' && isHeroDraft() && window._state) { const b=g('hd-board'); if(b) b.dataset.struct=''; hdRenderDraft(window._state); } });
 refreshBracketTeams();
 
 // ── Graphic status indicators ──────────────────────────────────────────────────
@@ -4139,16 +4307,18 @@ const GRAPHIC_MAP = [
   { key: 'tournamentStructure', tab: 'tournament-structure-gfx', label: 'Tournament Structure' },
   { key: 'prizepool',           tab: 'prizepool',                label: 'Prizepool'            },
   { key: 'breakScreen',         tab: 'break',                    label: 'Break Screen'         },
-  { key: 'ticker',      tab: 'ticker',      label: 'Ticker'      },
+  { key: 'ticker',      tab: 'ticker',      label: 'Ticker', noBus: true }, // persistent lower band — run as its own browser source, not a swap-in bus graphic
   { key: 'winScreen',   tab: 'win',         label: 'Win Screen'  },
   { key: 'playerSpotlight', tab: 'player-spotlight', label: 'Player Spotlight' },
-  { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game', cap: 'map-veto' },
+  { key: 'postGame',    tab: 'post-game-gfx', label: 'Post-Game', cap: 'live-data' }, // CS2 + Dota (both have GSI)
   { key: 'mapIntro',    tab: 'map-intro-gfx', label: 'Map Intro', cap: 'map-veto' },
+  { key: 'heroDraft',   tab: 'hero-draft-gfx', label: 'Hero Draft', cap: 'hero-draft' },
+  { key: 'matchSummary', tab: 'match-summary-gfx', label: 'Match Summary', cap: 'hero-draft' }, // Dota (net-worth board needs the Dota GSI feed)
 ];
 // Is a graphic's capability active for the current game? (champ-draft = LoL-style draft,
 // map-veto = CS2-style pre-game). Used to scope output URLs + bus routing per game.
 function _gfxCapActive(cap) {
-  return cap === 'champ-draft' ? isChampDraft() : cap === 'map-veto' ? isMapVeto() : true;
+  return cap === 'champ-draft' ? isChampDraft() : cap === 'map-veto' ? isMapVeto() : cap === 'hero-draft' ? isHeroDraft() : cap === 'live-data' ? supportsLiveData() : true;
 }
 
 // ── Map Veto (CS2 etc.) ──────────────────────────────────────────────────────
@@ -4204,6 +4374,220 @@ function tmRenderMapPool(state){
       '<button class="btn btn-xs mv-rowbtn" title="Move down" onclick="tmMoveMap('+i+',1)">↓</button>'+
       '<button class="btn btn-xs btn-danger mv-rowbtn" title="Remove" onclick="tmRemoveMap('+i+')">✕</button></div>';
   }).join('')) || '<p class="hint">No maps yet. Click + Add Map or Load default pool.</p>';
+}
+
+// ── Dota 2 Captains Mode order (Tournament Setup) — persisted on the tournament ──────
+function _teamName(k){ const m=(window._state&&window._state.match)||{}; return (m[k]&&(m[k].name||m[k].tag))||(k==='team1'?'Team 1':'Team 2'); }
+function _hdOrder(){ return (window._state && window._state.tournament && window._state.tournament.heroDraftOrder) || []; }
+function _hdDefaultOrder(){
+  const saved = window._state && window._state.settings && window._state.settings.heroDraftDefault;
+  if (saved && saved.length) return saved.map(function(o){ return { team:o.team==='team2'?'team2':'team1', action:o.action==='pick'?'pick':'ban' }; });
+  const a=gameAdapter(); return ((a&&a.defaultDraftOrder)||[]).map(function(o){ return { team:o.team, action:o.action }; });
+}
+function hdCommitOrder(order){ api('/api/tournament', { heroDraftOrder: order }); }
+function hdAddStep(){ const o=_hdOrder().slice(); o.push({ team:'team1', action:'ban' }); hdCommitOrder(o); }
+function hdRemoveStep(i){ const o=_hdOrder().slice(); o.splice(i,1); hdCommitOrder(o); }
+function hdMoveStep(i,d){ const o=_hdOrder().slice(); const j=i+d; if(j<0||j>=o.length)return; const t=o[i]; o[i]=o[j]; o[j]=t; hdCommitOrder(o); }
+function hdSwapTeams(){ hdCommitOrder(_hdOrder().map(function(s){ return { team:s.team==='team1'?'team2':'team1', action:s.action }; })); }
+// First-pick toggle (Draft Setup card): mirrors the whole CM order so the chosen team opens the
+// draft — settable BEFORE the draft so the graphic is air-ready from step 1; GSI auto-orient
+// corrects a mis-set side once the real draft feeds.
+function hdSetFirstPick(team){
+  const o=_hdOrder(); if(!o.length||o[0].team===team) return;
+  hdCommitOrder(o.map(function(s){ return { team:s.team==='team1'?'team2':'team1', action:s.action }; }));
+}
+function hdSyncFirstPick(state){
+  const o=(state&&state.tournament&&state.tournament.heroDraftOrder)||[];
+  const m=(state&&state.match)||{};
+  const b1=g('hd-fp-team1'), b2=g('hd-fp-team2'); if(!b1||!b2) return;
+  b1.textContent=(m.team1&&(m.team1.tag||m.team1.name))||'Team 1';
+  b2.textContent=(m.team2&&(m.team2.tag||m.team2.name))||'Team 2';
+  const first=o.length?o[0].team:'';
+  b1.classList.toggle('btn-primary', first==='team1');
+  b2.classList.toggle('btn-primary', first==='team2');
+}
+function hdSetStep(i,field,val){ const o=_hdOrder().slice(); if(!o[i])return; o[i]=Object.assign({},o[i]); o[i][field]=val; hdCommitOrder(o); }
+function hdLoadDefaultOrder(){ const def=_hdDefaultOrder(); if(!def.length)return;
+  if(_hdOrder().length && !confirm('Replace the current Captains Mode order with the default?'))return;
+  hdCommitOrder(def); }
+function hdSetDefaultOrder(){
+  const o=_hdOrder(); if(!o.length){ if(window.showAlert) showAlert('Add steps to the order first.'); return; }
+  Promise.resolve(api('/api/settings',{ heroDraftDefault:o.map(function(s){ return { team:s.team, action:s.action }; }) })).then(function(){
+    const b=g('hd-set-default-order'); if(b){ const t=b.textContent; b.textContent='Saved ✓'; setTimeout(function(){ b.textContent=t; },1500); }
+  });
+}
+function tmRenderDraftOrder(state){
+  const host=g('tm-draft-order'); if(!host) return;
+  const order=(state&&state.tournament&&state.tournament.heroDraftOrder)||[];
+  const sig=JSON.stringify(order); if(sig===window._hdOrderSig) return; window._hdOrderSig=sig;
+  const tn1=_teamName('team1'), tn2=_teamName('team2');
+  host.innerHTML=(order.map(function(s,i){
+    const team=s.team==='team2'?'team2':'team1', action=s.action==='pick'?'pick':'ban';
+    return '<div class="mv-pool-row">'+
+      '<span class="mv-row-num">'+(i+1)+'</span>'+
+      '<select class="hd-step-team" style="width:150px" onchange="hdSetStep('+i+',\'team\',this.value)">'+
+        '<option value="team1"'+(team==='team1'?' selected':'')+'>'+esc(tn1)+'</option>'+
+        '<option value="team2"'+(team==='team2'?' selected':'')+'>'+esc(tn2)+'</option></select>'+
+      '<select class="hd-step-action" style="width:90px" onchange="hdSetStep('+i+',\'action\',this.value)">'+
+        '<option value="ban"'+(action==='ban'?' selected':'')+'>Ban</option>'+
+        '<option value="pick"'+(action==='pick'?' selected':'')+'>Pick</option></select>'+
+      '<button class="btn btn-xs mv-rowbtn" title="Move up" onclick="hdMoveStep('+i+',-1)">↑</button>'+
+      '<button class="btn btn-xs mv-rowbtn" title="Move down" onclick="hdMoveStep('+i+',1)">↓</button>'+
+      '<button class="btn btn-xs btn-danger mv-rowbtn" title="Remove" onclick="hdRemoveStep('+i+')">✕</button></div>';
+  }).join('')) || '<p class="hint">No steps yet. Click Load default order or + Add Step.</p>';
+}
+
+// ── Hero draft entry (GAME → Hero Draft) — fill heroes into the CM slots ─────────
+// The hero draft reuses the LoL draft BOARD + the shared searchable image picker (window.Heroes)
+// so the operator experience is identical across games — just heroes instead of champions. The
+// pick/ban sequence is the editable Captains Mode order (heroDraft.steps); picking a hero
+// auto-advances the active slot (server-side, like the LoL draft).
+var _hdPickerContainers = {};
+function hdSetHero(i, hero){ api('/api/heroDraft/pick', { index:i, hero:(hero && hero.name) || '', img:(hero && hero.url) || '' }); }
+function hdStartDraft(){ api('/api/heroDraft/start', {}); }
+function hdTogglePause(){ api('/api/heroDraft/timer/pause', {}); }
+function hdSetReserve(v){ var n=Math.max(0, parseInt(v)||0); api('/api/heroDraft', { reserveTime:n }); }
+function hdSetPickTime(v){ var n=Math.max(0, parseInt(v)||0); api('/api/heroDraft', { pickTime:n }); }
+function hdToggleShowTimer(on){ api('/api/heroDraft', { showTimer: !!on }); }
+function hdSetTimerStyle(s){ api('/api/heroDraft', { timerStyle: s==='bar'?'bar':'ring' }); }
+function hdToggleShowNames(on){ api('/api/heroDraft', { showPickNames: !!on }); }
+function hdToggleShowGradient(on){ api('/api/heroDraft', { showPickGradient: !!on }); }
+// Phase C: live-GSI draft auto-fill.
+function hdSetAutoFillMode(m){ api('/api/heroDraft', { autoFill: { mode: m } }); }
+function hdSetAutoFillDelay(v){ api('/api/heroDraft', { autoFill: { delaySec: Math.max(0, parseInt(v)||0) } }); }
+function hdApplyLive(){ api('/api/heroDraft/apply-live', {}); }
+function hdRenderAutoFill(state){
+  const card=g('hd-autofill-card'); if(!card || !isHeroDraft()) return;
+  const hd=(state&&state.heroDraft)||{}, af=hd.autoFill||{mode:'off'}, dota=(state.live&&state.live.dota)||{};
+  const mode=af.mode||'off';
+  const grp=g('hd-af-mode'); if(grp) Array.prototype.forEach.call(grp.querySelectorAll('[data-afmode]'), function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-afmode')===mode); });
+  const dw=g('hd-af-delay-wrap'); if(dw) dw.style.display = (mode==='delayed') ? 'flex' : 'none';
+  const de=g('hd-af-delay'); if(de && document.activeElement!==de) de.value = (af.delaySec!=null?af.delaySec:30);
+  // Feed status: live (fresh GSI) / off. Mirrors the Live Data badge.
+  const fresh = dota.lastSeen && (Date.now()-dota.lastSeen < 8000);
+  const stat=g('hd-af-status'); if(stat){ stat.textContent = mode==='off' ? 'off' : (fresh ? 'feed live' : 'waiting for feed'); stat.classList.toggle('on', !!(mode!=='off'&&fresh)); stat.classList.toggle('idle', !!(mode!=='off'&&!fresh)); }
+  // Staged live draft → summary + apply (primary in Suggest; a manual pull otherwise).
+  const box=g('hd-af-suggest'); if(!box) return;
+  const sug=dota.draftSuggest;
+  if(mode==='off' || !sug){ box.style.display='none'; box.innerHTML=''; return; }
+  const cnt=function(o){ return ((o&&o.team1)||[]).length + ((o&&o.team2)||[]).length; };
+  const nPick=cnt(sug.picks), nBan=cnt(sug.bans);
+  box.style.display='';
+  box.innerHTML = '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">'+
+    '<span class="hint" style="margin:0">Live draft detected: <b>'+nPick+'</b> pick'+(nPick===1?'':'s')+' · <b>'+nBan+'</b> ban'+(nBan===1?'':'s')+'</span>'+
+    '<button class="btn btn-sm btn-primary" onclick="hdApplyLive()">Apply to board now</button>'+
+    (mode==='live'?'<span class="hint" style="margin:0;color:#7ee2a8">⟳ auto-applying live</span>':mode==='delayed'?'<span class="hint" style="margin:0;color:#f0c674">⟳ auto-applying after buffer</span>':'')+
+    '</div>';
+}
+function hdSetPosition(team, pos, hero){ var key=team+'Positions'; var arr=(((window._state||{}).heroDraft||{})[key]||['','','','','']).slice(); arr[pos]=hero||''; var p={}; p[key]=arr; api('/api/heroDraft', p); }
+// Live reserve-time readout: format ms → M:SS.
+function _hdFmt(ms){ ms=Math.max(0,ms|0); var s=Math.ceil(ms/1000); return Math.floor(s/60)+':'+('0'+(s%60)).slice(-2); }
+function hdResetDraft(){ if(!confirm('Clear every drafted hero, reset the timer, and start the draft over?'))return; api('/api/heroDraft/reset', {}); }
+function hdRenderDraft(state){
+  const board=g('hd-board'); if(!board || !isHeroDraft()) return; // Dota-only; the tab is hidden otherwise
+  const hd=(state&&state.heroDraft)||{steps:[],currentStep:0};
+  const steps=hd.steps||[], cur=hd.currentStep|0;
+  const tn1=_teamName('team1'), tn2=_teamName('team2');
+  const mi=g('hd-match-info'); if(mi) mi.innerHTML=esc(tn1)+' <span style="color:var(--text-faint)">vs</span> '+esc(tn2)+' · '+steps.length+' slots · Radiant / Dire';
+
+  // Draft flow: pre-start shows the Start button; started shows the status bar + reserve readout.
+  const started=!!hd.started, complete = steps.length>0 && cur>=steps.length;
+  const sw=g('hd-start-wrap'); if(sw) sw.style.display = started ? 'none' : '';
+  const sb=g('hd-status-bar');  if(sb) sb.style.display = started ? '' : 'none';
+  const tr=g('hd-timer-row');   if(tr) tr.style.display = started ? 'flex' : 'none';
+  const startBtn=g('hd-start-btn'); if(startBtn) startBtn.disabled = !steps.length;
+  const pauseBtn=g('hd-pause-btn'); if(pauseBtn) pauseBtn.textContent = hd.timerPaused ? '▶ Resume' : '⏸ Pause';
+  const resEl=g('hd-reserve'); if(resEl && document.activeElement!==resEl) resEl.value = (hd.reserveTime!=null?hd.reserveTime:130);
+  const ptEl=g('hd-picktime'); if(ptEl && document.activeElement!==ptEl) ptEl.value = (hd.pickTime!=null?hd.pickTime:30);
+  const stEl=g('hd-show-timer'); if(stEl) stEl.checked = !!hd.showTimer;
+  const snEl=g('hd-show-names'); if(snEl) snEl.checked = !!hd.showPickNames;
+  const sgEl=g('hd-show-gradient'); if(sgEl) sgEl.checked = (hd.showPickGradient!==false);
+  const tsGrp=g('hd-timerstyle-group'); if(tsGrp){ const cur=(hd.timerStyle==='bar')?'bar':'ring';
+    Array.prototype.forEach.call(tsGrp.querySelectorAll('[data-hdts]'), function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-hdts')===cur); }); }
+  const rn=g('hd-timer-rad-name'); if(rn) rn.textContent=tn1;
+  const dn=g('hd-timer-dire-name'); if(dn) dn.textContent=tn2;
+  const cl=g('hd-current-label');
+  if(cl) cl.textContent = !started ? 'Not started' : (complete ? 'Draft complete' :
+    ((steps[cur].action==='pick'?'Pick':'Ban')+' — '+ (steps[cur].team==='team2'?tn2:tn1) +' on the clock'));
+  hdTick();
+  hdRenderAssign(hd, state.match||{}, tn1, tn2);
+
+  // Build the board + pickers once (or when the order / team names change), then only update
+  // values + active state each tick — mirrors renderDraftTab so we don't rebuild pickers live.
+  const struct = JSON.stringify({ o: steps.map(function(s){ return [s.team, s.action]; }), t: [tn1, tn2] });
+  if (board.dataset.struct !== struct) {
+    board.dataset.struct = struct;
+    _hdPickerContainers = {};
+    if (!steps.length) {
+      board.innerHTML = '<p class="hint">No draft order yet. Set it in <a onclick="switchToTab(\'tournament\')" href="#" style="color:var(--primary)">Tournament Setup → Captains Mode Order</a>.</p>';
+    } else {
+      board.innerHTML = '<div class="draft-phase-section">' + steps.map(function(s,i){
+        const team=s.team==='team2'?'team2':'team1', side=team==='team1'?'blue':'red';
+        const tm=((state.match||{})[team])||{};
+        return '<div class="draft-step-row" id="hd-step-'+i+'">'+
+          '<span class="draft-step-num">'+(i+1)+'</span>'+
+          '<span class="draft-side-badge draft-side-'+side+'">'+esc(tm.tag || (team==='team1'?tn1:tn2))+'</span>'+
+          '<span class="draft-type-badge draft-type-'+(s.action==='pick'?'pick':'ban')+'">'+(s.action==='pick'?'PICK':'BAN')+'</span>'+
+          '<div class="draft-picker-wrap" id="hd-picker-'+i+'"></div>'+
+          '<span class="draft-clock-badge" id="hd-clock-'+i+'" style="display:none">ON THE CLOCK</span>'+
+        '</div>';
+      }).join('') + '</div>';
+      steps.forEach(function(s,i){
+        const pc=g('hd-picker-'+i); if(!pc) return;
+        Heroes.buildPicker(pc, function(hero){ hdSetHero(i, hero); }, s.hero || '');
+        _hdPickerContainers[i]=pc;
+      });
+    }
+  } else {
+    steps.forEach(function(s,i){ const pc=_hdPickerContainers[i]; if(pc) Heroes.updatePickerValue(pc, s.hero || ''); });
+  }
+
+  // Active-slot highlight + clock badge each tick (like the LoL board).
+  steps.forEach(function(s,i){
+    const row=g('hd-step-'+i);
+    if(row) row.className='draft-step-row'+(i===cur?' draft-step-active':'')+(s.hero?' draft-step-done':'');
+    const clk=g('hd-clock-'+i); if(clk) clk.style.display=(i===cur)?'inline-block':'none';
+  });
+}
+// Live reserve-time readout (both teams). The acting team ticks down from turnEndsAt; the other
+// shows its banked pool. Runs on a 250ms interval + every render.
+function hdTick(){
+  const hd=(window._state||{}).heroDraft; if(!hd || !g('hd-timer-rad-val')) return;
+  const acting=(hd.started && hd.steps && hd.steps[hd.currentStep|0]) ? hd.steps[hd.currentStep|0].team : null;
+  ['team1','team2'].forEach(function(tk){
+    const live = acting===tk && !hd.timerPaused && hd.turnEndsAt;
+    const ms = live ? Math.max(0, hd.turnEndsAt - Date.now()) : (((hd.reserve||{})[tk])||0)*1000;
+    const val=g(tk==='team1'?'hd-timer-rad-val':'hd-timer-dire-val'); if(val) val.textContent=_hdFmt(ms);
+    const box=g(tk==='team1'?'hd-timer-rad':'hd-timer-dire'); if(box) box.classList.toggle('acting', acting===tk && hd.started && !hd.timerPaused);
+  });
+}
+setInterval(function(){ if(typeof isHeroDraft==='function' && isHeroDraft()) hdTick(); }, 250);
+
+// Hero → position assignment (draft complete) — dropdown per position, saved to heroDraft.
+function hdRenderAssign(hd, m, tn1, tn2){
+  const host=g('hd-assign'); if(!host) return;
+  const steps=hd.steps||[], complete = steps.length>0 && (hd.currentStep|0)>=steps.length;
+  if(!complete){ if(host.innerHTML){ host.innerHTML=''; host._sig=''; } return; }
+  const pk=function(team){ return steps.filter(function(s){return s.team===team && s.action==='pick' && s.hero;}).map(function(s){return {name:s.hero,img:s.img||''};}); };
+  const t1=pk('team1'), t2=pk('team2');
+  const pos1=(hd.team1Positions||['','','','','']), pos2=(hd.team2Positions||['','','','','']);
+  const sig=JSON.stringify({t1:t1,t2:t2,p1:pos1,p2:pos2,n:[tn1,tn2]}); if(sig===host._sig) return; host._sig=sig;
+  const POSs=((gameAdapter()||{}).positions)||['Carry','Mid','Offlane','Soft Support','Hard Support'];
+  const col=function(team, picks, pos, label, side){
+    const c = side==='rad' ? '#2fbf6b' : '#e14b3d';
+    const rows=POSs.map(function(p,ri){
+      const curName=pos[ri]||'';
+      const pkm=picks.filter(function(x){return x.name===curName;})[0];
+      const thumb = (curName && pkm && pkm.img) ? '<div class="ra-thumb" style="background-image:url(\''+esc(pkm.img)+'\')"></div>' : '<div class="ra-thumb empty"></div>';
+      const opts='<option value="">—</option>'+picks.map(function(x){return '<option value="'+esc(x.name)+'"'+(x.name===curName?' selected':'')+'>'+esc(x.name)+'</option>';}).join('');
+      return '<div class="ra-row ra-row-role"><span class="ra-role-label">'+esc(p||('Pos '+(ri+1)))+'</span>'+thumb+
+        '<select class="ra-role-select" onchange="hdSetPosition(\''+team+'\','+ri+',this.value)">'+opts+'</select></div>';
+    }).join('');
+    return '<div class="ra-col"><div class="ra-col-label">'+esc(label)+' <span class="ra-side-tag" style="color:'+c+';border-color:'+c+'">'+(side==='rad'?'RADIANT':'DIRE')+'</span></div>'+rows+'</div>';
+  };
+  host.innerHTML='<div class="card" style="margin-top:16px"><div class="card-title">Assign Heroes to Players</div>'+
+    '<p class="hint" style="margin-bottom:12px">Draft complete — assign each drafted hero to a position. Saved for downstream graphics (player intro, spotlight).</p>'+
+    '<div style="display:flex;gap:28px;flex-wrap:wrap">'+col('team1',t1,pos1,tn1,'rad')+col('team2',t2,pos2,tn2,'dire')+'</div></div>';
 }
 
 // Veto data entry (GAME → Map Veto) — guided sequence following the official Bo1/Bo3/Bo5
@@ -4426,6 +4810,40 @@ function pgRenderPreview(state){
   // Stack the two teams vertically — the preview card is narrow, so side-by-side overflowed.
   html+=col('team1')+col('team2');
   el.innerHTML=html;
+}
+
+// ── Match Summary control (Dota) ────────────────────────────────────────────────
+// Sync the tab's inputs + the 7 event-marker toggles to state.matchSummary, plus a
+// small live-feed readout so the operator can see the graph has data before airing.
+const _MS_MARKS = ['markRoshan','markTormentor','markTower','markBarracks','markAncient','markMultikill','markTeamfight'];
+function renderMatchSummary(state){
+  if(typeof isHeroDraft==='function' && !isHeroDraft()) return; // Dota-only surface
+  const ms=(state&&state.matchSummary)||{};
+  setInpSafe('ms-title', ms.title||'MATCH SUMMARY');
+  document.querySelectorAll('#ms-bg-group [data-msbg]').forEach(function(b){ b.classList.toggle('btn-primary', b.getAttribute('data-msbg')===(ms.bg||'dark')); });
+  const sl=g('ms-show-logos'); if(sl) sl.checked=ms.showLogos!==false;
+  _MS_MARKS.forEach(function(k){ const el=g('ms-'+k); if(el) el.checked=!!ms[k]; });
+  const d=(state.live&&state.live.dota)||{};
+  // "Game shown" picker — the archived-game snapshots every Dota board (incl. caster) displays.
+  const gs=g('ms-game-select');
+  if(gs){
+    const games=(d.games||[]);
+    const tn=function(k){const t=state.match&&state.match[k];return (t&&(t.name||t.tag))||(k==='team1'?'Radiant':'Dire');};
+    const opts='<option value="">Live (current game)</option>'+games.map(function(x,i){
+      const win=x.winTeam?(' · '+tn(x.winTeam)+' win'):' · in progress';
+      return '<option value="'+escHtml(x.matchId)+'">Game '+(i+1)+' — '+(x.radiantScore|0)+':'+(x.direScore|0)+win+'</option>';
+    }).join('');
+    if(gs.dataset.sig!==opts){ gs.dataset.sig=opts; gs.innerHTML=opts; }
+    gs.value=d.selectedGame||'';
+  }
+  const st=g('ms-feed-status');
+  if(st){
+    const fresh=d.lastSeen&&(Date.now()-d.lastSeen<15000);
+    const viewing=d.viewingArchived?'<span style="color:var(--warn,#f0cc44)">▣ Showing an ARCHIVED game</span> — boards are frozen to the selected game; pick "Live" to follow the feed.<br>':'';
+    st.innerHTML=viewing+(fresh
+      ? '<span style="color:var(--ok,#4dcc90)">● Live feed</span> — '+(d.samples|0)+' timeline samples · '+(d.radiantScore|0)+':'+(d.direScore|0)+' · '+((d.matchPlayers&&d.matchPlayers.team1&&d.matchPlayers.team1.length)|0)+'v'+((d.matchPlayers&&d.matchPlayers.team2&&d.matchPlayers.team2.length)|0)+' players'
+      : '<span style="color:var(--text-dim)">○ No live GSI data — the board fills from the observer feed (see Live Data tab).</span>');
+  }
 }
 
 // ── Map Intro control ───────────────────────────────────────────────────────────
@@ -4849,9 +5267,13 @@ function loadActionLog() {
 
 // ── Champion asset sync ────────────────────────────────────────────────────────
 let _assetTargetStates = null;
+// Both the Champion Assets (LoL) and Hero Assets (Dota) cards reuse this progress/result
+// renderer + the 'assets:progress' socket channel; they never run at once (one game per
+// tournament), so a single target-element pointer is enough.
+let _assetStatusElId = 'asset-status';
 
 function _renderAssetProgress() {
-  const el = g('asset-status');
+  const el = g(_assetStatusElId);
   if (!el || !_assetTargetStates) return;
   el.innerHTML = Object.values(_assetTargetStates).map(t => {
     let statusHtml, barHtml = '';
@@ -4904,7 +5326,7 @@ function _onAssetProgress(data) {
 }
 
 function renderAssetResults(results) {
-  const el = g('asset-status');
+  const el = g(_assetStatusElId);
   if (!el) return;
   el.innerHTML = results.map(r => {
     // r.missing = files that were missing at scan time (downloaded or not)
@@ -4937,7 +5359,8 @@ function renderAssetResults(results) {
 }
 
 async function checkAssets() {
-  const el = g('asset-status');
+  _assetStatusElId = 'asset-status';
+  const el = g(_assetStatusElId);
   if (el) el.innerHTML = '<span style="color:var(--text-dim)">Checking…</span>';
   const res = await api('/api/assets/check', {});
   if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
@@ -4946,7 +5369,8 @@ async function checkAssets() {
 
 async function syncAssets(forceRoles) {
   if (_assetTargetStates !== null) return; // already running
-  const el = g('asset-status');
+  _assetStatusElId = 'asset-status';
+  const el = g(_assetStatusElId);
   _assetTargetStates = {};
   if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
   socket.on('assets:progress', _onAssetProgress);
@@ -4958,6 +5382,83 @@ async function syncAssets(forceRoles) {
     return;
   }
   renderAssetResults(res.results);
+}
+
+// Dota 2 hero assets — same flow as champion assets, targeting the Hero Assets card.
+async function checkHeroes() {
+  _assetStatusElId = 'hero-asset-status';
+  const el = g(_assetStatusElId);
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Checking…</span>';
+  const res = await api('/api/heroes/check', {});
+  if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
+  renderAssetResults(res.results);
+}
+async function syncHeroes() {
+  if (_assetTargetStates !== null) return; // already running
+  _assetStatusElId = 'hero-asset-status';
+  const el = g(_assetStatusElId);
+  _assetTargetStates = {};
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
+  socket.on('assets:progress', _onAssetProgress);
+  const res = await api('/api/heroes/sync', {});
+  socket.off('assets:progress', _onAssetProgress);
+  _assetTargetStates = null;
+  if (!res || res.error) {
+    if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml((res && res.error) || 'Request failed') + '</span>';
+    return;
+  }
+  renderAssetResults(res.results);
+}
+
+// Dota 2 item assets — same flow as hero assets, targeting the Item Assets card.
+async function checkItems() {
+  _assetStatusElId = 'item-asset-status';
+  const el = g(_assetStatusElId);
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Checking…</span>';
+  const res = await api('/api/items/check', {});
+  if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
+  renderAssetResults(res.results);
+}
+async function syncItems() {
+  if (_assetTargetStates !== null) return; // already running
+  _assetStatusElId = 'item-asset-status';
+  const el = g(_assetStatusElId);
+  _assetTargetStates = {};
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
+  socket.on('assets:progress', _onAssetProgress);
+  const res = await api('/api/items/sync', {});
+  socket.off('assets:progress', _onAssetProgress);
+  _assetTargetStates = null;
+  if (!res || res.error) {
+    if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml((res && res.error) || 'Request failed') + '</span>';
+    return;
+  }
+  renderAssetResults(res.results);
+}
+
+// CS2 map assets — the /api/mapart proxy downloads each pool map's art from the community repo on
+// demand + caches it; "refresh" re-fetches the CURRENT tournament map pool only (never every map).
+function _mapPoolNames() {
+  return (((window._state || {}).tournament || {}).mapPool || []).map(function (m) { return m && m.name; }).filter(Boolean);
+}
+function checkMapAssets() {
+  const el = g('map-asset-status'); if (!el) return;
+  const pool = _mapPoolNames();
+  el.innerHTML = pool.length
+    ? '<span>Map pool (' + pool.length + '): ' + escHtml(pool.join(', ')) + '</span>'
+    : '<span style="color:var(--text-dim)">No map pool set yet — add maps in Tournament Setup → Map Pool.</span>';
+}
+async function syncMapAssets(btn) {
+  const el = g('map-asset-status'); const pool = _mapPoolNames();
+  if (!pool.length) { checkMapAssets(); return; }
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Downloading…'; }
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Downloading art for ' + pool.length + ' pool map' + (pool.length === 1 ? '' : 's') + '…</span>';
+  const res = await api('/api/mapart/refresh', {});
+  if (btn) { btn.disabled = false; btn.textContent = orig; }
+  if (el) el.innerHTML = (res && res.ok)
+    ? '<span style="color:#7ee2a8">✓ Downloaded / refreshed ' + (res.maps || 0) + ' pool map' + ((res.maps || 0) === 1 ? '' : 's') + '.</span>'
+    : '<span style="color:var(--danger,#f87171)">Refresh failed.</span>';
 }
 
 function loadUsersTab() {
@@ -6195,9 +6696,31 @@ document.querySelectorAll('.nav-item[data-tab="playoffs"]').forEach(el => {
   el.addEventListener('click', () => renderStandingsAndSeedings(window._state));
 });
 
+let _schedRerenderPending = false;
 function renderSchedule() {
-  const days = (window._state && window._state.tournament && window._state.tournament.schedule) || [];
   const container = g('schedule-days'); if (!container) return;
+  // A native date input fires 'change' mid-edit (per segment), which triggers a schedule
+  // broadcast → re-render. Rebuilding innerHTML here would destroy the very input being typed
+  // in (the year-field focus-loss bug). So while focus is inside a schedule field, DEFER the
+  // rebuild and re-run it once focus leaves (bound below).
+  if (container.contains(document.activeElement) &&
+      /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement.tagName || '')) {
+    _schedRerenderPending = true;
+    return;
+  }
+  if (!container._schedBlurBound) {
+    container._schedBlurBound = true;
+    container.addEventListener('focusout', function () {
+      // Next tick: only re-render once focus has fully left the schedule (not just moved to
+      // another schedule field), so a deferred render can't clobber the next focused input.
+      setTimeout(function () {
+        if (_schedRerenderPending && !container.contains(document.activeElement)) {
+          _schedRerenderPending = false; renderSchedule();
+        }
+      }, 0);
+    });
+  }
+  const days = (window._state && window._state.tournament && window._state.tournament.schedule) || [];
   const empty = g('schedule-empty');
   if (empty) empty.style.display = days.length === 0 ? 'block' : 'none';
 
@@ -7007,7 +7530,8 @@ const _GFX_ANIM_PAGES = {
   'bracket': ['bracket', 'Bracket'], 'groups-gfx': ['groupStage', 'Group Stage'],
   'tournament-structure-gfx': ['tournamentStructure', 'Tournament Structure'], 'prizepool': ['prizepool', 'Prizepool'],
   'player-spotlight': ['playerSpotlight', 'Player Spotlight'], 'post-game-gfx': ['postGame', 'Post-Game'],
-  'map-intro-gfx': ['mapIntro', 'Map Intro'],
+  'map-intro-gfx': ['mapIntro', 'Map Intro'], 'hero-draft-gfx': ['heroDraft', 'Hero Draft'],
+  'match-summary-gfx': ['matchSummary', 'Match Summary'],
 };
 function _graphicAnimCardHtml(key) {
   const sp = (v, t) => `<button class="theme-pill" data-sp="${v}" onclick="setGfxAnimSpeed('${key}','${v}')">${t}</button>`;
@@ -7357,8 +7881,100 @@ function renderSeriesTrackerCS2(s, container) {
   container.innerHTML = html;
 }
 
+// ── Dota series tracker (Game Setup) ─────────────────────────────────────────────
+// LoL-style seriesGames flow (not CS2 map rows): the operator records each game's winner;
+// the SERVER attaches the hero-draft snapshot + the played game's GSI stats (players/items/
+// score) to the record and folds hero-performance lines into tournament.dotaStats.
+// Modal confirm (NOT confirmDestructive): the tracker re-renders on every state broadcast,
+// and with a live GSI feed pushing ~1/sec the inline confirm button gets wiped before its
+// 2s arm-delay elapses — the button looked completely dead. The modal survives re-renders.
+function recordDotaGame(btn, winner) {
+  const m = (window._state || {}).match || {};
+  const name = winner === 'team1' ? (m.team1.tag || m.team1.name || 'Team 1') : (m.team2.tag || m.team2.name || 'Team 2');
+  showConfirm('Record game ' + (m.currentGameNum || 1) + ': ' + name + ' won? The draft board and live GSI stats are snapshotted onto the game.', function () {
+    api('/api/match/record-game', { winner: winner });
+  }, { okLabel: 'Record win' });
+}
+function buildHeroDraftSnapshot(sg, t1Tag, t2Tag) {
+  const steps = (sg.heroDraft && sg.heroDraft.steps) || [];
+  const dp = (sg.dota && sg.dota.players) || null;
+  if (!steps.some(function (st) { return st.hero; }) && !dp) return '<p class="hint" style="margin:4px 0;font-size:11px">No draft data recorded.</p>';
+  const chip = function (st) {
+    return '<span class="sg-pick-chip" style="display:inline-flex;align-items:center;gap:4px">' +
+      (st.img ? '<span style="width:26px;height:15px;border-radius:2px;background:url(' + escHtml(st.img) + ') center 30%/cover"></span>' : '') +
+      escHtml(st.hero || '—') + '</span>';
+  };
+  const side = function (tk, tag) {
+    const picks = steps.filter(function (st) { return st.team === tk && st.action === 'pick'; });
+    const bans  = steps.filter(function (st) { return st.team === tk && st.action === 'ban'; });
+    let h = '<div style="margin:6px 0 2px;font-weight:700;font-size:12px">' + escHtml(tag) + '</div>' +
+      '<div style="font-size:10px;color:var(--text-faint);letter-spacing:0.04em">PICKS</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin:2px 0 4px">' + picks.map(chip).join('') + '</div>' +
+      '<div style="font-size:10px;color:var(--text-faint);letter-spacing:0.04em">BANS</div><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px;opacity:0.75">' + bans.map(chip).join('') + '</div>';
+    if (dp && (dp[tk] || []).length) {
+      h += '<div style="display:grid;grid-template-columns:1fr 60px 44px 40px;gap:4px;font-size:10px;color:var(--text-faint);letter-spacing:0.04em;margin-top:6px"><span>PLAYER</span><span style="text-align:center">K/D/A</span><span style="text-align:right">NET</span><span style="text-align:right">GPM</span></div>' +
+        dp[tk].map(function (p) {
+          return '<div style="display:grid;grid-template-columns:1fr 60px 44px 40px;gap:4px;font-size:12px;padding:1px 0">' +
+            '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + escHtml(p.name || p.hero || '?') + ' <span style="color:var(--text-faint)">' + escHtml(p.hero || '') + '</span></span>' +
+            '<span style="text-align:center">' + (p.kills | 0) + '/' + (p.deaths | 0) + '/' + (p.assists | 0) + '</span>' +
+            '<span style="text-align:right;color:#f0cc44">' + ((p.netWorth | 0) >= 1000 ? ((p.netWorth | 0) / 1000).toFixed(1) + 'k' : (p.netWorth | 0)) + '</span>' +
+            '<span style="text-align:right;color:var(--text-dim)">' + (p.gpm | 0) + '</span></div>';
+        }).join('');
+    }
+    return '<div style="min-width:0">' + h + '</div>';
+  };
+  return '<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">' + side('team1', t1Tag) + side('team2', t2Tag) + '</div>';
+}
+function renderSeriesTrackerDota(s, container) {
+  const m = s.match || {};
+  const format = m.format || 'Bo3';
+  const formatNum = parseInt(format.replace(/Bo/i, '')) || 3;
+  const winsNeeded = Math.ceil(formatNum / 2);
+  const t1n = escHtml(m.team1.tag || m.team1.name || 'T1'), t2n = escHtml(m.team2.tag || m.team2.name || 'T2');
+  const t1wins = m.team1.score || 0, t2wins = m.team2.score || 0;
+  const seriesOver = t1wins >= winsNeeded || t2wins >= winsNeeded;
+  const seriesGames = m.seriesGames || [];
+  const fmtEl = g('gs-format'); if (fmtEl) fmtEl.disabled = false;
+  const editBtn = g('gs-edit-btn'); if (editBtn) editBtn.style.display = 'none';
+  const resetBtn = g('gs-reset-series-btn'); if (resetBtn) resetBtn.style.display = 'none';   // per-game Clear below
+
+  let html = '<div class="series-header"><span class="series-score-disp">' +
+    t1n + ' <strong>' + t1wins + '</strong> — <strong>' + t2wins + '</strong> ' + t2n +
+    '</span><span class="series-game-disp">' + format + (seriesOver ? ' · Series Complete' : ' · Game ' + (m.currentGameNum || 1)) + '</span></div>';
+  html += '<p class="hint" style="margin:2px 0 12px">Record each game\'s <strong>winner</strong> once it ends — the draft board and the live GSI stats (score, players, items) are snapshotted onto the game automatically, and player-hero lines accumulate for the tournament.</p>';
+
+  seriesGames.forEach(function (sg, idx) {
+    const winner = sg.winner === 'team1' ? t1n : t2n;
+    const score = sg.dota ? (' <span class="sg-sides">' + (sg.dota.radiantScore | 0) + ' : ' + (sg.dota.direScore | 0) + ' kills</span>') : '';
+    const draftId = 'dh-sg-' + sg.gameNum + '-' + (m.currentGameNum || 0);
+    const hasData = (sg.heroDraft && (sg.heroDraft.steps || []).some(function (st) { return st.hero; })) || sg.dota;
+    html += '<div class="series-game-row completed"><div class="sg-summary-row">' +
+      '<span class="sg-label">Game ' + sg.gameNum + '</span>' +
+      '<span class="sg-winner' + (sg.isBye ? ' sg-winner-bye' : '') + '">' + winner + ' WON' + (sg.isBye ? ' (BYE)' : '') + '</span>' + score +
+      (hasData ? '<button class="btn btn-xs ds-toggle-btn" id="dh-btn-' + draftId + '" onclick="toggleDraftHistory(\'' + draftId + '\')">▼ Draft</button>' : '') +
+      '<button class="btn btn-xs btn-danger" onclick="clearSeriesGame(this,' + idx + ')">Clear</button>' +
+    '</div>' +
+    (hasData ? '<div id="' + draftId + '" class="ds-snapshot" style="display:none">' + buildHeroDraftSnapshot(sg, t1n, t2n) + '</div>' : '') +
+    '</div>';
+  });
+
+  if (!seriesOver) {
+    html += '<div class="series-game-row current"><div class="sg-summary-row">' +
+      '<span class="sg-label">Game ' + (m.currentGameNum || 1) + '</span>' +
+      '<span style="font-size:12px;color:var(--text-dim)">Winner:</span>' +
+      '<button class="btn btn-sm" onclick="recordDotaGame(this,\'team1\')">' + t1n + '</button>' +
+      '<button class="btn btn-sm" onclick="recordDotaGame(this,\'team2\')">' + t2n + '</button>' +
+    '</div></div>';
+  }
+  // Rebuild only when the content actually changed — unrelated broadcasts (live feed,
+  // presence) otherwise reset transient UI state like the expanded Draft sections.
+  if (_gsDotaTrackerSig !== html) { _gsDotaTrackerSig = html; container.innerHTML = html; _dhApplyOpen(container); }
+}
+let _gsDotaTrackerSig = '', _gsLolTrackerSig = '';
+
 function renderSeriesTracker(s) {
   const container = g('gs-series-tracker'); if (!container) return;
+  // Dota (hero-draft) uses the LoL-style seriesGames flow with server-side snapshots.
+  if (isHeroDraft()) { renderSeriesTrackerDota(s, container); return; }
   // Map-veto games (CS2 etc.) track per-map ROUND scores, not a LoL draft/side flow.
   if (!isChampDraft()) { renderSeriesTrackerCS2(s, container); return; }
   const m = s.match;
@@ -7500,7 +8116,12 @@ function renderSeriesTracker(s) {
       }).join('') + '</div></div>';
   }
 
+  // Rebuild only on real content change (see the Dota tracker note — broadcasts otherwise
+  // reset expanded Draft sections and any in-progress picker interaction).
+  if (_gsLolTrackerSig === html) return;
+  _gsLolTrackerSig = html;
   container.innerHTML = html;
+  _dhApplyOpen(container);
 
   // Build champion pickers for fearless picks — only rendered when in edit mode
   if (!seriesOver && fearless && supportsFearless() && _gsEditMode) {
@@ -7517,13 +8138,28 @@ function renderSeriesTracker(s) {
   }
 }
 
+// Which draft-history snapshots are expanded — kept OUTSIDE the DOM because the series
+// trackers rebuild their innerHTML when data changes, which used to slam every open
+// section shut on the next broadcast (user report: auto-closed every ~10s).
+const _dhOpen = new Set();
 function toggleDraftHistory(id) {
   const el = document.getElementById(id);
   if (!el) return;
   const isOpen = el.style.display !== 'none';
   el.style.display = isOpen ? 'none' : 'block';
+  if (isOpen) _dhOpen.delete(id); else _dhOpen.add(id);
   const btn = document.getElementById('dh-btn-' + id);
   if (btn) btn.textContent = isOpen ? '▼ Draft' : '▲ Draft';
+}
+// Re-apply the expanded state after a tracker rebuild (prunes ids that no longer exist).
+function _dhApplyOpen(container) {
+  _dhOpen.forEach(function(id) {
+    const el = container.querySelector('#' + id);
+    if (!el) { _dhOpen.delete(id); return; }
+    el.style.display = 'block';
+    const btn = container.querySelector('#dh-btn-' + id);
+    if (btn) btn.textContent = '▲ Draft';
+  });
 }
 
 function buildDraftSnapshot(sg, t1Tag, t2Tag) {
@@ -7691,10 +8327,13 @@ function recordBye(winner, seriesWalkover) {
 
 // Clear a single recorded game in the series (vs RESET SERIES which wipes all).
 // Server recomputes the series score from the remaining games and renumbers them.
+// Modal confirm — the inline confirmDestructive button gets wiped by the tracker's
+// per-broadcast re-render before its 2s arm-delay elapses (guaranteed with a live GSI
+// feed, intermittent otherwise), which made the button appear dead.
 function clearSeriesGame(btn, idx) {
-  confirmDestructive(btn, 'Clear Game ' + (idx + 1), function() {
+  showConfirm('Clear Game ' + (idx + 1) + '? The series score is recomputed from the remaining games.', function() {
     api('/api/match/game/' + idx + '/clear', {});
-  });
+  }, { okLabel: 'Clear game', danger: true });
 }
 
 // Countdown ticker for the live bar display

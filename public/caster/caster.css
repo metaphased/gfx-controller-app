@@ -1970,3 +1970,132 @@ html, body {
 .cs-mkb-ace { color: #ff7a45; border-color: rgba(255,122,69,0.5); }
 
 @media (max-width: 760px) { .cs-sb-cols { grid-template-columns: 1fr; } }
+
+/* ── Live tab — Dota (match-summary info set, live) ─────────────────────────────── */
+.dl-rad  { color: #2fbf6b; }
+.dl-dire { color: #e14b3d; }
+.dl-col-team1 .cs-sb-hdr { border-top: 3px solid #2fbf6b; }
+.dl-col-team2 .cs-sb-hdr { border-top: 3px solid #e14b3d; }
+.dl-side-tag { font-size: 10px; letter-spacing: 0.1em; color: var(--text-faint); margin-left: 8px; }
+.dl-nwbar-wrap { margin-bottom: 14px; }
+.dl-nwbar-labels { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;
+  font-family: var(--data-font); font-size: 13px; font-weight: 700; }
+.dl-nw-lead { font-size: 11px; font-weight: 800; letter-spacing: 0.05em; color: var(--text-dim);
+  background: var(--surface2); border-radius: 3px; padding: 1px 8px; }
+.dl-nwbar { display: flex; height: 12px; border-radius: 3px; overflow: hidden; background: var(--surface2); }
+.dl-nwbar .dl-nw-t1 { background: #26aa5a; display: block; }
+.dl-nwbar .dl-nw-gap { width: 2px; background: var(--bg); flex-shrink: 0; }
+.dl-nwbar .dl-nw-t2 { background: #e14b3d; flex: 1; }
+.dl-head-row, .dl-row { display: grid; grid-template-columns: 44px 1fr 76px 48px 40px minmax(0, 172px);
+  gap: 8px; align-items: center; padding: 6px 14px; }
+.dl-head-row { font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); }
+.dl-head-row span:nth-child(4), .dl-head-row span:nth-child(5),   /* NET + GPM — match the right-aligned values */
+.dl-head-row .dl-items-h { text-align: right; }
+.dl-row { border-bottom: 1px solid var(--border); }
+.dl-row:last-child { border-bottom: none; }
+.dl-hero { position: relative; width: 44px; height: 25px; border-radius: 2px; background-size: cover;
+  background-position: center 30%; background-color: var(--surface2); display: block; }
+.dl-lvl { position: absolute; right: -4px; bottom: -4px; min-width: 15px; height: 15px; padding: 0 2px;
+  display: flex; align-items: center; justify-content: center; background: var(--bg);
+  border: 1px solid var(--border); border-radius: 2px; font-family: var(--data-font);
+  font-size: 9px; font-weight: 800; color: var(--text); }
+.dl-name { min-width: 0; display: flex; flex-direction: column; line-height: 1.15;
+  font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; }
+.dl-name > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dl-hero-sub { font-size: 10px; font-weight: 500; color: var(--text-faint); }
+.dl-kda { font-family: var(--data-font); font-size: 13px; color: var(--text-dim); white-space: nowrap; }
+.dl-kda b { color: var(--text); }
+.dl-nw { font-family: var(--data-font); font-size: 12px; font-weight: 700; color: #f0cc44; text-align: right; }
+.dl-gpm { font-family: var(--data-font); font-size: 12px; color: var(--text-dim); text-align: right; }
+.dl-items { display: flex; gap: 2px; justify-content: flex-end; align-items: center; min-width: 0; overflow: hidden; }
+.dl-item { width: 22px; height: 17px; flex-shrink: 0; border-radius: 2px; background-size: cover;
+  background-position: center; background-color: var(--surface2); border: 1px solid var(--border); }
+.dl-item-neutral { border-radius: 50%; width: 18px; height: 18px; border-color: rgba(240,204,68,0.5); margin-left: 3px; }
+.dl-graph-card { margin-top: 14px; padding: 12px 14px; }
+.dl-graph-title { font-size: 11px; font-weight: 800; letter-spacing: 0.14em; color: var(--text-faint); margin-bottom: 8px; }
+.dl-graph-svg { display: block; width: 100%; height: auto; }
+.dl-ax { font-family: var(--data-font); font-size: 10px; font-weight: 600; fill: var(--text-faint); }
+.dl-side { font-family: var(--data-font); font-size: 10px; font-weight: 800; letter-spacing: 0.1em; }
+.dl-chip-txt { font-family: var(--data-font); font-size: 8.5px; font-weight: 800; fill: #10161d; }
+.dl-legend { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 8px; }
+.dl-lg { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.06em; color: var(--text-dim); }
+.dl-lg-chip { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+@media (max-width: 900px) { .dl-head-row, .dl-row { grid-template-columns: 44px 1fr 76px 48px 40px; } .dl-items, .dl-items-h { display: none; } }
+
+/* ── Draft tab — Dota Captains Mode (caster reference) ─────────────────────────── */
+.hdc-head { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
+.hdc-onclock { font-family: var(--data-font); font-size: 14px; font-weight: 800; letter-spacing: 0.05em;
+  padding: 4px 12px; border-radius: 3px; background: var(--surface2); }
+.hdc-onclock.hdc-t1 { color: #2fbf6b; box-shadow: inset 0 0 0 1px rgba(47,191,107,0.4); }
+.hdc-onclock.hdc-t2 { color: #e14b3d; box-shadow: inset 0 0 0 1px rgba(225,75,61,0.4); }
+.hdc-onclock.hdc-done { color: var(--text); }
+.hdc-onclock.hdc-idle { color: var(--text-faint); }
+.hdc-clock { font-family: var(--data-font); font-size: 16px; font-weight: 800; color: var(--text); }
+.hdc-reserve-live { color: #f0cc44; }
+.hdc-paused { font-size: 11px; color: var(--text-faint); font-weight: 600; }
+.hdc-seq { display: flex; gap: 3px; flex-wrap: wrap; margin-bottom: 14px; }
+.hdc-sq { width: 22px; height: 20px; display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 3px; font-family: var(--data-font); font-size: 10px; font-weight: 800;
+  background: var(--surface2); color: var(--text-faint); opacity: 0.55; }
+.hdc-sq.t1 { box-shadow: inset 0 -2px 0 #2fbf6b; }
+.hdc-sq.t2 { box-shadow: inset 0 -2px 0 #e14b3d; }
+.hdc-sq.done { opacity: 1; color: var(--text); }
+.hdc-sq.cur { opacity: 1; background: var(--text); color: var(--bg); }
+.hdc-col { padding: 0 0 12px; }
+.hdc-col-t1 .cs-sb-hdr { border-top: 3px solid #2fbf6b; }
+.hdc-col-t2 .cs-sb-hdr { border-top: 3px solid #e14b3d; }
+.hdc-reserve { float: right; font-family: var(--data-font); font-size: 11px; font-weight: 700;
+  color: #f0cc44; letter-spacing: 0.05em; }
+.hdc-picks { padding: 6px 14px; }
+.hdc-pick { display: flex; align-items: center; gap: 10px; padding: 5px 0; border-bottom: 1px solid var(--border); }
+.hdc-pick:last-child { border-bottom: none; }
+.hdc-pick-n { width: 16px; font-family: var(--data-font); font-size: 11px; font-weight: 800; color: var(--text-faint); }
+.hdc-pick-img { width: 56px; height: 31px; border-radius: 2px; background-size: cover;
+  background-position: center 30%; background-color: var(--surface2); flex-shrink: 0; }
+.hdc-pick-name { font-size: 14px; font-weight: 700; color: var(--text); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hdc-pos { margin-left: auto; font-family: var(--data-font); font-size: 10px; font-weight: 800;
+  color: var(--text-dim); background: var(--surface2); border-radius: 2px; padding: 2px 6px; }
+.hdc-active { background: rgba(255,255,255,0.05); border-radius: 3px; }
+.hdc-pick.hdc-active .hdc-pick-name { color: var(--text-dim); font-style: italic; animation: hdc-pulse 1.2s ease-in-out infinite; }
+@keyframes hdc-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+.hdc-bans-label { padding: 4px 14px 2px; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-faint); }
+.hdc-bans { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 14px; }
+.hdc-ban { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600;
+  color: var(--text-dim); background: var(--surface2); border-radius: 3px; padding: 2px 8px 2px 2px; }
+.hdc-ban.empty { color: var(--text-faint); }
+.hdc-ban-img { width: 30px; height: 18px; border-radius: 2px; background-size: cover;
+  background-position: center 30%; background-color: var(--bg); filter: grayscale(0.5); }
+
+/* ── Series tab — Dota recorded games (draft + stats snapshots) ─────────────────── */
+.sd-game { padding: 12px 14px; margin-bottom: 12px; }
+.sd-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sd-gnum { font-family: var(--data-font); font-size: 11px; font-weight: 800; letter-spacing: 0.12em; color: var(--text-faint); }
+.sd-win { font-size: 14px; font-weight: 800; color: var(--text); }
+.sd-score { font-family: var(--data-font); font-size: 14px; font-weight: 800; }
+.sd-dur { font-family: var(--data-font); font-size: 12px; color: var(--text-dim); }
+.sd-teams { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
+.sd-team-name { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; margin-bottom: 4px; }
+.sd-picks, .sd-bans { display: flex; flex-wrap: wrap; gap: 4px; }
+.sd-bans { margin-top: 4px; opacity: 0.65; }
+.sd-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600;
+  color: var(--text); background: var(--surface2); border-radius: 3px; padding: 2px 8px 2px 2px; }
+.sd-chip-img { width: 30px; height: 17px; border-radius: 2px; background-size: cover; background-position: center 30%; }
+.sd-chip-ban { font-size: 11px; color: var(--text-dim); }
+.sd-chip-ban .sd-chip-img { filter: grayscale(0.6); }
+.sd-stats { margin-top: 10px; }
+.sd-stats summary { cursor: pointer; font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--text-faint); }
+.sd-stats-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+.sd-p-row { display: grid; grid-template-columns: 1fr 72px 44px 40px; gap: 6px; align-items: center;
+  padding: 3px 0; border-bottom: 1px solid var(--border); }
+.sd-p-row:last-child { border-bottom: none; }
+.sd-p-name { min-width: 0; font-size: 12px; font-weight: 600; color: var(--text); display: flex; flex-direction: column; line-height: 1.15; }
+.sd-p-name > * { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sd-p-hero { font-size: 10px; font-weight: 500; color: var(--text-faint); }
+.sd-p-kda { font-family: var(--data-font); font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+.sd-p-kda b { color: var(--text); }
+.sd-p-nw { font-family: var(--data-font); font-size: 11px; font-weight: 700; color: #f0cc44; text-align: right; }
+.sd-p-gpm { font-family: var(--data-font); font-size: 11px; color: var(--text-dim); text-align: right; }
+@media (max-width: 760px) { .sd-teams, .sd-stats-cols { grid-template-columns: 1fr; } }

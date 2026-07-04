@@ -60,14 +60,14 @@ body { font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif; }
   padding-bottom: 0.4vh;
 }
 #mi-vs {
-  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 2.2vh; font-weight: 800; letter-spacing: 0.12em;
   color: rgba(255,255,255,0.6);
 }
 
 #mi-veto {
   display: flex; align-items: center; gap: 0.7vw; margin-top: 1.6vh;
-  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.7vh; font-weight: 700; letter-spacing: 0.14em;
 }
 .mi-veto-pick { color: rgba(255,255,255,0.78); }

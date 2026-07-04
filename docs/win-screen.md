@@ -1,6 +1,6 @@
 # Win Screen
 
-Celebrate a game or series result with a winner reveal. Ten styles — from quick on-scene reveals to full-screen **stingers** that double as scene transitions, plus a League-specific **COMP** screen showing the winning draft. Driven from **Graphics → Win Screen**, output at `/graphics/win-screen/`.
+Celebrate a game or series result with a winner reveal. Ten styles — from quick on-scene reveals to full-screen **stingers** that double as scene transitions, plus a **COMP** screen showing the winning draft (champions on LoL, heroes on Dota 2). Driven from **Graphics → Win Screen**, output at `/graphics/win-screen/`.
 
 ![Win Screen — COMP style](img/win-screen-comp.webp)
 
@@ -51,8 +51,10 @@ In the control bar pick the **winning team**; the control tab below sets the **m
 
 - **COMP** — a full-screen showcase of the **winning team's champion picks and players** (pictured above). Needs a recorded game in the series so the picks are known. Options let you toggle the picks, choose their position, and pick the portrait shape and background treatment.
 
+**Dota 2:** the winning-picks row shows the winner's five **drafted heroes** from the current [hero draft](hero-draft.md) — landscape hero art labelled by hero name.
+
 ## Notes
 
 - The **stingers** are designed as transitions: because they fully cover the frame, you can switch scenes in OBS/vMix while the stinger is up. See the Companion/Stream Deck integration for triggering them on a button.
-- **COMP** reads the winning side's picks from the draft/series — run or commit the [draft](match-and-draft.md#draft) so they're populated, and sync [champion art](champion-assets.md).
+- **COMP** reads the winning side's picks from the draft/series — run or commit the [draft](match-and-draft.md#draft-league-of-legends) so they're populated, and sync [champion art](champion-assets.md).
 - Series score and team data come from the [Game Setup](match-and-draft.md#game-setup) series tracker.

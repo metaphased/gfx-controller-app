@@ -216,6 +216,8 @@ app.use('/graphics', express.static(path.join(__dirname, 'public', 'graphics'), 
 }));
 app.use('/uploads',  express.static(path.join(__dirname, 'public', 'uploads')));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
+app.use('/heroes',   express.static(path.join(__dirname, 'public', 'heroes'))); // Dota 2 hero art
+app.use('/items',    express.static(path.join(__dirname, 'public', 'items')));  // Dota 2 item icons (match-summary board)
 app.use('/fonts',    express.static(path.join(__dirname, 'public', 'fonts')));
 app.use('/shared',   express.static(path.join(__dirname, 'public', 'shared')));  // design tokens — needed by login (pre-auth) too
 
@@ -308,6 +310,500 @@ function liveTokenFromReq(req) {
 }
 function liveCfg() { return (state.settings && state.settings.liveData) || {}; }
 function liveAuthed(req) { const t = liveCfg().liveToken; return !!t && liveTokenFromReq(req) === t; }
+
+// ── Dota 2 GSI (Phase A: prove the ingest pipe + surface the payload) ─────────────
+// Dota's observer / GOTV client posts to the same /api/live/gsi endpoint (routed by
+// provider.appid === 570). DATA-ONLY. Phase A parses a small summary for the live inspector
+// and keeps the last full payload server-side (admin-fetchable) so we can confirm exact field
+// shapes before wiring the draft auto-fill / post-game / timeline visuals in later phases.
+let _dotaGsiRaw = null, _dotaSig = '', _dotaLastBcast = 0;
+// Count players across GSI shapes: single `player` (own client) vs spectator `player` nested by
+// team → slot (player.team2.player0 …).
+function _dotaPlayerCount(b) {
+  const p = b && b.player; if (!p) return 0;
+  if (p.name || p.steamid) return 1;
+  let n = 0; Object.keys(p).forEach(k => { const t = p[k]; if (t && typeof t === 'object') n += Object.keys(t).length; });
+  return n;
+}
+function ingestDotaGsi(b, res) {
+  _dotaGsiRaw = b;
+  const map = b.map || {}, prov = b.provider || {};
+  const d = state.live.dota;
+  // After a game the observer client idles in the MENU, still heartbeating (~10s) with no
+  // map/player data. Those payloads must NOT wipe the finished match off every board — the
+  // last real match state stays up until a NEW match actually feeds (draft/game payloads
+  // carry spectator players again, which replaces it naturally).
+  const mp = dotaMatchPlayers(b);
+  const hasMatch = (mp.team1.length + mp.team2.length) > 0;
+  d.lastSeen     = Date.now();
+  d.paused       = !!map.paused;
+  // Menu heartbeats carry EMPTY player/draft objects (confirmed vs a real capture) — an empty
+  // {} is truthy, so require actual keys before reporting a draft to the inspector.
+  d.draft        = !!(b.draft && Object.keys(b.draft).length);
+  d.players      = _dotaPlayerCount(b);
+  d.provider     = String(prov.name || '');
+  if (hasMatch || !((d.matchPlayers.team1 || []).length + (d.matchPlayers.team2 || []).length)) {
+    d.matchId      = String(map.matchid || '');
+    d.gameState    = String(map.game_state || '').replace(/^DOTA_GAMERULES_STATE_/, '');
+    d.clockTime    = (map.clock_time != null ? map.clock_time : 0) | 0;
+    d.gameTime     = (map.game_time  != null ? map.game_time  : 0) | 0;
+    d.radiantScore = (map.radiant_score != null ? map.radiant_score : 0) | 0;
+    d.direScore    = (map.dire_score    != null ? map.dire_score    : 0) | 0;
+    d.matchPlayers = mp;
+    d.winTeam      = map.win_team === 'radiant' ? 'team1' : (map.win_team === 'dire' ? 'team2' : '');
+  }
+  recordDotaSample(b);                                  // Phase B: append to the match timeline
+  const tl = _dotaTimeline, lastS = tl.samples[tl.samples.length - 1];
+  d.samples = tl.samples.length;
+  d.nwLead  = lastS ? (lastS.rnw - lastS.dnw) : 0;      // Radiant net-worth lead (+ = Radiant ahead)
+  const dchg = handleDotaDraftAuto(b);                  // Phase C: stage / apply the live draft
+  const pchg = hasMatch && applyDotaPositionsFromMatch(d);   // hero → roster-position assignment
+  recordDotaGameEnd(d.winTeam, map);                    // ancient/GG marker — anchored to the win_team flip
+  if (hasMatch) upsertDotaGame(d);                      // archive this game continuously (BoX insurance)
+  applyDotaSelectedGame();                              // operator-selected game overlays the display fields
+  const sig = [d.matchId, d.gameState, d.clockTime, d.radiantScore, d.direScore, d.draft, d.players, d.samples, d.winTeam].join('|');
+  const now = Date.now();
+  if (dchg || pchg || sig !== _dotaSig || now - _dotaLastBcast > 3000) { _dotaSig = sig; _dotaLastBcast = now; broadcast(); }
+  return res.json({ ok: true });
+}
+
+// ── Phase C: Dota GSI draft → hero-draft auto-fill ───────────────────────────────
+// Hero slug/class → { name, img } via the synced heroes manifest (cached, mtime-checked). GSI
+// `pickN_class` is the Valve short name (== manifest slug), e.g. "undying", "antimage".
+let _heroBySlug = null, _heroBySlugMtime = 0;
+function _heroManifestMap() {
+  try {
+    const st = fs.statSync(heroSync.MANIFEST);
+    if (_heroBySlug && st.mtimeMs === _heroBySlugMtime) return _heroBySlug;
+    const list = JSON.parse(fs.readFileSync(heroSync.MANIFEST, 'utf8'));
+    const m = {};
+    (list || []).forEach(h => { if (h && h.slug) m[String(h.slug).toLowerCase()] = { name: h.name || h.slug, img: h.img || '' }; });
+    _heroBySlug = m; _heroBySlugMtime = st.mtimeMs; return m;
+  } catch (e) { return _heroBySlug || {}; }
+}
+function _heroFromClass(cls) {
+  if (!cls) return null;
+  const slug = String(cls).replace(/^npc_dota_hero_/, '').toLowerCase();
+  return { slug, ...(_heroManifestMap()[slug] || { name: slug, img: '' }) };
+}
+// Item slug → { name, img } via the synced item manifest (cached, mtime-checked). GSI reports an
+// inventory item as `item_<slug>` (e.g. item_blink); stripping the prefix yields the manifest slug.
+let _itemBySlug = null, _itemBySlugMtime = 0;
+function _itemManifestMap() {
+  try {
+    const st = fs.statSync(itemSync.MANIFEST);
+    if (_itemBySlug && st.mtimeMs === _itemBySlugMtime) return _itemBySlug;
+    const list = JSON.parse(fs.readFileSync(itemSync.MANIFEST, 'utf8'));
+    const m = {};
+    (list || []).forEach(it => { if (it && it.slug) m[String(it.slug).toLowerCase()] = { name: it.name || it.slug, img: it.img || '' }; });
+    _itemBySlug = m; _itemBySlugMtime = st.mtimeMs; return m;
+  } catch (e) { return _itemBySlug || {}; }
+}
+function _itemFromName(name) {
+  if (!name || name === 'empty') return null;
+  const slug = String(name).replace(/^item_/, '').toLowerCase();
+  // GSI reports an in-progress build as its recipe (item_recipe_aether_lens etc.) — Dota shows
+  // every recipe as the same generic scroll, so map them all to the one synced recipe icon.
+  if (slug.indexOf('recipe_') === 0) return { slug: 'recipe', name: 'Recipe', img: '/items/recipe.png' };
+  const meta = _itemManifestMap()[slug] || { name: slug, img: '/items/' + slug + '.png' };
+  return { slug, name: meta.name, img: meta.img || '/items/' + slug + '.png' };
+}
+// A player's on-air items from the GSI `items` block (nested items.teamN.playerM like player/hero).
+// Main inventory slot0–slot5 (empties dropped) + the neutral item; backpack/stash omitted.
+function _dotaPlayerItems(itemsTeam, pk) {
+  const inv = itemsTeam && itemsTeam[pk]; if (!inv || typeof inv !== 'object') return [];
+  const out = [];
+  for (let i = 0; i < 6; i++) { const it = _itemFromName(inv['slot' + i] && inv['slot' + i].name); if (it) out.push(it); }
+  const neutral = _itemFromName(inv.neutral0 && inv.neutral0.name); if (neutral) neutral.neutral = true;
+  return neutral ? out.concat([neutral]) : out;
+}
+// ⚠️ CONFIRM AGAINST A REAL PAYLOAD (inspector raw viewer) before trusting: the Captains Mode
+// draft block is assumed to be draft.{team2=Radiant,team3=Dire}.{pickN_class,banN_class} +
+// draft.activeteam (2/3) + draft.pick (bool). App teams: Radiant=team1, Dire=team2.
+function parseDotaDraft(b) {
+  const dr = b && b.draft; if (!dr || typeof dr !== 'object') return null;
+  const readTeam = (tk) => {
+    const t = dr[tk] || {}, picks = [], bans = [];
+    for (let i = 0; i < 12; i++) {
+      const pc = t['pick' + i + '_class'] || t['pick' + i + '_hero'];
+      const bc = t['ban' + i + '_class']  || t['ban' + i + '_hero'];
+      if (pc) picks.push(pc);
+      if (bc) bans.push(bc);
+    }
+    return { picks, bans };
+  };
+  const rad = readTeam('team2'), dire = readTeam('team3');
+  const at = dr.activeteam | 0;
+  return {
+    activeTeam: at === 2 ? 'team1' : at === 3 ? 'team2' : null, isPick: !!dr.pick,
+    picks: { team1: rad.picks, team2: dire.picks },
+    bans:  { team1: rad.bans,  team2: dire.bans },
+  };
+}
+// Resolve every class → { slug, name, img } so the preview + apply carry hero art. Also carries the
+// live draft timer: turnTime = the acting team's current turn countdown (activeteam_time_remaining),
+// bonus = each team's reserve pool (radiant/dire_bonus_time). Maps onto our two-tier draft timer.
+function buildDotaDraftSuggest(b) {
+  const p = parseDotaDraft(b); if (!p) return null;
+  const R = arr => (arr || []).map(c => _heroFromClass(c));
+  const anyHero = p.picks.team1.length + p.picks.team2.length + p.bans.team1.length + p.bans.team2.length;
+  if (!anyHero) return null;
+  const dr = b.draft || {};
+  const tt = (dr.activeteam_time_remaining != null) ? dr.activeteam_time_remaining
+           : (dr.activeteam_time != null ? dr.activeteam_time : null);
+  return { activeTeam: p.activeTeam, isPick: p.isPick,
+    picks: { team1: R(p.picks.team1), team2: R(p.picks.team2) },
+    bans:  { team1: R(p.bans.team1),  team2: R(p.bans.team2) },
+    turnTime: tt != null ? (tt | 0) : null,
+    bonus: { team1: dr.radiant_bonus_time | 0, team2: dr.dire_bonus_time | 0 }, ts: Date.now() };
+}
+// Fill heroDraft.steps from a suggestion, PRESERVING the editable Captains Mode order: assign the
+// Nth pick/ban of a team (in step order) to that team's Nth GSI pick/ban. Operator can still edit.
+function applyDotaDraftToHeroDraft(sug) {
+  if (!sug || !state.heroDraft) return false;
+  const steps = state.heroDraft.steps || [];
+  const cnt = { team1: { pick: 0, ban: 0 }, team2: { pick: 0, ban: 0 } };
+  let changed = false;
+  steps.forEach(s => {
+    const team = s.team === 'team2' ? 'team2' : 'team1', action = s.action === 'pick' ? 'pick' : 'ban';
+    const list = (action === 'pick' ? sug.picks : sug.bans)[team] || [];
+    const hero = list[cnt[team][action]++];
+    if (hero && hero.name && (s.hero !== hero.name || s.img !== (hero.img || ''))) { s.hero = hero.name; s.img = hero.img || ''; changed = true; }
+  });
+  const hd = state.heroDraft;
+  // On-clock: the acting team's next empty slot of the CURRENT action (pick/ban) — robust to whatever
+  // interleaving the editable order uses. Falls back to the first empty slot.
+  let cur = -1;
+  if (sug.activeTeam) {
+    const wantAct = sug.isPick ? 'pick' : 'ban';
+    for (let i = 0; i < steps.length; i++) { const s = steps[i]; if (!s.hero && s.team === sug.activeTeam && s.action === wantAct) { cur = i; break; } }
+  }
+  if (cur < 0) cur = _hdFirstEmpty(hd);
+  if (hd.currentStep !== cur) { hd.currentStep = cur; changed = true; }
+  // Live two-tier draft timer from GSI: reserve = each team's bonus pool; the acting team's turn =
+  // its free time (turnTime) + its reserve, so our _hdClock shows free-then-extra exactly like Dota.
+  if (sug.activeTeam) { if (!hd.started) { hd.started = true; changed = true; } }
+  if (sug.bonus) {
+    hd.reserve = { team1: sug.bonus.team1 | 0, team2: sug.bonus.team2 | 0 };
+    hd.reserveTime = Math.max(hd.reserveTime | 0, sug.bonus.team1 | 0, sug.bonus.team2 | 0, 1);
+  }
+  if (sug.activeTeam && sug.turnTime != null) {
+    const bonusActing = (sug.bonus && sug.bonus[sug.activeTeam]) | 0;
+    hd.timerPaused = false; hd.turnPausedMs = null;
+    hd.turnEndsAt = Date.now() + (Math.max(0, sug.turnTime) + bonusActing) * 1000;
+    changed = true;
+  }
+  return changed;
+}
+// FIRST-PICK side is decided per match (coin flip) — the stored CM order is a TEMPLATE whose
+// orientation may need mirroring when the other side picks first (user hit this live: Dire had
+// first pick, so the real draft opened with team2's double ban while the board expected team1).
+// Detect the orientation from GSI — at draft start by who acts first, mid-draft by which
+// orientation of the template matches the per-team ban/pick counts — and mirror the tournament
+// order ONCE per match when it's confidently backwards. The operator's manual "Swap teams"
+// stays authoritative afterwards (we only evaluate once per matchid).
+let _dotaOrderChecked = '';
+function autoOrientDraftOrder(p, dr) {
+  const mid = (state.live.dota && state.live.dota.matchId) || 'nomatch';
+  if (_dotaOrderChecked === mid) return false;
+  const order = (state.tournament && state.tournament.heroDraftOrder) || [];
+  if (!order.length) return false;
+  const rB = p.bans.team1.length, rP = p.picks.team1.length;   // team1 = Radiant in the suggestion
+  const dB = p.bans.team2.length, dP = p.picks.team2.length;
+  const total = rB + rP + dB + dP;
+  let verdict = null;
+  if (total === 0) {
+    const at = dr.activeteam | 0;
+    if (at === 2 || at === 3) {
+      const acting = at === 2 ? 'team1' : 'team2';
+      verdict = acting === order[0].team ? 'straight' : 'swapped';
+    }
+  } else if (total <= order.length) {
+    const c = { t1b: 0, t1p: 0, t2b: 0, t2p: 0 };
+    order.slice(0, total).forEach(s => c[(s.team === 'team1' ? 't1' : 't2') + (s.action === 'pick' ? 'p' : 'b')]++);
+    const straight = c.t1b === rB && c.t1p === rP && c.t2b === dB && c.t2p === dP;
+    const swapped  = c.t1b === dB && c.t1p === dP && c.t2b === rB && c.t2p === rP;
+    if (straight !== swapped) verdict = straight ? 'straight' : 'swapped';
+  }
+  if (!verdict) return false;                        // ambiguous (mid-action jitter) — retry next payload
+  _dotaOrderChecked = mid;
+  if (verdict === 'straight') return false;
+  state.tournament.heroDraftOrder = order.map(s => ({ team: s.team === 'team1' ? 'team2' : 'team1', action: s.action }));
+  reconcileHeroDraftSteps();
+  console.log('[dota] draft order auto-mirrored — GSI shows the other side has first pick (match ' + mid + ')');
+  return true;
+}
+// Mode handler run on each GSI post. Always stages the latest suggestion; live applies now, delayed
+// applies delaySec after the content last changed (integrity buffer). Returns true if state changed.
+let _dotaDelayKey = '', _dotaDelayAt = 0, _dotaDelayPending = null;
+function handleDotaDraftAuto(b) {
+  const af = (state.heroDraft && state.heroDraft.autoFill) || {};
+  const mode = af.mode || 'off';
+  if (mode === 'off') return false;
+  // Orient the order BEFORE mapping content into slots (needs only the draft block, so it
+  // also runs while the draft is still empty and the first team is merely on the clock).
+  let oriented = false;
+  if (b.draft && typeof b.draft === 'object' && Object.keys(b.draft).length) {
+    const parsed = parseDotaDraft(b);
+    if (parsed) oriented = autoOrientDraftOrder(parsed, b.draft);
+  }
+  const sug = buildDotaDraftSuggest(b);
+  if (!sug) return oriented;
+  state.live.dota.draftSuggest = sug;                 // stage for preview / Suggest-mode apply
+  if (mode === 'live') return applyDotaDraftToHeroDraft(sug);
+  if (mode === 'delayed') {
+    const key = JSON.stringify({ p: sug.picks, b: sug.bans });
+    if (key !== _dotaDelayKey) { _dotaDelayKey = key; _dotaDelayAt = Date.now() + Math.max(0, af.delaySec | 0) * 1000; _dotaDelayPending = sug; }
+  }
+  return true;   // suggestion staged → broadcast so the operator sees it
+}
+setInterval(() => {
+  if (!_dotaDelayPending || Date.now() < _dotaDelayAt) return;
+  const s = _dotaDelayPending; _dotaDelayPending = null;
+  if (((state.heroDraft || {}).autoFill || {}).mode === 'delayed' && applyDotaDraftToHeroDraft(s)) broadcast();
+}, 1000);
+
+// ── Phase B: Dota match timeline recorder ────────────────────────────────────────
+// GSI reports snapshots; sample per-team totals over the match (keyed by matchid) so later
+// phases can draw net-worth-over-time / gold-lead / a match-story board. DATA-ONLY, held
+// server-side (not broadcast — fetched on demand via /api/live/dota/timeline). Dota's internal
+// team numbers: 2 = Radiant, 3 = Dire (spectator player block: player.team2.player0 …).
+const DOTA_SAMPLE_INTERVAL = 15;   // seconds of game clock between samples
+let _dotaTimeline = { matchId: '', samples: [], events: [] };
+function _dotaTeamAgg(b, teamKey) {
+  const t = b && b.player && b.player[teamKey]; if (!t || typeof t !== 'object') return null;
+  const h = (b.hero && b.hero[teamKey]) || {};   // level lives in the hero block, not the player block
+  let nw = 0, k = 0, lvl = 0, n = 0;
+  Object.keys(t).forEach(pk => { const p = t[pk]; if (!p || typeof p !== 'object') return;
+    nw += (p.net_worth | 0); k += (p.kills | 0); lvl += ((h[pk] && h[pk].level) | 0); n++; });
+  return n ? { nw, k, lvl } : null;
+}
+// Per-player match data (Phase D): pair the player block (stats + steamid) with the hero block
+// (hero + level), keyed to OUR teams (GSI team2=Radiant→team1, team3=Dire→team2). gsiName is kept
+// ONLY for name-fallback matching to the roster — it is never shown on air (roster name wins).
+function dotaMatchPlayers(b) {
+  const pl = b.player || {}, he = b.hero || {}, it = b.items || {}, out = { team1: [], team2: [] };
+  const teamMap = { team2: 'team1', team3: 'team2' };
+  ['team2', 'team3'].forEach(gk => {
+    const pteam = pl[gk]; if (!pteam || typeof pteam !== 'object') return;
+    const hteam = he[gk] || {}, iteam = it[gk] || {};
+    Object.keys(pteam).forEach(pk => {
+      const p = pteam[pk]; if (!p || typeof p !== 'object') return;
+      const h = hteam[pk] || {};
+      const hero = h.name ? _heroFromClass(h.name) : null;
+      out[teamMap[gk]].push({
+        steamid: String(p.steamid || ''), gsiName: String(p.name || ''), slot: p.team_slot | 0,
+        hero: hero ? hero.name : '', heroImg: hero ? hero.img : '', level: h.level | 0, alive: h.alive !== false,
+        kills: p.kills | 0, deaths: p.deaths | 0, assists: p.assists | 0,
+        netWorth: p.net_worth | 0, gpm: p.gpm | 0, xpm: p.xpm | 0,
+        lastHits: p.last_hits | 0, denies: p.denies | 0, heroDamage: p.hero_damage | 0,
+        items: _dotaPlayerItems(iteam, pk),
+      });
+    });
+    out[teamMap[gk]].sort((a, b) => a.slot - b.slot);
+  });
+  return out;
+}
+// Detect Roshan / Tormentor KILLS from GSI `map` objective state (roshan_state / tormentor_state):
+// a transition FROM "alive" to any respawn/gone state is a kill. Recorded once per transition onto
+// the timeline (with the game clock) so Phase E can draw event markers on the net-worth graph.
+function recordDotaEvents(map, t) {
+  const objectives = [['roshan', map.roshan_state], ['tormentor', map.tormentor_state]];
+  objectives.forEach(([type, raw]) => {
+    const cur = String(raw || '');
+    if (!cur) return;
+    const prevKey = '_' + type + 'State', prev = _dotaTimeline[prevKey];
+    if (prev === 'alive' && cur !== 'alive') _dotaTimeline.events.push({ t, type, clock: t });
+    _dotaTimeline[prevKey] = cur;
+  });
+}
+// Kill-derived markers (GSI has no native multikill/teamfight event, so infer from kill deltas):
+//  • MULTIKILL — one hero gains ≥3 kills within a short game-clock window (triple/ultra/rampage). Emitted
+//    once per window, count upgraded in place as the streak grows.
+//  • TEAMFIGHT — combined hero kills (both sides) within a window cross a threshold = a big fight swing.
+// Both windows chain further kills while active and expire after the window with no new kills. Runs every
+// payload (not sample-throttled) for resolution; tracking state lives on _dotaTimeline (reset w/ match/rewind).
+const MULTIKILL_WINDOW = 18, TEAMFIGHT_WINDOW = 20, TEAMFIGHT_MIN = 3;
+function recordDotaKillEvents(b, t) {
+  const tl = _dotaTimeline, pl = b.player || {}, he = b.hero || {};
+  const teamMap = { team2: 'team1', team3: 'team2' };
+  const track = tl._kills || (tl._kills = {});
+  ['team2', 'team3'].forEach(gk => {
+    const pteam = pl[gk]; if (!pteam || typeof pteam !== 'object') return;
+    const hteam = he[gk] || {};
+    Object.keys(pteam).forEach(pk => {
+      const p = pteam[pk]; if (!p || typeof p !== 'object') return;
+      const id = String(p.steamid || (gk + pk)), k = p.kills | 0, st = track[id];
+      if (!st) { track[id] = { k, win: null }; return; }
+      const delta = k - st.k;
+      if (delta > 0) {
+        if (st.win && t - st.win.last <= MULTIKILL_WINDOW) { st.win.count += delta; st.win.last = t; }
+        else st.win = { count: delta, start: t, last: t, ev: null };
+        const w = st.win;
+        if (w.count >= 3) {
+          if (!w.ev) {
+            const hero = (hteam[pk] && hteam[pk].name) ? _heroFromClass(hteam[pk].name) : null;
+            w.ev = { t: w.start, type: 'multikill', clock: w.start, team: teamMap[gk], hero: hero ? hero.name : '', count: w.count };
+            tl.events.push(w.ev);
+          } else w.ev.count = w.count;    // upgrade triple → ultra → rampage in place
+        }
+      } else if (st.win && t - st.win.last > MULTIKILL_WINDOW) st.win = null;
+      st.k = k;
+    });
+  });
+  const map = b.map || {}, total = (map.radiant_score | 0) + (map.dire_score | 0);
+  const tf = tl._tf || (tl._tf = { total, win: null }), d = total - tf.total;
+  if (d > 0) {
+    if (tf.win && t - tf.win.last <= TEAMFIGHT_WINDOW) { tf.win.count += d; tf.win.last = t; }
+    else tf.win = { count: d, start: t, last: t, ev: null };
+    const w = tf.win;
+    if (w.count >= TEAMFIGHT_MIN) {
+      if (!w.ev) { w.ev = { t: w.start, type: 'teamfight', clock: w.start, kills: w.count }; tl.events.push(w.ev); }
+      else w.ev.kills = w.count;
+    }
+  } else if (tf.win && t - tf.win.last > TEAMFIGHT_WINDOW) tf.win = null;
+  tf.total = total;
+}
+// Building destructions from the GSI `buildings` block. Confirmed vs a real payload: keyed radiant/dire
+// (NOT team2/team3), each building { health, max_health }, and DESTROYED buildings VANISH from the block —
+// so a key alive last payload but absent (or health 0) now = destroyed. Classify by key: fort=ancient,
+// rax=barracks, tower=tower; side goodguys/good_=Radiant→team1, badguys/bad_=Dire→team2 (side = owner).
+function _classifyBuilding(key) {
+  const k = String(key);
+  const side = /badguys|bad_/.test(k) ? 'team2' : 'team1';
+  const type = /fort/.test(k) ? 'ancient' : /rax/.test(k) ? 'barracks' : /tower/.test(k) ? 'tower' : null;
+  return type ? { type, side } : null;
+}
+function recordDotaBuildings(b, t) {
+  const bl = b.buildings; if (!bl || typeof bl !== 'object') return;   // no buildings block this payload → skip
+  const tl = _dotaTimeline;
+  const cur = {}; let sawSide = false;                                 // current alive set: "<side>|<key>"
+  ['radiant', 'dire'].forEach(sd => {
+    const grp = bl[sd]; if (!grp || typeof grp !== 'object') return;
+    sawSide = true;
+    Object.keys(grp).forEach(key => { const bd = grp[key]; if (bd && (bd.health == null || bd.health > 0)) cur[sd + '|' + key] = true; });
+  });
+  if (!sawSide) return;
+  if (!tl._buildings) { tl._buildings = cur; return; }                 // first snapshot = baseline, no events
+  Object.keys(tl._buildings).forEach(sk => {                           // was alive → now gone = destroyed
+    const sd = sk.split('|')[0];
+    if (!bl[sd] || cur[sk]) return;                                    // side absent this payload, or still alive
+    const info = _classifyBuilding(sk.slice(sk.indexOf('|') + 1));
+    if (info) tl.events.push({ t, type: info.type, clock: t, side: info.side });
+  });
+  const merged = {};                                                   // retain keys for sides not reported this payload
+  Object.keys(tl._buildings).forEach(sk => { if (!bl[sk.split('|')[0]]) merged[sk] = true; });
+  tl._buildings = Object.assign(merged, cur);
+}
+// Ancient / game-end marker. The buildings detector catches a fort seen vanishing mid-game, but
+// in practice the fort usually disappears on a payload that is already POST_GAME — which the
+// sample recorder ignores. So the definitive game-end marker anchors to map.win_team flipping
+// (side = the LOSING team, matching the buildings events' "owner of the destroyed building").
+function recordDotaGameEnd(winTeam, map) {
+  const tl = _dotaTimeline;
+  if (!winTeam || tl.matchId !== String(map.matchid || '') || !tl.samples.length) return;
+  if (tl.events.some(e => e.type === 'ancient')) return;                // fort fall already recorded in-game
+  const t = tl.samples[tl.samples.length - 1].t;
+  tl.events.push({ t, type: 'ancient', clock: t, side: winTeam === 'team1' ? 'team2' : 'team1' });
+}
+// ── Dota per-game ARCHIVE ─────────────────────────────────────────────────────────
+// Insurance for BoX series: the live slice + timeline are otherwise overwritten the moment
+// the next game feeds (and the timeline was memory-only). Every ingest UPSERTS the current
+// game's full snapshot (players/items/scores + timeline) keyed by matchid — so nothing
+// depends on the observer surviving to deliver a final post-game payload. Persisted to
+// data/dota-games.json (throttled), capped at the last 7 games (a BoX max). The operator
+// picks which game the Dota boards display via state.live.dota.selectedGame ('' = live);
+// the selection overlays the broadcast slice so every graphic/caster surface just works.
+const DOTA_GAMES_FILE = path.join(DATA_DIR, 'dota-games.json');
+let _dotaGames = [];
+try { if (fs.existsSync(DOTA_GAMES_FILE)) _dotaGames = JSON.parse(fs.readFileSync(DOTA_GAMES_FILE, 'utf8')) || []; }
+catch (e) { console.error('Dota games archive load:', e.message); }
+let _dotaGamesDirty = false;
+setInterval(() => {
+  if (!_dotaGamesDirty) return;
+  _dotaGamesDirty = false;
+  fs.writeFile(DOTA_GAMES_FILE, JSON.stringify(_dotaGames), err => { if (err) console.error('Dota games archive save:', err.message); });
+}, 5000);
+function dotaGameByld(id) { return _dotaGames.find(g => g.matchId === id) || null; }
+function upsertDotaGame(d) {
+  if (!d.matchId) return;
+  const hasPlayers = ((d.matchPlayers.team1 || []).length + (d.matchPlayers.team2 || []).length) > 0;
+  if (!hasPlayers) return;                        // hero-select / own-client payloads carry nothing to keep
+  let g = dotaGameByld(d.matchId);
+  if (!g) { g = { matchId: d.matchId }; _dotaGames.push(g); }
+  g.updatedAt    = Date.now();
+  g.winTeam      = d.winTeam || g.winTeam || '';
+  if (d.winTeam && !g.endedAt) g.endedAt = Date.now();
+  g.radiantScore = d.radiantScore; g.direScore = d.direScore;
+  g.clockTime    = d.clockTime;    g.matchPlayers = d.matchPlayers;
+  if (_dotaTimeline.matchId === d.matchId) { g.samples = _dotaTimeline.samples; g.events = _dotaTimeline.events; }
+  _dotaGames.sort((a, b) => (a.updatedAt || 0) - (b.updatedAt || 0));
+  if (_dotaGames.length > 7) _dotaGames.splice(0, _dotaGames.length - 7);
+  _dotaGamesDirty = true;
+  // Light index for the operator's game picker (full snapshots stay OUT of the broadcast).
+  state.live.dota.games = _dotaGames.map(x => ({ matchId: x.matchId, updatedAt: x.updatedAt, endedAt: x.endedAt || 0,
+    winTeam: x.winTeam || '', radiantScore: x.radiantScore | 0, direScore: x.direScore | 0, clockTime: x.clockTime | 0 }));
+}
+// Overlay an archived game onto the display fields of the live slice (selection active).
+function applyDotaSelectedGame() {
+  const d = state.live.dota, g = d.selectedGame ? dotaGameByld(d.selectedGame) : null;
+  d.viewingArchived = !!g;
+  if (!g) return;
+  d.matchPlayers = g.matchPlayers; d.winTeam = g.winTeam;
+  d.radiantScore = g.radiantScore; d.direScore = g.direScore; d.clockTime = g.clockTime;
+  const last = (g.samples || [])[(g.samples || []).length - 1];
+  d.nwLead = last ? (last.rnw - last.dnw) : d.nwLead; d.samples = (g.samples || []).length;
+}
+// Auto-assign drafted heroes to roster POSITIONS (the "Assign heroes to players" card) from
+// the GSI player↔hero pairing: resolve each match player to a roster row (steamid, then name),
+// read that row's role, and place their hero in the matching position slot. Rides the same
+// opt-in as the draft board (heroDraft.autoFill.mode !== 'off'); the operator can still edit.
+function applyDotaPositionsFromMatch(d) {
+  const hd = state.heroDraft;
+  if (!hd || (((hd.autoFill || {}).mode) || 'off') === 'off') return false;
+  const positions = games.adapterDescriptor(state.match && state.match.game).positions || [];
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  let changed = false;
+  ['team1', 'team2'].forEach(tk => {
+    const key = tk + 'Positions';
+    const arr = hd[key] && hd[key].length === positions.length ? hd[key] : (hd[key] = positions.map(() => ''));
+    const roster = (state.players || {})[tk] || [];
+    ((d.matchPlayers || {})[tk] || []).forEach(p => {
+      if (!p.hero) return;
+      const sid = String(p.steamid || '');
+      let r = sid ? roster.find(x => String(x.steamid || '') === sid) : null;
+      if (!r) { const gn = norm(p.gsiName); if (gn) r = roster.find(x => norm(x.handle) === gn || norm(x.name) === gn); }
+      if (!r || !r.role) return;
+      const idx = positions.findIndex(pos => norm(pos) === norm(r.role));
+      if (idx >= 0 && arr[idx] !== p.hero) { arr[idx] = p.hero; changed = true; }
+    });
+  });
+  return changed;
+}
+function recordDotaSample(b) {
+  const map = b.map || {};
+  if (!/GAME_IN_PROGRESS/.test(String(map.game_state || ''))) return;   // only once the match is running
+  const rad = _dotaTeamAgg(b, 'team2'), dire = _dotaTeamAgg(b, 'team3');
+  if (!rad && !dire) return;                                            // no spectator player data (own-client feed)
+  const mid = String(map.matchid || '');
+  if (mid && mid !== _dotaTimeline.matchId) _dotaTimeline = { matchId: mid, samples: [], events: [] };  // new match
+  const t = (map.clock_time != null ? map.clock_time : 0) | 0;
+  let s = _dotaTimeline.samples;
+  if (s.length && t < s[s.length - 1].t - 2) {                                                // replay rewound → restart
+    s = _dotaTimeline.samples = []; _dotaTimeline.events = [];
+    _dotaTimeline._roshanState = _dotaTimeline._tormentorState = undefined;
+    _dotaTimeline._kills = _dotaTimeline._tf = _dotaTimeline._buildings = undefined;
+  }
+  recordDotaEvents(map, t);                                                                   // every payload (not throttled)
+  recordDotaKillEvents(b, t);                                                                 // multikill + teamfight markers
+  recordDotaBuildings(b, t);                                                                  // tower / barracks / ancient markers
+  const rk = map.radiant_score | 0, dk = map.dire_score | 0;
+  const last = s[s.length - 1];
+  const scoreChanged = last && (rk !== last.rk || dk !== last.dk);
+  if (last && t - last.t < DOTA_SAMPLE_INTERVAL && !scoreChanged) return;
+  s.push({ t, rnw: (rad && rad.nw) || 0, dnw: (dire && dire.nw) || 0, rk, dk, rl: (rad && rad.lvl) || 0, dl: (dire && dire.lvl) || 0 });
+  if (s.length > 800) s.splice(0, s.length - 800);                                            // safety cap
+}
 
 // ── Live score derivation (Phase B) ─────────────────────────────────────────────
 // Ingested per-map round scores land as SUGGESTIONS (state.live.suggested[slug]) the operator
@@ -479,6 +975,8 @@ app.post('/api/live/gsi', (req, res) => {
   if (!liveAuthed(req)) return res.status(403).end();
   if (!liveCfg().gsiEnabled) return res.json({ ignored: true });   // source turned off — drop quietly
   const b = req.body || {}, map = b.map || {};
+  // Dota 2 (appid 570) posts to the same endpoint — route to its own parser. CS2 (730) falls through.
+  if (b.provider && (b.provider.appid | 0) === 570) return ingestDotaGsi(b, res);
   const g = state.live.gsi;
   g.lastSeen = Date.now();
   g.map = map.name || ''; g.phase = map.phase || '';
@@ -731,7 +1229,9 @@ const makeDefault = () => ({
     hasPrizepool:    false,
     teamPool:        [],   // team IDs competing in THIS tournament (subset of global Teams DB)
     mapPool:         [],   // CS2 etc. map pool [{ name, image }] — set in Tournament Setup; rotates
+    heroDraftOrder:  [],   // Dota 2 Captains Mode order [{ team, action:'ban'|'pick' }] — editable in Tournament Setup
     csStats:         [],   // CS2 per-map player stat lines accumulated over the event (live-data Phase C2)
+    dotaStats:       [],   // Dota per-game player/hero lines accumulated over the event (recorded with each series game)
     groups: [],
     schedule: []
   },
@@ -761,6 +1261,9 @@ const makeDefault = () => ({
     matchzy: { lastSeen: 0, event: '', map: '' },
     suggested: {},   // phase B: { mapResults?, seriesScore? } awaiting operator Apply
     players: {},     // phase C: per-steamid live stats { [steamid]: { name, team, kills, deaths, assists, mvps } }
+    // Dota 2 GSI (Phase A: ingest pipe + inspector; parsed summary only — raw + timeline held server-side).
+    // draftSuggest (Phase C) = latest parsed live draft awaiting operator apply / preview.
+    dota:    { lastSeen: 0, matchId: '', gameState: '', clockTime: 0, gameTime: 0, radiantScore: 0, direScore: 0, paused: false, draft: false, players: 0, provider: '', samples: 0, nwLead: 0, draftSuggest: null, matchPlayers: { team1: [], team2: [] }, winTeam: '', games: [], selectedGame: '', viewingArchived: false },
   },
   players: {
     team1: makeDefaultPlayers(), team2: makeDefaultPlayers(),
@@ -821,9 +1324,34 @@ const makeDefault = () => ({
   // mapArtSlug of the chosen map (''=latest finalized); the graphic resolves players from
   // tournament.csStats + the map's mapResults row (+ its snapshot roundHistory). DATA-ONLY.
   postGame:    { visible: false, selectedSlug: '', design: 'split', bg: 'dark', showRounds: true, showLogos: true, title: 'POST-GAME' },
+  // Dota 2 match summary — whole-match analysis board: both team scoreboards (+ item rows),
+  // ranked net-worth list, score/timer strip and the net-worth-over-time graph with toggleable
+  // event markers (from /api/live/dota/timeline). High-signal markers default ON, dense ones OFF.
+  matchSummary: { visible: false, bg: 'dark', showLogos: true, title: 'MATCH SUMMARY',
+                  markRoshan: true, markTormentor: true, markTower: false, markBarracks: true,
+                  markAncient: true, markMultikill: false, markTeamfight: false },
   // CS2 map intro — cinematic pre-map card (map art hero + veto story + optional lineups).
   // selectedSlug = mapArtSlug of the chosen map (''=current/next, the first non-final map row).
   mapIntro:    { visible: false, selectedSlug: '', showLineups: false, bg: 'art', title: '', animVariant: 'cinematic', flyby: false },
+  // Dota 2 hero draft (Captains Mode). steps are reconciled from tournament.heroDraftOrder
+  // (team + ban/pick); the operator fills each step's `hero` as it's drafted. currentStep =
+  // the active slot the graphic highlights. Order is editable in Tournament Settings.
+  heroDraft:   { visible: false, title: 'DRAFT', currentStep: 0, steps: [], scale: 'normal',
+                 showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left',
+                 // Draft flow + Dota reserve timer. started gates the on-clock/timer. Two tiers:
+                 // pickTime = free time granted fresh each turn; reserve = the extra pool (seconds)
+                 // that only drains once the free time is spent, and carries between the team's turns.
+                 // turnEndsAt = ms timestamp when free+reserve for the acting team both hit 0;
+                 // turnPausedMs = remaining free+reserve captured while paused.
+                 started: false, reserveTime: 130, reserve: { team1: 130, team2: 130 }, pickTime: 30,
+                 turnEndsAt: null, turnPausedMs: null, timerPaused: false, showTimer: true,
+                 timerStyle: 'ring', showPickNames: false, showPickGradient: true,
+                 // Hero → position (1–5) assignment, filled at draft end. One hero name per slot.
+                 team1Positions: ['', '', '', '', ''], team2Positions: ['', '', '', '', ''],
+                 // Phase C: auto-fill picks/bans from the Dota GSI draft block. mode = off | suggest
+                 // (stage for operator apply) | live (apply immediately) | delayed (apply after delaySec —
+                 // an integrity buffer for online events). Operator can always still edit manually.
+                 autoFill: { mode: 'off', delaySec: 30 } },
   // Player Spotlight — 1-or-2 player highlight (manual A→C transition). format: full|l3,
   // design: angled|bleed|framed, mode: single|duo|compare. players[0]=A (team1 side),
   // players[1]=C (team2 side); champ='' = auto (most-played); statOverrides keyed by stat.
@@ -884,6 +1412,7 @@ const makeDefault = () => ({
     },
     logoSet: { logos: [] },        // [{ name: string, url: string }]
     mapPoolDefaults: {},           // per-game default map pool, e.g. { cs2: [{name,image}] } — "Set as default"
+    heroDraftDefault: [],          // Dota 2 default CM order [{team,action}] — "Set as default" (overrides adapter preset)
     // CS2 live-data ingest config (optional; both sources independent). liveToken is a
     // SEPARATE secret from graphicsToken (carried by the GSI cfg / MatchZy plugin) and is
     // stripped from the graphics payload. autoApplyScores=false → ingest only suggests.
@@ -1159,6 +1688,7 @@ _teams = loadTeams(); // prime in-memory cache after state is ready
 _talent = loadTalent();
 _ensureTeamPool();    // migrate legacy tournaments to an explicit competing-teams pool
 reconcileMapVetoSteps(); // ensure veto steps cover the loaded map pool
+reconcileHeroDraftSteps(); // ensure hero-draft slots match the loaded CM order
 
 // ── Bus state (in-memory, not persisted) ───────────────────────────────────────
 let busState = {};
@@ -1181,13 +1711,16 @@ const GRAPHIC_PATHS = {
   mapVeto: 'graphics/map-veto',
   postGame: 'graphics/post-game',
   mapIntro: 'graphics/map-intro',
+  heroDraft: 'graphics/hero-draft',
+  matchSummary: 'graphics/match-summary',
 };
 const GRAPHIC_LABELS = {
   lowerThird: 'lower third', headToHead: 'head to head', playerIntro: 'player intro',
   preShow: 'pre-show', draft: 'draft', bracket: 'bracket', groupStage: 'group stage',
   tournamentStructure: 'tournament structure', prizepool: 'prize', winScreen: 'win screen',
   breakScreen: 'break screen', bgOutput: 'background', ticker: 'ticker', playerSpotlight: 'player spotlight',
-  mapVeto: 'map veto', postGame: 'post game', mapIntro: 'map intro',
+  mapVeto: 'map veto', postGame: 'post game', mapIntro: 'map intro', heroDraft: 'hero draft',
+  matchSummary: 'match summary',
 };
 function _switcherByUrl(url) {
   if (!url) return null;
@@ -1260,7 +1793,7 @@ function broadcast() {
 
 // ── SSE (Server-Sent Events) for Companion / external integrations ─────────────
 const _sseClients = new Set();
-const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto','postGame','mapIntro'];
+const SSE_GRAPHIC_KEYS = ['lowerThird','headToHead','playerIntro','draft','bracket','groupStage','breakScreen','winScreen','playerSpotlight','prizepool','ticker','mapVeto','postGame','mapIntro','heroDraft','matchSummary'];
 function buildSSEPayload() {
   const visibilities = {};
   SSE_GRAPHIC_KEYS.forEach(k => { if (state[k]) visibilities[k] = !!state[k].visible; });
@@ -1459,6 +1992,26 @@ app.get('/api/config', (req, res) => res.json({ externalUrl: EXTERNAL_URL }));
 
 // ── CS2 live-data: admin config + setup helpers (the ingest endpoints are above, pre-auth) ──
 function liveBaseUrl(req) { return EXTERNAL_URL || (req.protocol + '://' + req.get('host')); }
+// Base URL for a GENERATED GSI cfg. The game client posts to this address, so it must be
+// reachable from wherever the game runs — the control UI asks (same PC / LAN / remote) and
+// passes the right host as ?host=<ip[:port]> (or a full http(s):// origin). Sanitised hard:
+// the value lands inside a quoted VDF string in a downloaded file.
+function cfgBaseUrl(req) {
+  let h = String((req.query && req.query.host) || '').trim().replace(/["\\{}\s]/g, '');
+  if (!h) return liveBaseUrl(req);
+  if (/^https?:\/\//i.test(h)) return h.replace(/\/+$/, '');
+  if (!/^[A-Za-z0-9.\-:\[\]]+$/.test(h)) return liveBaseUrl(req);   // reject anything not host-shaped
+  if (!/:\d+$/.test(h)) h += ':' + PORT;                            // default to this server's port
+  return 'http://' + h;
+}
+// First non-internal IPv4 — the LAN prefill for the "another PC on this network" option.
+function lanIp() {
+  const ifs = require('os').networkInterfaces();
+  for (const k of Object.keys(ifs)) for (const a of ifs[k] || []) {
+    if (a && a.family === 'IPv4' && !a.internal) return a.address;
+  }
+  return '';
+}
 // Toggle sources / options + optionally rotate the ingest token.
 app.post('/api/live/config', requireAdmin, (req, res) => {
   const ld = state.settings.liveData || (state.settings.liveData = {});
@@ -1493,7 +2046,7 @@ app.post('/api/live/apply', requireAdmin, (req, res) => {
 app.get('/api/cs-stats', (req, res) => res.json(buildCsStats()));
 // Clear the accumulated tournament stat log (admin) — for a fresh event / mistaken entries.
 app.post('/api/cs-stats/clear', requireAdmin, (req, res) => {
-  if (state.tournament) state.tournament.csStats = [];
+  if (state.tournament) { state.tournament.csStats = []; state.tournament.dotaStats = []; }
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'cs-stats-clear', '');
   broadcast(); res.json({ ok: true });
 });
@@ -1507,13 +2060,15 @@ app.get('/api/live/info', requireAdmin, (req, res) => {
     gsiUrl:     base + '/api/live/gsi?token=' + encodeURIComponent(token),
     matchzyUrl: base + '/api/live/matchzy?token=' + encodeURIComponent(token),
     cfgUrl:     '/api/live/gsi.cfg',
+    cfgDotaUrl: '/api/live/gsi-dota.cfg',
+    lanIp: lanIp(), port: Number(PORT) || PORT, externalUrl: EXTERNAL_URL || '',
     note: 'The URL must be reachable from the CS2 PC / game server — set EXTERNAL_URL (or use this machine\'s LAN IP), not localhost, for a separate machine.',
   });
 });
 // Downloadable GSI config — drop in ...\\Counter-Strike Global Offensive\\game\\csgo\\cfg\\
 app.get('/api/live/gsi.cfg', requireAdmin, (req, res) => {
   const ld = state.settings.liveData || {};
-  const uri = liveBaseUrl(req) + '/api/live/gsi?token=' + encodeURIComponent(ld.liveToken || '');
+  const uri = cfgBaseUrl(req) + '/api/live/gsi?token=' + encodeURIComponent(ld.liveToken || '');
   const cfg =
 `"MetaGFX Live"
 {
@@ -1540,6 +2095,64 @@ app.get('/api/live/gsi.cfg', requireAdmin, (req, res) => {
   res.set('Content-Type', 'text/plain; charset=utf-8');
   res.set('Content-Disposition', 'attachment; filename="gamestate_integration_metagfx.cfg"');
   res.send(cfg);
+});
+// Downloadable Dota 2 GSI config — drop in ...\\dota 2 beta\\game\\dota\\cfg\\gamestate_integration\\
+// (create the folder if missing) + add -gamestateintegration to Dota's launch options. Run it on the
+// OBSERVER / GOTV (spectator) client for full both-team + draft data.
+app.get('/api/live/gsi-dota.cfg', requireAdmin, (req, res) => {
+  const ld = state.settings.liveData || {};
+  const uri = cfgBaseUrl(req) + '/api/live/gsi?token=' + encodeURIComponent(ld.liveToken || '');
+  const cfg =
+`"MetaGFX Dota Live"
+{
+ "uri"       "${uri}"
+ "timeout"   "5.0"
+ "buffer"    "0.1"
+ "throttle"  "0.5"
+ "heartbeat" "10.0"
+ "auth"      { "token" "${ld.liveToken || ''}" }
+ "data"
+ {
+  "provider"  "1"
+  "map"       "1"
+  "player"    "1"
+  "hero"      "1"
+  "abilities" "1"
+  "items"     "1"
+  "draft"     "1"
+  "buildings" "1"
+ }
+}
+`;
+  res.set('Content-Type', 'text/plain; charset=utf-8');
+  res.set('Content-Disposition', 'attachment; filename="gamestate_integration_metagfx.cfg"');
+  res.send(cfg);
+});
+// Live inspector: the last full Dota GSI payload (admin only) so we can confirm field shapes.
+app.get('/api/live/dota/raw', requireAdmin, (req, res) => {
+  res.json({ lastSeen: (state.live.dota && state.live.dota.lastSeen) || 0, raw: _dotaGsiRaw });
+});
+// Match timeline (Phase B) — sampled per-team net worth / kills / levels over the match.
+// requireAuth (not Admin): the match-summary GRAPHIC fetches this with the graphics token.
+// Serves the ARCHIVED game's timeline when one is selected (or ?match=<id> asks explicitly).
+app.get('/api/live/dota/timeline', requireAuth, (req, res) => {
+  const want = String(req.query.match || (state.live.dota && state.live.dota.selectedGame) || '');
+  if (want) {
+    const g = dotaGameByld(want);
+    if (g) return res.json({ matchId: g.matchId, samples: g.samples || [], events: g.events || [], archived: true });
+  }
+  res.json({ matchId: _dotaTimeline.matchId, samples: _dotaTimeline.samples, events: _dotaTimeline.events || [] });
+});
+// Pick which archived game the Dota boards display ('' = live). The overlay is applied
+// immediately so it works after the feed is gone (the usual case: between games / post-series).
+app.post('/api/live/dota/select', requireAuth, (req, res) => {
+  const id = String((req.body || {}).matchId || '');
+  if (id && !dotaGameByld(id)) return res.status(404).json({ error: 'No archived game ' + id });
+  const d = state.live.dota;
+  d.selectedGame = id;
+  if (!id) d.viewingArchived = false;   // back to live — next ingest refreshes the slice
+  applyDotaSelectedGame();
+  broadcast(); res.json({ ok: true, selectedGame: id });
 });
 
 // ── State API ──────────────────────────────────────────────────────────────────
@@ -1611,7 +2224,8 @@ const GRAPHIC_PAGE_KEYS = {
   winScreen: 'win-screen', preShow: 'pre-show',
   tournamentStructure: 'tournament-structure', groupStage: 'standings',
   prizepool: 'prizepool', ticker: 'ticker', playerSpotlight: 'player-spotlight',
-  mapVeto: 'map-veto', postGame: 'post-game', mapIntro: 'map-intro'
+  mapVeto: 'map-veto', postGame: 'post-game', mapIntro: 'map-intro', heroDraft: 'hero-draft',
+  matchSummary: 'match-summary'
 };
 
 function findBusForGraphic(graphicName) {
@@ -2142,7 +2756,83 @@ app.post('/api/bgOutput', requireAdmin, (req, res) => { deepMerge(state.bgOutput
 app.post('/api/breakScreen', (req, res) => { Object.assign(state.breakScreen, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/winScreen',   (req, res) => { Object.assign(state.winScreen,   req.body); reconcileWinSeriesScore(); broadcast(); res.json({ok:true}); });
 app.post('/api/postGame',    (req, res) => { Object.assign(state.postGame,    req.body); broadcast(); res.json({ok:true}); });
+app.post('/api/matchSummary',(req, res) => { Object.assign(state.matchSummary,req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/mapIntro',    (req, res) => { Object.assign(state.mapIntro,    req.body); broadcast(); res.json({ok:true}); });
+// Dota 2 hero draft: graphic options (visible/currentStep/title/logo/scale). `steps` are
+// reconciled from the order, not set here — heroes are entered via /api/heroDraft/pick.
+app.post('/api/heroDraft',   (req, res) => {
+  const b = req.body || {}; delete b.steps; delete b.reserve; delete b.turnEndsAt; delete b.turnPausedMs; // managed by the timer endpoints
+  const af = b.autoFill; delete b.autoFill;   // sanitised below (don't let a bad shape through)
+  Object.assign(state.heroDraft, b);
+  const hd = state.heroDraft;
+  if (af && typeof af === 'object') {
+    if (!hd.autoFill) hd.autoFill = { mode: 'off', delaySec: 30 };
+    if (af.mode !== undefined) hd.autoFill.mode = ['suggest', 'live', 'delayed'].includes(af.mode) ? af.mode : 'off';
+    if (af.delaySec !== undefined) hd.autoFill.delaySec = Math.max(0, Math.min(600, af.delaySec | 0));
+  }
+  if (b.reserveTime !== undefined && !hd.started) hd.reserve = { team1: hd.reserveTime | 0, team2: hd.reserveTime | 0 };
+  broadcast(); res.json({ ok: true });
+});
+// Apply the latest live-GSI draft suggestion into the hero-draft board (Suggest mode / manual pull).
+app.post('/api/heroDraft/apply-live', requireAdmin, (req, res) => {
+  const sug = state.live && state.live.dota && state.live.dota.draftSuggest;
+  if (!sug) return res.json({ ok: false, reason: 'no live draft suggestion' });
+  applyDotaDraftToHeroDraft(sug); broadcast(); res.json({ ok: true });
+});
+// Set the hero at one draft slot (ban/pick). index is the step ordinal; hero = '' clears it.
+app.post('/api/heroDraft/pick', requireAdmin, (req, res) => {
+  const hd = state.heroDraft;
+  const i = parseInt(req.body && req.body.index);
+  if (isNaN(i) || !hd.steps || !hd.steps[i]) return res.status(404).json({ error: 'step not found' });
+  const prevActing = _hdActing(hd);
+  hd.steps[i].hero = String((req.body && req.body.hero) || '');
+  hd.steps[i].img  = String((req.body && req.body.img) || '');
+  // Auto-advance the active slot to the first still-empty one (mirrors the LoL draft).
+  hd.currentStep = _hdFirstEmpty(hd);
+  // Reserve timer: when the acting team changes, bank the old team's remaining time and start
+  // the new team's turn from their pool. Consecutive same-team slots keep the clock running.
+  const newActing = _hdActing(hd);
+  if (hd.started && !hd.timerPaused && prevActing !== newActing) {
+    _hdBank(hd, prevActing);
+    hd.turnEndsAt = newActing ? (Date.now() + _hdTurnTotalMs(hd, newActing)) : null;
+  }
+  broadcast(); res.json({ ok: true });
+});
+// Start the draft: begin the clock on the first team (full reserve pools + fresh free time).
+app.post('/api/heroDraft/start', requireAdmin, (req, res) => {
+  const hd = state.heroDraft;
+  hd.started = true; hd.timerPaused = false; hd.turnPausedMs = null;
+  hd.reserve = { team1: hd.reserveTime | 0, team2: hd.reserveTime | 0 };
+  hd.currentStep = _hdFirstEmpty(hd);
+  const acting = _hdActing(hd);
+  hd.turnEndsAt = acting ? (Date.now() + _hdTurnTotalMs(hd, acting)) : null;
+  broadcast(); res.json({ ok: true });
+});
+// Pause / resume the clock. Pause captures the remaining free+reserve time (turnPausedMs) so
+// resume restores exactly where it stopped — the reserve pool is only banked on a turn change.
+app.post('/api/heroDraft/timer/pause', requireAdmin, (req, res) => {
+  const hd = state.heroDraft;
+  if (!hd.started) return res.json({ ok: true });
+  if (hd.timerPaused) {
+    hd.timerPaused = false;
+    const acting = _hdActing(hd);
+    hd.turnEndsAt = acting ? (Date.now() + (hd.turnPausedMs != null ? hd.turnPausedMs : _hdTurnTotalMs(hd, acting))) : null;
+    hd.turnPausedMs = null;
+  } else {
+    hd.turnPausedMs = hd.turnEndsAt ? Math.max(0, hd.turnEndsAt - Date.now()) : null;
+    hd.timerPaused = true; hd.turnEndsAt = null;
+  }
+  broadcast(); res.json({ ok: true });
+});
+// Clear all drafted heroes + timers + assignments and return to the pre-draft state.
+app.post('/api/heroDraft/reset', requireAdmin, (req, res) => {
+  const hd = state.heroDraft;
+  (hd.steps || []).forEach(s => { s.hero = ''; s.img = ''; });
+  hd.currentStep = 0; hd.started = false; hd.timerPaused = false; hd.turnEndsAt = null; hd.turnPausedMs = null;
+  hd.reserve = { team1: hd.reserveTime | 0, team2: hd.reserveTime | 0 };
+  hd.team1Positions = ['', '', '', '', '']; hd.team2Positions = ['', '', '', '', ''];
+  broadcast(); res.json({ ok: true });
+});
 app.post('/api/playerSpotlight', (req, res) => { Object.assign(state.playerSpotlight, req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/headToHead',  (req, res) => { Object.assign(state.headToHead,  req.body); broadcast(); res.json({ok:true}); });
 app.post('/api/playerIntro', (req, res) => { Object.assign(state.playerIntro, req.body); broadcast(); res.json({ok:true}); });
@@ -2251,8 +2941,9 @@ const RIOT_REGION_MAP = {
 // data endpoints (op.gg intel, DDragon assets) so non-LoL games skip them cleanly.
 function adapterSupports(kind) {
   const d = games.adapterDescriptor(state.match && state.match.game);
-  if (kind === 'opgg')    return d.intelProvider === 'opgg';
-  if (kind === 'ddragon') return d.assetSource   === 'ddragon';
+  if (kind === 'opgg')        return d.intelProvider === 'opgg';
+  if (kind === 'ddragon')     return d.assetSource   === 'ddragon';
+  if (kind === 'dota-heroes') return d.assetSource   === 'dota-heroes';
   return true;
 }
 
@@ -2794,6 +3485,75 @@ app.post('/api/assets/sync', requireAdmin, async (req, res) => {
   }
 });
 
+// ── Dota 2 hero assets (mirrors /api/assets, gated on the dota-heroes source) ─────
+const heroSync = require('./scripts/sync-heroes');
+// List the synced heroes (name ↔ slug ↔ image paths) for the draft control + graphics.
+app.get('/api/heroes', (req, res) => {
+  try {
+    if (!fs.existsSync(heroSync.MANIFEST)) return res.json({ heroes: [] });
+    res.json({ heroes: JSON.parse(fs.readFileSync(heroSync.MANIFEST, 'utf8')) });
+  } catch (e) { res.json({ heroes: [] }); }
+});
+app.post('/api/heroes/check', requireAdmin, async (req, res) => {
+  if (!adapterSupports('dota-heroes')) return res.json({ skipped: true, reason: 'Active game has no Dota hero asset source' });
+  try { res.json({ ok: true, results: await heroSync.syncAll({ dryRun: true }) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/heroes/sync', requireAdmin, async (req, res) => {
+  if (!adapterSupports('dota-heroes')) return res.json({ skipped: true, reason: 'Active game has no Dota hero asset source' });
+  try {
+    const targets = heroSync.TARGETS;
+    io.emit('assets:progress', { phase: 'init', targets });   // reuse the asset-sync progress channel
+    const results = [];
+    for (const target of targets) {
+      io.emit('assets:progress', { phase: 'start', key: target.key });
+      const result = await heroSync.syncTargetByKey(target.key, {
+        onProgress: (key, n, total, name) => io.emit('assets:progress', { phase: 'file', key, n, total, name }),
+      });
+      io.emit('assets:progress', { phase: 'done', key: target.key, result });
+      results.push(result);
+    }
+    heroSync.writeManifest(await heroSync.heroList());   // refresh name↔slug manifest after a sync
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── Dota 2 item assets (post-game inventory icons; same dota-heroes gate) ─────────
+const itemSync = require('./scripts/sync-items');
+app.get('/api/items', (req, res) => {
+  try {
+    if (!fs.existsSync(itemSync.MANIFEST)) return res.json({ items: [] });
+    res.json({ items: JSON.parse(fs.readFileSync(itemSync.MANIFEST, 'utf8')) });
+  } catch (e) { res.json({ items: [] }); }
+});
+app.post('/api/items/check', requireAdmin, async (req, res) => {
+  if (!adapterSupports('dota-heroes')) return res.json({ skipped: true, reason: 'Active game has no Dota item asset source' });
+  try { res.json({ ok: true, results: await itemSync.syncAll({ dryRun: true }) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/items/sync', requireAdmin, async (req, res) => {
+  if (!adapterSupports('dota-heroes')) return res.json({ skipped: true, reason: 'Active game has no Dota item asset source' });
+  try {
+    const targets = itemSync.TARGETS;
+    io.emit('assets:progress', { phase: 'init', targets });   // reuse the asset-sync progress channel
+    const results = [];
+    for (const target of targets) {
+      io.emit('assets:progress', { phase: 'start', key: target.key });
+      const result = await itemSync.syncTargetByKey(target.key, {
+        onProgress: (key, n, total, name) => io.emit('assets:progress', { phase: 'file', key, n, total, name }),
+      });
+      io.emit('assets:progress', { phase: 'done', key: target.key, result });
+      results.push(result);
+    }
+    itemSync.writeManifest(await itemSync.itemList());   // refresh slug↔name manifest after a sync
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── Tournament config ──────────────────────────────────────────────────────────
 // Admin setup lock: freeze tournament-setup edits during a show (separate from the game
 // lock). Does not block live operation (scores, bracket progression, graphics).
@@ -2813,6 +3573,35 @@ function reconcileMapVetoSteps() {
   state.mapVeto.steps = (state.mapVeto.steps || []).filter(s => s && names.includes(s.map));
   reconcileMapResults();
 }
+
+// Dota 2 hero draft: keep heroDraft.steps matching tournament.heroDraftOrder (team + ban/pick),
+// preserving any heroes already entered (by slot index). currentStep is clamped to range.
+function reconcileHeroDraftSteps() {
+  if (!state.heroDraft) return;
+  const order = (state.tournament && state.tournament.heroDraftOrder) || [];
+  const prev  = state.heroDraft.steps || [];
+  state.heroDraft.steps = order.map((o, i) => ({
+    team:   (o && o.team === 'team2') ? 'team2' : 'team1',
+    action: (o && o.action === 'pick') ? 'pick' : 'ban',
+    hero:   (prev[i] && prev[i].hero) || '',
+    img:    (prev[i] && prev[i].img)  || '',
+  }));
+  const n = state.heroDraft.steps.length;
+  state.heroDraft.currentStep = Math.min(Math.max(0, state.heroDraft.currentStep | 0), n);
+}
+// Hero-draft reserve-timer helpers. Acting team = the team of the current (unfilled) slot.
+function _hdActing(hd){ return (hd && hd.started && hd.steps && hd.steps[hd.currentStep]) ? hd.steps[hd.currentStep].team : null; }
+// A fresh turn = full free time (pickTime) + whatever's left in the team's reserve pool.
+function _hdTurnTotalMs(hd, team){ return (Math.max(0, hd.pickTime | 0) + ((hd.reserve && hd.reserve[team]) || 0)) * 1000; }
+// Bank the acting team's remaining reserve back into their pool at the end of their turn. Free
+// time is spent first, so only time beyond the reserve is free — clamp the remaining to the pool.
+function _hdBank(hd, team){
+  if (!hd || !team) return;
+  const remMs = hd.turnEndsAt ? (hd.turnEndsAt - Date.now()) : (hd.turnPausedMs || 0);
+  const remSecs = Math.ceil(Math.max(0, remMs) / 1000);
+  hd.reserve[team] = Math.max(0, Math.min((hd.reserve && hd.reserve[team]) || 0, remSecs));
+}
+function _hdFirstEmpty(hd){ const i = (hd.steps || []).findIndex(s => !s.hero); return i === -1 ? (hd.steps || []).length : i; }
 
 // CS2-style map-veto games: maintain match.mapResults as a fixed list of best-of game
 // rows (Bo3 → 3 rows). Each row is operator-editable in Game Setup (map + round score +
@@ -2921,13 +3710,20 @@ app.post('/api/tournament/create', requireAdmin, (req, res) => {
       : adapter.defaultMapPool.map(m => (typeof m === 'string' ? { name: m, image: '' } : { name: m.name || '', image: m.image || '', video: m.video || '' }));
     warmMapPool(state.tournament.mapPool);   // pre-fetch/resize art so the first focus is instant
   }
+  // Seed the Dota 2 Captains Mode order (saved default wins, else the adapter preset).
+  if (adapter.defaultDraftOrder && (!state.tournament.heroDraftOrder || !state.tournament.heroDraftOrder.length)) {
+    const savedD = state.settings && state.settings.heroDraftDefault;
+    const src = (savedD && savedD.length) ? savedD : adapter.defaultDraftOrder;
+    state.tournament.heroDraftOrder = src.map(o => ({ team: o.team === 'team2' ? 'team2' : 'team1', action: o.action === 'pick' ? 'pick' : 'ban' }));
+  }
   reconcileMapVetoSteps();
+  reconcileHeroDraftSteps();
   broadcast(); res.json({ ok: true });
 });
 
 app.post('/api/tournament', requireAdmin, (req, res) => {
   if (setupIsLocked()) return res.status(423).json({ error: 'Tournament setup is locked' });
-  const { name, game, logo, sponsorLogos, mapPool, ...rest } = req.body;
+  const { name, game, logo, sponsorLogos, mapPool, heroDraftOrder, ...rest } = req.body;
   // Game is locked once the tournament is created — ignore game changes thereafter.
   const gameLocked = !!(state.tournament && state.tournament.created);
   if (name !== undefined) state.match.tournament = name;
@@ -2942,6 +3738,13 @@ app.post('/api/tournament', requireAdmin, (req, res) => {
   // Map pool is replaced wholesale (not deep-merged, so deletions take effect) + the veto
   // steps reconcile to cover exactly the pool.
   if (mapPool !== undefined) { state.tournament.mapPool = Array.isArray(mapPool) ? mapPool : []; reconcileMapVetoSteps(); warmMapPool(state.tournament.mapPool); }
+  // Dota 2 CM order — replaced wholesale (so reorders/removals take), then the draft reconciles.
+  if (heroDraftOrder !== undefined) {
+    state.tournament.heroDraftOrder = Array.isArray(heroDraftOrder)
+      ? heroDraftOrder.map(o => ({ team: o && o.team === 'team2' ? 'team2' : 'team1', action: o && o.action === 'pick' ? 'pick' : 'ban' }))
+      : [];
+    reconcileHeroDraftSteps();
+  }
   deepMerge(state.tournament, rest);
   // Keep bracket.type in sync with playoffFormat
   if (rest.playoffFormat !== undefined) {
@@ -3249,6 +4052,17 @@ function _persistSeriesProgress() {
   }
 }
 
+// Roster display handle for a GSI match-player (steamid first, then name) — record-time
+// resolution so the stored snapshot never leaks a smurf/in-game name to any later view.
+function dotaRosterHandle(teamKey, p) {
+  const roster = (state.players || {})[teamKey] || [];
+  const sid = String(p.steamid || '');
+  if (sid) { const r = roster.find(x => String(x.steamid || '') === sid); if (r && r.handle) return r.handle; }
+  const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const gn = norm(p.gsiName);
+  if (gn) { const r = roster.find(x => norm(x.handle) === gn || norm(x.name) === gn); if (r && r.handle) return r.handle; }
+  return '';
+}
 app.post('/api/match/record-game', (req, res) => {
   const { winner, t1Side, t2Side, t1Picks, t2Picks, t1RolePicks, t2RolePicks } = req.body;
   if (!winner || !['team1','team2'].includes(winner)) return res.status(400).json({ error: 'winner must be team1 or team2' });
@@ -3268,6 +4082,54 @@ app.post('/api/match/record-game', (req, res) => {
       team2: (state.players.team2 || []).map(function(p) { return { handle: p.handle || '', role: p.role || '' }; }),
     },
   });
+  // Dota: attach the hero-draft + the played game's stats to the record (mirrors the LoL
+  // draft snapshot above), fold player/hero lines into tournament.dotaStats, and reset the
+  // hero-draft board for the next game. Sources: the operator's heroDraft board + the
+  // per-game GSI archive (latest ended game — best-effort, recording follows the game).
+  if ((state.match.game || '') === 'dota2') {
+    const rec = state.match.seriesGames[state.match.seriesGames.length - 1];
+    const hd = state.heroDraft || {};
+    rec.heroDraft = {
+      steps: (hd.steps || []).map(s => ({ team: s.team, action: s.action, hero: s.hero || '', img: s.img || '' })),
+      team1Positions: (hd.team1Positions || []).slice(), team2Positions: (hd.team2Positions || []).slice(),
+    };
+    // Attach the newest archive entry not already snapshotted onto an earlier series game —
+    // prefer one that reached its end (winTeam), but fall back to an unfinished entry so a
+    // feed that died before the post-game payload still yields the game's stats.
+    const used = new Set(state.match.seriesGames.slice(0, -1).map(x => x.dota && x.dota.matchId).filter(Boolean));
+    const cands = _dotaGames.filter(x => !used.has(x.matchId));
+    const src = cands.slice().reverse().find(x => x.winTeam) || cands[cands.length - 1] || null;
+    if (src) {
+      rec.dota = { matchId: src.matchId, radiantScore: src.radiantScore | 0, direScore: src.direScore | 0,
+        clockTime: src.clockTime | 0, players: { team1: [], team2: [] } };
+      ['team1', 'team2'].forEach(tk => {
+        rec.dota.players[tk] = ((src.matchPlayers || {})[tk] || []).map(p => ({
+          steamid: p.steamid, name: dotaRosterHandle(tk, p) || p.hero || '', hero: p.hero, heroImg: p.heroImg,
+          level: p.level, kills: p.kills, deaths: p.deaths, assists: p.assists, netWorth: p.netWorth,
+          gpm: p.gpm, xpm: p.xpm, lastHits: p.lastHits, denies: p.denies, heroDamage: p.heroDamage,
+          items: p.items || [],
+        }));
+      });
+      // Tournament-wide hero-performance lines (mirrors csStats; upsert by series+game+steamid
+      // so re-recording a game updates rather than duplicates).
+      const log = state.tournament.dotaStats || (state.tournament.dotaStats = []);
+      const sk = csSeriesKey(), gameNum = rec.gameNum;
+      ['team1', 'team2'].forEach(tk => rec.dota.players[tk].forEach(p => {
+        const key = sk + ':' + gameNum + ':' + p.steamid;
+        const line = { key, seriesKey: sk, gameNum, matchId: rec.dota.matchId, steamid: p.steamid, name: p.name,
+          team: tk, hero: p.hero, win: winner === tk, kills: p.kills, deaths: p.deaths, assists: p.assists,
+          netWorth: p.netWorth, gpm: p.gpm, xpm: p.xpm, lastHits: p.lastHits, heroDamage: p.heroDamage };
+        const i = log.findIndex(l => l.key === key);
+        if (i >= 0) log[i] = line; else log.push(line);
+      }));
+    }
+    // Reset the hero-draft board for the next game (mirrors the LoL draft auto-reset below).
+    (hd.steps || []).forEach(s => { s.hero = ''; s.img = ''; });
+    hd.currentStep = 0; hd.started = false; hd.timerPaused = false;
+    hd.turnEndsAt = null; hd.turnPausedMs = null;
+    hd.reserve = { team1: hd.reserveTime | 0, team2: hd.reserveTime | 0 };
+    hd.team1Positions = ['', '', '', '', '']; hd.team2Positions = ['', '', '', '', ''];
+  }
   if (winner === 'team1') state.match.team1.score = (state.match.team1.score || 0) + 1;
   else state.match.team2.score = (state.match.team2.score || 0) + 1;
   const formatNum = parseInt((state.match.format || 'Bo3').replace('Bo','')) || 3;
@@ -3546,6 +4408,7 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
   // with data comes in locked (same migration as state.json load).
   migrateGame(state);
   reconcileMapVetoSteps(); // keep veto steps in sync with the loaded tournament's map pool
+  reconcileHeroDraftSteps(); // keep hero-draft slots in sync with the loaded CM order
   if (d.players) deepMerge(state.players, d.players);
   if (d.prizepool) {
     const { entries, showLogo, logoScale, logoPosition } = d.prizepool;

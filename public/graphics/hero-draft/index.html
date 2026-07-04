@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Hero Draft</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800;900&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/fonts/fonts.css">
+<script src="/graphics/gfx-settings.js"></script>
+<link rel="stylesheet" href="hero-draft.css">
+</head>
+<!-- Dota 2 Captains Mode draft overlay. Same visual language as the LoL draft overlay
+     (side ban panels + centre camera space + bottom pick bar + clock), adapted for Dota:
+     RADIANT (team1, green) left / DIRE (team2, red) right, hero portraits, and 7 bans + 5
+     picks per side driven by the editable heroDraft order. hero-draft.js resolves hero art. -->
+<body class="layout-arena">
+<div id="hd-root" class="draft-root" style="display:none">
+
+  <!-- Radiant side (team1, green): header + bans -->
+  <div class="team-panel side-rad" id="panel-rad">
+    <div class="team-header" id="rad-header">
+      <div class="team-logo" id="rad-logo"></div>
+      <div class="team-id">
+        <span class="team-name" id="rad-name">RADIANT</span>
+        <span class="team-side" id="rad-sidelabel">RADIANT</span>
+      </div>
+      <span class="team-score" id="rad-score">0</span>
+    </div>
+    <div class="bans-panel bans-panel-rad" id="rad-bans"></div>
+  </div>
+
+  <!-- Centre: transparent camera space + series label -->
+  <div class="centre-col" id="centre-col">
+    <div class="clock-series-block" id="series-block">
+      <div class="series-game-row"><span class="clock-series-game" id="series-game">GAME 1</span></div>
+      <span class="clock-series-phase" id="series-phase">—</span>
+      <span class="series-timer" id="series-timer"></span>
+      <span class="series-extra" id="series-extra"></span>
+    </div>
+  </div>
+
+  <!-- Dire side (team2, red): header + bans (mirrored) -->
+  <div class="team-panel side-dire" id="panel-dire">
+    <div class="team-header" id="dire-header">
+      <div class="team-logo" id="dire-logo"></div>
+      <div class="team-id">
+        <span class="team-name" id="dire-name">DIRE</span>
+        <span class="team-side" id="dire-sidelabel">DIRE</span>
+      </div>
+      <span class="team-score" id="dire-score">0</span>
+    </div>
+    <div class="bans-panel bans-panel-dire" id="dire-bans"></div>
+  </div>
+
+  <!-- Optional horizontal timer bar (timerStyle='bar') — sits between the bans and the pick strip.
+       Fills the width and depletes over the free time, then switches to the extra-time colour. -->
+  <div class="timer-bar" id="timer-bar" style="display:none"><div class="timer-bar-fill" id="timer-bar-fill"></div></div>
+
+  <!-- Bottom bar: picks per side + clock indicator (◀ [logo] ▶) -->
+  <div class="player-bar" id="player-bar">
+    <div class="picks-side" id="picks-rad"></div>
+    <div class="clock-center" id="clock-center">
+      <div class="clock-logo-row">
+        <span class="clock-arrow" id="clock-arrow-l">◀</span>
+        <div class="logo-wrap">
+          <svg class="timer-ring" id="timer-ring" viewBox="0 0 100 100" style="display:none">
+            <circle class="timer-track" cx="50" cy="50" r="44"/>
+            <circle class="timer-arc" id="timer-arc" cx="50" cy="50" r="44"/>
+          </svg>
+          <div class="tourn-logo" id="tourn-logo"></div>
+        </div>
+        <span class="clock-arrow" id="clock-arrow-r">▶</span>
+      </div>
+    </div>
+    <div class="picks-side picks-side-dire" id="picks-dire"></div>
+  </div>
+
+</div>
+<script src="/socket.io/socket.io.js"></script>
+<script src="hero-draft.js"></script>
+</body>
+</html>

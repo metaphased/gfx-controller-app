@@ -93,7 +93,7 @@ svg.pg-rc-cond {
 .pg-col-logo { width: 4vh; height: 4vh; flex-shrink: 0; background-size: contain; background-repeat: no-repeat; background-position: center; }
 .pg-col-name { font-size: 2.8vh; font-weight: 900; letter-spacing: 0.02em; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pg-win-badge {
-  margin-left: auto; font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  margin-left: auto; font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.4vh; font-weight: 800; letter-spacing: 0.12em;
   color: #07120a; background: var(--team-color); padding: 0.3vh 0.8vw; border-radius: calc(var(--gfx-radius, 3px) * 0.6);
 }
@@ -106,7 +106,7 @@ svg.pg-rc-cond {
 }
 .pg-row-head {
   height: 3vh; border-top: none;
-  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1.15vh; font-weight: 700; letter-spacing: 0.1em; color: rgba(255,255,255,0.4);
 }
 .pg-row-head .pg-stat, .pg-row-head .pg-pname { text-align: center; }
@@ -124,12 +124,34 @@ svg.pg-rc-cond {
 .pg-diff.neg { color: #e06868; }
 .pg-mvp { color: #f0cc44; font-size: 1.6vh; }
 .pg-mk {
-  font-family: var(--gfx-font-2, var(--gfx-font)), sans-serif;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
   font-size: 1vh; font-weight: 800; letter-spacing: 0.04em; color: #f0cc44;
   border: 1px solid rgba(240,204,68,0.45); border-radius: 2px; padding: 0 0.3vw; line-height: 1.5;
 }
 .pg-mk-ace { color: #ff7a45; border-color: rgba(255,122,69,0.55); }
 .pg-empty { padding: 2vh 1.4vw; color: rgba(255,255,255,0.4); font-size: 1.6vh; }
+
+/* ── Dota post-game — hero scoreboard (player+hero | K D A | Net worth | GPM | items) ── */
+.pg-dota .pg-row { grid-template-columns: 1fr 3vw 3vw 3vw 4.6vw 4vw minmax(0, 11.6vw); }
+.pg-items { display: flex; gap: 3px; justify-content: flex-end; align-items: center; min-width: 0; overflow: hidden; }
+.pg-item {
+  width: 2.6vh; height: 2vh; flex-shrink: 0; border-radius: 2px;
+  background-size: cover; background-position: center; background-color: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.pg-item.pg-item-neutral { border-radius: 50%; width: 2.2vh; height: 2.2vh; border-color: rgba(240,204,68,0.5); margin-left: 0.25vw; }
+.pg-dota .pg-hero {
+  width: 5.4vh; height: 3vh; flex-shrink: 0; border-radius: 2px;
+  background-size: cover; background-position: center 30%; background-color: rgba(255,255,255,0.06);
+}
+.pg-dota .pg-pn-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.06; overflow: hidden; }
+.pg-dota .pg-hero-sub {
+  font-size: 1.2vh; font-weight: 600; letter-spacing: 0.02em; text-transform: none;
+  color: rgba(255,255,255,0.45); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pg-dota .pg-stat.pg-nw  { color: #f0cc44; }               /* net worth = gold */
+.pg-dota .pg-stat.pg-gpm { color: rgba(255,255,255,0.7); }
+.pg-col-side { font-size: 1.15vh; font-weight: 800; letter-spacing: 0.14em; color: var(--team-color); margin-left: 0.6vw; flex-shrink: 0; }
 
 /* ── Animation (uses theme easing + duration tokens) ───────────────────────────── */
 #pg-root.pg-entering #pg-stage { animation: pg-rise calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.22,1,0.36,1)) both; }

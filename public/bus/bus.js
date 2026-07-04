@@ -14,6 +14,12 @@ const GRAPHIC_PATHS = {
   bgOutput:            '/graphics/bg-output/',
   champSelect:         '/graphics/champ-select/',
   playerSpotlight:     '/graphics/player-spotlight/',
+  // CS2 + Dota graphics (were missing here → routed to a bus but never rendered).
+  mapVeto:             '/graphics/map-veto/',
+  postGame:            '/graphics/post-game/',
+  mapIntro:            '/graphics/map-intro/',
+  heroDraft:           '/graphics/hero-draft/',
+  matchSummary:        '/graphics/match-summary/',
 };
 
 const busId  = location.pathname.split('/').filter(Boolean).pop();

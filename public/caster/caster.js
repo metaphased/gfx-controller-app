@@ -148,8 +148,12 @@ function applyCasterAdapterUI() {
   const a = (_state && _state.adapter) || null;
   const champDraft = a ? a.pregameKind === 'champ-draft' : true;
   const mapVeto    = a ? a.pregameKind === 'map-veto'    : false;
+  const liveData   = a ? !!a.liveData                    : false;   // GSI feed (CS2 + Dota) → Live tab
+  const heroDraft  = a ? a.pregameKind === 'hero-draft'  : false;   // Dota CM draft → Draft tab
   document.querySelectorAll('.cap-champ-draft').forEach(function(el){ el.style.display = champDraft ? '' : 'none'; });
   document.querySelectorAll('.cap-map-veto').forEach(function(el){ el.style.display = mapVeto ? '' : 'none'; });
+  document.querySelectorAll('.cap-live-data').forEach(function(el){ el.style.display = liveData ? '' : 'none'; });
+  document.querySelectorAll('.cap-hero-draft').forEach(function(el){ el.style.display = heroDraft ? '' : 'none'; });
   // If the active tab just got hidden by a game switch, fall back to Roster.
   const activeBtn = document.querySelector('.tab-btn.active');
   if (activeBtn && activeBtn.offsetParent === null) {
@@ -333,6 +337,7 @@ function renderAll() {
   renderTeams();
   renderSeries();
   renderDraft();
+  renderHeroDraft();
   renderMapVeto();
   renderLive();
   renderStandings();
@@ -670,6 +675,8 @@ function renderSeries() {
 
   // CS2 (map-veto): per-map round scores + winners, not a draft series.
   if (casterIsMapVeto()) { renderSeriesCS(el, m, t1name, t2name); return; }
+  // Dota (hero-draft): recorded games carry the CM draft + GSI stat snapshots.
+  if (casterIsDota()) { renderSeriesDota(el, m, t1name, t2name); return; }
 
   const formatNum   = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
   const winsNeeded  = Math.ceil(formatNum / 2);
@@ -970,6 +977,70 @@ function renderSeriesCS(el, m, t1name, t2name) {
   el.innerHTML = html;
 }
 
+// ── SERIES TAB (Dota) ─────────────────────────────────────────────────────────────
+// One card per recorded game: winner + kill score + duration, the CM draft (picks + bans
+// per team from the snapshot), and expandable per-player stat lines. Data = the snapshots
+// /api/match/record-game attaches (heroDraft + GSI archive), so it survives feed loss.
+function renderSeriesDota(el, m, t1name, t2name) {
+  const formatNum  = parseInt((m.format || 'Bo3').replace('Bo', '')) || 3;
+  const winsNeeded = Math.ceil(formatNum / 2);
+  const t1wins = (m.team1 && m.team1.score) || 0, t2wins = (m.team2 && m.team2.score) || 0;
+  const seriesOver = t1wins >= winsNeeded || t2wins >= winsNeeded;
+  const games = m.seriesGames || [];
+
+  let html = '<div class="series-header">' +
+    '<span class="series-title">' + esc(t1name) + ' vs ' + esc(t2name) + '</span>' +
+    '<span class="series-title" style="color:var(--text-faint)">·</span>' +
+    '<span class="series-title" style="font-size:15px;color:var(--text-dim)">' + esc(m.format || '') + (seriesOver ? ' · Series complete' : '') + '</span>' +
+  '</div>';
+  html += '<div class="cs-series-score">' + esc(t1name) + ' <b>' + t1wins + '</b> — <b>' + t2wins + '</b> ' + esc(t2name) + '</div>';
+
+  if (!games.length) { el.innerHTML = html + '<div class="empty-state">No games recorded yet</div>'; return; }
+
+  const chip = st => '<span class="sd-chip' + (st.action === 'ban' ? ' sd-chip-ban' : '') + '">' +
+    (st.img ? '<span class="sd-chip-img" style="background-image:url(' + esc(st.img) + ')"></span>' : '') +
+    esc(st.hero || '—') + '</span>';
+  const playerRows = ps => ps.map(p =>
+    '<div class="sd-p-row">' +
+      '<span class="sd-p-name">' + esc(p.name || p.hero || '?') + '<span class="sd-p-hero">' + esc(p.hero || '') + '</span></span>' +
+      '<span class="sd-p-kda"><b>' + (p.kills | 0) + '</b> / ' + (p.deaths | 0) + ' / ' + (p.assists | 0) + '</span>' +
+      '<span class="sd-p-nw">' + dlFmtNw(p.netWorth) + '</span>' +
+      '<span class="sd-p-gpm">' + (p.gpm | 0) + '</span>' +
+    '</div>').join('');
+
+  html += games.map(gm => {
+    const winName = gm.winner === 'team1' ? t1name : t2name;
+    const steps = (gm.heroDraft && gm.heroDraft.steps) || [];
+    const dp = (gm.dota && gm.dota.players) || null;
+    const score = gm.dota ? '<span class="sd-score"><b class="dl-rad">' + (gm.dota.radiantScore | 0) + '</b> : <b class="dl-dire">' + (gm.dota.direScore | 0) + '</b></span>' : '';
+    const dur = gm.dota && gm.dota.clockTime ? '<span class="sd-dur">' + dlFmtClock(gm.dota.clockTime) + '</span>' : '';
+    const teamBlock = (tk, name) => {
+      const picks = steps.filter(st => st.team === tk && st.action === 'pick');
+      const bans  = steps.filter(st => st.team === tk && st.action === 'ban');
+      if (!picks.length && !bans.length) return '';
+      return '<div class="sd-team"><div class="sd-team-name ' + (tk === 'team1' ? 'dl-rad' : 'dl-dire') + '">' + esc(name) + '</div>' +
+        '<div class="sd-picks">' + picks.map(chip).join('') + '</div>' +
+        (bans.length ? '<div class="sd-bans">' + bans.map(chip).join('') + '</div>' : '') +
+      '</div>';
+    };
+    let statsHtml = '';
+    if (dp && ((dp.team1 || []).length || (dp.team2 || []).length)) {
+      statsHtml = '<details class="sd-stats"><summary>Player stats</summary><div class="sd-stats-cols">' +
+        '<div>' + playerRows(dp.team1 || []) + '</div><div>' + playerRows(dp.team2 || []) + '</div>' +
+      '</div></details>';
+    }
+    return '<div class="card sd-game">' +
+      '<div class="sd-head"><span class="sd-gnum">GAME ' + gm.gameNum + '</span>' +
+        '<span class="sd-win">' + esc(winName) + ' win' + (gm.isBye ? ' (BYE)' : '') + '</span>' + score + dur + '</div>' +
+      (steps.some(st => st.hero) ? '<div class="sd-teams">' + teamBlock('team1', t1name) + teamBlock('team2', t2name) + '</div>' : '') +
+      statsHtml +
+    '</div>';
+  }).join('');
+
+  if (!seriesOver) html += '<div class="empty-state" style="padding:14px">Game ' + (m.currentGameNum || games.length + 1) + ' — up next</div>';
+  el.innerHTML = html;
+}
+
 // ── MAP VETO TAB (CS2) ───────────────────────────────────────────────────────────
 function renderMapVeto() {
   const el = document.getElementById('mapveto-content'); if (!el) return;
@@ -1020,6 +1091,7 @@ function csMoney(n) { return '$' + (n | 0).toLocaleString('en-US'); }
 function csBuyLabel(avgEquip) { return avgEquip < 2000 ? 'Eco' : avgEquip < 3800 ? 'Force buy' : 'Full buy'; }
 function renderLive() {
   const el = document.getElementById('live-content'); if (!el) return;
+  if (casterIsDota()) return renderLiveDota(el);
   const s = _state, m = s.match || {}, live = s.live || {}, gsi = live.gsi || {}, players = live.players || {};
   const ids = Object.keys(players);
   const fresh = gsi.lastSeen && (Date.now() - gsi.lastSeen < 30000);
@@ -1060,6 +1132,230 @@ function renderLive() {
   };
 
   el.innerHTML = head + '<div class="cs-sb-cols">' + col('team1') + col('team2') + '</div>';
+}
+
+// ── LIVE TAB (Dota — the match-summary information set, live for casters) ────────
+// Comes off the observer/GOTV client, so it runs at the OBSERVER's delay — expected.
+// DATA-ONLY reference surface: scoreboards + items, net-worth split, and the
+// net-worth-over-time graph with ALL event markers (no broadcast toggles here).
+function casterIsDota() { const a = _state && _state.adapter; return a ? a.pickEntity === 'hero' : false; }
+function dlFmtNw(n) { n = n | 0; return Math.abs(n) >= 1000 ? (n / 1000).toFixed(1) + 'k' : String(n); }
+function dlFmtClock(sec) {
+  sec = sec | 0; const neg = sec < 0; sec = Math.abs(sec);
+  return (neg ? '-' : '') + Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+}
+function dlRosterName(teamKey, p) {
+  const roster = ((_state.players || {})[teamKey]) || [];
+  const sid = String(p.steamid || '');
+  if (sid) { const bySid = roster.filter(r => String(r.steamid || '') === sid)[0]; if (bySid && bySid.handle) return bySid.handle; }
+  const gn = csNormName(p.gsiName);
+  if (gn) { const byName = roster.filter(r => csNormName(r.handle) === gn || csNormName(r.name) === gn)[0]; if (byName && byName.handle) return byName.handle; }
+  return '';   // roster name only — never the GSI in-game name
+}
+const DL_MARKS = {   // same dedicated per-type colours as the match-summary graphic
+  roshan:    { glyph: 'R',  fill: '#f0cc44', label: 'ROSHAN' },
+  tormentor: { glyph: 'T',  fill: '#3ec8e8', label: 'TORMENTOR' },
+  tower:     { glyph: 'TW', fill: '#f08c3e', label: 'TOWER' },
+  barracks:  { glyph: 'RX', fill: '#b07ce8', label: 'BARRACKS' },
+  ancient:   { glyph: 'GG', fill: '#c9d4e0', label: 'ANCIENT' },
+  multikill: { glyph: '',   fill: '#e86cb8', label: 'MULTIKILL' },
+  teamfight: { glyph: 'TF', fill: '#7c9ce8', label: 'TEAMFIGHT' },
+};
+const DL_RAD = '#26aa5a', DL_DIRE = '#e14b3d';
+let _dotaTl = { samples: [], events: [] }, _dotaTlAt = 0;
+// Poll the match timeline while the Live tab is showing for a Dota game (5s, matches
+// the broadcast graphic). fetch carries the caster token — the endpoint is requireAuth.
+setInterval(function () {
+  if (_activeTab !== 'live' || !_state || !casterIsDota() || document.hidden) return;
+  fetch('/api/live/dota/timeline?token=' + encodeURIComponent(TOKEN))
+    .then(r => r.ok ? r.json() : null)
+    .then(j => { if (j && j.samples) { _dotaTl = j; _dotaTlAt = Date.now(); renderLive(); } })
+    .catch(() => {});
+}, 5000);
+function dlGraphSvg() {
+  const s = _dotaTl.samples || [];
+  if (s.length < 2) return '<div class="empty-state" style="padding:20px">No timeline yet — the graph builds as the match runs.</div>';
+  const W = 1200, H = 230, L = 52, R = 14, T = 50, B = 20;
+  const iw = W - L - R, ih = H - T - B;
+  const t0 = s[0].t, t1 = s[s.length - 1].t, span = Math.max(1, t1 - t0);
+  let maxAbs = 0; s.forEach(p => { maxAbs = Math.max(maxAbs, Math.abs((p.rnw | 0) - (p.dnw | 0))); });
+  let yMax = maxAbs * 1.1 || 1000;
+  const pow = Math.pow(10, Math.floor(Math.log10(yMax))); const nn = yMax / pow;
+  yMax = (nn <= 1 ? 1 : nn <= 2 ? 2 : nn <= 2.5 ? 2.5 : nn <= 5 ? 5 : 10) * pow;
+  const X = t => L + (t - t0) / span * iw, Y = v => T + ih / 2 - (v / yMax) * (ih / 2), zero = Y(0);
+  const pts = s.map(p => [X(p.t), Y((p.rnw | 0) - (p.dnw | 0))]);
+  const line = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  const area = line + 'L' + pts[pts.length - 1][0].toFixed(1) + ' ' + zero + 'L' + pts[0][0].toFixed(1) + ' ' + zero + 'Z';
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="dl-graph-svg">';
+  svg += '<defs><clipPath id="dl-up"><rect x="0" y="0" width="' + W + '" height="' + zero + '"/></clipPath>' +
+    '<clipPath id="dl-dn"><rect x="0" y="' + zero + '" width="' + W + '" height="' + (H - zero) + '"/></clipPath>' +
+    '<linearGradient id="dl-fu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="' + DL_RAD + '" stop-opacity="0.4"/><stop offset="1" stop-color="' + DL_RAD + '" stop-opacity="0.05"/></linearGradient>' +
+    '<linearGradient id="dl-fd" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="' + DL_DIRE + '" stop-opacity="0.4"/><stop offset="1" stop-color="' + DL_DIRE + '" stop-opacity="0.05"/></linearGradient></defs>';
+  [-1, -0.5, 0.5, 1].forEach(f => {
+    const y = Y(yMax * f);
+    svg += '<line x1="' + L + '" y1="' + y + '" x2="' + (W - R) + '" y2="' + y + '" stroke="rgba(255,255,255,0.08)"/>' +
+      '<text class="dl-ax" x="' + (L - 6) + '" y="' + (y + 3.5) + '" text-anchor="end">' + (f > 0 ? '+' : '−') + dlFmtNw(yMax * Math.abs(f)) + '</text>';
+  });
+  svg += '<line x1="' + L + '" y1="' + zero + '" x2="' + (W - R) + '" y2="' + zero + '" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>';
+  const step = Math.max(300, Math.ceil(span / 6 / 300) * 300);
+  for (let tt = Math.ceil(t0 / step) * step; tt <= t1; tt += step) {
+    svg += '<text class="dl-ax" x="' + X(tt) + '" y="' + (H - 5) + '" text-anchor="middle">' + dlFmtClock(tt) + '</text>';
+  }
+  svg += '<path d="' + area + '" fill="url(#dl-fu)" clip-path="url(#dl-up)"/>' +
+    '<path d="' + area + '" fill="url(#dl-fd)" clip-path="url(#dl-dn)"/>' +
+    '<path d="' + line + '" fill="none" stroke="#e8f4ff" stroke-width="2" stroke-linejoin="round"/>';
+  svg += '<text class="dl-side" x="' + L + '" y="' + (T - 28) + '" fill="' + DL_RAD + '">▲ RADIANT LEAD</text>' +
+    '<text class="dl-side" x="' + L + '" y="' + (H - B - 6) + '" fill="' + DL_DIRE + '">▼ DIRE LEAD</text>';
+  // All event types, two chip lanes (tool page — casters get everything, no toggles).
+  const evs = (_dotaTl.events || []).filter(e => DL_MARKS[e.type]).sort((a, b) => a.t - b.t);
+  let lastX = -1e9, lane = 0;
+  evs.forEach(e => {
+    const x = X(Math.min(t1, Math.max(t0, e.clock != null ? e.clock : e.t)));
+    lane = (x - lastX < 26) ? 1 - lane : 0; lastX = x;
+    const cy = 12 + lane * 22, m = DL_MARKS[e.type];
+    const stem = (e.type === 'tower' || e.type === 'barracks' || e.type === 'ancient') ? (e.side === 'team1' ? DL_DIRE : e.side === 'team2' ? DL_RAD : m.fill)
+      : e.type === 'multikill' ? (e.team === 'team2' ? DL_DIRE : DL_RAD) : m.fill;
+    const glyph = e.type === 'multikill' ? (Math.min(5, Math.max(3, e.count | 0)) + 'K') : m.glyph;
+    svg += '<line x1="' + x + '" y1="' + (cy + 9) + '" x2="' + x + '" y2="' + (H - B) + '" stroke="' + stem + '" stroke-opacity="0.45" stroke-width="1.2" stroke-dasharray="2 3"/>' +
+      '<circle cx="' + x + '" cy="' + cy + '" r="9" fill="' + m.fill + '" stroke="#10161d" stroke-width="2"/>' +
+      '<text x="' + x + '" y="' + (cy + 3) + '" text-anchor="middle" class="dl-chip-txt">' + glyph + '</text>';
+  });
+  svg += '</svg>';
+  const seen = {}; let legend = '';
+  evs.forEach(e => { if (seen[e.type]) return; seen[e.type] = 1; const m = DL_MARKS[e.type];
+    legend += '<span class="dl-lg"><span class="dl-lg-chip" style="background:' + m.fill + '"></span>' + m.label + '</span>'; });
+  return svg + (legend ? '<div class="dl-legend">' + legend + '</div>' : '');
+}
+function renderLiveDota(el) {
+  const s = _state, m = s.match || {}, d = (s.live && s.live.dota) || {};
+  const mp = d.matchPlayers || { team1: [], team2: [] };
+  const fresh = d.lastSeen && (Date.now() - d.lastSeen < 30000);
+  if (!(mp.team1 || []).length && !(mp.team2 || []).length && !fresh) {
+    el.innerHTML = '<div class="empty-state">Waiting for live data… (enable GSI on the observer client — see the control panel\'s Live Data tab)</div>';
+    return;
+  }
+  const t1n = (m.team1 && (m.team1.name || m.team1.tag)) || 'Radiant';
+  const t2n = (m.team2 && (m.team2.name || m.team2.tag)) || 'Dire';
+  const sum = arr => (arr || []).reduce((n, p) => n + (p.netWorth | 0), 0);
+  const nw1 = sum(mp.team1), nw2 = sum(mp.team2), tot = nw1 + nw2, lead = nw1 - nw2;
+  let head = '<div class="cs-live-head">' +
+    '<span class="cs-live-map">' + dlFmtClock(d.clockTime) + (d.paused ? ' · PAUSED' : '') + '</span>' +
+    '<span class="cs-live-score"><b class="dl-rad">' + (d.radiantScore | 0) + '</b> : <b class="dl-dire">' + (d.direScore | 0) + '</b></span>' +
+    (d.gameState ? '<span class="cs-live-round">' + esc(d.gameState.replace(/_/g, ' ').toLowerCase()) + (d.winTeam ? ' · ' + esc(d.winTeam === 'team1' ? t1n : t2n) + ' win' : '') + '</span>' : '') +
+  '</div>';
+  if (tot) {
+    head += '<div class="dl-nwbar-wrap"><div class="dl-nwbar-labels">' +
+      '<span class="dl-rad">' + esc(t1n) + ' ' + dlFmtNw(nw1) + '</span>' +
+      '<span class="dl-nw-lead">' + (lead === 0 ? 'EVEN' : (lead > 0 ? esc(t1n) : esc(t2n)) + ' +' + dlFmtNw(Math.abs(lead))) + '</span>' +
+      '<span class="dl-dire">' + dlFmtNw(nw2) + ' ' + esc(t2n) + '</span></div>' +
+      '<div class="dl-nwbar"><span class="dl-nw-t1" style="width:' + (nw1 / tot * 100) + '%"></span><span class="dl-nw-gap"></span><span class="dl-nw-t2"></span></div></div>';
+  }
+  const col = (tk, name) => {
+    const rows = (mp[tk] || []).map(p => {
+      const items = (p.items || []).map(it =>
+        '<span class="dl-item' + (it.neutral ? ' dl-item-neutral' : '') + '" title="' + esc(it.name) + '"' + (it.img ? ' style="background-image:url(' + esc(it.img) + ')"' : '') + '></span>').join('');
+      return '<div class="dl-row">' +
+        '<span class="dl-hero"' + (p.heroImg ? ' style="background-image:url(' + esc(p.heroImg) + ')"' : '') + '><span class="dl-lvl">' + (p.level | 0) + '</span></span>' +
+        '<span class="dl-name">' + esc(dlRosterName(tk, p) || p.hero || '?') + '<span class="dl-hero-sub">' + esc(p.hero || '') + '</span></span>' +
+        '<span class="dl-kda"><b>' + (p.kills | 0) + '</b> / ' + (p.deaths | 0) + ' / ' + (p.assists | 0) + '</span>' +
+        '<span class="dl-nw">' + dlFmtNw(p.netWorth) + '</span>' +
+        '<span class="dl-gpm">' + (p.gpm | 0) + '</span>' +
+        '<span class="dl-items">' + items + '</span>' +
+      '</div>';
+    }).join('') || '<div class="empty-state" style="padding:14px">No players</div>';
+    return '<div class="card cs-sb-col dl-col dl-col-' + tk + '"><div class="cs-sb-hdr">' + esc(name) +
+      '<span class="dl-side-tag">' + (tk === 'team1' ? 'RADIANT' : 'DIRE') + '</span></div>' +
+      '<div class="dl-head-row"><span></span><span>Player</span><span>K / D / A</span><span>NET</span><span>GPM</span><span class="dl-items-h">Items</span></div>' + rows + '</div>';
+  };
+  const graph = '<div class="card dl-graph-card"><div class="dl-graph-title">NET WORTH OVER TIME</div>' + dlGraphSvg() + '</div>';
+  el.innerHTML = head + '<div class="cs-sb-cols">' + col('team1', t1n) + col('team2', t2n) + '</div>' + graph;
+}
+
+// ── HERO DRAFT TAB (Dota Captains Mode — caster reference) ───────────────────────
+// Mirrors state.heroDraft (operator board / GSI auto-fill): picks + bans per team in CM
+// order, the on-clock slot, the two-tier timer (free time + each team's reserve pool),
+// and the step sequence so casters can say "two bans, then it's a pick".
+function hdCastClockTxt() {
+  const hd = (_state && _state.heroDraft) || {};
+  if (!hd.started) return '';
+  const step = (hd.steps || [])[hd.currentStep | 0];
+  const acting = step ? step.team : null;
+  const reserve = (hd.reserve && acting) ? (hd.reserve[acting] | 0) : 0;
+  let remain = null;
+  if (hd.timerPaused && hd.turnPausedMs != null) remain = hd.turnPausedMs / 1000;
+  else if (hd.turnEndsAt) remain = (hd.turnEndsAt - Date.now()) / 1000;
+  if (remain == null) return '';
+  remain = Math.max(0, Math.ceil(remain));
+  const free = Math.max(0, remain - reserve);
+  const mmss = s => Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+  const txt = free > 0 ? mmss(free) + ' free' : '<span class="hdc-reserve-live">' + mmss(remain) + ' reserve</span>';
+  return txt + (hd.timerPaused ? ' <span class="hdc-paused">· paused</span>' : '');
+}
+setInterval(function () {
+  const el = document.getElementById('hdc-clock');
+  if (el) el.innerHTML = hdCastClockTxt();
+}, 500);
+function renderHeroDraft() {
+  const el = document.getElementById('hdraft-content'); if (!el) return;
+  if (!casterIsDota()) return;
+  const s = _state, hd = s.heroDraft || {}, m = s.match || {};
+  const steps = hd.steps || [];
+  if (!steps.length) { el.innerHTML = '<div class="empty-state">No draft configured — the board fills once the draft starts (or via GSI auto-fill).</div>'; return; }
+  const t1n = (m.team1 && (m.team1.name || m.team1.tag)) || 'Radiant';
+  const t2n = (m.team2 && (m.team2.name || m.team2.tag)) || 'Dire';
+  const cur = hd.currentStep | 0;
+  const complete = steps.every(st => !!st.hero);
+  const curStep = !complete ? steps[cur] : null;
+
+  // Header: who's on the clock + the live two-tier timer.
+  let head = '<div class="hdc-head">';
+  if (complete) head += '<span class="hdc-onclock hdc-done">DRAFT COMPLETE</span>';
+  else if (hd.started && curStep) {
+    head += '<span class="hdc-onclock ' + (curStep.team === 'team1' ? 'hdc-t1' : 'hdc-t2') + '">' +
+      esc(curStep.team === 'team1' ? t1n : t2n) + ' · ' + (curStep.action === 'pick' ? 'PICK' : 'BAN') + '</span>' +
+      '<span class="hdc-clock" id="hdc-clock">' + hdCastClockTxt() + '</span>';
+  } else head += '<span class="hdc-onclock hdc-idle">Draft not started</span>';
+  head += '</div>';
+
+  // Step sequence strip — every CM step in order, done/current/pending.
+  const strip = '<div class="hdc-seq">' + steps.map((st, i) => {
+    const cls = 'hdc-sq ' + (st.team === 'team1' ? 't1' : 't2') + (st.hero ? ' done' : '') + (!complete && i === cur ? ' cur' : '');
+    return '<span class="' + cls + '" title="' + esc((st.team === 'team1' ? t1n : t2n) + ' ' + st.action) + '">' + (st.action === 'pick' ? 'P' : 'B') + '</span>';
+  }).join('') + '</div>';
+
+  const posLookup = tk => {
+    const arr = (tk === 'team1' ? hd.team1Positions : hd.team2Positions) || [];
+    const map = {}; arr.forEach((h, i) => { if (h) map[h] = i + 1; });
+    return map;
+  };
+  const col = (tk, name) => {
+    const picks = [], bans = [];
+    steps.forEach((st, i) => { if (st.team === tk) (st.action === 'pick' ? picks : bans).push({ st, i }); });
+    const pos = posLookup(tk);
+    const reserve = (hd.reserve || {})[tk] | 0;
+    const pickRows = picks.map((p, n) => {
+      const active = !complete && p.i === cur;
+      return '<div class="hdc-pick' + (active ? ' hdc-active' : '') + '">' +
+        '<span class="hdc-pick-n">' + (n + 1) + '</span>' +
+        '<span class="hdc-pick-img"' + (p.st.img ? ' style="background-image:url(' + esc(p.st.img) + ')"' : '') + '></span>' +
+        '<span class="hdc-pick-name">' + (p.st.hero ? esc(p.st.hero) : (active ? 'On the clock…' : '—')) + '</span>' +
+        (p.st.hero && pos[p.st.hero] ? '<span class="hdc-pos">P' + pos[p.st.hero] + '</span>' : '') +
+      '</div>';
+    }).join('');
+    const banChips = bans.map(b => {
+      const active = !complete && b.i === cur;
+      return '<span class="hdc-ban' + (b.st.hero ? '' : ' empty') + (active ? ' hdc-active' : '') + '">' +
+        '<span class="hdc-ban-img"' + (b.st.img ? ' style="background-image:url(' + esc(b.st.img) + ')"' : '') + '></span>' +
+        (b.st.hero ? esc(b.st.hero) : (active ? '…' : '—')) + '</span>';
+    }).join('');
+    return '<div class="card hdc-col ' + (tk === 'team1' ? 'hdc-col-t1' : 'hdc-col-t2') + '">' +
+      '<div class="cs-sb-hdr">' + esc(name) + '<span class="dl-side-tag">' + (tk === 'team1' ? 'RADIANT' : 'DIRE') + '</span>' +
+      '<span class="hdc-reserve" title="Reserve time pool">RESERVE ' + Math.floor(reserve / 60) + ':' + String(reserve % 60).padStart(2, '0') + '</span></div>' +
+      '<div class="hdc-picks">' + pickRows + '</div>' +
+      '<div class="hdc-bans-label">Bans</div><div class="hdc-bans">' + banChips + '</div>' +
+    '</div>';
+  };
+  el.innerHTML = head + strip + '<div class="cs-sb-cols">' + col('team1', t1n) + col('team2', t2n) + '</div>';
 }
 
 const DRAFT_ROLE_NAMES = ['Top', 'Jungle', 'Mid', 'Bot', 'Support'];
