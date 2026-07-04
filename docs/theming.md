@@ -1,24 +1,24 @@
 # Broadcast Theming & Animation
 
-Everything visual is configured under **Broadcast Theme** in the control panel and applies live to every graphic overlay. Theme settings are saved per tournament profile; reusable **Looks** let you carry a visual identity across profiles.
+This is the whole broadcast's visual identity in one place — before styling any individual graphic, start here. Everything is configured under **Broadcast Theme** in the control panel and applies **live to every overlay at once**: palette, fonts, shape & surface, text case and animation. Theme settings are saved per tournament profile; reusable **Looks** let you carry a visual identity across profiles and events.
 
 ![Broadcast Theme control tab](img/tool-broadcast-theme.jpg)
 
 ## Colour palette & accents
 
-Four palette slots are wired across **every** overlay (exposed as CSS variables `--gfx-c1`–`--gfx-c4`, plus RGB-triplet variants `--gfx-cN-rgb` for translucent surfaces). Each has a role:
+Four palette slots are wired across **every** overlay. Each has a role:
 
-| Slot | Var | Drives |
-|---|---|---|
-| **Primary** | `--gfx-c1` | main accent — headers, key highlights, winner accent, accent tints/gradients |
-| **Secondary** | `--gfx-c2` | stage/format labels (Grand Final, "Advances to Playoffs", match format) & secondary highlights |
-| **Light** | `--gfx-c3` | primary foreground text (muted/secondary text deliberately left neutral) |
-| **Dark** | `--gfx-c4` | panel / card / bar backgrounds (kept translucent — the dark "glass" look) |
+| Slot | Drives |
+|---|---|
+| **Primary** | main accent — headers, key highlights, winner accent, accent tints/gradients |
+| **Secondary** | stage/format labels (Grand Final, "Advances to Playoffs", match format) & secondary highlights |
+| **Light** | primary foreground text (muted/secondary text deliberately left neutral) |
+| **Dark** | panel / card / bar backgrounds (kept translucent — the dark "glass" look) |
 
-- **Team Side Accents** — Blue side / Red side colours (`--gfx-blue` / `--gfx-red`), used to differentiate sides in Draft, Head-to-Head and Player Intro (team 1 = blue, team 2 = red). These are *side*-based, not per-team.
+- **Team Side Accents** — Blue side / Red side colours, used to differentiate sides in Draft, Head-to-Head and Player Intro (team 1 = blue, team 2 = red). These are *side*-based, not per-team.
 - **No per-team colours** — teams are differentiated by their logos and names, while a designed palette plus side accents avoid colour clashes. The Win Screen accent comes from the winning side, Primary, or a custom colour (see its **Accent Colour** control).
 
-Every wiring keeps the original colour as a literal fallback, so the default palette reproduces the standard look exactly and unsupported renderers degrade gracefully. Changing a slot updates all graphics live. A wild palette can reduce legibility — the seeded **Looks** are safe starting points.
+The default palette reproduces the standard look exactly, and changing a slot updates all graphics live. A wild palette can reduce legibility — the seeded **Looks** are safe starting points.
 
 ## Typography
 
@@ -49,9 +49,7 @@ Upload your own typeface to use across the overlays:
 
 - Supported formats: **woff2, woff, ttf, otf** (max 4 MB).
 - The **name is read from the font file itself** (its built-in family name), so you don't have to retype a tidy name — leave the name box blank unless you want to override it. (WOFF2 is compressed, so those fall back to the filename.) It then appears in the Overlay font list (under **Custom**) and in the live preview.
-- **Custom fonts are global** — shared across all profiles, not tied to one. Removing a font reverts any overlay using it to the default.
-
-Under the hood, the chosen families are injected as the `--gfx-font` (primary) and `--gfx-font-2` (secondary) CSS variables. Display text uses `var(--gfx-font, 'Barlow Condensed')`; label/meta text uses `var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed'))` — so an unset secondary falls back to the primary, and an unset primary to the default. Uploaded fonts are registered as `@font-face` rules built from `settings.customFonts` and served from `/uploads/fonts`.
+- **Custom fonts are global** — shared across all profiles, not tied to one. Removing a font reverts any overlay using it to the default. An unset secondary always falls back to the primary, and an unset primary to the default family.
 
 ## Shape & surface
 
@@ -66,7 +64,7 @@ The same panel at corner-radius 0 (sharp), 10, and 20 (max curve):
 
 ![Corner radius — 0, 10 and 20 px](img/shape-corners.webp)
 
-The three surface styles — Glass, Solid, Outline:
+The three surface styles over a colourful scene, where the difference shows — **Glass** lets the scene glow through the dark tint, **Solid** blocks it completely, **Outline** all but disappears, leaving an accent border:
 
 ![Surface styles — glass, solid, outline](img/shape-surface.webp)
 
@@ -77,7 +75,7 @@ The **Text case** control (Typography card) sets how *all* overlay text reads:
 - **UPPERCASE** *(default)* — the standard broadcast look.
 - **Normal** — every name and label renders in its source case (e.g. "Aurora Vanguard" rather than "AURORA VANGUARD").
 
-Shape, Surface and Text case are pure CSS-variable overrides with literal fallbacks, so the defaults reproduce the standard design exactly and each choice travels inside a Look.
+The defaults reproduce the standard broadcast design exactly, and each choice travels inside a [Look](#looks).
 
 ## Background
 
@@ -97,21 +95,10 @@ The **Animation** card controls how graphics enter, exit, and react to data chan
 - **Live preview** — replays the entrance easing at the chosen speed.
 - **Per-graphic overrides** — when editing a specific graphic, each field offers **— Use global —** (inherit) plus a **Global** speed option; **Reset to global** clears that graphic's override. A note lists which graphics currently have custom overrides.
 
-### How it works under the hood
+Two good-to-knows:
 
-`GfxSettings.applyAnimation()` (in `public/graphics/gfx-settings.js`) injects CSS variables on `:root`:
-
-| Variable | Meaning |
-|---|---|
-| `--gfx-ease-enter` / `--gfx-ease-exit` / `--gfx-ease-move` | resolved timing-functions |
-| `--gfx-dur-scale` | unitless speed multiplier (Instant=0 … Slow=1.6) |
-
-Overlay CSS consumes them with literal fallbacks, e.g.
-`animation: pi-rise calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;`
-so an unset token always falls back to the original look.
-
-- **Bounce / Elastic** can't be a single `cubic-bezier`, so they're emitted as CSS `linear()` easing functions. On renderers without `linear()` support (older embedded browsers), the nearest overshoot bezier is substituted automatically.
-- **Reduced motion** — if the viewer's OS/browser requests reduced motion, the duration scale is forced to 0 (animations resolve instantly).
+- **Bounce / Elastic** need a modern renderer; on older embedded browsers the nearest overshoot curve is substituted automatically, so nothing breaks.
+- **Reduced motion** — if the viewing machine's OS/browser requests reduced motion, animations resolve instantly.
 
 ## Logos & image uploads
 
@@ -134,4 +121,4 @@ From the **Looks** card (top of Broadcast Theme):
 - **Rename** / **Delete**
 - **Export** / **Import** — download a Look as a portable `.metalook.json` file to carry a visual identity between events or installs, and import one a colleague shared (validated + sanitised on import).
 
-Five example Looks (Broadcast Clean, Neon Surge, Big Impact, Minimal Mono, Soft Rounded) are seeded on first run. Looks are stored in `data/looks.json`; the API lives at `GET/POST /api/looks*` (admin only).
+Five example Looks (Broadcast Clean, Neon Surge, Big Impact, Minimal Mono, Soft Rounded) are seeded on first run — apply one to see how far the theme system reaches, then tweak from there.

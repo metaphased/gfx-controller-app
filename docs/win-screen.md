@@ -56,5 +56,5 @@ In the control bar pick the **winning team**; the control tab below sets the **m
 ## Notes
 
 - The **stingers** are designed as transitions: because they fully cover the frame, you can switch scenes in OBS/vMix while the stinger is up. See the Companion/Stream Deck integration for triggering them on a button.
-- **COMP** reads the winning side's picks from the draft/series — run or commit the [draft](match-and-draft.md#draft) so they're populated, and sync [champion art](champion-assets.md).
+- **COMP** reads the winning side's picks from the draft/series — run or commit the [draft](match-and-draft.md#draft-league-of-legends) so they're populated, and sync [champion art](champion-assets.md).
 - Series score and team data come from the [Game Setup](match-and-draft.md#game-setup) series tracker.

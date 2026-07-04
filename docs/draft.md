@@ -4,7 +4,7 @@ The live League of Legends pick/ban board — both teams' picks and bans, side a
 
 ![Draft overlay — live pick/ban board](img/draft-board.webp)
 
-The overlay updates in real time as you drive the draft. **Operating the draft** (side assignment, starting it, filling picks in order, the timer, role mapping, committing to the series) is covered in **[Match & draft control → Draft](match-and-draft.md#draft)** — this page is about the overlay itself.
+The overlay updates in real time as you drive the draft. **Operating the draft** (side assignment, starting it, filling picks in order, the timer, role mapping, committing to the series) is covered in **[Match & draft control → Draft](match-and-draft.md#draft-league-of-legends)** — this page is about the overlay itself.
 
 The Draft control tab — assign sides/timer, then fill picks and bans in order:
 
@@ -19,7 +19,7 @@ The Draft control tab — assign sides/timer, then fill picks and bans in order:
 
 ## Display options
 
-From the [Draft control tab](match-and-draft.md#draft):
+From the [Draft control tab](match-and-draft.md#draft-league-of-legends):
 
 - **Use pick/ban timer** + **Seconds per step** — show and set the countdown.
 - **↺ Replay Intro** — re-trigger the overlay's entrance animation without changing any draft data (handy if you bring the source on screen after the draft already started).

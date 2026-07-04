@@ -1,19 +1,17 @@
 # Getting started
 
-This page gets MetaGFX running and points you at the few things that will save you a broken broadcast. Once you're in, follow the Setup & workflow guides in order: **[Tournament setup](tournament-setup.md) → [Schedule](schedule.md) → [Match & draft control](match-and-draft.md)**.
+This page gets MetaGFX running and points you at the few things that will save you a broken broadcast. Once you're in, follow the Tournament & data guides in order — **[Tournament setup](tournament-setup.md) → [Schedule](schedule.md) → [Match & draft control](match-and-draft.md)** — then pick up the extras for your game under [Game-specific setup](#game-specific-setup).
 
 ## Requirements
 
 - **Node.js 18+**
 - **OBS or vMix** with a browser-source capable scene (overlays are resolution-independent — 1920×1080 or 2560×1440 both work, see below)
-- *(Optional)* a **persistent Riot API key** for Solo Queue rank lookups — see [below](#riot-api-key)
 
 ## Install & first run
 
 ```bash
 npm install
 npm start                    # serves on http://localhost:3000
-node scripts/sync-assets.js  # download champion images (first run / after clone)
 ```
 
 For auto-reload while developing, use `npm run dev` instead of `npm start`.
@@ -24,7 +22,7 @@ Then open the **control panel** at `http://localhost:3000/control` and log in.
 
 ![The control panel after login — Dashboard](img/control-panel.jpg)
 
-The **Dashboard** is your landing page: the active match and series score, the tournament summary, today's schedule, and a live readout of which graphics are currently on air. The left sidebar groups everything into **Tournament**, **Game**, **Graphics** and **System** sections.
+The **Dashboard** is your landing page: the active match and series score, the tournament summary, today's schedule, and a live readout of which graphics are currently on air. The left sidebar groups everything into **Tournament**, **Game**, **Graphics** and **System** sections — and the whole panel adapts to the game your tournament is set to, so you only see the tabs your game uses.
 
 ## ⚠️ Before you go live — required reading
 
@@ -33,10 +31,9 @@ A handful of things bite people the first time. Read these once.
 | # | What | Why it matters |
 |---|---|---|
 | 1 | **Change the default admin password** | First run seeds `admin` / `admin`. Change it immediately in **Settings → Accounts**, or anyone on your network can drive your broadcast. |
-| 2 | **Champion images are NOT in the repo** | They're downloaded on demand to keep the repo small. After cloning, run the [asset sync](champion-assets.md) (or **Settings → Champion Assets**) — otherwise champion art is blank. |
-| 3 | **Use a *persistent* Riot key** | Rank lookups need `RIOT_API_KEY`. **Don't use the 24-hour Development key** — it expires mid-event. See [Riot API key](#riot-api-key). |
-| 4 | **Graphics need the token** | Every overlay/caster URL needs `?token=XXXX`. Copy the ready-made URLs from **Settings → Output URLs** into OBS/vMix. |
-| 5 | **Remote OBS?** | If OBS runs on a different machine, set `EXTERNAL_URL` (see [below](#environment-variables)) so a **Local / External** toggle appears in **Settings → Output URLs**. |
+| 2 | **Game art is NOT in the repo** | Champion/hero/item/map images are downloaded on demand to keep the repo small. After cloning, sync your game's art from **Settings → Broadcast Assets** — otherwise that art is blank. See [Game-specific setup](#game-specific-setup). |
+| 3 | **Graphics need the token** | Every overlay/caster URL needs `?token=XXXX`. Copy the ready-made URLs from **Settings → Output URLs** into OBS/vMix. |
+| 4 | **Remote OBS?** | If OBS runs on a different machine, set `EXTERNAL_URL` (see [below](#environment-variables)) so a **Local / External** toggle appears in **Settings → Output URLs**. |
 
 ## Adding the graphics to OBS / vMix
 
@@ -46,12 +43,35 @@ A handful of things bite people the first time. Read these once.
 
 1. In MetaGFX, open **Settings → Output URLs** and copy the URL for the graphic you want (each already includes `?token=XXXX`).
 2. In OBS/vMix add a **Browser Source** and paste the URL.
-3. Set the source resolution to match your canvas — **1920 × 1080** for 1080p, or **2560 × 1440** for 1440p. The overlays are built on viewport units and scale to fill whatever size the browser source is, so there's nothing to reconfigure in MetaGFX when you switch; for crisp 1440p output just create the browser sources at 2560 × 1440 (and set the OBS canvas to match). *(The one source-art caveat: champion **splash backgrounds** in Head-to-Head / Player Spotlight come from Riot's Data Dragon at a fixed ~1215 px and will upscale slightly when shown full-bleed at 1440p — everything else, including all text and vector chrome, stays sharp.)*
+3. Set the source resolution to match your canvas — **1920 × 1080** for 1080p, or **2560 × 1440** for 1440p. The overlays are built on viewport units and scale to fill whatever size the browser source is, so there's nothing to reconfigure in MetaGFX when you switch; for crisp 1440p output just create the browser sources at 2560 × 1440 (and set the OBS canvas to match).
 4. Leave the background transparent — overlays are transparent by design; composite them over your scene. For a coloured/animated backdrop use the separate [BG Output](bg-output.md) source as its own layer underneath.
 
 A few graphics expose **more than one output** — e.g. the [Lower Third](lower-third.md) lists a **Main** URL plus a `?out=<id>` URL per extra output, so you can run independent lower thirds on different scenes at once.
 
 To run many graphics through a handful of shared browser sources (big RAM/VRAM saving), see [GFX Bus](gfx-bus.md).
+
+## Game-specific setup
+
+Everything above applies to every tournament. Each game then has its own art sync (one time) and optional data integrations — set the tournament's **Game** in [Tournament setup](tournament-setup.md) first, then do the matching section below.
+
+### League of Legends
+
+- **Champion art** — sync tiles, centered portraits and splash art from **Settings → Broadcast Assets → Champion Assets** (or `node scripts/sync-assets.js`). Without it, champion art is blank on the draft board, head-to-head, win screen, player intro and spotlight. See [Champion assets](champion-assets.md).
+- **Riot API key (optional)** — Solo Queue rank lookups need `RIOT_API_KEY` in your `.env`. Register a **persistent product key** at [developer.riotgames.com](https://developer.riotgames.com) — **don't use the 24-hour Development key**, it expires mid-event. Without a key everything else works; ranks just won't fetch.
+- **Champion pools** come from op.gg per player (no Riot key needed) — see [Match & draft control](match-and-draft.md#league-of-legends--ranks-and-champion-pools).
+- *1440p note:* champion **splash backgrounds** (Head-to-Head / Player Spotlight) come from Riot at a fixed ~1215 px and upscale slightly at 1440p — all text and vector chrome stays sharp.
+
+### Counter-Strike 2
+
+- **Map art** — download art for your tournament's map pool from **Settings → Broadcast Assets → Map Assets** (see [Map Intro](map-intro.md)).
+- **Live data (optional, beta)** — GSI and/or MatchZy can auto-fill map/series scores and player stats: [Live Data (CS2)](live-data.md).
+- Add **Steam IDs** to rosters for exact player↔stats matching ([Tournament setup](tournament-setup.md#creating--editing-a-team)).
+
+### Dota 2
+
+- **Hero + item art** — sync both from **Settings → Broadcast Assets** (Hero Assets and Item Assets cards). Heroes drive the draft board and every scoreboard; items drive the post-game and match-summary item rows.
+- **Live data (optional)** — GSI from an observer/GOTV client fills the draft, scoreboards and the match-summary graph: [Live Data (Dota 2)](dota-live-data.md).
+- Add **Steam IDs** to rosters — for Dota this is also what keeps players' real handles (not their in-game smurf names) on air: [names on air](dota-live-data.md#names-on-air--the-roster-rule).
 
 ## Environment variables
 
@@ -65,19 +85,9 @@ EXTERNAL_URL=http://YOUR_LAN_IP:3000
 
 | Variable | Required | Description |
 |---|---|---|
-| `RIOT_API_KEY` | No | Persistent Riot key for Solo Queue rank lookups. **Not** the 24-hour dev key. |
+| `RIOT_API_KEY` | No | *(League of Legends)* Persistent Riot key for Solo Queue rank lookups. **Not** the 24-hour dev key. |
 | `PORT` | No | Server port, defaults to `3000`. |
 | `EXTERNAL_URL` | No | LAN IP/hostname for sharing output URLs to a remote OBS on the same network. |
-
-### Riot API key
-
-Rank lookups (Players / Rosters → *Refresh Ranks*) call the Riot API and need a key in `RIOT_API_KEY`.
-
-- Register a **persistent product key** at [developer.riotgames.com](https://developer.riotgames.com).
-- **Do not** use the **Development key** — it lasts 24 hours and will expire partway through your event.
-- It's optional: everything else works without it, but ranks won't fetch.
-
-Champion **pool** data comes from op.gg (see [Match & draft control](match-and-draft.md)) and doesn't need a Riot key.
 
 ## The views
 
@@ -101,6 +111,7 @@ The `data/` directory is created on first run and is **not** in git (it's yours,
 
 ## Next steps
 
-- **[Tournament setup](tournament-setup.md)** — create the event, add competing teams, define the structure.
+- **[Tournament setup](tournament-setup.md)** — create the event, pick its game, add competing teams, define the structure.
 - **[Schedule](schedule.md)** — lay out broadcast days and matches.
 - **[Match & draft control](match-and-draft.md)** — load a match and drive the live graphics.
+- **[Broadcast Theming](theming.md)** — give the whole overlay set your event's visual identity.

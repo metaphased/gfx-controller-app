@@ -25,9 +25,8 @@ Every graphic is a browser source for OBS/vMix at 1920×1080. Each page below co
 
 | Guide | Graphic |
 |---|---|
+| [Broadcast Theming](theming.md) | The whole broadcast's visual identity — palette, fonts, shape & surface, animation, Looks. |
 | [Player Intro](player-intro.md) | Player/roster intro — Nameplate, Team Stack, Bar layouts. |
-| [Player Spotlight](player-spotlight.md) | 1–2 player spotlight; fullscreen + lower third; 4 designs. |
-| [Head to Head](head-to-head.md) | Team-vs-team comparison and lineups. |
 | [Win Screen](win-screen.md) | Match/series result, stingers and the COMP winning-picks screen. |
 | [Post-Game Scoreboard](post-game.md) | End-of-game player stat board — CS2 and Dota 2, fed by live data. |
 | [Break Screen](break-screen.md) | "Back soon" / PIP break card. |
@@ -45,6 +44,8 @@ Every graphic is a browser source for OBS/vMix at 1920×1080. Each page below co
 | Guide | What it covers |
 |---|---|
 | [Draft Overlay](draft.md) | Live pick/ban board with timer. |
+| [Player Spotlight](player-spotlight.md) | 1–2 player spotlight with champion stats; fullscreen + lower third; 4 designs. |
+| [Head to Head](head-to-head.md) | Team-vs-team comparison and lineups with champion splash art. |
 | [Champion assets](champion-assets.md) | Syncing champion tiles/centered/splash art. |
 
 ## Counter-Strike 2
@@ -75,8 +76,7 @@ CS2 live data (GSI / MatchZy) is in **beta** — the data flows are being exerci
 | [Caster view](caster-view.md) | Read-only, token-authed caster dashboard. |
 | [Live Switcher](live-switcher.md) | OBS/vMix on-air (PGM/PVW) detection. |
 | [Companion / Stream Deck](companion.md) | Bitfocus Companion + action API. |
-| [Theming & Looks](theming.md) | Palette, accents, background and reusable Looks. |
-| [Control-surface theming](ui-theming.md) | Per-user control-panel appearance. |
+| [Control-surface theming](ui-theming.md) | Per-user control-panel appearance (the overlays' look is under [Broadcast Theming](theming.md)). |
 
 ---
 

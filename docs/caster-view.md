@@ -83,5 +83,5 @@ On a Dota 2 tournament with [live data](dota-live-data.md) connected, three tabs
 
 ## Notes
 
-- Ranks and champion pools come from the [Riot API and op.gg](match-and-draft.md#ranks-and-champion-pools); refresh them from the control panel so casters see current data.
+- Ranks and champion pools come from the [Riot API and op.gg](match-and-draft.md#league-of-legends--ranks-and-champion-pools); refresh them from the control panel so casters see current data.
 - For driving graphics, that's the [operator view](operator-and-multiuser.md); the caster view is purely for reading.

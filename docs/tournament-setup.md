@@ -111,7 +111,7 @@ Per-stage default series formats (e.g. groups = Bo1, playoffs = Bo3, finals = Bo
 ![Team editor — name, tag, logo, starting lineup and subs](img/tool-teams-database.jpg)
 
 - **Team Name**, **Tag** (short acronym, max 6 chars), **Logo** (URL or upload — square ~200×200 recommended; overlays show it at ~34px).
-- **Players** — one row per roster slot. Per player you can set the handle, **role**, **op.gg region** and **Riot ID** (`Name#TAG`). Riot ID + region power rank lookups and op.gg links; see [Match & draft control](match-and-draft.md#ranks-and-champion-pools).
+- **Players** — one row per roster slot. Per player you can set the handle, **role**, **op.gg region** and **Riot ID** (`Name#TAG`). Riot ID + region power rank lookups and op.gg links; see [Match & draft control](match-and-draft.md#league-of-legends--ranks-and-champion-pools).
 - **CS2 / Dota 2 teams** get a **Steam ID** field per player instead of the Riot fields — it's the precise key that matches [live-data](live-data.md) stats to the right player (CS2 also gets an optional **HLTV URL** link field). See [names on air](dota-live-data.md#names-on-air--the-roster-rule) for why the Steam ID matters for Dota broadcasts.
 
 ### Importing teams
@@ -130,7 +130,7 @@ Two import paths sit at the bottom of the Teams tab. Both **create or update** t
 | `team` | ✓ | Team name — rows are grouped by it. |
 | `handle` | ✓ | Player IGN. (`ign`, `player`, `summoner` also accepted.) |
 | `role` | – | Top / Jungle / Mid / Bot / Support (`position`, `lane` accepted). Defaults by row order if blank. |
-| `riotId` | – | Riot ID as `Name#TAG` — powers [rank lookups](match-and-draft.md#ranks-and-champion-pools) and op.gg links. |
+| `riotId` | – | Riot ID as `Name#TAG` — powers [rank lookups](match-and-draft.md#league-of-legends--ranks-and-champion-pools) and op.gg links. |
 | `region` | – | op.gg region (e.g. `euw`, `na`, `oce`, `kr`). |
 | `name` | – | Player's real name. |
 | `country` | – | Country / nationality. |
