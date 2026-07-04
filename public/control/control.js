@@ -923,6 +923,165 @@ function syncGfxToken(settings) {
   listEl.innerHTML = toggleHtml + outputs.map(o => urlRow(o.label, o.path)).join('') + ltRows + busRows;
 }
 
+// ── OMT outputs (beta) ──────────────────────────────────────────────────────────
+// Config lives in settings.omt (state broadcast); install + runtime status come
+// from /api/omt/status, polled only while the Routing tab is open. Rows post the
+// whole config on any edit (the server sanitises + restarts the renderer).
+let _omtStatus = null, _omtPollTimer = null;
+
+function _omtSourceOptions(s, selected) {
+  const buses = (s.settings && s.settings.buses) || [];
+  const gfx = GRAPHIC_MAP.filter(function (x) { return !x.noBus && !_gfxHidden(x.key) && _gfxCapActive(x.cap); });
+  let html = '<optgroup label="Buses">' + buses.map(function (b) {
+    const v = 'bus:' + b.id;
+    return '<option value="' + escHtml(v) + '"' + (v === selected ? ' selected' : '') + '>' + escHtml(b.name || b.id) + '</option>';
+  }).join('') + '</optgroup>';
+  html += '<optgroup label="Graphics">' + gfx.map(function (x) {
+    const v = 'graphic:' + x.key;
+    return '<option value="' + escHtml(v) + '"' + (v === selected ? ' selected' : '') + '>' + escHtml(x.label) + '</option>';
+  }).join('') + '</optgroup>';
+  return html;
+}
+
+function syncOmtTab(s) {
+  const list = g('omt-output-list'); if (!list) return;
+  const omt = (s.settings && s.settings.omt) || { enabled: false, outputs: [] };
+  if (!_sfp('omtCfg', { omt, buses: (s.settings && s.settings.buses || []).map(function (b) { return [b.id, b.name]; }), game: currentGameId() })) return;
+
+  const en = g('omt-enabled'); if (en) en.checked = !!omt.enabled;
+  const outs = omt.outputs || [];
+  list.innerHTML = outs.map(function (o, i) {
+    const sel = o.source ? (o.source.type + ':' + o.source.key) : '';
+    return '<div class="card" style="margin:0;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap" data-omt-row="' + i + '">' +
+      '<input type="text" data-omt-name value="' + escHtml(o.name || '') + '" placeholder="Output name" style="width:150px;font-weight:600" onchange="omtSave()">' +
+      '<select data-omt-source style="min-width:170px" onchange="omtSave()">' + _omtSourceOptions(s, sel) + '</select>' +
+      '<select data-omt-fps style="width:86px" onchange="omtSave()">' +
+        '<option value="30"' + ((o.fps | 0) !== 60 ? ' selected' : '') + '>30 fps</option>' +
+        '<option value="60"' + ((o.fps | 0) === 60 ? ' selected' : '') + '>60 fps</option>' +
+      '</select>' +
+      '<span data-omt-pill="' + escHtml(o.id || '') + '" style="font-size:11px"></span>' +
+      '<button class="btn btn-sm btn-danger" style="margin-left:auto" onclick="omtRemoveOutput(' + i + ')">✕</button>' +
+      '</div>';
+  }).join('') || '<p class="hint" style="margin:0">No outputs yet — add one below.</p>';
+  const addBtn = g('omt-add-btn'); if (addBtn) addBtn.disabled = outs.length >= 4;
+  const capNote = g('omt-cap-note'); if (capNote) capNote.textContent = outs.length >= 4 ? 'Maximum 4 outputs (performance guardrail).' : '';
+  _omtRenderStatus();
+}
+
+function _omtReadConfig() {
+  const outs = [];
+  document.querySelectorAll('[data-omt-row]').forEach(function (row) {
+    const src = (row.querySelector('[data-omt-source]') || {}).value || '';
+    const i = src.indexOf(':');
+    if (i < 0) return;
+    outs.push({
+      id: (row.querySelector('[data-omt-pill]') || {}).dataset ? row.querySelector('[data-omt-pill]').dataset.omtPill || undefined : undefined,
+      name: (row.querySelector('[data-omt-name]') || {}).value || '',
+      source: { type: src.slice(0, i), key: src.slice(i + 1) },
+      fps: parseInt((row.querySelector('[data-omt-fps]') || {}).value || '30', 10),
+    });
+  });
+  return { enabled: !!(g('omt-enabled') && g('omt-enabled').checked), outputs: outs };
+}
+function omtSave() { api('/api/omt', _omtReadConfig()); }
+function omtAddOutput() {
+  const cfg = _omtReadConfig();
+  if (cfg.outputs.length >= 4) return;
+  const s = window._state || {};
+  const firstBus = ((s.settings && s.settings.buses) || [])[0];
+  cfg.outputs.push({ name: firstBus ? (firstBus.name || firstBus.id) : 'Output ' + (cfg.outputs.length + 1),
+    source: firstBus ? { type: 'bus', key: firstBus.id } : { type: 'graphic', key: 'winScreen' }, fps: 30 });
+  api('/api/omt', cfg);
+}
+function omtRemoveOutput(i) {
+  const cfg = _omtReadConfig();
+  cfg.outputs.splice(i, 1);
+  api('/api/omt', cfg);
+}
+
+// Install area + runtime pills — driven by /api/omt/status (poll while tab open).
+function _omtRenderInstall() {
+  const el = g('omt-install-area'), cfgArea = g('omt-config-area');
+  if (!el) return;
+  const st = _omtStatus;
+  if (!st) { el.innerHTML = '<span class="hint">Checking OMT components…</span>'; return; }
+  if (st.installed) {
+    el.innerHTML = '<p class="hint" style="margin-bottom:10px">Components installed ✓ <span style="color:var(--text-dim)">(Electron ' +
+      escHtml(st.components.electronVersion) + ' · OMT ' + escHtml(st.components.omtVersion) + ')</span></p>';
+    if (cfgArea) cfgArea.style.display = '';
+  } else if (st.installing) {
+    // live progress arrives over the omt:install socket event
+    if (!g('omt-install-prog')) el.innerHTML = '<div id="omt-install-prog" class="hint">Installing…</div>';
+    if (cfgArea) cfgArea.style.display = 'none';
+  } else {
+    el.innerHTML = '<p class="hint" style="margin-bottom:8px">The OMT renderer needs two one-time downloads (~120 MB total): the Electron runtime and the official OMT libraries (both MIT-licensed, fetched from their GitHub releases).</p>' +
+      '<button class="btn btn-primary btn-sm" onclick="omtInstall()">Install OMT components</button>' +
+      (st.lastError ? '<span class="hint" style="margin-left:10px;color:var(--danger,#e14b3d)">' + escHtml(st.lastError) + '</span>' : '');
+    if (cfgArea) cfgArea.style.display = 'none';
+  }
+}
+
+function _omtRenderStatus() {
+  const pillEl = g('omt-renderer-pill');
+  const st = _omtStatus;
+  if (pillEl) {
+    if (!st || !st.installed) pillEl.innerHTML = '';
+    else if (st.running && st.ready) pillEl.innerHTML = '<span style="color:#26d07c;font-size:11px;font-weight:700">● RUNNING</span>';
+    else if (st.running) pillEl.innerHTML = '<span style="color:#e2b93b;font-size:11px;font-weight:700">● STARTING…</span>';
+    else if (st.lastError) pillEl.innerHTML = '<span style="color:#e14b3d;font-size:11px;font-weight:700" title="' + escHtml(st.lastError) + '">● ERROR</span>';
+    else pillEl.innerHTML = '<span style="color:var(--text-dim);font-size:11px;font-weight:700">● OFF</span>';
+  }
+  const stats = (st && st.stats && st.stats.outputs) || [];
+  document.querySelectorAll('[data-omt-pill]').forEach(function (span) {
+    const o = stats.find(function (x) { return x.id === span.dataset.omtPill; });
+    if (!o || !st.running) { span.innerHTML = ''; return; }
+    const live = o.connections > 0;
+    span.innerHTML = '<span style="color:' + (live ? '#26d07c' : 'var(--text-dim)') + '">' +
+      (o.fps || 0) + ' fps · ' + o.connections + ' receiver' + (o.connections === 1 ? '' : 's') +
+      (o.mbps ? ' · ' + o.mbps + ' Mbps' : '') + '</span>';
+  });
+}
+
+async function _omtPoll() {
+  try { _omtStatus = await (await fetch('/api/omt/status')).json(); }
+  catch (e) { return; }
+  _omtRenderInstall();
+  _omtRenderStatus();
+}
+function omtStartPoll() { if (_omtPollTimer) return; _omtPoll(); _omtPollTimer = setInterval(_omtPoll, 3000); }
+function omtStopPoll() { clearInterval(_omtPollTimer); _omtPollTimer = null; }
+
+async function omtInstall() {
+  const el = g('omt-install-area');
+  if (el) el.innerHTML = '<div id="omt-install-prog" class="hint">Starting install…</div>';
+  socket.on('omt:install', _onOmtInstallProgress);
+  await api('/api/omt/install', {});
+}
+function _onOmtInstallProgress(ev) {
+  const el = g('omt-install-prog');
+  if (ev.phase === 'done') {
+    socket.off('omt:install', _onOmtInstallProgress);
+    _omtPoll();
+    return;
+  }
+  if (ev.phase === 'error') {
+    socket.off('omt:install', _onOmtInstallProgress);
+    if (el) el.innerHTML = '<span style="color:var(--danger,#e14b3d)">Install failed: ' + escHtml(ev.message || '') + '</span>';
+    setTimeout(_omtPoll, 1500);
+    return;
+  }
+  if (!el) return;
+  if (ev.phase === 'download') {
+    el.innerHTML = 'Downloading <strong>' + escHtml(ev.component || '') + '</strong> — ' + (ev.pct || 0) + '% (' + (ev.mb || 0) + ' MB)' +
+      '<div style="height:5px;background:var(--panel-2,#10161f);border-radius:3px;margin-top:6px;overflow:hidden">' +
+      '<div style="height:100%;width:' + (ev.pct || 0) + '%;background:var(--primary,#2079c7)"></div></div>';
+  } else if (ev.phase === 'extract') {
+    el.innerHTML = 'Extracting <strong>' + escHtml(ev.component || '') + '</strong>…';
+  } else if (ev.phase === 'start') {
+    el.innerHTML = 'Downloading <strong>' + escHtml(ev.component || '') + '</strong>…';
+  }
+}
+
 // ── Bus config ─────────────────────────────────────────────────────────────────
 function syncBusConfig(s) {
   const list = g('bus-config-list'); if (!list) return;
@@ -1357,6 +1516,7 @@ function syncUI(s) {
   if (s.switcher) applySwitcher(s.switcher);
   if (s.settings) syncGfxToken(s.settings);
   syncBusConfig(s);
+  syncOmtTab(s);
   if (s.settings && _sfp('breakLogo', { sel: s.settings.breakCenterLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderBreakCenterLogoPicker(s.settings);
   if (s.settings && _sfp('h2hLogo', { sel: s.settings.h2hLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderH2HLogoPicker(s.settings);
   if (s.groupStage)          syncGroupStageGfxUI(s);
@@ -6156,6 +6316,7 @@ function switchToTab(tabKey) {
     if (tabKey === 'profiles') loadProfilesTab();
     if (tabKey === 'theme')    loadLooksList();
     if (tabKey === 'home')     renderDashboard(window._state);
+    if (tabKey === 'routing') omtStartPoll(); else omtStopPoll();
     localStorage.setItem('gfx_ctrl_tab', tabKey);
     _expandNavSectionFor(tabKey);   // make sure the target's sidebar section is open
   });
