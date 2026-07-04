@@ -1,13 +1,12 @@
 // Dota 2 adapter. Like LoL it has a hero pick/ban draft (Captains Mode) + meaningful roster
 // positions (1–5) + per-hero art — so it reuses the champion-style "pick entity" shape, with
 // 'hero' as the entity. The hero-draft broadcast graphic, hero assets, and optional GSI
-// live-data hook (official Dota 2 GSI carries the full draft block) land in later sub-steps;
-// until then Dota 2 gets the full shared graphic set and a manual roster. In-game HUDs are out
-// of scope. Starts 'alpha' (adapter only) → 'beta' once the draft + assets ship.
+// live-data hook (official Dota 2 GSI carries the full draft block) are all shipped: hero
+// draft + assets, GSI ingest, post-game/match-summary, docs. In-game HUDs are out of scope.
 module.exports = {
   id:    'dota2',
   label: 'Dota 2',
-  maturity: 'alpha',  // control-room only; bumps to 'beta' when the hero draft + assets land
+  maturity: 'beta',  // control-room only: feature-complete + replay-validated; 'stable' after full live production runs
   roster: {
     positions: ['Carry', 'Mid', 'Offlane', 'Soft Support', 'Hard Support'], // Dota positions 1–5
     teamSize:  5,
