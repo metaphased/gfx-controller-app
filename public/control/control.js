@@ -3017,15 +3017,18 @@ function syncWinTab(ws, match) {
   });
 
   // Winning draft picks — toggle, position, and "what will appear" preview.
-  // Champion picks are LoL-only; keep these rows hidden for non-champ-draft games
-  // (the card + COMP radio are also cap-champ-draft hidden via applyAdapterUI).
-  const champDraft = isChampDraft();
-  const showPicks = champDraft && !!ws.showPicks;
+  // LoL champions come from the recorded winning game; Dota heroes from the
+  // current Captains Mode draft (the board keeps the last game's draft until it
+  // is reset). Both draft games get the full card — gating this on champ-draft
+  // only used to force the checkbox off for Dota every sync, so the toggle
+  // looked dead while the overlay (ungated) kept showing the heroes.
+  const draftGame = isChampDraft() || isHeroDraft();
+  const showPicks = draftGame && !!ws.showPicks;
   const spChk = g('win-showpicks'); if (spChk) spChk.checked = showPicks;
   const posRow = g('win-picks-pos-row'); if (posRow) posRow.style.display = showPicks ? 'flex' : 'none';
   // Image shape applies to the picks whenever they show — COMP (always) or any
   // style with showPicks on — so it lives here, not gated behind loading COMP.
-  const shapeRow = g('win-shape-row'); if (shapeRow) shapeRow.style.display = (champDraft && (showPicks || style === 'comp')) ? 'flex' : 'none';
+  const shapeRow = g('win-shape-row'); if (shapeRow) shapeRow.style.display = (draftGame && (showPicks || style === 'comp')) ? 'flex' : 'none';
   const picksPos = ws.picksPosition === 'bottom' ? 'bottom' : 'below';
   ['below','bottom'].forEach(v => {
     const r = document.querySelector('input[name="win-picks-pos"][value="' + v + '"]');
@@ -3033,9 +3036,10 @@ function syncWinTab(ws, match) {
   });
   renderWinPicksPreview(ws, match);
 
-  // COMP-only options (champion image shape + built-in background) — LoL only
+  // COMP-only options (built-in background) — any draft game (Dota COMP shows
+  // heroes and needs the background picker just as much as LoL).
   const compOpts = g('win-comp-options');
-  if (compOpts) compOpts.style.display = (champDraft && style === 'comp') ? 'block' : 'none';
+  if (compOpts) compOpts.style.display = (draftGame && style === 'comp') ? 'block' : 'none';
   const compShape = ws.compShape === 'angled' ? 'angled' : 'rect';
   const rectBtn = g('win-shape-rect'), angBtn = g('win-shape-angled');
   if (rectBtn) rectBtn.classList.toggle('btn-active', compShape === 'rect');
@@ -3070,10 +3074,42 @@ function _winCompGame(ws, match) {
 const _WIN_ROLE_ORDER = ['top', 'jungle', 'mid', 'bot', 'support'];
 function _winNormRole(r) { r = (r || '').toLowerCase().trim(); return r === 'adc' ? 'bot' : r; }
 
+// Dota preview: the win screen draws the winner's heroes from the CURRENT
+// Captains Mode draft (win.js winnerHeroPicks) — not from recorded games — so
+// the preview must read the same source or it cries "no picks" while the
+// overlay happily shows last game's heroes (the board retains them post-game).
+function renderWinHeroPicksPreview(ws, match, el) {
+  const winner   = (ws && ws.team) || 'team1';
+  const t        = (match && match[winner]) || {};
+  const winLabel = t.tag || t.name || (winner === 'team1' ? 'Team 1' : 'Team 2');
+  const steps = ((window._state && window._state.heroDraft) || {}).steps || [];
+  const picks = steps.filter(function (s) { return s && s.team === winner && s.action === 'pick' && (s.hero || s.img); }).slice(0, 5);
+
+  if (!_sfp('winPicksPreview', { w: winner, l: winLabel, hero: picks.map(function (p) { return p.hero || p.img; }), st: ws && ws.style, sp: !!(ws && ws.showPicks) })) return;
+
+  if (!picks.length) {
+    el.innerHTML = '<div class="wpp-warn">No drafted heroes for <strong>' + escHtml(winLabel) +
+      '</strong> on the Hero Draft board — the picks row will be empty. (The board keeps a finished game\'s draft until it is reset or the next draft starts.)</div>';
+    return;
+  }
+  let tiles = '';
+  for (let i = 0; i < 5; i++) {
+    const p = picks[i];
+    tiles += '<div class="wpp-pick">' +
+      (p && p.img ? '<div class="wpp-img" style="background-image:url(' + escHtml(p.img) + ')"></div>'
+                  : '<div class="wpp-img wpp-empty"></div>') +
+      '<div class="wpp-handle">' + escHtml((p && p.hero) || '—') + '</div></div>';
+  }
+  el.innerHTML =
+    '<div class="wpp-head">' + escHtml(winLabel) + ' — these heroes will appear (from the current Captains Mode draft)</div>' +
+    '<div class="wpp-row">' + tiles + '</div>';
+}
+
 // Show the operator exactly which champions + players the win screen will draw,
 // and from which game — so a wrong/missing comp is caught before going on air.
 function renderWinPicksPreview(ws, match) {
   const el = g('win-picks-preview'); if (!el) return;
+  if (typeof isHeroDraft === 'function' && isHeroDraft()) return renderWinHeroPicksPreview(ws, match, el);
   const winner   = (ws && ws.team) || 'team1';
   const tk       = winner === 'team2' ? 't2' : 't1';   // seriesGames stores picks as t1/t2RolePicks
   const t        = (match && match[winner]) || {};
