@@ -1427,6 +1427,10 @@ const makeDefault = () => ({
       { id: 'busA', name: 'Bus A', assignments: [] },
       { id: 'busB', name: 'Bus B', assignments: [] },
     ],
+    // OMT output (beta): graphics as native OMT video sources with alpha, rendered
+    // by the omt-renderer sidecar. outputs: [{ id, name, source:{type:'bus'|'graphic',
+    // key}, fps }] — resolved to page URLs by /api/omt/config. Max 4 (perf guardrail).
+    omt: { enabled: false, outputs: [] },
     h2hChampStats: {
       enabled: false,
       Top:     ['winRate', 'games', 'kda', 'cs'],
@@ -4730,8 +4734,84 @@ io.on('connection', socket => {
   });
 });
 
+// ── OMT output (beta) — graphics as native OMT video with alpha ────────────────
+// The omt-renderer sidecar (see omt-renderer/README.md) renders the same pages
+// OBS would load and sends them as OMT sources. The manager owns install +
+// process lifecycle; these endpoints own config. DATA flows only — the renderer
+// is a passive viewer of the graphics, exactly like an OBS browser source.
+const { createOmtManager } = require('./omt-manager.js');
+const omtManager = createOmtManager({
+  io,
+  getSettings: () => (state.settings || {}),
+  getPort: () => PORT,
+  log: (level, msg) => {
+    console.log('[omt]', msg);
+    if (level !== 'info') logAction('system', 'system', 'omt', msg);
+  },
+});
+
+function sanitizeOmtConfig(body) {
+  const out = { enabled: !!body.enabled, outputs: [] };
+  const seen = new Set();
+  for (const o of (Array.isArray(body.outputs) ? body.outputs : [])) {
+    if (!o || typeof o !== 'object') continue;
+    const type = o.source && o.source.type === 'graphic' ? 'graphic' : 'bus';
+    const key = String((o.source && o.source.key) || '');
+    if (!key) continue;
+    if (type === 'graphic' && !GRAPHIC_PATHS[key]) continue;
+    if (type === 'bus' && !((state.settings.buses || []).some(b => b.id === key))) continue;
+    let id = String(o.id || (type + '-' + key)).replace(/[^\w-]/g, '').slice(0, 40) || ('out' + out.outputs.length);
+    while (seen.has(id)) id += 'x';
+    seen.add(id);
+    out.outputs.push({
+      id,
+      name: String(o.name || key).slice(0, 60),
+      source: { type, key },
+      fps: [30, 60].includes(o.fps | 0) ? (o.fps | 0) : 30,
+    });
+    if (out.outputs.length >= omtManager.MAX_OUTPUTS) break;
+  }
+  return out;
+}
+
+// Admin config — saving reconciles the sidecar (start/stop/restart as needed).
+app.post('/api/omt', requireAdmin, (req, res) => {
+  state.settings.omt = sanitizeOmtConfig(req.body || {});
+  scheduleSave();
+  omtManager.applyConfig();
+  broadcast();
+  res.json({ ok: true, omt: state.settings.omt });
+});
+
+// Renderer-facing config: outputs resolved to page URLs. Token-authed so both the
+// locally-spawned sidecar and a remote render node (same token) can fetch it.
+// URLs are relative — the renderer resolves them against its --server, which is
+// what makes the remote render-node case work unchanged.
+app.get('/api/omt/config', requireAuth, (req, res) => {
+  const cfg = state.settings.omt || {};
+  const token = state.settings.graphicsToken || '';
+  const outputs = (cfg.outputs || []).map(o => ({
+    id: o.id,
+    name: o.name,
+    fps: o.fps || 30,
+    url: o.source.type === 'bus'
+      ? `/bus/${o.source.key}?token=${token}`
+      : `/${GRAPHIC_PATHS[o.source.key]}/?token=${token}`,
+  })).filter(o => !o.url.includes('undefined'));
+  res.json({ namePrefix: 'MetaGFX', outputs });
+});
+
+app.get('/api/omt/status', requireAdmin, (req, res) => res.json(omtManager.status()));
+
+app.post('/api/omt/install', requireAdmin, (req, res) => {
+  if (omtManager.status().installing) return res.status(409).json({ error: 'install already running' });
+  omtManager.install().catch(e => console.log('[omt] install failed:', e.message));
+  res.json({ ok: true, started: true });   // progress streams over the 'omt:install' socket event
+});
+
 server.listen(PORT, () => {
   console.log('\n  Esports GFX -> http://localhost:' + PORT + '/\n');
   // Pre-warm map art for the already-loaded pool so a restart leaves the cache ready.
   if (state.tournament && state.tournament.mapPool && state.tournament.mapPool.length) warmMapPool(state.tournament.mapPool);
+  omtManager.applyConfig();   // resume OMT outputs if enabled + installed
 });
