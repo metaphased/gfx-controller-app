@@ -1039,8 +1039,16 @@ app.post('/api/live/matchzy', (req, res) => {
 });
 
 // ── Static — protected ─────────────────────────────────────────────────────────
-app.use('/control',  requireAuth, requireAdmin, express.static(path.join(__dirname, 'public', 'control')));
-app.use('/operator', requireAuth, express.static(path.join(__dirname, 'public', 'operator')));
+// Same no-store as /graphics: without Cache-Control browsers HEURISTICALLY cache
+// (10% of time-since-Last-Modified), so after an update the panel could load
+// fresh HTML with days-old JS — new UI stuck on dead code until a hard refresh.
+const noStoreCode = {
+  setHeaders: (res, filePath) => {
+    if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+  },
+};
+app.use('/control',  requireAuth, requireAdmin, express.static(path.join(__dirname, 'public', 'control'), noStoreCode));
+app.use('/operator', requireAuth, express.static(path.join(__dirname, 'public', 'operator'), noStoreCode));
 
 // ── Shared static (champion picker JS etc.) ────────────────────────────────────
 app.use(requireAuth, express.static(path.join(__dirname, 'public')));
