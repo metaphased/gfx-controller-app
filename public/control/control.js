@@ -1043,8 +1043,17 @@ function _omtRenderStatus() {
 }
 
 async function _omtPoll() {
-  try { _omtStatus = await (await fetch('/api/omt/status')).json(); }
-  catch (e) { return; }
+  try {
+    const r = await fetch('/api/omt/status');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    _omtStatus = await r.json();
+  } catch (e) {
+    // Most common cause: the server process predates the OMT feature (page files
+    // are read from disk, API routes live in the running process).
+    const el = g('omt-install-area');
+    if (el && !_omtStatus) el.innerHTML = '<span class="hint" style="color:#e2b93b">Can\'t reach the OMT status endpoint (' + escHtml(e.message) + ') — if you just updated, <strong>restart the MetaGFX server</strong> and reload this page.</span>';
+    return;
+  }
   _omtRenderInstall();
   _omtRenderStatus();
 }
