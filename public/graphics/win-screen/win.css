@@ -927,6 +927,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   position: absolute; left: 0; right: 0;
   gap: 1vw;
 }
+/* fallback only — win.js positionPicksRow() overrides with a measured top that clears the card */
 #win-root.picks-pos-below  .ws-comp-row { top: 63vh; }
 #win-root.picks-pos-bottom .ws-comp-row { top: auto; bottom: 6vh; }
 #win-root.picks-on .ws-comp-pick     { --comp-pw: 9vh; width: var(--comp-pw); }
