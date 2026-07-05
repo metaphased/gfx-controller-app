@@ -365,6 +365,7 @@ document.querySelectorAll('.nav-item').forEach(navEl => {
     if (navEl.dataset.tab === 'teams')    renderTeamsList();
     if (navEl.dataset.tab === 'schedule') renderSchedule();
     if (navEl.dataset.tab === 'home')     renderDashboard(window._state);
+    if (navEl.dataset.tab === 'routing') omtStartPoll(); else omtStopPoll();
     localStorage.setItem('gfx_ctrl_tab', navEl.dataset.tab);
     socket.emit('presence:page', { page: TAB_LABELS[navEl.dataset.tab] || navEl.dataset.tab });
     // Soft page claiming
@@ -5923,6 +5924,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (savedTab === 'log')      loadActionLog();
     if (savedTab === 'profiles') loadProfilesTab();
     if (savedTab === 'home')     renderDashboard(window._state);
+    if (savedTab === 'routing')  omtStartPoll();   // reloading while ON Routing must start the poll too
   }
 });
 
