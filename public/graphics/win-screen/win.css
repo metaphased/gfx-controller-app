@@ -624,6 +624,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   margin-bottom: 2vh;
   filter: drop-shadow(0 0 3vw var(--win-col-a70));
 }
+/* Shutter: the panels' accent seam runs across screen centre — lift the logo so
+   it SITS ON the bar instead of being sliced by it (square logos fill the whole
+   20vh box, whose bottom otherwise straddles the seam). */
+.style-shutter .ws-logo { margin-bottom: 5vh; }
 .style-shutter .ws-name,    .style-flood .ws-name,    .style-slab .ws-name    { font-size: 8vh; text-align: center; }
 .style-shutter .ws-message, .style-flood .ws-message, .style-slab .ws-message { text-align: center; }
 .style-shutter .ws-score-row, .style-flood .ws-score-row, .style-slab .ws-score-row { justify-content: center; }
