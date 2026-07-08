@@ -27,7 +27,6 @@ const fs = require('fs');
 
 const MAX_OUTPUTS = 4;                 // perf guardrail — see omt-spike/README.md baselines
 const STATS_EVERY_MS = 2000;
-const KEEPALIVE_MS = 1000;             // resend the last frame when the page is static
 
 const argv = Object.fromEntries(process.argv.filter(a => a.startsWith('--')).map(a => {
   const s = a.replace(/^--/, ''), i = s.indexOf('=');
@@ -106,6 +105,25 @@ function sendLatest(u) {
   }
 }
 
+// Steady-cadence transmit. OMT/NDI receivers expect a CONSTANT frame stream at
+// the declared rate and schedule presentation against it; an irregular feed
+// (a 1fps idle keepalive that then jumps to a 60fps burst) makes the receiver
+// drop the in-between frames and snap to the latest — animations "snap" on the
+// receive side even though every frame was rendered.
+//
+// Animating content is sent straight off the compositor's paint event (a
+// naturally even cadence — see the paint handler). This timer only fills the
+// GAPS: when the page is static and stops painting, it re-sends the last frame
+// at the configured fps so the receiver's clock never starves (VMX compresses
+// the identical frames to almost nothing). It never double-sends a fresh paint.
+function startSendLoop(u) {
+  const period = 1000 / u.fps;
+  u.sendTimer = setInterval(() => {
+    if (u.closed || !u.hasFrame) return;
+    if (Date.now() - u.lastSendAt >= period - 2) sendLatest(u);
+  }, period);
+}
+
 async function startOutput(cfg, namePrefix) {
   const u = {
     id: cfg.id || cfg.name,
@@ -132,6 +150,9 @@ async function startOutput(cfg, namePrefix) {
     webPreferences: { offscreen: true, backgroundThrottling: false, paintWhenInitiallyHidden: true },
   });
   u.win.webContents.setFrameRate(u.fps);
+  // Animating content: send straight off the compositor's paint event — an even
+  // cadence at the OSR frame rate. The gap-filler timer (startSendLoop) covers
+  // the static case when painting stops.
   u.win.webContents.on('paint', (e, dirty, image) => {
     if (u.closed) return;
     const bmp = image.toBitmap();                       // full-frame premultiplied BGRA
@@ -139,12 +160,8 @@ async function startOutput(cfg, namePrefix) {
     omt.memcpy(u.native, bmp, bmp.length);
     u.hasFrame = true;
     u.paints++;
-    sendLatest(u);                                      // send-on-paint = true fps pacing
+    sendLatest(u);
   });
-  // Static pages stop painting entirely (dirty-region win) — keep receivers fed.
-  u.keepalive = setInterval(() => {
-    if (Date.now() - u.lastSendAt >= KEEPALIVE_MS - 50) sendLatest(u);
-  }, KEEPALIVE_MS);
 
   // Self-heal the page: renderer crash → reload; failed load → retry.
   u.win.webContents.on('render-process-gone', (e, details) => {
@@ -158,13 +175,14 @@ async function startOutput(cfg, namePrefix) {
 
   await u.win.loadURL(u.url);
   u.win.webContents.startPainting?.();
+  startSendLoop(u);                                     // constant-cadence transmit
   units.push(u);
   return u;
 }
 
 function stopOutput(u) {
   u.closed = true;
-  clearInterval(u.keepalive);
+  clearTimeout(u.sendTimer);
   try { u.win.destroy(); } catch {}
   try { omt.fns.sendDestroy(u.inst); } catch {}
 }
