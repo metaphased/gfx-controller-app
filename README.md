@@ -10,12 +10,12 @@
 </p>
 
 <p align="center">
-  <i>Self-hosted · Node.js · real-time · no build step · built for League of Legends (extensible)</i>
+  <i>Self-hosted · Node.js · real-time · no build step · <b>League of Legends · Counter-Strike 2 · Dota 2</b></i>
 </p>
 
 ---
 
-MetaGFX is a self-hosted control room for community esports productions. You manage the tournament once — rosters, schedule, draft, results — and every overlay (player intros, head-to-head, draft board, brackets, win screens, lower thirds and more) updates itself in real time across OBS or vMix. An operator view, a read-only caster dashboard, Stream Deck/Companion control, and live on-air detection round it out.
+MetaGFX is a self-hosted control room for community esports productions across **League of Legends, Counter-Strike 2 and Dota 2**. You manage the tournament once — rosters, schedule, draft/veto, results — and every overlay (player intros, head-to-head, draft & veto boards, brackets, win screens, post-game scoreboards, lower thirds and more) updates itself in real time across OBS or vMix. Set your event's game and the whole panel adapts — you only see the tabs and graphics that game uses. An operator view, a read-only caster dashboard, Stream Deck/Companion control, and live on-air detection round it out.
 
 > [!IMPORTANT]
 > **MetaGFX is built for community and grassroots tournaments — not paid or commercial productions.**
@@ -32,6 +32,19 @@ MetaGFX is a self-hosted control room for community esports productions. You man
   </tr>
 </table>
 
+<p align="center"><i>League of Legends overlays shown above — <b>Counter-Strike 2 and Dota 2</b> bring their own:</i></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="docs/img/readme/ov-map-veto.webp" alt="CS2 Map Veto board — Bo3 ban/pick sequence"><br><sub><b>CS2</b> — Map Veto board</sub></td>
+    <td width="50%"><img src="docs/img/readme/ov-match-summary.webp" alt="Dota 2 Match Summary — scoreboards, items and net-worth graph"><br><sub><b>Dota 2</b> — Match Summary</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/img/readme/ov-map-intro.webp" alt="CS2 Map Intro — cinematic map card with lineups"><br><sub><b>CS2</b> — cinematic Map Intro</sub></td>
+    <td><img src="docs/img/readme/ov-post-game.webp" alt="Dota 2 Post-Game Scoreboard — per-player stats fed by live data"><br><sub><b>Dota 2</b> — Post-Game Scoreboard</sub></td>
+  </tr>
+</table>
+
 <p align="center"><b>One control panel runs the whole show — change something once and every overlay updates live.</b></p>
 
 <p align="center">
@@ -40,8 +53,14 @@ MetaGFX is a self-hosted control room for community esports productions. You man
 
 ## Highlights
 
+**🎮 Multi-game**
+- One suite for **League of Legends, Counter-Strike 2 and Dota 2**. Pick the game per tournament and the control panel, graphics and data integrations adapt to it — shared graphics (brackets, lower thirds, win screens, pre-show…) work everywhere, and each game adds its own draft/veto, live-data and analysis overlays.
+
 **🎬 Graphics (browser sources for OBS/vMix, 1920×1080)**
-- 12+ overlays: Player Intro, Player Spotlight, Head-to-Head, Draft board, Win Screen (10 styles incl. full-screen stingers), Break Screen (PIP), Pre-show, Lower Third, Bracket (single/double elim), Group Stage, Tournament Structure, Prizepool, animated backgrounds.
+- **Shared overlays:** Player Intro, Win Screen (10 styles incl. full-screen stingers), Break Screen (PIP), Pre-show, Lower Third, Bracket (single/double elim), Group Stage, Tournament Structure, Prizepool, Ticker, animated backgrounds.
+- **League of Legends:** Draft pick/ban board, Player Spotlight, Head-to-Head — with champion splash art and op.gg/tournament stats.
+- **Counter-Strike 2:** Map Veto board, cinematic Map Intro (lineups + flyby), and a live-data Post-Game Scoreboard.
+- **Dota 2:** Captains Mode Hero Draft board, Post-Game Scoreboard, and a full Match Summary (scoreboards, items, net-worth graph with event markers).
 - **Everything stays in sync** — change a score or a pick once and every overlay reflects it instantly via WebSockets.
 - **GFX Bus system** — route many graphics through 3–4 shared browser sources instead of one per graphic (big RAM/VRAM saving); switch live from the operator routing matrix.
 - **Theming & Looks** — palette, accents, background, animation easing/speed, **broadcast typography** (primary display + secondary label fonts, 13 bundled families plus your own custom font uploads), and **structural style** (panel corner-radius slider, glass/solid/outline surface, UPPERCASE/Normal text case) — all saved as reusable named "Looks" you can apply over any event and **export/import** to carry between installs.
@@ -49,7 +68,7 @@ MetaGFX is a self-hosted control room for community esports productions. You man
 **🎛️ Control & operation**
 - Full **control panel** for setup + live control, and a streamlined **operator view** with drag-reorderable panels.
 - A **GFX ctrl-bar** on every graphics page for instant show/hide, position and per-graphic options.
-- **Bo1/Bo3/Bo5** series tracking with per-game draft snapshots; **schedule ↔ bracket linking** that fills results automatically.
+- **Bo1/Bo3/Bo5** series tracking with per-game draft/veto snapshots; **schedule ↔ bracket linking** that fills results automatically.
 
 <p align="center">
   <img src="docs/img/readme/ui-ctrlbar.jpg" alt="GFX ctrl-bar — live control strip on a graphics page" width="900">
@@ -58,12 +77,13 @@ MetaGFX is a self-hosted control room for community esports productions. You man
 
 **👥 Crew-friendly**
 - **Multi-user**: live presence, soft page-claiming, last-action attribution, a system log, and a superadmin/admin/operator role hierarchy.
-- **Caster view** — a read-only, token-authed dashboard with roster intel, live draft board, series history and fearless pool.
+- **Caster view** — a read-only, token-authed dashboard with roster intel, live draft/veto board, series history, hero/champion pools and (Dota) OpenDota hero intel.
 
 **🔌 Integrations**
-- **Bitfocus Companion / Stream Deck** — generates a ready-to-import, page-navigable Companion profile covering every graphic, plus a per-user keybind action API.
+- **Live game data** — auto-fill scores, drafts and player stats from **CS2 GSI / MatchZy**, **Dota 2 GSI**, and **OpenDota** hero pools. LoL rank & champion-pool intel via **op.gg / Riot API**.
+- **Bitfocus Companion / Stream Deck** — generates a ready-to-import, page-navigable Companion profile covering every graphic (per game), plus a per-user keybind action API.
 - **Live on-air detection** (OBS/vMix) — LIVE/OFF-AIR + per-graphic PGM/PVW tags.
-- **op.gg / Riot API** — solo-queue ranks, champion pools, draft stats.
+- **OMT output (beta)** — send graphics out as native OMT video with alpha, skipping browser sources entirely.
 
 ---
 
@@ -75,8 +95,8 @@ A few things will save you a broken broadcast. Please read these:
 |---|---|---|
 | 1 | **Node.js 18+** | Runtime requirement. |
 | 2 | **Change the default admin password** | First run seeds `admin` / `admin` (superadmin). Change it immediately in **Settings → Accounts**. |
-| 3 | **Champion images are NOT in the repo** | They're downloaded on demand to keep the repo small. **After cloning, run the asset sync** (below) or **Settings → Champion Assets** — otherwise champion art is blank. |
-| 4 | **Riot API key must be a *persistent* key** | Rank lookups need `RIOT_API_KEY`. **Do not use the 24-hour Development key** — it expires mid-event. Register a persistent product key at [developer.riotgames.com](https://developer.riotgames.com). It's optional, but ranks won't fetch without it. |
+| 3 | **Game art is NOT in the repo** | Champion / hero / item / map images are downloaded on demand to keep the repo small. **After cloning, sync your game's art** from **Settings → Broadcast Assets** (LoL also via `node scripts/sync-assets.js`) — otherwise that art is blank. |
+| 4 | **Live-data / API keys are optional** | Each game has its own optional feed: **LoL** ranks need a *persistent* `RIOT_API_KEY` (**not** the 24-hour dev key — it expires mid-event; register at [developer.riotgames.com](https://developer.riotgames.com)); **CS2** uses GSI / MatchZy; **Dota 2** uses GSI + OpenDota. Everything else works without them. |
 | 5 | **Graphics need the token** | Every overlay/caster URL needs `?token=XXXX`. Copy the ready-made URLs from **Settings → Output URLs** into OBS/vMix (browser source, 1920×1080). |
 | 6 | **Sharing to a remote OBS?** | Set `EXTERNAL_URL` in `.env` to your machine's LAN IP so a **Local / External** toggle appears in **Settings → Output URLs**. |
 
@@ -85,8 +105,9 @@ A few things will save you a broken broadcast. Please read these:
 ```bash
 npm install
 npm start                       # serves on http://localhost:3000
-node scripts/sync-assets.js     # download champion images (first run / after clone)
 ```
+
+Then sync your game's art from **Settings → Broadcast Assets** (champion / hero / item / map images — see [Game art](#game-art)).
 
 Then open:
 
@@ -106,21 +127,24 @@ EXTERNAL_URL=http://YOUR_LAN_IP:3000
 
 | Variable | Required | Description |
 |---|---|---|
-| `RIOT_API_KEY` | No | Persistent Riot key for Solo Queue rank lookups. **Not** the 24-hour dev key (see above). |
+| `RIOT_API_KEY` | No | *(League of Legends)* Persistent Riot key for Solo Queue rank lookups. **Not** the 24-hour dev key (see above). |
 | `PORT` | No | Server port, defaults to `3000`. |
 | `EXTERNAL_URL` | No | LAN IP/hostname for sharing output URLs to a remote OBS on the same network. |
 
-### Champion asset sync
+### Game art
 
-Champion tiles, centered images and splash art are pulled from the [DDragon mirror](https://github.com/noxelisdev/LoL_DDragon) on demand (they're git-ignored). Only missing files are fetched.
+Game images are downloaded on demand (git-ignored) so the repo stays small — sync your tournament's game from **Settings → Broadcast Assets**:
 
-```bash
-node scripts/sync-assets.js              # download all missing files
-node scripts/sync-assets.js --check      # report what's missing, download nothing
-node scripts/sync-assets.js --force-roles # re-download role icons (resolution upgrade)
-```
+- **League of Legends** — champion tiles, centered portraits and splash art, from the [DDragon mirror](https://github.com/noxelisdev/LoL_DDragon). Also scriptable:
+  ```bash
+  node scripts/sync-assets.js              # download all missing files
+  node scripts/sync-assets.js --check      # report what's missing, download nothing
+  node scripts/sync-assets.js --force-roles # re-download role icons (resolution upgrade)
+  ```
+- **Counter-Strike 2** — map art for your map pool (Map Assets card).
+- **Dota 2** — hero and item art (Hero Assets + Item Assets cards).
 
-Admins can also run this from **Settings → Champion Assets** with a live progress bar. (Small role icons *do* ship with the app.)
+Only missing files are fetched. (Small role/position icons *do* ship with the app.) See the [Getting started → game-specific setup](docs/getting-started.md#game-specific-setup) guide for each game.
 
 ### Development (auto-reload)
 
@@ -151,15 +175,14 @@ npm run dev
 
 ## Graphics outputs
 
-All graphics are browser sources for OBS/vMix at **1920×1080**, each needing `?token=XXXX` (grab the full URLs from **Settings → Output URLs**).
+All graphics are browser sources for OBS/vMix at **1920×1080**, each needing `?token=XXXX` (grab the full URLs from **Settings → Output URLs**). Shared graphics work in every game; the game sections show only for the tournament's current game.
+
+**Shared (all games)**
 
 | Graphic | Path | Notes |
 |---|---|---|
-| Player Intro | `/graphics/player-intro/` | 3 layouts: Panel, Team Stack, Bar — with optional top-3 champion strips |
-| Player Spotlight | `/graphics/player-spotlight/` | 1–2 players; Fullscreen + Lower Third; 4 designs; champion art + stats with op.gg/tournament sources |
-| Head to Head | `/graphics/head2head/` | Spotlight + lineup modes, champion stats strip |
-| Draft Overlay | `/graphics/draft/` | Pick/ban board with timer |
-| Win Screen | `/graphics/win-screen/` | 10 styles incl. 3 full-screen stingers + COMP (winning picks) |
+| Player Intro | `/graphics/player-intro/` | 3 layouts: Panel, Team Stack, Bar — with optional top-3 champion/hero strips |
+| Win Screen | `/graphics/win-screen/` | 10 styles incl. 3 full-screen stingers + COMP (winning draft) |
 | Break Screen | `/graphics/break-screen/` | PIP mode supported |
 | Pre-show | `/graphics/pre-show/` | Countdown, sponsors, ticker |
 | Lower Third | `/graphics/lower-third/` | Set-driven, multi-output: 4 designs, free X/Y positioning, exclusive/freeform per-scene outputs |
@@ -168,6 +191,30 @@ All graphics are browser sources for OBS/vMix at **1920×1080**, each needing `?
 | Tournament Structure | `/graphics/tournament-structure/` | |
 | Prizepool | `/graphics/prizepool/` | |
 | BG Output | `/graphics/bg-output/` | Background animations only |
+
+**League of Legends**
+
+| Graphic | Path | Notes |
+|---|---|---|
+| Draft Overlay | `/graphics/draft/` | Pick/ban board with timer |
+| Player Spotlight | `/graphics/player-spotlight/` | 1–2 players; Fullscreen + Lower Third; 4 designs; champion art + stats with op.gg/tournament sources |
+| Head to Head | `/graphics/head2head/` | Spotlight + lineup modes, champion stats strip |
+
+**Counter-Strike 2** *(live data in beta)*
+
+| Graphic | Path | Notes |
+|---|---|---|
+| Map Veto | `/graphics/map-veto/` | Ban/pick sequence board with accordion reveal |
+| Map Intro | `/graphics/map-intro/` | Cinematic map card — lineups + flyby |
+| Post-Game Scoreboard | `/graphics/post-game/` | End-of-game player stats, fed by GSI / MatchZy |
+
+**Dota 2**
+
+| Graphic | Path | Notes |
+|---|---|---|
+| Hero Draft | `/graphics/hero-draft/` | Captains Mode pick/ban board, two-tier timer, auto-fill from live game |
+| Post-Game Scoreboard | `/graphics/post-game/` | End-of-game player stats, fed by GSI |
+| Match Summary | `/graphics/match-summary/` | Scoreboards, items, net-worth graph with event markers |
 
 **GFX Bus** outputs (`/bus/:id`) are shared sources that auto-display whichever assigned graphic is currently live — configure under **Routing**.
 
@@ -203,22 +250,28 @@ The full guide lives in [`docs/`](docs/README.md) — start there for the comple
 - [Schedule](docs/schedule.md) (incl. bracket linking)
 - [Match &amp; draft control](docs/match-and-draft.md)
 
+**Per game**
+- **League of Legends:** [Draft Overlay](docs/draft.md) · [Player Spotlight](docs/player-spotlight.md) · [Head to Head](docs/head-to-head.md) · [Champion assets](docs/champion-assets.md)
+- **Counter-Strike 2:** [Map Veto](docs/map-veto.md) · [Map Intro](docs/map-intro.md) · [Live Data (CS2)](docs/live-data.md)
+- **Dota 2:** [Hero Draft](docs/hero-draft.md) · [Match Summary](docs/match-summary.md) · [Live Data (Dota 2)](docs/dota-live-data.md)
+
 **Systems & integrations**
-- [Player Spotlight](docs/player-spotlight.md)
 - [Lower Third](docs/lower-third.md) (set-driven, multi-output)
+- [GFX Bus](docs/gfx-bus.md) · [OMT Output](docs/omt-output.md) (beta)
 - [Live Switcher (OBS/vMix on-air detection)](docs/live-switcher.md)
 - [Bitfocus Companion / Stream Deck](docs/companion.md)
-- [Theming &amp; Looks](docs/theming.md)
-- [Control-surface theming](docs/ui-theming.md)
+- [Caster view](docs/caster-view.md)
+- [Theming &amp; Looks](docs/theming.md) · [Control-surface theming](docs/ui-theming.md)
 
 Per-graphic guides and more live in the [full docs index](docs/README.md).
 
-## Control panel sections
+The panel adapts to the tournament's game — you only see the tabs that game uses.
 
 **Tournament:** Profiles · Tournament Setup · Teams Database · Schedule · Groups · Playoffs
-**Game:** Game Setup · Players / Rosters · Draft · Match Intel
-**Graphics:** Broadcast Theme · BG Output · Lower Third · Head to Head · Pre-show · Ticker · Draft · Bracket · Group Stage · Tournament Structure · Prizepool · Break Screen · Win Screen · Player Intro · Player Spotlight
-**System:** Routing (GFX bus) · Settings (users, token, output URLs, logos, Appearance, Live Switcher) · Log
+**Game:** Game Setup · Players / Rosters · Draft / Veto · Match Intel *(game-dependent)*
+**Graphics (shared):** Broadcast Theme · BG Output · Lower Third · Pre-show · Ticker · Bracket · Group Stage · Tournament Structure · Prizepool · Break Screen · Win Screen · Player Intro
+**Graphics (game-specific):** LoL — Draft · Head to Head · Player Spotlight · | CS2 — Map Veto · Map Intro · Post-Game · | Dota 2 — Hero Draft · Post-Game · Match Summary
+**System:** Routing (GFX bus) · Settings (users, token, output URLs, logos, Appearance, Live Switcher, Broadcast Assets) · Log
 
 ## User roles
 
