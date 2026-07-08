@@ -34,3 +34,6 @@ Thumbs.db
 
 # Editor
 .vscode/settings.json
+
+omt-spike/
+omt-renderer/vendor/

@@ -48,7 +48,7 @@ A handful of things bite people the first time. Read these once.
 
 A few graphics expose **more than one output** — e.g. the [Lower Third](lower-third.md) lists a **Main** URL plus a `?out=<id>` URL per extra output, so you can run independent lower thirds on different scenes at once.
 
-To run many graphics through a handful of shared browser sources (big RAM/VRAM saving), see [GFX Bus](gfx-bus.md).
+To run many graphics through a handful of shared browser sources (big RAM/VRAM saving), see [GFX Bus](gfx-bus.md). And if you'd rather skip browser sources entirely, graphics can also leave the app as **native OMT video with alpha** — see [OMT Output](omt-output.md) (beta).
 
 ## Game-specific setup
 

@@ -34,3 +34,4 @@ Most graphics are a single assignable entry. A few expose **more than one output
 - Group graphics that are never on screen at the same time onto the same bus; put things that *do* overlap (e.g. a lower third over a bracket) on different buses.
 - You can still use direct per-graphic source URLs for anything you'd rather keep separate — buses are opt-in per graphic.
 - A bus shows nothing when none of its assigned graphics are live, so it's safe to leave in your scene.
+- A bus doesn't have to be a browser source at all: the same Routing page can send a bus out as a **native OMT video source with alpha** — see [OMT Output](omt-output.md) (beta).

@@ -365,6 +365,7 @@ document.querySelectorAll('.nav-item').forEach(navEl => {
     if (navEl.dataset.tab === 'teams')    renderTeamsList();
     if (navEl.dataset.tab === 'schedule') renderSchedule();
     if (navEl.dataset.tab === 'home')     renderDashboard(window._state);
+    if (navEl.dataset.tab === 'routing') omtStartPoll(); else omtStopPoll();
     localStorage.setItem('gfx_ctrl_tab', navEl.dataset.tab);
     socket.emit('presence:page', { page: TAB_LABELS[navEl.dataset.tab] || navEl.dataset.tab });
     // Soft page claiming
@@ -923,6 +924,174 @@ function syncGfxToken(settings) {
   listEl.innerHTML = toggleHtml + outputs.map(o => urlRow(o.label, o.path)).join('') + ltRows + busRows;
 }
 
+// ── OMT outputs (beta) ──────────────────────────────────────────────────────────
+// Config lives in settings.omt (state broadcast); install + runtime status come
+// from /api/omt/status, polled only while the Routing tab is open. Rows post the
+// whole config on any edit (the server sanitises + restarts the renderer).
+let _omtStatus = null, _omtPollTimer = null;
+
+function _omtSourceOptions(s, selected) {
+  const buses = (s.settings && s.settings.buses) || [];
+  const gfx = GRAPHIC_MAP.filter(function (x) { return !x.noBus && !_gfxHidden(x.key) && _gfxCapActive(x.cap); });
+  let html = '<optgroup label="Buses">' + buses.map(function (b) {
+    const v = 'bus:' + b.id;
+    return '<option value="' + escHtml(v) + '"' + (v === selected ? ' selected' : '') + '>' + escHtml(b.name || b.id) + '</option>';
+  }).join('') + '</optgroup>';
+  html += '<optgroup label="Graphics">' + gfx.map(function (x) {
+    const v = 'graphic:' + x.key;
+    return '<option value="' + escHtml(v) + '"' + (v === selected ? ' selected' : '') + '>' + escHtml(x.label) + '</option>';
+  }).join('') + '</optgroup>';
+  return html;
+}
+
+function syncOmtTab(s) {
+  const list = g('omt-output-list'); if (!list) return;
+  const omt = (s.settings && s.settings.omt) || { enabled: false, outputs: [] };
+  if (!_sfp('omtCfg', { omt, buses: (s.settings && s.settings.buses || []).map(function (b) { return [b.id, b.name]; }), game: currentGameId() })) return;
+
+  const en = g('omt-enabled'); if (en) en.checked = !!omt.enabled;
+  const outs = omt.outputs || [];
+  list.innerHTML = outs.map(function (o, i) {
+    const sel = o.source ? (o.source.type + ':' + o.source.key) : '';
+    return '<div class="card" style="margin:0;padding:10px 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap" data-omt-row="' + i + '">' +
+      '<input type="text" data-omt-name value="' + escHtml(o.name || '') + '" placeholder="Output name" style="width:150px;font-weight:600" onchange="omtSave()">' +
+      '<select data-omt-source style="min-width:170px" onchange="omtSave()">' + _omtSourceOptions(s, sel) + '</select>' +
+      '<select data-omt-fps style="width:86px" onchange="omtSave()">' +
+        '<option value="30"' + ((o.fps | 0) !== 60 ? ' selected' : '') + '>30 fps</option>' +
+        '<option value="60"' + ((o.fps | 0) === 60 ? ' selected' : '') + '>60 fps</option>' +
+      '</select>' +
+      '<span data-omt-pill="' + escHtml(o.id || '') + '" style="font-size:11px"></span>' +
+      '<button class="btn btn-sm btn-danger" style="margin-left:auto" onclick="omtRemoveOutput(' + i + ')">✕</button>' +
+      '</div>';
+  }).join('') || '<p class="hint" style="margin:0">No outputs yet — add one below.</p>';
+  const addBtn = g('omt-add-btn'); if (addBtn) addBtn.disabled = outs.length >= 4;
+  const capNote = g('omt-cap-note'); if (capNote) capNote.textContent = outs.length >= 4 ? 'Maximum 4 outputs (performance guardrail).' : '';
+  _omtRenderStatus();
+}
+
+function _omtReadConfig() {
+  const outs = [];
+  document.querySelectorAll('[data-omt-row]').forEach(function (row) {
+    const src = (row.querySelector('[data-omt-source]') || {}).value || '';
+    const i = src.indexOf(':');
+    if (i < 0) return;
+    outs.push({
+      id: (row.querySelector('[data-omt-pill]') || {}).dataset ? row.querySelector('[data-omt-pill]').dataset.omtPill || undefined : undefined,
+      name: (row.querySelector('[data-omt-name]') || {}).value || '',
+      source: { type: src.slice(0, i), key: src.slice(i + 1) },
+      fps: parseInt((row.querySelector('[data-omt-fps]') || {}).value || '30', 10),
+    });
+  });
+  return { enabled: !!(g('omt-enabled') && g('omt-enabled').checked), outputs: outs };
+}
+function omtSave() { api('/api/omt', _omtReadConfig()); }
+function omtAddOutput() {
+  const cfg = _omtReadConfig();
+  if (cfg.outputs.length >= 4) return;
+  const s = window._state || {};
+  const firstBus = ((s.settings && s.settings.buses) || [])[0];
+  cfg.outputs.push({ name: firstBus ? (firstBus.name || firstBus.id) : 'Output ' + (cfg.outputs.length + 1),
+    source: firstBus ? { type: 'bus', key: firstBus.id } : { type: 'graphic', key: 'winScreen' }, fps: 30 });
+  api('/api/omt', cfg);
+}
+function omtRemoveOutput(i) {
+  const cfg = _omtReadConfig();
+  cfg.outputs.splice(i, 1);
+  api('/api/omt', cfg);
+}
+
+// Install area + runtime pills — driven by /api/omt/status (poll while tab open).
+function _omtRenderInstall() {
+  const el = g('omt-install-area'), cfgArea = g('omt-config-area');
+  if (!el) return;
+  const st = _omtStatus;
+  if (!st) { el.innerHTML = '<span class="hint">Checking OMT components…</span>'; return; }
+  if (st.installed) {
+    el.innerHTML = '<p class="hint" style="margin-bottom:10px">Components installed ✓ <span style="color:var(--text-dim)">(Electron ' +
+      escHtml(st.components.electronVersion) + ' · OMT ' + escHtml(st.components.omtVersion) + ')</span></p>';
+    if (cfgArea) cfgArea.style.display = '';
+  } else if (st.installing) {
+    // live progress arrives over the omt:install socket event
+    if (!g('omt-install-prog')) el.innerHTML = '<div id="omt-install-prog" class="hint">Installing…</div>';
+    if (cfgArea) cfgArea.style.display = 'none';
+  } else {
+    el.innerHTML = '<p class="hint" style="margin-bottom:8px">The OMT renderer needs two one-time downloads (~120 MB total): the Electron runtime and the official OMT libraries (both MIT-licensed, fetched from their GitHub releases).</p>' +
+      '<button class="btn btn-primary btn-sm" onclick="omtInstall()">Install OMT components</button>' +
+      (st.lastError ? '<span class="hint" style="margin-left:10px;color:var(--danger,#e14b3d)">' + escHtml(st.lastError) + '</span>' : '');
+    if (cfgArea) cfgArea.style.display = 'none';
+  }
+}
+
+function _omtRenderStatus() {
+  const pillEl = g('omt-renderer-pill');
+  const st = _omtStatus;
+  if (pillEl) {
+    if (!st || !st.installed) pillEl.innerHTML = '';
+    else if (st.running && st.ready) pillEl.innerHTML = '<span style="color:#26d07c;font-size:11px;font-weight:700">● RUNNING</span>';
+    else if (st.running) pillEl.innerHTML = '<span style="color:#e2b93b;font-size:11px;font-weight:700">● STARTING…</span>';
+    else if (st.lastError) pillEl.innerHTML = '<span style="color:#e14b3d;font-size:11px;font-weight:700" title="' + escHtml(st.lastError) + '">● ERROR</span>';
+    else pillEl.innerHTML = '<span style="color:var(--text-dim);font-size:11px;font-weight:700">● OFF</span>';
+  }
+  const stats = (st && st.stats && st.stats.outputs) || [];
+  document.querySelectorAll('[data-omt-pill]').forEach(function (span) {
+    const o = stats.find(function (x) { return x.id === span.dataset.omtPill; });
+    if (!o || !st.running) { span.innerHTML = ''; return; }
+    const live = o.connections > 0;
+    span.innerHTML = '<span style="color:' + (live ? '#26d07c' : 'var(--text-dim)') + '">' +
+      (o.fps || 0) + ' fps · ' + o.connections + ' receiver' + (o.connections === 1 ? '' : 's') +
+      (o.mbps ? ' · ' + o.mbps + ' Mbps' : '') + '</span>';
+  });
+}
+
+async function _omtPoll() {
+  try {
+    const r = await fetch('/api/omt/status');
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    _omtStatus = await r.json();
+  } catch (e) {
+    // Most common cause: the server process predates the OMT feature (page files
+    // are read from disk, API routes live in the running process).
+    const el = g('omt-install-area');
+    if (el && !_omtStatus) el.innerHTML = '<span class="hint" style="color:#e2b93b">Can\'t reach the OMT status endpoint (' + escHtml(e.message) + ') — if you just updated, <strong>restart the MetaGFX server</strong> and reload this page.</span>';
+    return;
+  }
+  _omtRenderInstall();
+  _omtRenderStatus();
+}
+function omtStartPoll() { if (_omtPollTimer) return; _omtPoll(); _omtPollTimer = setInterval(_omtPoll, 3000); }
+function omtStopPoll() { clearInterval(_omtPollTimer); _omtPollTimer = null; }
+
+async function omtInstall() {
+  const el = g('omt-install-area');
+  if (el) el.innerHTML = '<div id="omt-install-prog" class="hint">Starting install…</div>';
+  socket.on('omt:install', _onOmtInstallProgress);
+  await api('/api/omt/install', {});
+}
+function _onOmtInstallProgress(ev) {
+  const el = g('omt-install-prog');
+  if (ev.phase === 'done') {
+    socket.off('omt:install', _onOmtInstallProgress);
+    _omtPoll();
+    return;
+  }
+  if (ev.phase === 'error') {
+    socket.off('omt:install', _onOmtInstallProgress);
+    if (el) el.innerHTML = '<span style="color:var(--danger,#e14b3d)">Install failed: ' + escHtml(ev.message || '') + '</span>';
+    setTimeout(_omtPoll, 1500);
+    return;
+  }
+  if (!el) return;
+  if (ev.phase === 'download') {
+    el.innerHTML = 'Downloading <strong>' + escHtml(ev.component || '') + '</strong> — ' + (ev.pct || 0) + '% (' + (ev.mb || 0) + ' MB)' +
+      '<div style="height:5px;background:var(--panel-2,#10161f);border-radius:3px;margin-top:6px;overflow:hidden">' +
+      '<div style="height:100%;width:' + (ev.pct || 0) + '%;background:var(--primary,#2079c7)"></div></div>';
+  } else if (ev.phase === 'extract') {
+    el.innerHTML = 'Extracting <strong>' + escHtml(ev.component || '') + '</strong>…';
+  } else if (ev.phase === 'start') {
+    el.innerHTML = 'Downloading <strong>' + escHtml(ev.component || '') + '</strong>…';
+  }
+}
+
 // ── Bus config ─────────────────────────────────────────────────────────────────
 function syncBusConfig(s) {
   const list = g('bus-config-list'); if (!list) return;
@@ -1357,6 +1526,7 @@ function syncUI(s) {
   if (s.switcher) applySwitcher(s.switcher);
   if (s.settings) syncGfxToken(s.settings);
   syncBusConfig(s);
+  syncOmtTab(s);
   if (s.settings && _sfp('breakLogo', { sel: s.settings.breakCenterLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderBreakCenterLogoPicker(s.settings);
   if (s.settings && _sfp('h2hLogo', { sel: s.settings.h2hLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderH2HLogoPicker(s.settings);
   if (s.groupStage)          syncGroupStageGfxUI(s);
@@ -3017,15 +3187,18 @@ function syncWinTab(ws, match) {
   });
 
   // Winning draft picks — toggle, position, and "what will appear" preview.
-  // Champion picks are LoL-only; keep these rows hidden for non-champ-draft games
-  // (the card + COMP radio are also cap-champ-draft hidden via applyAdapterUI).
-  const champDraft = isChampDraft();
-  const showPicks = champDraft && !!ws.showPicks;
+  // LoL champions come from the recorded winning game; Dota heroes from the
+  // current Captains Mode draft (the board keeps the last game's draft until it
+  // is reset). Both draft games get the full card — gating this on champ-draft
+  // only used to force the checkbox off for Dota every sync, so the toggle
+  // looked dead while the overlay (ungated) kept showing the heroes.
+  const draftGame = isChampDraft() || isHeroDraft();
+  const showPicks = draftGame && !!ws.showPicks;
   const spChk = g('win-showpicks'); if (spChk) spChk.checked = showPicks;
   const posRow = g('win-picks-pos-row'); if (posRow) posRow.style.display = showPicks ? 'flex' : 'none';
   // Image shape applies to the picks whenever they show — COMP (always) or any
   // style with showPicks on — so it lives here, not gated behind loading COMP.
-  const shapeRow = g('win-shape-row'); if (shapeRow) shapeRow.style.display = (champDraft && (showPicks || style === 'comp')) ? 'flex' : 'none';
+  const shapeRow = g('win-shape-row'); if (shapeRow) shapeRow.style.display = (draftGame && (showPicks || style === 'comp')) ? 'flex' : 'none';
   const picksPos = ws.picksPosition === 'bottom' ? 'bottom' : 'below';
   ['below','bottom'].forEach(v => {
     const r = document.querySelector('input[name="win-picks-pos"][value="' + v + '"]');
@@ -3033,9 +3206,10 @@ function syncWinTab(ws, match) {
   });
   renderWinPicksPreview(ws, match);
 
-  // COMP-only options (champion image shape + built-in background) — LoL only
+  // COMP-only options (built-in background) — any draft game (Dota COMP shows
+  // heroes and needs the background picker just as much as LoL).
   const compOpts = g('win-comp-options');
-  if (compOpts) compOpts.style.display = (champDraft && style === 'comp') ? 'block' : 'none';
+  if (compOpts) compOpts.style.display = (draftGame && style === 'comp') ? 'block' : 'none';
   const compShape = ws.compShape === 'angled' ? 'angled' : 'rect';
   const rectBtn = g('win-shape-rect'), angBtn = g('win-shape-angled');
   if (rectBtn) rectBtn.classList.toggle('btn-active', compShape === 'rect');
@@ -3070,10 +3244,42 @@ function _winCompGame(ws, match) {
 const _WIN_ROLE_ORDER = ['top', 'jungle', 'mid', 'bot', 'support'];
 function _winNormRole(r) { r = (r || '').toLowerCase().trim(); return r === 'adc' ? 'bot' : r; }
 
+// Dota preview: the win screen draws the winner's heroes from the CURRENT
+// Captains Mode draft (win.js winnerHeroPicks) — not from recorded games — so
+// the preview must read the same source or it cries "no picks" while the
+// overlay happily shows last game's heroes (the board retains them post-game).
+function renderWinHeroPicksPreview(ws, match, el) {
+  const winner   = (ws && ws.team) || 'team1';
+  const t        = (match && match[winner]) || {};
+  const winLabel = t.tag || t.name || (winner === 'team1' ? 'Team 1' : 'Team 2');
+  const steps = ((window._state && window._state.heroDraft) || {}).steps || [];
+  const picks = steps.filter(function (s) { return s && s.team === winner && s.action === 'pick' && (s.hero || s.img); }).slice(0, 5);
+
+  if (!_sfp('winPicksPreview', { w: winner, l: winLabel, hero: picks.map(function (p) { return p.hero || p.img; }), st: ws && ws.style, sp: !!(ws && ws.showPicks) })) return;
+
+  if (!picks.length) {
+    el.innerHTML = '<div class="wpp-warn">No drafted heroes for <strong>' + escHtml(winLabel) +
+      '</strong> on the Hero Draft board — the picks row will be empty. (The board keeps a finished game\'s draft until it is reset or the next draft starts.)</div>';
+    return;
+  }
+  let tiles = '';
+  for (let i = 0; i < 5; i++) {
+    const p = picks[i];
+    tiles += '<div class="wpp-pick">' +
+      (p && p.img ? '<div class="wpp-img" style="background-image:url(' + escHtml(p.img) + ')"></div>'
+                  : '<div class="wpp-img wpp-empty"></div>') +
+      '<div class="wpp-handle">' + escHtml((p && p.hero) || '—') + '</div></div>';
+  }
+  el.innerHTML =
+    '<div class="wpp-head">' + escHtml(winLabel) + ' — these heroes will appear (from the current Captains Mode draft)</div>' +
+    '<div class="wpp-row">' + tiles + '</div>';
+}
+
 // Show the operator exactly which champions + players the win screen will draw,
 // and from which game — so a wrong/missing comp is caught before going on air.
 function renderWinPicksPreview(ws, match) {
   const el = g('win-picks-preview'); if (!el) return;
+  if (typeof isHeroDraft === 'function' && isHeroDraft()) return renderWinHeroPicksPreview(ws, match, el);
   const winner   = (ws && ws.team) || 'team1';
   const tk       = winner === 'team2' ? 't2' : 't1';   // seriesGames stores picks as t1/t2RolePicks
   const t        = (match && match[winner]) || {};
@@ -5754,6 +5960,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (savedTab === 'log')      loadActionLog();
     if (savedTab === 'profiles') loadProfilesTab();
     if (savedTab === 'home')     renderDashboard(window._state);
+    if (savedTab === 'routing')  omtStartPoll();   // reloading while ON Routing must start the poll too
   }
 });
 
@@ -6156,6 +6363,7 @@ function switchToTab(tabKey) {
     if (tabKey === 'profiles') loadProfilesTab();
     if (tabKey === 'theme')    loadLooksList();
     if (tabKey === 'home')     renderDashboard(window._state);
+    if (tabKey === 'routing') omtStartPoll(); else omtStopPoll();
     localStorage.setItem('gfx_ctrl_tab', tabKey);
     _expandNavSectionFor(tabKey);   // make sure the target's sidebar section is open
   });

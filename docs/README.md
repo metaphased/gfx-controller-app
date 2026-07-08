@@ -71,6 +71,7 @@ CS2 live data (GSI / MatchZy) is in **beta** — the data flows are being exerci
 | Guide | What it covers |
 |---|---|
 | [GFX Bus](gfx-bus.md) | Route many graphics through a few shared browser sources. |
+| [OMT Output](omt-output.md) | Graphics as native OMT video sources with alpha — no browser source (beta). |
 | [Operator & multi-user](operator-and-multiuser.md) | Operator view, roles, presence, page claiming, the log. |
 | [User profile](user-profile.md) | Per-user keybinds, password, appearance, Companion download, log out. |
 | [Caster view](caster-view.md) | Read-only, token-authed caster dashboard. |

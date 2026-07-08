@@ -2904,6 +2904,30 @@
         <div id="bus-config-list" style="display:flex;flex-direction:column;gap:12px"></div>
         <p class="hint" id="bus-config-empty" style="display:none;margin-top:8px">No buses configured. Click <strong>+ Add Bus</strong> to create one.</p>
       </div>
+
+      <!-- ── OMT Outputs (beta) — native OMT video sources with alpha ─────────── -->
+      <div style="max-width:900px;margin-top:28px">
+        <div class="card">
+          <div class="card-title">OMT Outputs <span style="font-size:10px;font-weight:800;letter-spacing:0.1em;color:#e2b93b;border:1px solid #e2b93b55;border-radius:3px;padding:1px 6px;margin-left:6px">BETA</span></div>
+          <p class="hint" style="margin-bottom:12px">Send graphics as native <strong>OMT</strong> (Open Media Transport) video sources with a real alpha channel — vMix, and OBS with the <a href="https://github.com/openmediatransport/omtplugin" target="_blank" rel="noopener" style="color:var(--primary)">OMT plugin</a>, pick them up over the network with <strong>no browser source</strong>. Each output renders a <strong>bus</strong> or a <strong>single graphic</strong>; sources appear as <span style="font-family:monospace;font-size:11px">HOSTNAME (MetaGFX - Name)</span>.</p>
+
+          <div id="omt-install-area"><span class="hint">Checking OMT components…</span></div>
+
+          <div id="omt-config-area" style="display:none">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;margin:4px 0 12px">
+              <input type="checkbox" id="omt-enabled" onchange="omtSave()">
+              <span style="font-size:13px;font-weight:600">Enable OMT outputs</span>
+              <span id="omt-renderer-pill" style="margin-left:8px"></span>
+            </label>
+            <div id="omt-output-list" style="display:flex;flex-direction:column;gap:8px"></div>
+            <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+              <button class="btn btn-sm" id="omt-add-btn" onclick="omtAddOutput()">+ Add Output</button>
+              <span class="hint" id="omt-cap-note" style="margin:0"></span>
+            </div>
+            <p class="hint" style="margin-top:12px;margin-bottom:0">Saving a change restarts the OMT outputs (receivers reconnect within a couple of seconds). <strong>First run:</strong> allow the Windows Firewall prompt so receivers can connect. Full-motion graphics are heavier — prefer 30 fps unless the output carries constant animation.</p>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════

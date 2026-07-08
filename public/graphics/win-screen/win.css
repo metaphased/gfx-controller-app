@@ -624,6 +624,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   margin-bottom: 2vh;
   filter: drop-shadow(0 0 3vw var(--win-col-a70));
 }
+/* Shutter: the panels' accent seam runs across screen centre — lift the logo so
+   it SITS ON the bar instead of being sliced by it (square logos fill the whole
+   20vh box, whose bottom otherwise straddles the seam). */
+.style-shutter .ws-logo { margin-bottom: 5vh; }
 .style-shutter .ws-name,    .style-flood .ws-name,    .style-slab .ws-name    { font-size: 8vh; text-align: center; }
 .style-shutter .ws-message, .style-flood .ws-message, .style-slab .ws-message { text-align: center; }
 .style-shutter .ws-score-row, .style-flood .ws-score-row, .style-slab .ws-score-row { justify-content: center; }
@@ -927,6 +931,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   position: absolute; left: 0; right: 0;
   gap: 1vw;
 }
+/* fallback only — win.js positionPicksRow() overrides with a measured top that clears the card */
 #win-root.picks-pos-below  .ws-comp-row { top: 63vh; }
 #win-root.picks-pos-bottom .ws-comp-row { top: auto; bottom: 6vh; }
 #win-root.picks-on .ws-comp-pick     { --comp-pw: 9vh; width: var(--comp-pw); }
