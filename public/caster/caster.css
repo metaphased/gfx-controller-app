@@ -371,6 +371,18 @@ html, body {
   filter: brightness(0) invert(1);
   opacity: 0.4;
 }
+/* Dota (positions-based): numbered position badge instead of a LoL role icon. */
+.player-pos-badge {
+  width: 18px; height: 18px;
+  flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid rgba(255,255,255,0.22);
+  border-radius: 4px;
+  font-size: 11px; font-weight: 700; line-height: 1;
+  color: rgba(255,255,255,0.6);
+}
+.player-pos-badge.player-pos-text { width: auto; padding: 0 4px; font-size: 9px; letter-spacing: 0.03em; }
+.player-pos-badge.player-pos-empty { border-style: dashed; opacity: 0.35; }
 
 .player-handle {
   font-family: var(--data-font);
@@ -458,6 +470,16 @@ html, body {
   color: var(--text-dim);
   margin-bottom: 8px;
 }
+
+/* Tournament hero-stats aggregate (Dota series tab) */
+.dagg-title { font-size: 13px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim); margin-bottom: 8px; }
+.dagg-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dagg-table th { font-size: 11px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); text-align: left; padding: 4px 10px; border-bottom: 1px solid var(--border); }
+.dagg-table td { padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.dagg-table .right { text-align: right; }
+.dagg-player { vertical-align: top; border-right: 1px solid var(--border); }
+.dagg-name { font-weight: 700; }
+.dagg-sub { font-size: 11px; color: var(--text-faint); margin-top: 2px; }
 
 .champ-table {
   width: 100%;

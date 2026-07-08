@@ -1414,6 +1414,15 @@ input[type=search]::-webkit-search-decoration { display: none; }
 .intel-body-right { flex: 0 0 250px; min-width: 0; }
 
 /* ── Champion pool table ── */
+/* Tournament hero-stats aggregate (Dota, Match Intel) */
+.dagg-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+.dagg-table th { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.4); text-align: left; padding: 4px 10px; border-bottom: 1px solid var(--border); }
+.dagg-table td { padding: 5px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+.dagg-table .right { text-align: right; }
+.dagg-player { vertical-align: top; border-right: 1px solid var(--border); background: rgba(255,255,255,0.02); }
+.dagg-name { font-weight: 700; }
+.dagg-sub { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+
 .intel-champ-table { border-collapse: collapse; }
 .intel-champ-thead th {
   font-size: 12px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase;

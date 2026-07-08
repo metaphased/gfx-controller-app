@@ -987,6 +987,7 @@ socket.on('state', state => {
 
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
+  if (window.ActionRegistry) ActionRegistry.setHiddenGraphics((state.adapter && state.adapter.hiddenGraphics) || []);
   opsRenderLtSets(state);
   if (state.switcher) applySwitcher(state.switcher);
 

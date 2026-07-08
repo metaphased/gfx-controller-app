@@ -50,6 +50,8 @@ function isMapVeto()        { const a = gameAdapter(); return a ? a.pregameKind 
 function isHeroDraft()      { const a = gameAdapter(); return a ? a.pregameKind === 'hero-draft'  : false; }
 function supportsFearless() { const a = gameAdapter(); return a ? !!a.supportsFearless : true; }
 function supportsOpgg()     { const a = gameAdapter(); return a ? a.intelProvider === 'opgg'  : true; }
+function supportsOpenDota()  { const a = gameAdapter(); return a ? a.intelProvider === 'opendota' : false; }
+function supportsIntel()     { const a = gameAdapter(); return a ? (!!a.intelProvider && a.intelProvider !== 'none') : true; }   // any per-player intel provider (opgg / opendota)
 function supportsSteamId()  { const a = gameAdapter(); return a ? a.rosterIds === 'steam'     : false; }
 function supportsHltv()     { const a = gameAdapter(); return a ? a.rosterLinks === 'hltv'    : false; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
@@ -87,6 +89,8 @@ function applyAdapterUI() {
     'cap-char-draft':  isChampDraft() || isHeroDraft(),
     'cap-live-data':   supportsLiveData(),   // games with a GSI live feed (CS2, Dota 2)
     'cap-opgg':        supportsOpgg(),
+    'cap-opendota':    supportsOpenDota(),
+    'cap-intel':       supportsIntel(),     // any per-player intel provider (opgg or opendota)
     'cap-assets':      supportsAssets(),
     'cap-heroes':      supportsHeroes(),
     'cap-picks':       hasPickEntity(),
@@ -298,6 +302,7 @@ socket.on('state', async (state) => {
   applySetupLock(); // last: disables #tab-tournament inputs incl. the just-rendered map pool
   if (window.ActionRegistry && state.settings) ActionRegistry.updateBuses(state.settings.buses);
   if (window.ActionRegistry) ActionRegistry.updateLowerThirdSets(state.lowerThird);
+  if (window.ActionRegistry) ActionRegistry.setHiddenGraphics((state.adapter && state.adapter.hiddenGraphics) || []);
   // Debounced dirty check — runs 2 s after state settles
   clearTimeout(_dirtyCheckTimer);
   _dirtyCheckTimer = setTimeout(checkProfileDirty, 2000);
@@ -3819,6 +3824,28 @@ function _intelChampsHtml(pool) {
   '</table>';
 }
 
+// Dota hero pool (OpenDota) — same table shape as champions, hero name + games + win rate.
+function _intelHeroesHtml(pool) {
+  if (!pool || !pool.length) return '<span class="intel-no-data">No hero data fetched</span>';
+  const rows = pool.slice(0, 7).map(function(h) {
+    const wr = h.games ? Math.round(h.win / h.games * 100) : 0;
+    return '<tr>' +
+      '<td class="col-name">' + escHtml(h.name || h.slug || ('Hero ' + h.heroId)) + '</td>' +
+      '<td class="col-games">' + (h.games | 0) + '</td>' +
+      '<td class="col-bar"><div class="intel-wr-bar"><div class="intel-wr-fill" style="width:' + wr + '%;background:' + _intelWrColor(wr) + '"></div></div></td>' +
+      '<td class="col-wr ' + _intelWrClass(wr) + '">' + wr + '%</td>' +
+    '</tr>';
+  }).join('');
+  return '<table class="intel-champ-table">' +
+    '<thead class="intel-champ-thead"><tr>' +
+      '<th class="col-name icht-left">Heroes</th>' +
+      '<th class="col-games icht-center">Games</th>' +
+      '<th class="col-bar icht-center" colspan="2">Win Rate</th>' +
+    '</tr></thead>' +
+    '<tbody class="intel-champ-tbody">' + rows + '</tbody>' +
+  '</table>';
+}
+
 function _intelTrnHtml(handle) {
   const champMap = (_controlTournamentStats && handle && _controlTournamentStats[handle]) ? _controlTournamentStats[handle] : {};
   const entries = Object.entries(champMap).sort(function(a, b) { return b[1].games - a[1].games; });
@@ -3877,6 +3904,7 @@ function _intelDraftHtml(ds) {
 
 function _intelPlayerCard(p, cardKey) {
   const isExpanded = !!_intelExpanded[cardKey];
+  const isDota     = typeof isHeroDraft === 'function' && isHeroDraft();
   const riotId     = p.riotId ? escHtml(p.riotId) + ' &nbsp;·&nbsp; ' + escHtml((p.opggRegion || '').toUpperCase()) : '';
   const hasDraft   = !!p.draftChampStats;
   const trnHtml    = _intelTrnHtml(p.handle);
@@ -3885,14 +3913,16 @@ function _intelPlayerCard(p, cardKey) {
   const header = '<div class="intel-player-header">' +
     '<span class="intel-role">' + escHtml(p.role || '') + '</span>' +
     '<span class="intel-handle">' + escHtml(p.handle || '—') + '</span>' +
-    '<div class="intel-rank-summary">' + _intelRankSummaryHtml(p.rank || null) + '</div>' +
+    // Dota has no Riot-style rank — skip the "Unranked" summary.
+    (isDota ? '' : '<div class="intel-rank-summary">' + _intelRankSummaryHtml(p.rank || null) + '</div>') +
     '<span class="intel-toggle">▼</span>' +
   '</div>';
 
+  const steamLine = isDota && p.steamid ? '<div class="intel-riot-id">Steam ID ' + escHtml(String(p.steamid)) + '</div>' : '';
   const body = '<div class="intel-player-body">' +
     '<div class="intel-body-left">' +
-      (riotId ? '<div class="intel-riot-id">' + riotId + '</div>' : '') +
-      _intelChampsHtml(p.champPool || null) +
+      (isDota ? steamLine : (riotId ? '<div class="intel-riot-id">' + riotId + '</div>' : '')) +
+      (isDota ? _intelHeroesHtml(p.heroPool || null) : _intelChampsHtml(p.champPool || null)) +
     '</div>' +
     (hasRight ? '<div class="intel-body-right">' +
       (hasDraft ? _intelDraftHtml(p.draftChampStats) : '') +
@@ -3926,13 +3956,57 @@ function renderIntelPanel(state) {
   const players = state.players || {};
   const makeKey = function(pl) {
     return (pl || []).map(function(p) {
-      return (p.handle || '') + '|' + ((p.rank && p.rank.tier) || '') + '|' + ((p.rank && p.rank.lp) || '') + '|' + ((p.champPool || []).length) + '|' + (p.draftChampStats ? p.draftChampStats.champ : '');
+      return (p.handle || '') + '|' + ((p.rank && p.rank.tier) || '') + '|' + ((p.rank && p.rank.lp) || '') + '|' + ((p.champPool || []).length) + '|' + ((p.heroPool || []).length) + '|' + (p.draftChampStats ? p.draftChampStats.champ : '');
     }).join(';');
   };
   const key = ((match.team1 && match.team1.name) || '') + '|' + ((match.team2 && match.team2.name) || '') + '||' + makeKey(players.team1) + '|' + makeKey(players.team2);
-  if (grid.dataset.key === key) return;
-  grid.dataset.key = key;
-  grid.innerHTML = _intelTeamCol(match.team1 || {}, players.team1 || [], 'team1') + _intelTeamCol(match.team2 || {}, players.team2 || [], 'team2');
+  if (grid.dataset.key !== key) {
+    grid.dataset.key = key;
+    grid.innerHTML = _intelTeamCol(match.team1 || {}, players.team1 || [], 'team1') + _intelTeamCol(match.team2 || {}, players.team2 || [], 'team2');
+  }
+  renderDotaAgg(state);
+}
+
+// Aggregate tournament.dotaStats (per game-player lines) into per-player, per-hero
+// tournament performance. Shared shape used by the control + caster aggregate views.
+function aggregateDotaStats(lines) {
+  const byPlayer = {};
+  (lines || []).forEach(function(l) {
+    const pid = l.steamid || l.name || '?';
+    const pl = byPlayer[pid] || (byPlayer[pid] = { steamid: l.steamid, name: l.name || l.steamid || '—', games: 0, wins: 0, heroes: {} });
+    pl.games++; if (l.win) pl.wins++;
+    const hk = l.hero || '—';
+    const h = pl.heroes[hk] || (pl.heroes[hk] = { hero: hk, games: 0, wins: 0, k: 0, d: 0, a: 0 });
+    h.games++; if (l.win) h.wins++;
+    h.k += (l.kills | 0); h.d += (l.deaths | 0); h.a += (l.assists | 0);
+  });
+  return Object.keys(byPlayer).map(function(pid) {
+    const pl = byPlayer[pid];
+    pl.heroList = Object.keys(pl.heroes).map(function(hk) { return pl.heroes[hk]; }).sort(function(x, y) { return y.games - x.games; });
+    return pl;
+  }).sort(function(x, y) { return y.games - x.games; });
+}
+
+function renderDotaAgg(state) {
+  const el = g('dota-agg'); if (!el) return;
+  if (!(typeof isHeroDraft === 'function' && isHeroDraft())) { el.innerHTML = ''; return; }
+  const agg = aggregateDotaStats((state.tournament && state.tournament.dotaStats) || []);
+  const sig = JSON.stringify(agg.map(function(p) { return [p.name, p.games, p.wins, p.heroList.length]; }));
+  if (el.dataset.sig === sig) return;
+  el.dataset.sig = sig;
+  if (!agg.length) { el.innerHTML = '<div class="card"><div class="card-title">Tournament Hero Stats</div><p class="hint" style="margin:0">No games recorded yet — hero stats accumulate as you record each series game\'s winner on Game Setup.</p></div>'; return; }
+  const rows = agg.map(function(p) {
+    const wr = p.games ? Math.round(p.wins / p.games * 100) : 0;
+    const heroRows = p.heroList.map(function(h, i) {
+      const hwr = h.games ? Math.round(h.wins / h.games * 100) : 0;
+      const kda = (h.k / h.games).toFixed(1) + ' / ' + (h.d / h.games).toFixed(1) + ' / ' + (h.a / h.games).toFixed(1);
+      return '<tr>' + (i === 0 ? '<td rowspan="' + p.heroList.length + '" class="dagg-player"><div class="dagg-name">' + escHtml(p.name) + '</div><div class="dagg-sub">' + p.games + ' games · ' + wr + '% win</div></td>' : '') +
+        '<td>' + escHtml(h.hero) + '</td><td class="right">' + h.games + '</td><td class="right ' + _intelWrClass(hwr) + '">' + hwr + '%</td><td class="right">' + kda + '</td></tr>';
+    }).join('');
+    return heroRows;
+  }).join('');
+  el.innerHTML = '<div class="card"><div class="card-title">Tournament Hero Stats <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· accumulated across recorded games</span></div>' +
+    '<table class="dagg-table"><thead><tr><th>Player</th><th>Hero</th><th class="right">Games</th><th class="right">Win%</th><th class="right">Avg K/D/A</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 // Persisted result state on action buttons: 'ok' (green), 'err' (red), 'reset' (default).
@@ -3969,6 +4043,31 @@ async function refreshChampPool() {
     console.error('[champpool] refresh error:', e); _setActionState(btns, 'err');
   } finally {
     btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '↻ Champ Pools'; });
+  }
+}
+
+// Dota equivalent — OpenDota per-player hero pools (needs Steam IDs on the roster).
+async function refreshHeroPool() {
+  const btns = Array.from(document.querySelectorAll('[onclick="refreshHeroPool()"]'));
+  const statEls = [g('heropool-status'), g('intel-status')].filter(Boolean);
+  btns.forEach(function(b) { b._origText = b._origText || b.textContent; b.disabled = true; b.textContent = '↻ Fetching…'; b.classList.remove('btn-ok','btn-err'); });
+  statEls.forEach(function(el) { el.textContent = 'Contacting OpenDota…'; });
+  try {
+    const r = await fetch('/api/heropool/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    if (!r.ok) { statEls.forEach(function(el) { el.textContent = 'Server error ' + r.status + ' — try restarting the server.'; }); console.error('[heropool] refresh failed: HTTP ' + r.status); _setActionState(btns, 'err'); return; }
+    const res = await r.json();
+    const ok = !!(res && res.ok), updated = (res && res.updated) || [], errors = (res && res.errors) || [];
+    statEls.forEach(function(el) { el.textContent = ok
+      ? (updated.length ? '✓ Hero pools: ' + updated.join(', ') + (errors.length ? ' — Errors: ' + errors.join(', ') : '') : (errors.length ? 'Errors: ' + errors.join(', ') : 'No players with a Steam ID found.'))
+      : 'Error: ' + ((res && res.error) || JSON.stringify(res)); });
+    if (!ok || (errors.length && !updated.length)) { console.error('[heropool] refresh failed:', res); _setActionState(btns, 'err'); }
+    else if (updated.length) _setActionState(btns, 'ok');
+    else _setActionState(btns, 'reset');
+  } catch(e) {
+    statEls.forEach(function(el) { el.textContent = 'Request failed: ' + e.message; });
+    console.error('[heropool] refresh error:', e); _setActionState(btns, 'err');
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '↻ Hero Pools'; });
   }
 }
 
