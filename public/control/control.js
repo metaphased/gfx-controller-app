@@ -7935,6 +7935,10 @@ function patchBgo(data) { api('/api/bgOutput', data); }
 
 // Animation types offered by the BG Output source
 const _BG_ANIMS = ['particles', 'grid', 'hexgrid', 'diamonds', 'dotwave', 'lines', 'rings', 'circuit', 'rain', 'fog', 'wave'];
+// Types with a GPU fragment shader (mirror of gfx-settings `_GL_FRAG` keys). The
+// rest (particles, rings, circuit, fog) are canvas-only, so the GPU/Canvas
+// renderer toggle has no effect for them — keep this in sync if shaders are added.
+const _BG_SHADER_TYPES = ['dotwave', 'grid', 'diamonds', 'lines', 'wave', 'rain', 'hexgrid'];
 
 function setBgoType(type) {
   patchBgo({ bgType: type });
@@ -8029,6 +8033,21 @@ function syncBgoTab(bgo) {
   ['gpu','canvas'].forEach(v => {
     const btn = g('bgo-renderer-' + v); if (btn) btn.classList.toggle('is-active', v === bgRenderer);
   });
+  // Only some animation types have a GPU shader; the rest always run on canvas
+  // (gfx-settings `_GL_FRAG`). Show which renderer is ACTUALLY active for the
+  // current type so "GPU selected but nothing changes" isn't a mystery — for a
+  // canvas-only type, GPU transparently falls back to canvas.
+  const hasShader = _BG_SHADER_TYPES.indexOf(bgAnimation) !== -1;
+  const waveImg = bgAnimation === 'wave' && bgWaveMode === 'image';   // image wave is canvas-only too
+  const activeRenderer = (bgRenderer === 'gpu' && hasShader && !waveImg) ? 'gpu' : 'canvas';
+  const gpuBtn = g('bgo-renderer-gpu');
+  if (gpuBtn) { gpuBtn.classList.toggle('is-inert', !hasShader || waveImg); gpuBtn.title = (hasShader && !waveImg) ? '' : 'No shader for this animation — runs on canvas'; }
+  const note = g('bgo-renderer-note');
+  if (note) {
+    note.innerHTML = (hasShader && !waveImg)
+      ? 'GPU renders this background as a shader (much lighter on the encode GPU). <strong>Currently active: ' + (activeRenderer === 'gpu' ? 'GPU shader' : 'Canvas') + '.</strong>'
+      : '<strong>This animation has no GPU shader</strong> — it always runs on canvas, so the renderer choice has no effect here. Shader-backed types: dotwave, grid, diamonds, lines, wave (clean), rain, hexgrid.';
+  }
   [60,30].forEach(v => {
     const btn = g('bgo-fps-' + v); if (btn) btn.classList.toggle('is-active', v === bgFps);
   });

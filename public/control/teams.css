@@ -463,6 +463,10 @@ input.theme-hex-inp:focus { border-color: var(--primary); }
 }
 .theme-pill:hover { border-color: rgba(167,163,142,0.4); color: var(--text); }
 .theme-pill.is-active { border-color: var(--primary); color: var(--primary); background: rgba(var(--accent-rgb),0.06); }
+/* Inert: still selectable, but visibly has no effect for the current context
+   (e.g. GPU renderer when the animation type has no shader). */
+.theme-pill.is-inert { opacity: 0.45; }
+.theme-pill.is-inert.is-active { border-color: var(--border); color: var(--text-dim); background: transparent; }
 
 .theme-sponsor-preview {
   display: flex;
