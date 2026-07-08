@@ -28,6 +28,8 @@
     { id: 'mapVeto',             label: 'Map Veto' },    // CS2
     { id: 'postGame',            label: 'Post-Game' },   // CS2
     { id: 'mapIntro',            label: 'Map Intro' },   // CS2
+    { id: 'heroDraft',           label: 'Hero Draft' },     // Dota 2
+    { id: 'matchSummary',        label: 'Match Summary' },  // Dota 2
   ];
 
   const _static = [];
@@ -71,14 +73,33 @@
     { id: 'lowerThird.hideAll', label: 'Lower Third: Hide All', category: 'Lower Third', handler: () => post('/api/lowerThird/hideAll') },
   );
 
+  // The graphic an action drives (for hiding actions of graphics the current game
+  // doesn't use). `graphics.<id>.*` → id; otherwise the first id segment, which
+  // matches for the option/graphic-scoped actions (playerSpotlight.*, mapIntro.*,
+  // groupStage.*, draft.*, lowerThird.*). Non-graphic prefixes (match/bus) simply
+  // never appear in a hidden set, so they're never filtered.
+  function _actionGraphic(a) {
+    return a.id.indexOf('graphics.') === 0 ? a.id.split('.')[1] : a.id.split('.')[0];
+  }
+
   window.ActionRegistry = {
     _static,
     _buses: [],
     _ltSets: [],
+    _hidden: [],   // graphic keys the current game hides (adapter.hiddenGraphics)
 
-    getAll() { return [...this._static, ...this._buses, ...this._ltSets]; },
+    // Control/operator pass the current game's hidden graphics so their bindable
+    // actions (e.g. Player Spotlight for Dota) drop out of the keybind list.
+    setHiddenGraphics(arr) { this._hidden = Array.isArray(arr) ? arr.slice() : []; },
 
-    getById(id) { return this.getAll().find(a => a.id === id); },
+    getAll() {
+      const all = [...this._static, ...this._buses, ...this._ltSets];
+      if (!this._hidden.length) return all;
+      const hidden = this._hidden;
+      return all.filter(a => hidden.indexOf(_actionGraphic(a)) === -1);
+    },
+
+    getById(id) { return [...this._static, ...this._buses, ...this._ltSets].find(a => a.id === id); },
 
     updateBuses(buses) {
       this._buses = (buses || []).map(bus => ({

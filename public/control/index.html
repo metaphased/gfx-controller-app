@@ -43,7 +43,7 @@
       <a class="nav-item cap-hero-draft" data-tab="hero-draft">Hero Draft</a>
       <a class="nav-item cap-map-veto" data-tab="map-veto">Map Veto</a>
       <a class="nav-item cap-live-data" data-tab="live-data">Live Data</a>
-      <a class="nav-item cap-opgg" data-tab="intel">Match Intel</a>
+      <a class="nav-item cap-intel" data-tab="intel">Match Intel</a>
 
       <div class="nav-section-label">GRAPHICS</div>
       <a class="nav-item" data-tab="theme">Broadcast Theme</a>
@@ -1064,6 +1064,12 @@
           <span id="ranks-status" style="font-size:12px;color:var(--text-dim)">Fetches Solo Queue rank for all players with a Riot ID set.</span>
         </div>
       </div>
+      <div class="card cap-opendota" style="margin-bottom:12px;display:none">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="refreshHeroPool()">↻ Refresh Hero Pools from OpenDota</button>
+          <span id="heropool-status" style="font-size:12px;color:var(--text-dim)">Fetches each player's most-played heroes (needs a Steam ID set on the roster).</span>
+        </div>
+      </div>
       <div class="grid2">
         <div class="card"><div class="card-title" id="players-t1-label">Team 1 Roster</div><div id="t1-roster"></div></div>
         <div class="card"><div class="card-title" id="players-t2-label">Team 2 Roster</div><div id="t2-roster"></div></div>
@@ -1078,12 +1084,14 @@
       <div class="tab-header">
         <h1>Match Intel</h1>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
-          <button class="btn btn-primary btn-sm intel-refresh-ranks" onclick="refreshRanks()">↻ Ranks</button>
-          <button class="btn btn-primary btn-sm intel-refresh-champ" onclick="refreshChampPool()">↻ Champ Pools</button>
+          <button class="btn btn-primary btn-sm intel-refresh-ranks cap-opgg" onclick="refreshRanks()">↻ Ranks</button>
+          <button class="btn btn-primary btn-sm intel-refresh-champ cap-opgg" onclick="refreshChampPool()">↻ Champ Pools</button>
+          <button class="btn btn-primary btn-sm cap-opendota" onclick="refreshHeroPool()" style="display:none">↻ Hero Pools</button>
           <span id="intel-status" style="font-size:11px;color:var(--text-dim);max-width:320px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"></span>
         </div>
       </div>
       <div class="intel-teams-grid" id="intel-grid"></div>
+      <div id="dota-agg" class="cap-opendota" style="display:none;margin-top:18px"></div>
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════

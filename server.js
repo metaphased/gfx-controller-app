@@ -2408,6 +2408,7 @@ app.get('/api/companion/profile', (req, res) => {
     tournamentStructure:'Tournament Structure', groupStage:'Group Stage', preShow:'Pre-Show',
     breakScreen:'Break Screen', winScreen:'Win Screen', prizepool:'Prizepool', ticker:'Ticker',
     mapVeto:'Map Veto', postGame:'Post-Game', mapIntro:'Map Intro',   // CS2
+    heroDraft:'Hero Draft', matchSummary:'Match Summary',             // Dota 2
   };
   const GRAPHICS = Object.keys(GRAPHIC_LABELS);
 
@@ -2954,10 +2955,75 @@ const RIOT_REGION_MAP = {
 function adapterSupports(kind) {
   const d = games.adapterDescriptor(state.match && state.match.game);
   if (kind === 'opgg')        return d.intelProvider === 'opgg';
+  if (kind === 'opendota')    return d.intelProvider === 'opendota';
   if (kind === 'ddragon')     return d.assetSource   === 'ddragon';
   if (kind === 'dota-heroes') return d.assetSource   === 'dota-heroes';
   return true;
 }
+
+// ── OpenDota per-player hero intel (Dota's op.gg-pool equivalent) ──────────────
+// Steam ID (steamid64) → OpenDota account_id (32-bit) = steamid64 − base constant.
+const STEAM64_BASE = 76561197960265728n;
+function steamIdToAccountId(steamid) {
+  try {
+    const s = String(steamid || '').trim();
+    if (!/^\d+$/.test(s)) return null;
+    const n = BigInt(s);
+    return (n > STEAM64_BASE ? n - STEAM64_BASE : n).toString();   // already 32-bit? pass through
+  } catch { return null; }
+}
+// hero_id (numeric, OpenDota) → { slug, name }. Cached a day (hero list is static-ish).
+let _odHeroMap = null, _odHeroMapAt = 0;
+async function openDotaHeroMap() {
+  if (_odHeroMap && Date.now() - _odHeroMapAt < 24 * 3600 * 1000) return _odHeroMap;
+  const r = await fetch('https://api.opendota.com/api/heroes');
+  if (!r.ok) throw new Error('OpenDota heroes list HTTP ' + r.status);
+  const list = await r.json();
+  const map = {};
+  for (const h of (Array.isArray(list) ? list : [])) {
+    map[h.id] = { slug: String(h.name || '').replace(/^npc_dota_hero_/, ''), name: h.localized_name || '' };
+  }
+  _odHeroMap = map; _odHeroMapAt = Date.now();
+  return map;
+}
+
+app.post('/api/heropool/refresh', requireAdmin, async (req, res) => {
+  if (!adapterSupports('opendota')) return res.json({ skipped: true, reason: 'Active game has no OpenDota intel provider' });
+  let heroMap;
+  try { heroMap = await openDotaHeroMap(); }
+  catch (e) { return res.status(502).json({ error: 'OpenDota heroes list failed: ' + e.message }); }
+  const updated = [], errors = [];
+  for (const slot of ['team1', 'team2']) {
+    const players = state.players[slot] || [];
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      const acct = steamIdToAccountId(p.steamid);
+      if (!acct) continue;   // no/invalid steam id — skip (name-only rosters won't have intel)
+      try {
+        const r = await fetch('https://api.opendota.com/api/players/' + acct + '/heroes');
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const arr = await r.json();
+        const top = (Array.isArray(arr) ? arr : [])
+          .filter(h => (h.games | 0) > 0)
+          .sort((a, b) => (b.games | 0) - (a.games | 0))
+          .slice(0, 6)
+          .map(h => {
+            const hm = heroMap[h.hero_id] || {};
+            return { heroId: h.hero_id, slug: hm.slug || '', name: hm.name || ('Hero ' + h.hero_id),
+                     games: h.games | 0, win: h.win | 0, img: hm.slug ? ('/heroes/' + hm.slug + '.png') : '' };
+          });
+        state.players[slot][i].heroPool = top;
+        updated.push(p.handle);
+        await new Promise(r => setTimeout(r, 250));   // OpenDota free tier — be gentle
+      } catch (err) {
+        errors.push(`${p.handle}: ${err.message}`);
+      }
+    }
+  }
+  if (errors.length) logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'heropool-refresh', _logTrunc('FAILED ' + errors.length + ': ' + errors.join('; ')));
+  broadcast();
+  res.json({ ok: true, updated, errors });
+});
 
 app.post('/api/ranks/refresh', requireAdmin, async (req, res) => {
   if (!adapterSupports('opgg')) return res.json({ skipped: true, reason: 'Active game has no op.gg intel provider' });

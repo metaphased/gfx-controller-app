@@ -258,6 +258,20 @@ function roleIconUrl(role) {
   return '/graphics/head2head/roles/' + (ROLE_FILE[key] || key) + '.png';
 }
 
+// Per-player role marker. LoL has role icons (Top/Jungle/…); Dota has no such
+// icons — show a numbered position badge (1–5) from the adapter's position order,
+// full name in the tooltip. Only Dota diverges; every other game keeps the icon.
+function playerRoleCell(p) {
+  const role = (p && p.role) || '';
+  if (casterIsDota()) {
+    const positions = (_state && _state.adapter && _state.adapter.positions) || [];
+    const i = positions.findIndex(function (pos) { return pos && pos.toLowerCase() === role.toLowerCase(); });
+    if (i >= 0) return '<div class="player-pos-badge" title="' + esc(positions[i]) + '">' + (i + 1) + '</div>';
+    return role ? '<div class="player-pos-badge player-pos-text" title="' + esc(role) + '">' + esc(role.slice(0, 3).toUpperCase()) + '</div>' : '<div class="player-pos-badge player-pos-empty"></div>';
+  }
+  return '<div class="player-role-icon" style="background-image:url(' + esc(roleIconUrl(role)) + ')"></div>';
+}
+
 function champIconUrl(key) {
   if (!key) return '';
   return '/graphics/head2head/champions/' + key + '_0.jpg';
@@ -429,13 +443,34 @@ function opggUrl(region, riotId) {
 function renderPlayerRow(p, color) {
   // CS2 (role-less / no champion pick entity): show CS stats + HLTV instead of champ/rank/op.gg.
   if (casterIsMapVeto() || casterNoRoles()) return renderPlayerRowCS(p, color);
+  const dota = casterIsDota();
   const rk = p.rank;
-  const badge = rk ? '<span class="rank-badge" style="--team-color:' + esc(color) + '">' + esc(rankShort(rk)) + '</span>' : '';
+  const badge = (!dota && rk) ? '<span class="rank-badge" style="--team-color:' + esc(color) + '">' + esc(rankShort(rk)) + '</span>' : '';
   const pool = p.champPool || [];
-  const ogUrl = opggUrl(p.opggRegion, p.riotId);
+  const ogUrl = dota ? '' : opggUrl(p.opggRegion, p.riotId);
 
+  // Dota: OpenDota hero pool (most-played heroes + win rate) in place of champ pool + rank.
   let champRows = '';
-  if (pool.length > 0) {
+  if (dota) {
+    const heroes = p.heroPool || [];
+    if (heroes.length > 0) {
+      champRows = '<table class="champ-table">' +
+        '<thead><tr><th>Hero</th><th class="right">Games</th><th class="right">Win Rate</th></tr></thead>' +
+        '<tbody>' +
+        heroes.map(h => {
+          const icon = h.img ? '<div class="champ-icon-sm" style="background-image:url(' + esc(h.img) + ')"></div>' : '';
+          const wrPct = h.games ? Math.round(h.win / h.games * 100) : null;
+          return '<tr>' +
+            '<td><div class="champ-icon-cell">' + icon + '<span class="champ-name">' + esc(h.name || h.slug || '') + '</span></div></td>' +
+            '<td class="right">' + esc(h.games != null ? h.games : '—') + '</td>' +
+            '<td class="right ' + wrClass(wrPct) + '">' + (wrPct != null ? wrPct + '%' : '—') + '</td>' +
+          '</tr>';
+        }).join('') +
+        '</tbody></table>';
+    } else {
+      champRows = '<div style="color:var(--text-faint);font-size:12px">No hero pool data — set a Steam ID and refresh from the control panel.</div>';
+    }
+  } else if (pool.length > 0) {
     champRows = '<table class="champ-table">' +
       '<thead><tr><th>Champion</th><th class="right">Games</th><th class="right">Win Rate</th></tr></thead>' +
       '<tbody>' +
@@ -529,15 +564,15 @@ function renderPlayerRow(p, color) {
 
   return '<div class="player-row">' +
     '<div class="player-row-summary">' +
-      '<div class="player-role-icon" style="background-image:url(' + esc(roleIconUrl(p.role)) + ')"></div>' +
+      playerRoleCell(p) +
       '<div class="player-handle">' + esc(p.handle || p.name || '—') + '</div>' +
       badge +
       (ogUrl ? '<a class="opgg-btn" href="' + esc(ogUrl) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">op.gg ↗</a>' : '') +
       '<div class="expand-arrow">▼</div>' +
     '</div>' +
     '<div class="player-detail">' +
-      (p.riotId ? '<div class="detail-riot-id">' + esc(p.riotId) + (p.opggRegion ? ' <span class="detail-region">' + esc(p.opggRegion.toUpperCase()) + '</span>' : '') + '</div>' : '') +
-      rankFull +
+      (!dota && p.riotId ? '<div class="detail-riot-id">' + esc(p.riotId) + (p.opggRegion ? ' <span class="detail-region">' + esc(p.opggRegion.toUpperCase()) + '</span>' : '') + '</div>' : '') +
+      (dota ? '' : rankFull) +
       draftStatsHtml +
       trnHistoryHtml +
       champRows +
@@ -649,7 +684,7 @@ function renderTeamPoolCard(t, isLive) {
 function renderPoolPlayer(p, isSub) {
   const ogUrl = opggUrl(p.opggRegion, p.riotId);
   return '<div class="tp-player' + (isSub ? ' tp-player-sub' : '') + '">' +
-    '<div class="player-role-icon" style="background-image:url(' + esc(roleIconUrl(p.role)) + ')"></div>' +
+    playerRoleCell(p) +
     '<span class="tp-handle">' + esc(p.handle || p.name || '—') + '</span>' +
     (p.name && p.name !== p.handle ? '<span class="tp-realname">' + esc(p.name) + '</span>' : '') +
     '<span class="tp-spacer"></span>' +
@@ -1038,7 +1073,40 @@ function renderSeriesDota(el, m, t1name, t2name) {
   }).join('');
 
   if (!seriesOver) html += '<div class="empty-state" style="padding:14px">Game ' + (m.currentGameNum || games.length + 1) + ' — up next</div>';
+  html += renderDotaAggCaster();
   el.innerHTML = html;
+}
+
+// Tournament hero-stats aggregate (Dota) — per player, per hero, across recorded games.
+function renderDotaAggCaster() {
+  const lines = (_state && _state.tournament && _state.tournament.dotaStats) || [];
+  if (!lines.length) return '';
+  const byPlayer = {};
+  lines.forEach(function (l) {
+    const pid = l.steamid || l.name || '?';
+    const pl = byPlayer[pid] || (byPlayer[pid] = { name: l.name || '—', games: 0, wins: 0, heroes: {} });
+    pl.games++; if (l.win) pl.wins++;
+    const hk = l.hero || '—';
+    const h = pl.heroes[hk] || (pl.heroes[hk] = { hero: hk, games: 0, wins: 0, k: 0, d: 0, a: 0 });
+    h.games++; if (l.win) h.wins++; h.k += (l.kills | 0); h.d += (l.deaths | 0); h.a += (l.assists | 0);
+  });
+  const agg = Object.keys(byPlayer).map(function (pid) {
+    const pl = byPlayer[pid];
+    pl.heroList = Object.keys(pl.heroes).map(function (hk) { return pl.heroes[hk]; }).sort(function (x, y) { return y.games - x.games; });
+    return pl;
+  }).sort(function (x, y) { return y.games - x.games; });
+
+  const rows = agg.map(function (p) {
+    const wr = p.games ? Math.round(p.wins / p.games * 100) : 0;
+    return p.heroList.map(function (h, i) {
+      const hwr = h.games ? Math.round(h.wins / h.games * 100) : 0;
+      const kda = (h.k / h.games).toFixed(1) + ' / ' + (h.d / h.games).toFixed(1) + ' / ' + (h.a / h.games).toFixed(1);
+      return '<tr>' + (i === 0 ? '<td rowspan="' + p.heroList.length + '" class="dagg-player"><div class="dagg-name">' + esc(p.name) + '</div><div class="dagg-sub">' + p.games + ' games · ' + wr + '%</div></td>' : '') +
+        '<td>' + esc(h.hero) + '</td><td class="right">' + h.games + '</td><td class="right ' + wrClass(hwr) + '">' + hwr + '%</td><td class="right">' + kda + '</td></tr>';
+    }).join('');
+  }).join('');
+  return '<div class="card" style="margin-top:16px"><div class="dagg-title">Tournament Hero Stats</div>' +
+    '<table class="dagg-table"><thead><tr><th>Player</th><th>Hero</th><th class="right">Games</th><th class="right">Win%</th><th class="right">Avg K/D/A</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
 }
 
 // ── MAP VETO TAB (CS2) ───────────────────────────────────────────────────────────
