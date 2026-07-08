@@ -37,3 +37,7 @@ Thumbs.db
 
 omt-spike/
 omt-renderer/vendor/
+
+# Internal planning docs — keep local, never publish
+/*-PLAN.md
+MULTI-GAME-SUPPORT-PLAN.md
