@@ -31,6 +31,9 @@ const USERS_FILE    = path.join(DATA_DIR, 'users.json');
 const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
 const LOOKS_FILE    = path.join(DATA_DIR, 'looks.json');
 const SECRET_FILE = path.join(DATA_DIR, 'session-secret.txt');
+// Uploaded assets (logos, fonts, images). Defaults to public/uploads; overridable so a
+// deployment can relocate them and so backup/restore can be exercised in isolation.
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, 'public', 'uploads');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 
 // Persist session secret across restarts
@@ -230,7 +233,7 @@ app.use('/graphics', express.static(path.join(__dirname, 'public', 'graphics'), 
     if (/\.(html|css|js)$/i.test(filePath)) res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
   },
 }));
-app.use('/uploads',  express.static(path.join(__dirname, 'public', 'uploads')));
+app.use('/uploads',  express.static(UPLOADS_DIR));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
 app.use('/heroes',   express.static(path.join(__dirname, 'public', 'heroes'))); // Dota 2 hero art
 app.use('/items',    express.static(path.join(__dirname, 'public', 'items')));  // Dota 2 item icons (match-summary board)
@@ -1073,7 +1076,7 @@ app.use(requireAuth, express.static(path.join(__dirname, 'public')));
 app.use('/api', requireAuth);
 
 // ── Uploads ───────────────────────────────────────────────────────────────────
-const uploadDir = path.join(__dirname, 'public', 'uploads');
+const uploadDir = UPLOADS_DIR;
 if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
 // Strip any path components and unsafe chars from the client filename to prevent
 // path traversal (e.g. originalname "../../evil.js") and odd characters on disk.
@@ -4683,6 +4686,222 @@ app.post('/api/users/delete', requireAdmin, (req, res) => {
   if (!target) return res.status(404).json({ error: 'User not found' });
   if (me.role !== 'superadmin' && target.role !== 'operator') return res.status(403).json({ error: 'Admins can only delete operator accounts' });
   saveUsers(_users.filter(u => u.id !== userId)); res.json({ ok: true });
+});
+
+// ── Backup & Restore (full install export / import) ─────────────────────────────
+// Superadmin-only. Export bundles every persisted data file (except the session secret and
+// the regenerable art cache) PLUS all of public/uploads (logos, fonts, images) base64-
+// embedded into one self-contained JSON — so a whole setup moves to new hardware without
+// breaking asset references. Import REPLACES this install's data + uploads, then reloads
+// state in-memory and pushes it to every client. Phase 1 = full install; a future phase adds
+// single-profile portable bundles (same format, scoped to one profile + its assets).
+const BACKUP_FORMAT = 'metagfx-backup';
+const BACKUP_VERSION = 1;
+const BACKUP_DATA_FILES = [
+  ['state',     DATA_FILE],
+  ['teams',     TEAMS_FILE],
+  ['talent',    TALENT_FILE],
+  ['profiles',  PROFILES_FILE],
+  ['looks',     LOOKS_FILE],
+  ['users',     USERS_FILE],
+  ['dotaGames', DOTA_GAMES_FILE],
+];
+function requireSuperadmin(req, res, next) {
+  if (req.session && req.session.user && req.session.user.role === 'superadmin') return next();
+  return res.status(403).json({ error: 'Superadmin only' });
+}
+// Recursively list every file under public/uploads, returning { rel, full } (rel uses '/').
+function _walkUploads(dir, base, out) {
+  let entries = [];
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (e) { return out; }
+  for (const e of entries) {
+    const full = path.join(dir, e.name);
+    const rel = base ? base + '/' + e.name : e.name;
+    if (e.isDirectory()) _walkUploads(full, rel, out);
+    else if (e.isFile()) out.push({ rel, full });
+  }
+  return out;
+}
+// Guard an uploads-relative path from a bundle against traversal / absolute paths.
+function _safeUploadRel(rel) {
+  return typeof rel === 'string' && rel.length > 0 && rel.length < 300
+    && !rel.includes('..') && !path.isAbsolute(rel) && /^[\w.\-\/ ]+$/.test(rel);
+}
+const uploadBackup = multer({ storage: multer.memoryStorage(), limits: { fileSize: 512 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => cb(null, /\.json$/i.test(file.originalname || '')) });
+
+// Summary for the Settings card (what an export would contain).
+app.get('/api/backup/info', requireSuperadmin, (req, res) => {
+  try {
+    const arr = f => { try { return fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : []; } catch (e) { return []; } };
+    let assets = 0, bytes = 0;
+    for (const { full } of _walkUploads(uploadDir, '', [])) { assets++; try { bytes += fs.statSync(full).size; } catch (e) {} }
+    res.json({ profiles: loadProfiles().length, teams: arr(TEAMS_FILE).length, talent: arr(TALENT_FILE).length,
+      looks: (loadLooks() || []).length, users: _users.length, assets, uploadBytes: bytes });
+  } catch (e) { res.status(500).json({ error: 'info failed' }); }
+});
+
+app.get('/api/backup/export', requireSuperadmin, (req, res) => {
+  try {
+    saveState();   // flush current in-memory state to disk so the export is up to date
+    const bundle = { meta: { format: BACKUP_FORMAT, version: BACKUP_VERSION,
+      app: require('./package.json').version, exportedAt: new Date().toISOString() }, data: {}, uploads: {} };
+    for (const [key, file] of BACKUP_DATA_FILES) {
+      if (fs.existsSync(file)) { try { bundle.data[key] = JSON.parse(fs.readFileSync(file, 'utf8')); } catch (e) {} }
+    }
+    for (const { rel, full } of _walkUploads(uploadDir, '', [])) {
+      try { bundle.uploads[rel] = fs.readFileSync(full).toString('base64'); } catch (e) {}
+    }
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.set('Content-Disposition', `attachment; filename="metagfx-backup-${stamp}.json"`);
+    res.set('Content-Type', 'application/json');
+    logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'backup-export', Object.keys(bundle.uploads).length + ' assets');
+    res.send(JSON.stringify(bundle));
+  } catch (e) { console.error('backup export', e); res.status(500).json({ error: 'Export failed' }); }
+});
+
+app.post('/api/backup/import', requireSuperadmin, singleUpload(uploadBackup.single('file')), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No backup file provided' });
+  let bundle;
+  try { bundle = JSON.parse(req.file.buffer.toString('utf8')); } catch (e) { return res.status(400).json({ error: 'Not a valid backup file (unreadable JSON)' }); }
+  if (!bundle || !bundle.meta || bundle.meta.format !== BACKUP_FORMAT) return res.status(400).json({ error: 'This is not a MetaGFX backup file' });
+  if ((bundle.meta.version | 0) > BACKUP_VERSION) return res.status(400).json({ error: 'Backup is from a newer version of MetaGFX — update first' });
+  try {
+    const restored = {};
+    for (const [key, file] of BACKUP_DATA_FILES) {
+      if (bundle.data && Object.prototype.hasOwnProperty.call(bundle.data, key)) {
+        fs.writeFileSync(file, JSON.stringify(bundle.data[key], null, 2));
+        restored[key] = Array.isArray(bundle.data[key]) ? bundle.data[key].length : 1;
+      }
+    }
+    let assets = 0;
+    if (bundle.uploads && typeof bundle.uploads === 'object') {
+      for (const rel of Object.keys(bundle.uploads)) {
+        if (!_safeUploadRel(rel)) continue;
+        const dest = path.join(uploadDir, rel);
+        if (!path.resolve(dest).startsWith(path.resolve(uploadDir))) continue;   // defence in depth
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        try { fs.writeFileSync(dest, Buffer.from(bundle.uploads[rel], 'base64')); assets++; } catch (e) {}
+      }
+    }
+    // Reload every in-memory cache from the freshly written files, then push to all clients.
+    state = loadState(); _teams = loadTeams(); _talent = loadTalent(); _users = loadUsers();
+    deriveTodayGames(); broadcastSchedule(); broadcast();
+    logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'backup-import', assets + ' assets');
+    res.json({ ok: true, restored: { ...restored, assets } });
+  } catch (e) { console.error('backup import', e); res.status(500).json({ error: 'Import failed: ' + e.message }); }
+});
+
+// ── Portable profile bundles (share one setup with someone else) ─────────────────
+// Export a SINGLE profile + the teams it references + only the /uploads/ assets it uses,
+// into a self-contained JSON. Import ADDS it to the target install (new profile id, merges
+// missing teams into the Teams DB, writes missing assets) WITHOUT touching live state, other
+// profiles or accounts. Uploaded filenames are unique, so asset URLs stay valid — no remap.
+// Admin-level (normal profile workflow), unlike the superadmin full-install backup above.
+const PROFILE_BUNDLE_FORMAT = 'metagfx-profile';
+
+// Collect every '/uploads/<path>' asset referenced anywhere in an object tree (as rel paths).
+function _collectUploadRefs(node, out) {
+  if (node == null) return out;
+  if (typeof node === 'string') {
+    const m = node.match(/\/uploads\/[\w.\-\/ ]+/g);
+    if (m) m.forEach(u => out.add(u.replace(/^\/uploads\//, '')));
+  } else if (Array.isArray(node)) {
+    node.forEach(v => _collectUploadRefs(v, out));
+  } else if (typeof node === 'object') {
+    Object.values(node).forEach(v => _collectUploadRefs(v, out));
+  }
+  return out;
+}
+// Team IDs a profile references (competing pool + schedule games + groups) — these live in
+// the global Teams DB, so a portable bundle must carry them.
+function _profileTeamIds(data) {
+  const ids = new Set();
+  const t = (data && data.tournament) || {};
+  (t.teamPool || []).forEach(id => id && ids.add(id));
+  (t.schedule || []).forEach(day => (day.games || []).forEach(g => { if (g.team1Id) ids.add(g.team1Id); if (g.team2Id) ids.add(g.team2Id); }));
+  (t.groups || []).forEach(gr => (gr.teamIds || []).forEach(id => id && ids.add(id)));
+  return [...ids];
+}
+
+app.get('/api/profile/export/:id', requireAdmin, (req, res) => {
+  try {
+    const profile = loadProfiles().find(p => p.id === req.params.id);
+    if (!profile) return res.status(404).json({ error: 'Profile not found' });
+    const data = profile.data || {};
+    const teams = _profileTeamIds(data).map(id => _teams.find(t => t.id === id)).filter(Boolean).map(t => JSON.parse(JSON.stringify(t)));
+    const refs = _collectUploadRefs(data, new Set());
+    teams.forEach(t => _collectUploadRefs(t, refs));
+    const uploads = {};
+    for (const rel of refs) {
+      if (!_safeUploadRel(rel)) continue;
+      const full = path.join(uploadDir, rel);
+      if (path.resolve(full).startsWith(path.resolve(uploadDir)) && fs.existsSync(full)) {
+        try { uploads[rel] = fs.readFileSync(full).toString('base64'); } catch (e) {}
+      }
+    }
+    const bundle = { meta: { format: PROFILE_BUNDLE_FORMAT, version: 1, app: require('./package.json').version,
+      exportedAt: new Date().toISOString(), profileName: profile.name,
+      game: (data.match && data.match.game) || (data.tournament && data.tournament.game) || '' },
+      profile: { name: profile.name, data }, teams, uploads };
+    const slug = String(profile.name || 'profile').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'profile';
+    res.set('Content-Disposition', `attachment; filename="metagfx-profile-${slug}.json"`);
+    res.set('Content-Type', 'application/json');
+    logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'profile-export', profile.name);
+    res.send(JSON.stringify(bundle));
+  } catch (e) { console.error('profile export', e); res.status(500).json({ error: 'Export failed' }); }
+});
+
+app.post('/api/profile/import', requireAdmin, singleUpload(uploadBackup.single('file')), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file provided' });
+  let bundle;
+  try { bundle = JSON.parse(req.file.buffer.toString('utf8')); } catch (e) { return res.status(400).json({ error: 'Not a valid profile file (unreadable JSON)' }); }
+  if (!bundle || !bundle.meta || bundle.meta.format !== PROFILE_BUNDLE_FORMAT) return res.status(400).json({ error: 'This is not a MetaGFX profile file' });
+  if ((bundle.meta.version | 0) > 1) return res.status(400).json({ error: 'Profile is from a newer version of MetaGFX — update first' });
+  if (!bundle.profile || !bundle.profile.data) return res.status(400).json({ error: 'Profile bundle is missing its data' });
+  try {
+    // 1) write missing assets (skip-if-exists — filenames are unique, so keep any we already have)
+    let assets = 0;
+    if (bundle.uploads && typeof bundle.uploads === 'object') {
+      for (const rel of Object.keys(bundle.uploads)) {
+        if (!_safeUploadRel(rel)) continue;
+        const dest = path.join(uploadDir, rel);
+        if (!path.resolve(dest).startsWith(path.resolve(uploadDir))) continue;
+        if (fs.existsSync(dest)) continue;
+        fs.mkdirSync(path.dirname(dest), { recursive: true });
+        try { fs.writeFileSync(dest, Buffer.from(bundle.uploads[rel], 'base64')); assets++; } catch (e) {}
+      }
+    }
+    // 2) merge teams into the Teams DB — keep both on a name clash (a season's roster may
+    // differ), and stamp every imported team with provenance so admins can tell a fresh
+    // import from a legacy same-name team when picking teams later.
+    let teamsAdded = 0; const clashes = [];
+    if (Array.isArray(bundle.teams) && bundle.teams.length) {
+      const existingIds = new Set(_teams.map(t => t.id));
+      const existingNames = new Set(_teams.map(t => (t.name || '').toLowerCase() + '|' + (t.game || '')));
+      const merged = _teams.slice();
+      const srcName = (bundle.profile && bundle.profile.name) || bundle.meta.profileName || '';
+      const stampedAt = new Date().toISOString();
+      bundle.teams.forEach(t => {
+        if (!t || !t.id || existingIds.has(t.id)) return;
+        const nameKey = (t.name || '').toLowerCase() + '|' + (t.game || '');
+        if (existingNames.has(nameKey) && t.name) clashes.push(t.name);
+        merged.push(Object.assign({}, t, { importedAt: stampedAt, importedFrom: srcName }));
+        existingIds.add(t.id); existingNames.add(nameKey); teamsAdded++;
+      });
+      if (teamsAdded) saveTeams(merged);
+    }
+    // 3) add the profile (fresh id; suffix name on collision) — does NOT load it or touch live state
+    const profiles = loadProfiles();
+    let name = String(bundle.profile.name || 'Imported profile').trim() || 'Imported profile';
+    if (profiles.some(p => p.name === name)) name = name + ' (imported)';
+    const profile = { id: 'prof_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+      name, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), data: bundle.profile.data };
+    profiles.unshift(profile);
+    saveProfiles(profiles);
+    logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'profile-import', name);
+    res.json({ ok: true, profile: { id: profile.id, name: profile.name }, teamsAdded, assets, clashes });
+  } catch (e) { console.error('profile import', e); res.status(500).json({ error: 'Import failed: ' + e.message }); }
 });
 
 // ── Socket ─────────────────────────────────────────────────────────────────────
