@@ -3109,6 +3109,20 @@
             <div class="card-title">Accounts</div>
             <div id="users-list"><p class="hint">Loading…</p></div>
           </div>
+
+          <!-- Backup & Restore (superadmin only) -->
+          <div class="card" id="backup-card" style="display:none">
+            <div class="card-title">Backup &amp; Restore</div>
+            <p class="hint" style="margin:0 0 12px">Export your <b>entire setup</b> — settings, teams, talent, profiles, Looks, accounts and every uploaded logo/font/image — as a single file. Use it to move MetaGFX to another machine or keep a safe backup.</p>
+            <p class="hint" id="backup-summary" style="margin:0 0 12px;color:var(--text)"></p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <button class="btn btn-sm btn-primary" id="backup-export-btn" onclick="exportBackup()">⬇ Export backup</button>
+              <button class="btn btn-sm" onclick="document.getElementById('backup-import-file').click()">⬆ Import backup…</button>
+              <input type="file" id="backup-import-file" accept=".json,application/json" style="display:none" onchange="importBackup(this)">
+              <span class="hint" id="backup-status" style="margin:0"></span>
+            </div>
+            <p class="hint" style="margin:12px 0 0;color:#e0a94a">⚠ Importing <b>replaces everything</b> on this install, including accounts — afterwards you may need to sign in again with the credentials from the backup.</p>
+          </div>
         </div>
       </div>
 

@@ -497,6 +497,54 @@ async function mvRefreshImages(btn) {
   setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
 }
 
+// ── Backup & Restore (full install export / import) ─────────────────────────────
+function _fmtBytes(n) { if (!n) return '0 B'; const u = ['B','KB','MB','GB']; let i = 0; while (n >= 1024 && i < u.length-1) { n /= 1024; i++; } return n.toFixed(i ? 1 : 0) + ' ' + u[i]; }
+async function loadBackupInfo() {
+  const el = g('backup-summary'); if (!el) return;
+  try {
+    const i = await fetch('/api/backup/info').then(function(r){ return r.json(); });
+    if (!i || i.error) { el.textContent = ''; return; }
+    el.textContent = 'This install: ' + i.profiles + ' profile' + (i.profiles===1?'':'s') + ' · ' + i.teams + ' teams · ' + i.talent + ' talent · ' + i.looks + ' Looks · ' + i.users + ' account' + (i.users===1?'':'s') + ' · ' + i.assets + ' uploads (' + _fmtBytes(i.uploadBytes) + ').';
+  } catch (e) { el.textContent = ''; }
+}
+async function exportBackup() {
+  const btn = g('backup-export-btn'), st = g('backup-status');
+  if (btn) { btn.disabled = true; btn.textContent = 'Preparing…'; }
+  if (st) st.textContent = '';
+  try {
+    const res = await fetch('/api/backup/export');
+    if (!res.ok) throw new Error('Export failed (' + res.status + ')');
+    const blob = await res.blob();
+    const dispo = res.headers.get('Content-Disposition') || '';
+    const m = dispo.match(/filename="([^"]+)"/);
+    const name = (m && m[1]) || ('metagfx-backup-' + new Date().toISOString().slice(0,10) + '.json');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    if (st) st.textContent = 'Exported ' + _fmtBytes(blob.size);
+  } catch (e) { if (st) st.textContent = e.message; }
+  finally { if (btn) { btn.disabled = false; btn.textContent = '⬇ Export backup'; } }
+}
+function importBackup(input) {
+  const file = input.files && input.files[0]; input.value = '';
+  if (!file) return;
+  showConfirm('Import "' + file.name + '"?\n\nThis REPLACES all data on this install — settings, teams, talent, profiles, Looks, accounts and uploads. Your current setup will be overwritten and cannot be recovered unless you exported it first.',
+    function(){ _doImportBackup(file); }, { danger: true, okLabel: 'Replace everything' });
+}
+async function _doImportBackup(file) {
+  const st = g('backup-status'); if (st) st.textContent = 'Importing…';
+  try {
+    const fd = new FormData(); fd.append('file', file);
+    const res = await fetch('/api/backup/import', { method: 'POST', body: fd });
+    const data = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !data.ok) throw new Error(data.error || ('Import failed (' + res.status + ')'));
+    const r = data.restored || {};
+    if (st) st.textContent = 'Imported ✓';
+    showAlert('Backup imported successfully.\n\nRestored ' + (r.assets||0) + ' uploads, ' + (r.profiles||0) + ' profiles and ' + (r.teams||0) + ' teams.\n\nThe page will now reload. If your login stops working, sign in with the credentials from the backup.');
+    setTimeout(function(){ location.reload(); }, 1500);
+  } catch (e) { if (st) st.textContent = e.message; }
+}
+
 // ── Live Data (CS2 GSI / MatchZy ingest) ────────────────────────────────────────
 // _ldInfo holds the admin-only token + ready-to-paste URLs (fetched from /api/live/info);
 // enabled flags + connection status come from the broadcast state (state.settings.liveData +
@@ -6152,6 +6200,10 @@ fetch('/api/auth/me').then(r => r.json()).then(data => {
     if (nameEl) nameEl.textContent = data.user.username;
     if (roleEl) roleEl.textContent = data.user.role;
     initThemeEditor();
+    if (data.user.role === 'superadmin') {   // Backup & Restore is superadmin-only
+      const bc = g('backup-card'); if (bc) bc.style.display = '';
+      loadBackupInfo();
+    }
   }
 }).catch(() => {});
 
