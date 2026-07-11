@@ -269,7 +269,7 @@
           <div class="field-row"><label>Game</label>
             <div style="flex:1;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <select id="ts-game" onchange="patchTournamentInfo({game:this.value})">
-                <option value="lol">League of Legends</option><option value="cs2">CS2 (Beta)</option><option value="dota2">Dota 2 (Beta)</option><option value="valorant">VALORANT (Alpha)</option><option value="r6">Rainbow Six Siege (Alpha)</option><option value="generic">Generic / Other</option>
+                <option value="lol">League of Legends</option><option value="cs2">CS2 (Beta)</option><option value="dota2">Dota 2 (Beta)</option><option value="valorant">VALORANT (Alpha)</option><option value="generic">Generic / Other</option>
               </select>
               <span id="ts-game-maturity" class="maturity-badge" style="display:none"></span>
               <span id="ts-game-locked" style="display:none;font-weight:600"></span>
@@ -3286,6 +3286,41 @@
     <div class="app-modal-actions">
       <button class="btn btn-sm" id="app-modal-cancel" onclick="_appModalResolve(false)">Cancel</button>
       <button class="btn btn-sm" id="app-modal-ok" onclick="_appModalResolve(true)">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- First-run setup wizard — blocking, non-dismissible; shown only on a genuinely fresh
+     install (default admin password and/or no tournament yet). Driven by control.js. -->
+<div id="firstrun-overlay" class="firstrun-overlay">
+  <div class="firstrun-card">
+    <div class="firstrun-brand"><img src="/fonts/metagfx-logo.png" alt="MetaGFX" class="firstrun-logo"></div>
+    <div class="firstrun-dots" id="fr-dots"></div>
+
+    <div class="firstrun-step" id="fr-step-password" style="display:none">
+      <h2 class="firstrun-h">Welcome to MetaGFX</h2>
+      <p class="firstrun-sub">Let's secure your account. You're signed in with the default password — choose a new one to continue.</p>
+      <label class="firstrun-label" for="fr-pw1">New password</label>
+      <input type="password" id="fr-pw1" class="firstrun-input" autocomplete="new-password" placeholder="At least 8 characters" oninput="frClearErr('fr-pw-err')">
+      <label class="firstrun-label" for="fr-pw2">Confirm password</label>
+      <input type="password" id="fr-pw2" class="firstrun-input" autocomplete="new-password" placeholder="Re-enter new password" oninput="frClearErr('fr-pw-err')" onkeydown="if(event.key==='Enter')frSubmitPassword()">
+      <div class="firstrun-err" id="fr-pw-err"></div>
+      <div class="firstrun-actions">
+        <button class="btn btn-primary firstrun-btn" id="fr-pw-next" onclick="frSubmitPassword()">Continue</button>
+      </div>
+    </div>
+
+    <div class="firstrun-step" id="fr-step-setup" style="display:none">
+      <h2 class="firstrun-h">Create your first event</h2>
+      <p class="firstrun-sub">Pick the game and name your tournament. You'll add teams, schedule and graphics on the next screen.</p>
+      <label class="firstrun-label">Game</label>
+      <div class="firstrun-games" id="fr-games"></div>
+      <label class="firstrun-label" for="fr-tname">Tournament name</label>
+      <input type="text" id="fr-tname" class="firstrun-input" placeholder="e.g. Summer Split 2025" oninput="frClearErr('fr-setup-err')" onkeydown="if(event.key==='Enter')frSubmitSetup()">
+      <div class="firstrun-err" id="fr-setup-err"></div>
+      <div class="firstrun-actions">
+        <button class="btn btn-primary firstrun-btn" id="fr-setup-next" onclick="frSubmitSetup()">Create &amp; continue</button>
+      </div>
     </div>
   </div>
 </div>

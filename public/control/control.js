@@ -71,7 +71,7 @@ function currentGameNumFor(m) {
 }
 
 // Game list (id + label) for tournament + team-game selectors. Mirrors the ts-game options.
-const GAMES = [['lol','League of Legends'],['cs2','CS2'],['dota2','Dota 2'],['valorant','VALORANT'],['r6','Rainbow Six Siege'],['generic','Generic / Other']];
+const GAMES = [['lol','League of Legends'],['cs2','CS2'],['dota2','Dota 2'],['valorant','VALORANT'],['generic','Generic / Other']];
 function gameLabel(id){ const f=GAMES.find(function(x){return x[0]===id;}); return f?f[1]:(id||''); }
 function gameOptionsHtml(sel){ return GAMES.map(function(x){return '<option value="'+x[0]+'"'+(x[0]===sel?' selected':'')+'>'+x[1]+'</option>';}).join(''); }
 function currentGameId(){ return (window._state && window._state.match && window._state.match.game) || 'lol'; }
@@ -172,6 +172,83 @@ function applySetupLock() {
     if (el.id === 'setup-lock-btn') return; // keep the toggle usable
     el.disabled = locked;
   });
+}
+
+// ── First-run setup wizard ──────────────────────────────────────────────────────
+// Blocking onboarding shown ONLY on a genuinely fresh install (server firstRun flags):
+// force the admin off the default password, then create the first tournament (game + name)
+// and land on Tournament Setup ready to go. Steps are adaptive — each shows only if needed.
+let _frSteps = [];   // ordered remaining steps: 'password' | 'setup'
+let _frIdx   = 0;
+let _frGame  = null;
+
+function startFirstRun(fr) {
+  if (!fr) return;
+  _frSteps = [];
+  if (fr.mustChangePassword) _frSteps.push('password');
+  if (fr.needsSetup)         _frSteps.push('setup');
+  if (!_frSteps.length) return;
+  _frIdx = 0;
+  const ov = g('firstrun-overlay'); if (ov) ov.classList.add('active');
+  if (_frSteps.indexOf('setup') !== -1) frLoadGames();
+  frShowStep();
+}
+function frShowStep() {
+  const cur = _frSteps[_frIdx];
+  ['password','setup'].forEach(function(s){ const el = g('fr-step-' + s); if (el) el.style.display = (s === cur) ? '' : 'none'; });
+  const dots = g('fr-dots');
+  if (dots) {
+    dots.innerHTML = _frSteps.map(function(s, i){ return '<span class="' + (i < _frIdx ? 'done' : (i === _frIdx ? 'on' : '')) + '"></span>'; }).join('');
+    dots.style.display = _frSteps.length > 1 ? '' : 'none';
+  }
+  setTimeout(function(){ const f = cur === 'password' ? g('fr-pw1') : g('fr-tname'); if (f) f.focus(); }, 60);
+}
+function frAdvance() { if (_frIdx < _frSteps.length - 1) { _frIdx++; frShowStep(); } else frFinish(); }
+function frFinish() {
+  const ov = g('firstrun-overlay'); if (ov) ov.classList.remove('active');
+  if (_frSteps.indexOf('setup') !== -1 && typeof switchToTab === 'function') switchToTab('tournament');
+}
+function frClearErr(id){ const e = g(id); if (e) e.textContent = ''; }
+function frErr(id, msg){ const e = g(id); if (e) e.textContent = msg; }
+
+async function frSubmitPassword() {
+  const p1 = (g('fr-pw1') || {}).value || '', p2 = (g('fr-pw2') || {}).value || '';
+  if (p1.length < 8) return frErr('fr-pw-err', 'Password must be at least 8 characters.');
+  if (p1.toLowerCase() === 'admin') return frErr('fr-pw-err', 'Please choose something other than the default password.');
+  if (p1 !== p2) return frErr('fr-pw-err', "Passwords don't match.");
+  const btn = g('fr-pw-next'); if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+  const r = await api('/api/users/change-password', { userId: _myId, newPassword: p1 });
+  if (btn) { btn.disabled = false; btn.textContent = 'Continue'; }
+  if (!r || !r.ok) return frErr('fr-pw-err', (r && r.error) || 'Could not update password.');
+  frAdvance();
+}
+async function frLoadGames() {
+  const wrap = g('fr-games'); if (!wrap) return;
+  let list = [];
+  try { const r = await fetch('/api/games').then(function(x){ return x.json(); }); list = (r && r.games) || []; } catch(e) {}
+  if (!list.length) list = [{ id:'lol', label:'League of Legends', maturity:'stable' }];
+  wrap.innerHTML = list.map(function(gm){
+    const badge = (gm.maturity === 'beta' || gm.maturity === 'alpha') ? '<span class="maturity-badge ' + gm.maturity + '">' + gm.maturity.toUpperCase() + '</span>' : '';
+    return '<button type="button" class="firstrun-game" data-game="' + gm.id + '"><span>' + gm.label + '</span>' + badge + '</button>';
+  }).join('');
+  wrap.querySelectorAll('.firstrun-game').forEach(function(b){ b.onclick = function(){ frSelectGame(b); }; });
+  const first = wrap.querySelector('.firstrun-game'); if (first) frSelectGame(first);   // default: LoL
+}
+function frSelectGame(btn) {
+  _frGame = btn.getAttribute('data-game');
+  const wrap = g('fr-games'); if (wrap) wrap.querySelectorAll('.firstrun-game').forEach(function(b){ b.classList.toggle('sel', b === btn); });
+  frClearErr('fr-setup-err');
+}
+async function frSubmitSetup() {
+  const name = ((g('fr-tname') || {}).value || '').trim();
+  if (!_frGame) return frErr('fr-setup-err', 'Pick a game.');
+  if (!name)   return frErr('fr-setup-err', 'Enter a tournament name.');
+  const btn = g('fr-setup-next'); if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+  const c = await api('/api/tournament/create', { game: _frGame, name: name });
+  if (!c || !c.ok) { if (btn) { btn.disabled = false; btn.textContent = 'Create & continue'; } return frErr('fr-setup-err', (c && c.error) || 'Could not create the tournament.'); }
+  await api('/api/profiles/save', { name: name });   // persist as the first profile (shows in top bar + Profiles)
+  if (btn) { btn.disabled = false; btn.textContent = 'Create & continue'; }
+  frAdvance();
 }
 
 // ── External URL config ────────────────────────────────────────────────────────
@@ -6152,6 +6229,7 @@ fetch('/api/auth/me').then(r => r.json()).then(data => {
     if (nameEl) nameEl.textContent = data.user.username;
     if (roleEl) roleEl.textContent = data.user.role;
     initThemeEditor();
+    startFirstRun(data.firstRun);   // fresh install → force password change + first-event setup
   }
 }).catch(() => {});
 

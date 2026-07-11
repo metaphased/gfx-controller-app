@@ -122,16 +122,32 @@ app.get('/api/auth/logout', (req, res) => {
 app.get('/api/auth/me', (req, res) => {
   if (req.session && req.session.user) {
     const full = _users.find(u => u.id === req.session.user.id);
+    // First-run signals (admin/superadmin only) so the control panel can run the setup
+    // wizard: (a) the account still uses the seeded default password 'admin'; (b) no
+    // tournament has ever been created AND no profiles saved (i.e. a genuinely fresh
+    // install — never fires once they've built anything, so it won't nag on new empties).
+    const isAdmin = ['admin', 'superadmin'].includes(req.session.user.role);
+    let firstRun = null;
+    if (isAdmin && full) {
+      const mustChangePassword = bcrypt.compareSync('admin', full.passwordHash);
+      const needsSetup = !(state.tournament && state.tournament.created) && loadProfiles().length === 0;
+      firstRun = { mustChangePassword, needsSetup };
+    }
     res.json({ user: {
       ...req.session.user,
       keybinds: (full && full.keybinds) || {},
       theme: (full && full.theme) || null,
       layout: (full && full.layout) || null,
-    }, themeDefault: (state.settings && state.settings.uiTheme) || null });
+    }, themeDefault: (state.settings && state.settings.uiTheme) || null, firstRun });
   } else {
     res.status(401).json({ error: 'Not logged in' });
   }
 });
+
+// Selectable game list (id + label + maturity) from the adapter registry — single source
+// of truth used by the first-run wizard (and available for future pickers). Auto-expands
+// as adapters are added. See games/index.js listGames().
+app.get('/api/games', requireAuth, (req, res) => res.json({ games: games.listGames() }));
 
 // ── User keybinds ─────────────────────────────────────────────────────────────
 app.post('/api/users/me/keybinds', requireAuth, (req, res) => {
@@ -4423,7 +4439,7 @@ app.post('/api/profiles/save-empty', requireAdmin, (req, res) => {
   // Game is chosen in the New Profile dialog so the blank profile starts on the right adapter.
   // The profile is created UNLOCKED (tournament.created:false) so the operator can still change
   // the game before locking it in. Unknown ids fall back to LoL.
-  const KNOWN_GAMES = ['lol', 'cs2', 'dota2', 'valorant', 'r6', 'generic'];
+  const KNOWN_GAMES = ['lol', 'cs2', 'dota2', 'valorant', 'generic'];
   const game = KNOWN_GAMES.includes(req.body.game) ? req.body.game : 'lol';
   const profiles = loadProfiles();
   // Use system defaults — don't inherit colours/logos from whatever is currently loaded
