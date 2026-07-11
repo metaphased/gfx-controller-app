@@ -1934,6 +1934,16 @@ input[type=search]::-webkit-search-decoration { display: none; }
   justify-content: flex-end;
 }
 
+/* ── Team name-clash disambiguation (roster + imported badge) ───────────────── */
+.team-disambig { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 4px; font-size: 11px; }
+.team-disambig-roster { color: var(--text-dim); font-style: italic; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.team-imported-badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #7fd6a6; border: 1px solid #2f6b4c; background: rgba(80,220,140,0.10);
+  border-radius: 3px; padding: 1px 6px; white-space: nowrap; flex-shrink: 0; cursor: help;
+}
+
 /* ── Bus tag (ctrl-bar indicator) ──────────────────────────────────────────── */
 .bus-tag {
   font-size: 9px;

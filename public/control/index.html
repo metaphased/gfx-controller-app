@@ -229,7 +229,12 @@
     <section class="tab" id="tab-profiles">
       <div class="tab-header">
         <h1>Profiles</h1>
-        <button class="btn btn-primary btn-sm" onclick="openSaveProfileForm()">+ New Profile</button>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="hint" id="profile-import-status" style="margin:0"></span>
+          <button class="btn btn-sm" onclick="document.getElementById('profile-import-file').click()" title="Import a shared .json profile from another install">⬆ Import Profile…</button>
+          <input type="file" id="profile-import-file" accept=".json,application/json" style="display:none" onchange="importProfile(this)">
+          <button class="btn btn-primary btn-sm" onclick="openSaveProfileForm()">+ New Profile</button>
+        </div>
       </div>
 
       <!-- Save new profile form -->

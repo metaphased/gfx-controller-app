@@ -545,6 +545,49 @@ async function _doImportBackup(file) {
   } catch (e) { if (st) st.textContent = e.message; }
 }
 
+// ── Portable profile export / import (share one setup) ───────────────────────────
+async function exportProfile(id, btn) {
+  const orig = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = 'Exporting…'; }
+  try {
+    const res = await fetch('/api/profile/export/' + encodeURIComponent(id));
+    if (!res.ok) throw new Error('Export failed (' + res.status + ')');
+    const blob = await res.blob();
+    const dispo = res.headers.get('Content-Disposition') || '';
+    const m = dispo.match(/filename="([^"]+)"/);
+    const name = (m && m[1]) || ('metagfx-profile.json');
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    if (btn) { btn.textContent = 'Exported ✓'; setTimeout(function(){ btn.textContent = orig; btn.disabled = false; }, 1800); }
+  } catch (e) { if (btn) { btn.textContent = 'Failed'; setTimeout(function(){ btn.textContent = orig; btn.disabled = false; }, 1800); } }
+}
+function importProfile(input) {
+  const file = input.files && input.files[0]; input.value = '';
+  if (!file) return;
+  _doImportProfile(file);
+}
+async function _doImportProfile(file) {
+  const st = g('profile-import-status'); if (st) st.textContent = 'Importing…';
+  try {
+    const fd = new FormData(); fd.append('file', file);
+    const res = await fetch('/api/profile/import', { method: 'POST', body: fd });
+    const data = await res.json().catch(function(){ return {}; });
+    if (!res.ok || !data.ok) throw new Error(data.error || ('Import failed (' + res.status + ')'));
+    if (st) st.textContent = '';
+    loadProfilesTab();   // refresh the list (the imported profile is added, not loaded)
+    const extras = [];
+    if (data.teamsAdded) extras.push(data.teamsAdded + ' team' + (data.teamsAdded === 1 ? '' : 's') + ' added to your Teams DB');
+    if (data.assets) extras.push(data.assets + ' image' + (data.assets === 1 ? '' : 's') + ' imported');
+    let clashNote = '';
+    if (data.clashes && data.clashes.length) {
+      const uniq = data.clashes.filter(function(v, i, a){ return a.indexOf(v) === i; });
+      clashNote = '\n\n⚠ ' + uniq.join(', ') + ' already exist' + (uniq.length === 1 ? 's' : '') + ' by name — both kept. The imported copies are tagged "IMPORTED" in the team pickers so you can tell them apart when building the tournament.';
+    }
+    showAlert('Imported profile "' + (data.profile && data.profile.name || '') + '".' + (extras.length ? '\n\n' + extras.join('.\n') + '.' : '') + clashNote + '\n\nIt\'s now in your Profiles list — click Load to use it.');
+  } catch (e) { if (st) st.textContent = e.message; }
+}
+
 // ── Live Data (CS2 GSI / MatchZy ingest) ────────────────────────────────────────
 // _ldInfo holds the admin-only token + ready-to-paste URLs (fetched from /api/live/info);
 // enabled flags + connection status come from the broadcast state (state.settings.liveData +
@@ -4318,6 +4361,7 @@ async function renderTeamsList() {
   const teams=filterGame?allTeams.filter(function(t){return (t.game||'lol')===filterGame;}):allTeams;
   if(!teams.length){container.innerHTML='';if(empty){empty.style.display='block';empty.textContent=allTeams.length?'No teams for this game. Use the filter or + New Team.':'No teams saved yet. Click + New Team to create one.';}return;}
   if(empty)empty.style.display='none';
+  const clashKeys=teamClashKeys(allTeams);
   container.innerHTML=teams.map(function(team){
     const logo=team.logo?'<img src="'+team.logo+'" style="width:44px;height:44px;object-fit:contain;flex-shrink:0">':'<div style="width:44px;height:44px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-dim);flex-shrink:0">LOGO</div>';
     const pc=(team.players||[]).filter(function(p){return p.handle||p.name;}).length;
@@ -4328,7 +4372,7 @@ async function renderTeamsList() {
           '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:18px;font-weight:800;color:#fff;text-transform:uppercase">'+esc(team.name)+'</span>'+
           '<span style="font-size:11px;color:var(--accent);letter-spacing:0.12em">'+esc(team.tag||'')+'</span>'+
           '<span style="font-size:10px;color:var(--text-dim);border:1px solid var(--border);border-radius:3px;padding:1px 5px;text-transform:uppercase;letter-spacing:0.04em">'+esc(gameLabel(team.game||'lol'))+'</span></div>'+
-        '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">'+pc+' player'+(pc!==1?'s':'')+' · '+sc+' sub'+(sc!==1?'s':'')+'</div>'+
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">'+pc+' player'+(pc!==1?'s':'')+' · '+sc+' sub'+(sc!==1?'s':'')+'</div>'+ teamDisambigHtml(team, clashKeys) +
       '</div>'+
       '<div style="display:flex;gap:8px;flex-shrink:0">'+
         '<button class="btn btn-sm" onclick="openTeamEditor(\''+team.id+'\')">Edit</button>'+
@@ -4513,6 +4557,7 @@ async function openTeamPicker(slot) {
     list.innerHTML='<div style="color:var(--text-dim);font-size:13px;padding:20px;text-align:center">No competing teams in this tournament yet.<br><br>Add them under <strong style="color:var(--text)">Tournament Setup → Competing Teams</strong>.</div>';
     return;
   }
+  const clashKeys=teamClashKeys(teams);
   list.innerHTML=teams.map(function(team){
     const logo=team.logo?'<img src="'+team.logo+'" style="width:52px;height:52px;object-fit:contain;flex-shrink:0">':'<div style="width:52px;height:52px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:9px;color:var(--text-dim);flex-shrink:0">LOGO</div>';
     const pc=(team.players||[]).filter(function(p){return p.handle||p.name;}).length;
@@ -4521,7 +4566,7 @@ async function openTeamPicker(slot) {
         '<div style="display:flex;align-items:center;gap:6px">'+
           '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:800;color:#fff;text-transform:uppercase">'+esc(team.name)+'</span>'+
           '<span style="font-size:11px;color:var(--accent);letter-spacing:0.12em">'+esc(team.tag||'')+'</span></div>'+
-        '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">'+pc+' players</div>'+
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">'+pc+' players</div>'+ teamDisambigHtml(team, clashKeys) +
       '</div><div style="color:var(--primary);font-size:20px;flex-shrink:0">›</div></div>';
   }).join('');
 }
@@ -4605,6 +4650,7 @@ function renderPoolAddList() {
       '</div>';
     return;
   }
+  const clashKeys = teamClashKeys(candidates);
   listEl.innerHTML = candidates.map(function(t) {
     const logo = t.logo
       ? '<img src="' + esc(t.logo) + '" style="width:44px;height:44px;object-fit:contain;flex-shrink:0">'
@@ -4614,7 +4660,7 @@ function renderPoolAddList() {
       '<div style="flex:1;min-width:0"><div style="display:flex;align-items:center;gap:6px">' +
         '<span style="font-family:\'Barlow Condensed\',sans-serif;font-size:22px;font-weight:800;color:#fff;text-transform:uppercase">' + esc(t.name) + '</span>' +
         '<span style="font-size:11px;color:var(--accent);letter-spacing:0.12em">' + esc(t.tag || '') + '</span></div>' +
-        '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + pc + ' players</div></div>' +
+        '<div style="font-size:11px;color:var(--text-dim);margin-top:2px">' + pc + ' players</div>' + teamDisambigHtml(t, clashKeys) + '</div>' +
       '<div style="color:var(--primary);font-size:18px;flex-shrink:0">+ Add</div></div>';
   }).join('');
 }
@@ -4634,6 +4680,31 @@ function openPoolCreateTeam() {
   closePoolAddModal();
   switchToTab('teams');
   openTeamEditor(null);
+}
+
+// ── Team name-clash disambiguation ───────────────────────────────────────────────
+// When two teams share a name (same game) — e.g. the same team imported from a later
+// season alongside a legacy copy — the on-air name can't distinguish them (it's what airs).
+// So in admin pickers we show a secondary line (roster + "imported" provenance) BUT only for
+// the teams that actually clash, keeping the normal list clean.
+function teamClashKeys(teams) {
+  var c = {}, out = {};
+  (teams || []).forEach(function(t){ var k = (t.name||'').toLowerCase() + '|' + (t.game||''); c[k] = (c[k]||0) + 1; });
+  Object.keys(c).forEach(function(k){ if (c[k] > 1) out[k] = true; });
+  return out;
+}
+function teamDisambigHtml(t, clashKeys) {
+  var key = (t.name||'').toLowerCase() + '|' + (t.game||'');
+  if (!clashKeys || !clashKeys[key]) return '';
+  var hs = (t.players || []).map(function(p){ return p.handle || p.name; }).filter(Boolean);
+  var roster = hs.length ? hs.slice(0, 4).join(', ') + (hs.length > 4 ? '…' : '') : 'no roster';
+  var badge = '';
+  if (t.importedAt || t.importedFrom) {
+    var d = t.importedAt ? new Date(t.importedAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '';
+    var from = t.importedFrom ? " from '" + esc(t.importedFrom) + "'" : '';
+    badge = '<span class="team-imported-badge" title="Imported' + (d ? ' ' + d : '') + esc(from) + '">⬆ IMPORTED' + (d ? ' · ' + d : '') + '</span>';
+  }
+  return '<div class="team-disambig">' + badge + '<span class="team-disambig-roster">' + esc(roster) + '</span></div>';
 }
 
 // ── Utility ────────────────────────────────────────────────────────────────────
@@ -5966,6 +6037,7 @@ function renderProfilesList(profiles) {
           '<button class="btn btn-sm btn-primary" onclick="loadProfile(\'' + p.id + '\')">' + (isActive ? '● Active' : 'Load') + '</button>' +
           (isActive ? '<button class="btn btn-sm' + (isDirty ? ' btn-primary' : '') + '" onclick="updateProfile(\'' + p.id + '\')">Update</button>' : '') +
           '<button class="btn btn-sm" onclick="renameProfileInline(\'' + p.id + '\')">Rename</button>' +
+          '<button class="btn btn-sm" onclick="exportProfile(\'' + p.id + '\',this)" title="Export as a shareable file (setup + teams + logos)">Export</button>' +
           '<button class="btn btn-sm btn-danger" onclick="deleteProfile(\'' + p.id + '\',this)">Delete</button>' +
         '</div>' +
       '</div>' +
