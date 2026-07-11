@@ -106,7 +106,9 @@ function renderGroups(state) {
   if (!container) return;
 
   if (!groups.length) {
-    container.innerHTML = '<div class="gs-empty">No group data</div>';
+    // No data → render nothing (transparent overlay). The operator is warned control-side
+    // via the ctrl-bar "NO DATA" flag; never put placeholder text on air.
+    container.innerHTML = '';
     applyLogoAndMode(state);
     return;
   }
