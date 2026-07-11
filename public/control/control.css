@@ -1934,6 +1934,56 @@ input[type=search]::-webkit-search-decoration { display: none; }
   justify-content: flex-end;
 }
 
+/* ── First-run setup wizard ────────────────────────────────────────────────── */
+.firstrun-overlay {
+  display: none;
+  position: fixed; inset: 0;
+  background: radial-gradient(120% 120% at 50% 0%, rgba(var(--accent-rgb),0.10), rgba(0,0,0,0.82) 60%);
+  backdrop-filter: blur(3px);
+  z-index: 10000;
+  align-items: center; justify-content: center;
+  padding: 24px;
+}
+.firstrun-overlay.active { display: flex; }
+.firstrun-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 30px 32px 28px;
+  width: 460px; max-width: calc(100% - 40px);
+  box-shadow: 0 24px 70px rgba(0,0,0,0.6);
+}
+.firstrun-brand { text-align: center; margin-bottom: 14px; }
+.firstrun-logo { height: 34px; width: auto; opacity: 0.95; }
+.firstrun-dots { display: flex; gap: 7px; justify-content: center; margin-bottom: 20px; }
+.firstrun-dots span { width: 26px; height: 3px; border-radius: 2px; background: var(--border); transition: background .2s; }
+.firstrun-dots span.on   { background: rgba(var(--accent-rgb),0.9); }
+.firstrun-dots span.done { background: rgba(var(--accent-rgb),0.5); }
+.firstrun-h { font-size: 20px; font-weight: 800; letter-spacing: -0.01em; margin: 0 0 6px; color: var(--text); }
+.firstrun-sub { font-size: 13px; line-height: 1.55; color: var(--text-dim, #9aa3ad); margin: 0 0 20px; }
+.firstrun-label { display: block; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-dim, #9aa3ad); margin: 14px 0 6px; }
+.firstrun-input {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg1, var(--bg)); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 10px 12px; font-size: 14px; font-family: inherit;
+}
+.firstrun-input:focus { outline: none; border-color: rgba(var(--accent-rgb),0.7); box-shadow: 0 0 0 3px rgba(var(--accent-rgb),0.12); }
+.firstrun-err { color: #ff8a8a; font-size: 12px; min-height: 16px; margin-top: 8px; }
+.firstrun-actions { margin-top: 20px; display: flex; justify-content: flex-end; }
+.firstrun-btn { min-width: 150px; }
+.firstrun-btn:disabled { opacity: 0.55; cursor: default; }
+.firstrun-games { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.firstrun-game {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  background: var(--bg1, var(--bg)); color: var(--text);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 11px 13px; font-size: 13px; font-weight: 600; cursor: pointer;
+  text-align: left; transition: border-color .15s, background .15s;
+}
+.firstrun-game:hover { border-color: rgba(var(--accent-rgb),0.5); }
+.firstrun-game.sel { border-color: rgba(var(--accent-rgb),0.9); background: rgba(var(--accent-rgb),0.10); box-shadow: 0 0 0 1px rgba(var(--accent-rgb),0.5) inset; }
+
 /* ── Bus tag (ctrl-bar indicator) ──────────────────────────────────────────── */
 .bus-tag {
   font-size: 9px;

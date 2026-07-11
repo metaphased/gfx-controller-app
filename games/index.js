@@ -8,8 +8,8 @@ const cs2     = require('./cs2');
 const dota2   = require('./dota2');
 const generic = require('./generic');
 
-// valorant / r6 (and any unknown id) fall back to the generic adapter until their phase
-// lands. LoL, CS2 and Dota 2 are implemented (Dota 2 is adapter-stage / alpha).
+// valorant (and any unknown id) falls back to the generic adapter until its phase lands.
+// LoL, CS2 and Dota 2 are implemented (Dota 2 is adapter-stage / alpha).
 const ADAPTERS = { lol, cs2, dota2, generic };
 
 function resolveAdapter(gameId) {
@@ -19,13 +19,29 @@ function resolveAdapter(gameId) {
 // Control-room maturity flag (NEVER shown on-air) so operators know how production-ready a
 // title is: 'stable' = battle-tested, 'beta' = shipped + actively hardening, 'alpha' =
 // early / planned. Games picked in the control room that have no dedicated adapter yet
-// (valorant / r6) run on the generic core, so they're flagged 'alpha' here rather than
-// inheriting generic's 'stable'. Keyed by the SELECTED game id. Real adapters (incl. Dota 2,
-// which is alpha) carry their own `maturity`.
-const PLANNED_MATURITY = { valorant: 'alpha', r6: 'alpha' };
+// (valorant) run on the generic core, so they're flagged 'alpha' here rather than inheriting
+// generic's 'stable'. Keyed by the SELECTED game id. Real adapters (incl. Dota 2, which is
+// alpha) carry their own `maturity`.
+const PLANNED_MATURITY = { valorant: 'alpha' };
+// Display labels for planned titles that have no dedicated adapter yet (they run on the
+// generic core). Real adapters carry their own `label`.
+const PLANNED_LABELS = { valorant: 'VALORANT' };
 function gameMaturity(gameId) {
   if (PLANNED_MATURITY[gameId]) return PLANNED_MATURITY[gameId];
   return resolveAdapter(gameId).maturity || 'stable';
+}
+
+// Single source of truth for the selectable game list — implemented adapters first (in
+// registry order), then planned titles, then the generic fallback. Adding a new adapter to
+// ADAPTERS (or a planned id to PLANNED_*) makes it appear everywhere that consumes this
+// (first-run wizard, pickers) with no other change. Each entry: { id, label, maturity }.
+function listGames() {
+  const impl = Object.keys(ADAPTERS)
+    .filter(id => id !== 'generic')
+    .map(id => ({ id, label: ADAPTERS[id].label, maturity: gameMaturity(id) }));
+  const planned = Object.keys(PLANNED_MATURITY)
+    .map(id => ({ id, label: PLANNED_LABELS[id] || id, maturity: gameMaturity(id) }));
+  return [...impl, ...planned, { id: 'generic', label: 'Generic / Other', maturity: gameMaturity('generic') }];
 }
 
 // Lightweight, client-safe slice broadcast in the state payload as `state.adapter`, so
@@ -53,4 +69,4 @@ function adapterDescriptor(gameId) {
   };
 }
 
-module.exports = { resolveAdapter, adapterDescriptor, gameMaturity, ADAPTERS };
+module.exports = { resolveAdapter, adapterDescriptor, gameMaturity, listGames, ADAPTERS };
