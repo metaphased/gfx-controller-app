@@ -237,6 +237,8 @@ app.use('/uploads',  express.static(UPLOADS_DIR));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
 app.use('/heroes',   express.static(path.join(__dirname, 'public', 'heroes'))); // Dota 2 hero art
 app.use('/items',    express.static(path.join(__dirname, 'public', 'items')));  // Dota 2 item icons (match-summary board)
+app.use('/agents',   express.static(path.join(__dirname, 'public', 'agents'))); // VALORANT agent art
+app.use('/valmaps',  express.static(path.join(__dirname, 'public', 'valmaps'))); // VALORANT map art (veto/intro)
 app.use('/fonts',    express.static(path.join(__dirname, 'public', 'fonts')));
 app.use('/shared',   express.static(path.join(__dirname, 'public', 'shared')));  // design tokens — needed by login (pre-auth) too
 
