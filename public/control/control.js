@@ -5459,6 +5459,26 @@ function selectDraftLogo(url) {
   patchSettings({ draftCenterLogoUrl: url });
 }
 
+// Data-driven graphics that render NOTHING on air when they have no data (by design — we
+// keep placeholder text OFF air). We surface a subtle operator-only "NO DATA" flag on the
+// ctrl-bar so a shown-but-empty graphic reads as "working, needs data" not "broken". Only
+// these keys are ever flagged; everything else always has content (teams etc.).
+const _GFX_EMPTY_CHECK = {
+  groupStage: function(s){ return !(s.tournament && s.tournament.groups && s.tournament.groups.length); },
+  bracket:    function(s){ return !(s.bracket && s.bracket.rounds && s.bracket.rounds.length); },
+  prizepool:  function(s){ return !(((s.prizepool && s.prizepool.entries) || []).length); },
+};
+function _graphicIsEmpty(key, s) { const fn = _GFX_EMPTY_CHECK[key]; return fn ? fn(s) : false; }
+function _syncEmptyTag(container, isEmpty) {
+  if (!container) return;
+  container.classList.toggle('is-empty', !!isEmpty);
+  let tag = container.querySelector('.gfx-empty-tag');
+  if (isEmpty) {
+    if (!tag) { tag = document.createElement('span'); tag.className = 'gfx-empty-tag'; tag.textContent = 'NO DATA';
+      tag.title = 'This graphic is shown but has no data yet — it stays blank on air until you add some.'; container.appendChild(tag); }
+  } else if (tag) { tag.remove(); }
+}
+
 function syncGraphicIndicators(s) {
   const buses      = (s.settings && s.settings.buses) || [];
   const busMap     = {};  // graphicKey → bus
@@ -5479,6 +5499,8 @@ function syncGraphicIndicators(s) {
     // Ctrl-bar group
     const ctrlGrp = g('ctrlgrp-' + gfx.key);
     if (ctrlGrp) ctrlGrp.classList.toggle('is-live', !!active);
+    // Operator-only "NO DATA" flag for shown-but-empty data-driven graphics
+    _syncEmptyTag(ctrlGrp, active && _graphicIsEmpty(gfx.key, s));
 
     // Bus tag — injected dynamically inside the ctrlgrp
     if (ctrlGrp) {
@@ -5629,6 +5651,7 @@ function syncLiveBar(s) {
     // Toggle is-on only — rebuilding className here previously wiped cap-* gating classes
     // (e.g. cap-champ-draft on the Draft button), breaking adapter show/hide on the live bar.
     if (toggleB) toggleB.classList.toggle('is-on', !!active);
+    _syncEmptyTag(group, active && _graphicIsEmpty(gfx.key, s));   // NO DATA flag on the live bar
   });
 
   _syncLbarLtSets(s);

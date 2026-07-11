@@ -280,8 +280,10 @@ function renderBracket(state) {
   if (!container) return;
 
   if (!rounds.length) {
+    // No data → render nothing (transparent overlay). The operator is warned control-side
+    // via the ctrl-bar "NO DATA" flag; never put placeholder text on air.
     container.className = '';
-    container.innerHTML = '<div class="bkt-empty">No bracket data</div>';
+    container.innerHTML = '';
     return;
   }
 
