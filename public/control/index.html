@@ -3001,7 +3001,7 @@
             <div id="item-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
           </div>
 
-          <div class="card cap-map-veto" style="margin-bottom:16px">
+          <div class="card cap-cs2maps" style="margin-bottom:16px">
             <div class="card-title">Map Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· CS2</span></div>
             <p class="hint" style="margin-bottom:12px">Downloads map art for the maps in your <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament map pool</a> only — not every CS2 map. Run this if a map's art is missing or outdated (e.g. after a map pool change).</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -3009,6 +3009,16 @@
               <button class="btn btn-primary btn-sm" onclick="syncMapAssets(this)">Download / Update Pool Maps</button>
             </div>
             <div id="map-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
+          </div>
+
+          <div class="card cap-valorant" style="margin-bottom:16px">
+            <div class="card-title">Agent &amp; Map Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· VALORANT</span></div>
+            <p class="hint" style="margin-bottom:12px">Downloads agent portraits + icons and competitive map art from <a href="https://valorant-api.com" target="_blank" rel="noopener" style="color:var(--primary)">valorant-api.com</a> (a free Riot content mirror). Agents feed player intros + the post-game scoreboard; maps feed the veto/intro. Only missing files are fetched.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button class="btn btn-sm" onclick="checkValorant()">Check Status</button>
+              <button class="btn btn-primary btn-sm" onclick="syncValorant()">Sync Missing</button>
+            </div>
+            <div id="valorant-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
           </div>
 
           <!-- Appearance / UI theme (per-user) -->

@@ -56,6 +56,8 @@ function supportsSteamId()  { const a = gameAdapter(); return a ? a.rosterIds ==
 function supportsHltv()     { const a = gameAdapter(); return a ? a.rosterLinks === 'hltv'    : false; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
 function supportsHeroes()   { const a = gameAdapter(); return a ? a.assetSource === 'dota-heroes' : false; }
+function supportsValorant() { const a = gameAdapter(); return a ? a.assetSource === 'valorant'    : false; } // agent + map art sync
+function supportsCs2Maps()  { const a = gameAdapter(); return a ? a.assetSource === 'cs2-maps'    : false; } // CS2 map-art proxy sync (NOT Valorant)
 function supportsLiveData()  { const a = gameAdapter(); return a ? !!a.liveData : false; } // has a GSI feed (CS2, Dota 2)
 function _gfxHidden(key)     { const a = gameAdapter(); return !!(a && (a.hiddenGraphics || []).indexOf(key) >= 0); } // graphic hidden for this game
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
@@ -93,6 +95,8 @@ function applyAdapterUI() {
     'cap-intel':       supportsIntel(),     // any per-player intel provider (opgg or opendota)
     'cap-assets':      supportsAssets(),
     'cap-heroes':      supportsHeroes(),
+    'cap-valorant':    supportsValorant(),   // VALORANT agent + map assets card
+    'cap-cs2maps':     supportsCs2Maps(),     // CS2-only map assets card (map-veto is also Valorant)
     'cap-picks':       hasPickEntity(),
     'cap-roles':       hasRoles(),
     'cap-steamid':     supportsSteamId(),     // Steam-ID roster fields (CS2, Dota — live-data match key)
@@ -5951,6 +5955,32 @@ async function syncItems() {
   if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
   socket.on('assets:progress', _onAssetProgress);
   const res = await api('/api/items/sync', {});
+  socket.off('assets:progress', _onAssetProgress);
+  _assetTargetStates = null;
+  if (!res || res.error) {
+    if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml((res && res.error) || 'Request failed') + '</span>';
+    return;
+  }
+  renderAssetResults(res.results);
+}
+
+// VALORANT assets (agents + maps) — same flow, targeting the VALORANT Assets card.
+async function checkValorant() {
+  _assetStatusElId = 'valorant-asset-status';
+  const el = g(_assetStatusElId);
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Checking…</span>';
+  const res = await api('/api/valorant/check', {});
+  if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
+  renderAssetResults(res.results);
+}
+async function syncValorant() {
+  if (_assetTargetStates !== null) return; // already running
+  _assetStatusElId = 'valorant-asset-status';
+  const el = g(_assetStatusElId);
+  _assetTargetStates = {};
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
+  socket.on('assets:progress', _onAssetProgress);
+  const res = await api('/api/valorant/sync', {});
   socket.off('assets:progress', _onAssetProgress);
   _assetTargetStates = null;
   if (!res || res.error) {
