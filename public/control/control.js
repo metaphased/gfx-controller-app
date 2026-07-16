@@ -101,6 +101,9 @@ function applyAdapterUI() {
     // character draft = a champion OR hero pick/ban (LoL + Dota, NOT CS2's map pickEntity) — for
     // shared graphics that show drafted characters (e.g. win-screen picks).
     'cap-char-draft':  isChampDraft() || isHeroDraft(),
+    // win-screen "comp" feature — any game with characters to showcase on the win screen:
+    // LoL champ picks, Dota hero picks, or VALORANT per-player agents.
+    'cap-win-comp':    isChampDraft() || isHeroDraft() || supportsValorant(),
     'cap-live-data':   supportsLiveData(),   // games with a GSI live feed (CS2, Dota 2)
     'cap-opgg':        supportsOpgg(),
     'cap-opendota':    supportsOpenDota(),
@@ -3386,7 +3389,8 @@ function syncWinTab(ws, match) {
   // is reset). Both draft games get the full card — gating this on champ-draft
   // only used to force the checkbox off for Dota every sync, so the toggle
   // looked dead while the overlay (ungated) kept showing the heroes.
-  const draftGame = isChampDraft() || isHeroDraft();
+  // "Has a win-screen comp to show": LoL champ picks, Dota hero picks, or VALORANT agents.
+  const draftGame = isChampDraft() || isHeroDraft() || supportsValorant();
   const showPicks = draftGame && !!ws.showPicks;
   const spChk = g('win-showpicks'); if (spChk) spChk.checked = showPicks;
   const posRow = g('win-picks-pos-row'); if (posRow) posRow.style.display = showPicks ? 'flex' : 'none';
@@ -3469,10 +3473,45 @@ function renderWinHeroPicksPreview(ws, match, el) {
     '<div class="wpp-row">' + tiles + '</div>';
 }
 
+// VALORANT preview: the win screen draws the winning roster's manually-assigned agents
+// (win.js valMode), read from the current roster — mirror that here so the operator sees
+// exactly which agents will appear.
+function renderWinAgentPicksPreview(ws, match, el) {
+  const winner   = (ws && ws.team) || 'team1';
+  const t        = (match && match[winner]) || {};
+  const winLabel = t.tag || t.name || (winner === 'team1' ? 'Team 1' : 'Team 2');
+  const players  = ((window._state && window._state.players) || {})[winner] || [];
+  const picks    = players.filter(function (p) { return p && p.agent; }).slice(0, 5)
+                          .map(function (p) { return { handle: p.handle || '', agent: p.agent }; });
+
+  if (!_sfp('winPicksPreview', { w: winner, l: winLabel, a: picks.map(function (p) { return p.agent + '|' + p.handle; }), st: ws && ws.style, sp: !!(ws && ws.showPicks) })) return;
+
+  if (!picks.length) {
+    el.innerHTML = '<div class="wpp-warn">No agents assigned for <strong>' + escHtml(winLabel) +
+      '</strong> yet — the picks row will be empty. Assign each player an agent in the ' +
+      '<a onclick="switchToTab(\'players\')" href="#" style="color:var(--primary)">Players / Rosters</a> panel.</div>';
+    return;
+  }
+  let tiles = '';
+  for (let i = 0; i < 5; i++) {
+    const p = picks[i];
+    const slug = p ? String(p.agent).toLowerCase().replace(/[^a-z0-9]+/g, '') : '';
+    const url  = slug ? '/agents/icons/' + slug + '.png' : '';
+    tiles += '<div class="wpp-pick">' +
+      (url ? '<div class="wpp-img" style="background-image:url(' + escHtml(url) + ')"></div>'
+           : '<div class="wpp-img wpp-empty"></div>') +
+      '<div class="wpp-handle">' + escHtml((p && p.handle) || '—') + '</div></div>';
+  }
+  el.innerHTML =
+    '<div class="wpp-head">' + escHtml(winLabel) + ' — these agents will appear (from the current roster)</div>' +
+    '<div class="wpp-row">' + tiles + '</div>';
+}
+
 // Show the operator exactly which champions + players the win screen will draw,
 // and from which game — so a wrong/missing comp is caught before going on air.
 function renderWinPicksPreview(ws, match) {
   const el = g('win-picks-preview'); if (!el) return;
+  if (typeof supportsValorant === 'function' && supportsValorant()) return renderWinAgentPicksPreview(ws, match, el);
   if (typeof isHeroDraft === 'function' && isHeroDraft()) return renderWinHeroPicksPreview(ws, match, el);
   const winner   = (ws && ws.team) || 'team1';
   const tk       = winner === 'team2' ? 't2' : 't1';   // seriesGames stores picks as t1/t2RolePicks

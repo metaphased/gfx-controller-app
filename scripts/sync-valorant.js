@@ -96,6 +96,29 @@ async function buildBusts() {
   return { built };
 }
 
+// Derive a TIGHT full-body crop from each portrait — the raw full portraits are a near-square
+// canvas with the character centred and lots of transparent margin, so a tall showcase frame
+// (win screen) center-crops and clips wide poses/ability FX. Trimming to the character's own
+// bounding box lets the graphic show the whole agent (object-fit:contain) with no clipping and
+// at full size. Needs sharp; skips files that already have a crop.
+const FULL_DIR = path.join(AGENT_DIR, 'full');
+async function buildFull() {
+  if (!sharp) return { built: 0, skipped: 'no sharp' };
+  fs.mkdirSync(FULL_DIR, { recursive: true });
+  const pngs = fs.existsSync(AGENT_DIR) ? fs.readdirSync(AGENT_DIR).filter(f => f.toLowerCase().endsWith('.png')) : [];
+  let built = 0;
+  for (const f of pngs) {
+    const dest = path.join(FULL_DIR, f.replace(/\.png$/i, '.webp'));
+    if (fs.existsSync(dest)) continue;
+    try {
+      await sharp(path.join(AGENT_DIR, f)).trim({ threshold: 10 })
+        .resize({ height: 1000, withoutEnlargement: true }).webp({ quality: 90 }).toFile(dest);
+      built++;
+    } catch (e) { /* skip a bad portrait */ }
+  }
+  return { built };
+}
+
 // Targets mirror sync-heroes/sync-assets (label/key + progress) so the sync UI reads the same.
 const TARGET_DEFS = [
   { key: 'agents',      label: 'Agent portraits (intros)',   dir: AGENT_DIR,      ext: '.png',  list: agentList, pick: a => ({ name: a.slug + '.png', url: a.portraitUrl }) },
@@ -135,7 +158,7 @@ function writeManifests(agents, maps) {
 async function syncAll(opts = {}) {
   const results = [];
   for (const def of TARGET_DEFS) results.push(await syncTarget(def, opts));
-  if (!opts.dryRun) { await buildBusts(); writeManifests(await agentList(), await mapList()); }
+  if (!opts.dryRun) { await buildBusts(); await buildFull(); writeManifests(await agentList(), await mapList()); }
   return results;
 }
 async function syncTargetByKey(key, opts = {}) {
@@ -144,7 +167,7 @@ async function syncTargetByKey(key, opts = {}) {
   return syncTarget(def, opts);
 }
 
-module.exports = { syncAll, syncTargetByKey, buildBusts, TARGETS, writeManifests, agentList, mapList,
+module.exports = { syncAll, syncTargetByKey, buildBusts, buildFull, TARGETS, writeManifests, agentList, mapList,
   AGENT_MANIFEST, MAP_MANIFEST, AGENT_DIR, MAP_DIR };
 
 // ── Standalone entry point ──────────────────────────────────────────────────────

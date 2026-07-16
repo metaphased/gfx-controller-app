@@ -2608,10 +2608,11 @@
             </div>
           </div>
 
-          <div class="card cap-char-draft">
+          <div class="card cap-win-comp">
             <div class="card-title">Winning Draft Picks</div>
             <p class="hint cap-champ-draft" style="margin-bottom:8px">Shows the winning team's champion picks from the game they won. The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
             <p class="hint cap-hero-draft" style="margin-bottom:8px;display:none">Shows the winning team's drafted <strong>heroes</strong> (from the current Captains Mode draft). The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
+            <p class="hint cap-valorant" style="margin-bottom:8px;display:none">Shows the winning team's <strong>agents</strong> as full-body portraits (from each player's assigned agent). The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
               <input type="checkbox" id="win-showpicks" onchange="patchWin({showPicks:this.checked})">
               <span>Show winning draft picks on full-screen styles</span>
@@ -2768,9 +2769,9 @@
               </div>
             </label>
 
-            <div class="win-style-group-label cap-char-draft">Draft Comp</div>
+            <div class="win-style-group-label cap-win-comp">Draft Comp</div>
 
-            <label class="win-style-option cap-char-draft" id="win-style-comp">
+            <label class="win-style-option cap-win-comp" id="win-style-comp">
               <input type="radio" name="win-style" value="comp" onchange="patchWin({style:'comp'})">
               <div class="win-style-preview win-preview-comp">
                 <div class="win-preview-comp-head"></div>
@@ -2782,6 +2783,7 @@
                 <div class="win-style-name">COMP</div>
                 <div class="win-style-desc cap-champ-draft">Full-screen showcase of the winning team's champion picks + players. Needs a recorded game.</div>
                 <div class="win-style-desc cap-hero-draft" style="display:none">Full-screen showcase of the winning team's drafted heroes (from the current Captains Mode draft).</div>
+                <div class="win-style-desc cap-valorant" style="display:none">Full-screen showcase of the winning team's agents as full-body portraits (from each player's assigned agent).</div>
               </div>
             </label>
           </div>

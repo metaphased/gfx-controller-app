@@ -3689,6 +3689,7 @@ app.post('/api/valorant/sync', requireAdmin, async (req, res) => {
       results.push(result);
     }
     await valorantSync.buildBusts();   // derive player-intro head+shoulders busts from portraits
+    await valorantSync.buildFull();    // derive tight full-body crops for the win-screen showcase
     valorantSync.writeManifests(await valorantSync.agentList(), await valorantSync.mapList());
     res.json({ ok: true, results });
   } catch (e) {
