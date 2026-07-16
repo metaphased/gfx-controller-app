@@ -315,6 +315,12 @@ function agentSlug(name) { return String(name || '').toLowerCase().replace(/[^a-
 function agentImgUrl(name)  { var s = agentSlug(name); return s ? '/agents/bust/' + s + '.webp' : ''; }     // head+torso bust crop (fills the row well)
 function agentIconUrl(name) { var s = agentSlug(name); return s ? '/agents/icons/' + s + '.png' : ''; }   // small headshot icon
 
+// Some agents have big overhead elements in their portrait (a raised weapon, ability FX,
+// grenade) so their face sits low — nudge those up (% of the bust's own height) so more of
+// the character/face shows. Most agents need nothing. Slugs match the synced art.
+var AGENT_NUDGE = { raze: 15, clove: 9, neon: 11, harbor: 8, astra: 12, reyna: 9, skye: 9,
+  iso: 8, vyse: 8, brimstone: 7, waylay: 6, kayo: 5, phoenix: 4 };
+
 // Big agent portrait filling the row toward the centre divider — the VALORANT equivalent of
 // the champion splash strip (same H2H-card feel), fading toward the name so the handle stays
 // legible. One agent per player (no draft pool). Reuses the champ-strip container + sizing.
@@ -324,8 +330,10 @@ function agentStripHtml(agentName, side, layout) {
   var mask = isRight
     ? 'linear-gradient(to right, #000 0%, #000 48%, transparent 94%)'
     : 'linear-gradient(to right, transparent 6%, #000 52%, #000 100%)';
+  var nudge = AGENT_NUDGE[agentSlug(agentName)] || 0;
+  var tf = nudge ? ';transform:translateY(-' + nudge + '%)' : '';
   var wrap = 'pi-champstrip pi-agentstrip pi-champstrip-' + (layout || 'panel') + (isRight ? ' pi-champstrip-right' : '');
-  return '<span class="' + wrap + '"><img class="pi-champ-img pi-agent-portrait" decoding="async" src="' + url + '" style="-webkit-mask-image:' + mask + ';mask-image:' + mask + '"></span>';
+  return '<span class="' + wrap + '"><img class="pi-champ-img pi-agent-portrait" decoding="async" src="' + url + '" style="-webkit-mask-image:' + mask + ';mask-image:' + mask + tf + '"></span>';
 }
 
 function buildPanelRowHtml(player, roleKey, side, showRank, showChamps, csLine) {
