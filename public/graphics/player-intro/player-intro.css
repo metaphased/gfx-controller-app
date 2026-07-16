@@ -133,12 +133,17 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   filter: brightness(0) invert(1);
   opacity: 0.4;
 }
-/* VALORANT agent icon reuses the role-icon slot but is a full-colour agent portrait, so it
-   drops the monochrome flatten + low opacity and reads a touch larger. */
-.pi-agent-icon {
-  filter: none !important;
-  opacity: 1 !important;
-  width: 4.8vh !important; height: 4.8vh !important;
+/* VALORANT agent portrait — the champion-splash strip's big-image treatment, but a single
+   full-body agent render. object-position favours the upper body so the face reads in the
+   short row; a touch wider than the champ strip so the agent has real presence. */
+.pi-agentstrip.pi-champstrip-panel { width: 70%; }
+.pi-agentstrip.pi-champstrip-stack { width: 66%; }
+.pi-agentstrip.pi-champstrip-bar   { width: 60%; }
+.pi-agentstrip .pi-agent-portrait {
+  width: 100%;
+  object-fit: cover;
+  object-position: center top;   /* bust is already framed to head+shoulders */
+  filter: saturate(1.05) brightness(0.92);
 }
 
 /* ── Champion strip (top-3 most-played, blended splash crops) ─────────────────

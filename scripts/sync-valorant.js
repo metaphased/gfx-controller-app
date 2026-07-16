@@ -67,6 +67,30 @@ async function downloadFile(url, dest, toWebp) {
   else fs.writeFileSync(dest, buf);
 }
 
+// Derive a head+shoulders bust from each full agent portrait — the full portraits are tall
+// full-body renders that don't read in the compact player-intro rows, so we trim to the
+// character and take the top ~55% (head+torso), re-framed square. Used by the Player Intro
+// agent strip. Needs sharp; skips files that already have a bust.
+const BUST_DIR = path.join(AGENT_DIR, 'bust');
+async function buildBusts() {
+  if (!sharp) return { built: 0, skipped: 'no sharp' };
+  fs.mkdirSync(BUST_DIR, { recursive: true });
+  const pngs = fs.existsSync(AGENT_DIR) ? fs.readdirSync(AGENT_DIR).filter(f => f.toLowerCase().endsWith('.png')) : [];
+  let built = 0;
+  for (const f of pngs) {
+    const dest = path.join(BUST_DIR, f.replace(/\.png$/i, '.webp'));
+    if (fs.existsSync(dest)) continue;
+    try {
+      const { data, info } = await sharp(path.join(AGENT_DIR, f)).trim({ threshold: 10 }).toBuffer({ resolveWithObject: true });
+      const cropH = Math.round(info.height * 0.55);
+      const head = await sharp(data).extract({ left: 0, top: 0, width: info.width, height: cropH }).toBuffer();
+      await sharp(head).resize({ width: 512, height: 512, fit: 'cover', position: 'top' }).webp({ quality: 90 }).toFile(dest);
+      built++;
+    } catch (e) { /* skip a bad portrait */ }
+  }
+  return { built };
+}
+
 // Targets mirror sync-heroes/sync-assets (label/key + progress) so the sync UI reads the same.
 const TARGET_DEFS = [
   { key: 'agents',      label: 'Agent portraits (intros)',   dir: AGENT_DIR,      ext: '.png',  list: agentList, pick: a => ({ name: a.slug + '.png', url: a.portraitUrl }) },
@@ -106,7 +130,7 @@ function writeManifests(agents, maps) {
 async function syncAll(opts = {}) {
   const results = [];
   for (const def of TARGET_DEFS) results.push(await syncTarget(def, opts));
-  if (!opts.dryRun) writeManifests(await agentList(), await mapList());
+  if (!opts.dryRun) { await buildBusts(); writeManifests(await agentList(), await mapList()); }
   return results;
 }
 async function syncTargetByKey(key, opts = {}) {
@@ -115,7 +139,7 @@ async function syncTargetByKey(key, opts = {}) {
   return syncTarget(def, opts);
 }
 
-module.exports = { syncAll, syncTargetByKey, TARGETS, writeManifests, agentList, mapList,
+module.exports = { syncAll, syncTargetByKey, buildBusts, TARGETS, writeManifests, agentList, mapList,
   AGENT_MANIFEST, MAP_MANIFEST, AGENT_DIR, MAP_DIR };
 
 // ── Standalone entry point ──────────────────────────────────────────────────────

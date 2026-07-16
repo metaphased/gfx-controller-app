@@ -312,10 +312,20 @@ function champStripHtml(champPool, side, layout) {
 var _piVal = false;   // set per render — true when the tournament game is VALORANT
 function piIsValorant(state) { var a = state.adapter || {}; return a.assetSource === 'valorant' || (state.match || {}).game === 'valorant'; }
 function agentSlug(name) { return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
-function agentIconUrl(name) { var s = agentSlug(name); return s ? '/agents/icons/' + s + '.png' : ''; }
-function agentIconHtml(name, cls) {
-  var url = agentIconUrl(name); if (!url) return '';
-  return '<span class="' + (cls || 'pi-pnl-role-icon') + ' pi-agent-icon" style="background-image:url(' + url + ')"></span>';
+function agentImgUrl(name)  { var s = agentSlug(name); return s ? '/agents/bust/' + s + '.webp' : ''; }     // head+torso bust crop (fills the row well)
+function agentIconUrl(name) { var s = agentSlug(name); return s ? '/agents/icons/' + s + '.png' : ''; }   // small headshot icon
+
+// Big agent portrait filling the row toward the centre divider — the VALORANT equivalent of
+// the champion splash strip (same H2H-card feel), fading toward the name so the handle stays
+// legible. One agent per player (no draft pool). Reuses the champ-strip container + sizing.
+function agentStripHtml(agentName, side, layout) {
+  var url = agentImgUrl(agentName); if (!url) return '';
+  var isRight = side === 'right';
+  var mask = isRight
+    ? 'linear-gradient(to right, #000 0%, #000 48%, transparent 94%)'
+    : 'linear-gradient(to right, transparent 6%, #000 52%, #000 100%)';
+  var wrap = 'pi-champstrip pi-agentstrip pi-champstrip-' + (layout || 'panel') + (isRight ? ' pi-champstrip-right' : '');
+  return '<span class="' + wrap + '"><img class="pi-champ-img pi-agent-portrait" decoding="async" src="' + url + '" style="-webkit-mask-image:' + mask + ';mask-image:' + mask + '"></span>';
 }
 
 function buildPanelRowHtml(player, roleKey, side, showRank, showChamps, csLine) {
@@ -326,9 +336,8 @@ function buildPanelRowHtml(player, roleKey, side, showRank, showChamps, csLine) 
   var isRight = side === 'right';
   var rowCls  = 'pi-pnl-row' + (isRight ? ' pi-pnl-row-right' : '');
 
-  var strip  = (showChamps && !_piVal) ? champStripHtml(player.champPool, side, 'panel') : '';
-  var roleEl = _piVal ? agentIconHtml(player.agent)
-             : (roleKey ? '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>' : '');
+  var strip  = showChamps ? (_piVal ? agentStripHtml(player.agent, side, 'panel') : champStripHtml(player.champPool, side, 'panel')) : '';
+  var roleEl = _piVal ? '' : (roleKey ? '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>' : '');
   var textEl = (
     '<span class="pi-pnl-text">' +
       '<span class="pi-pnl-handle">' + esc(handle) + '</span>' +
@@ -397,9 +406,8 @@ function buildStackPlayerHtml(player, roleKey, showRank, showChamps, side, csLin
   var icon      = ROLE_ICONS[roleKey] || '';
   var rank      = showRank   ? rankText(player.rank || null) : '';
 
-  var strip = (showChamps && !_piVal) ? champStripHtml(player.champPool, side, 'stack') : '';
-  var roleEl = _piVal ? agentIconHtml(player.agent, 'pi-stk-role')
-             : (roleKey ? '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' : '');
+  var strip = showChamps ? (_piVal ? agentStripHtml(player.agent, side, 'stack') : champStripHtml(player.champPool, side, 'stack')) : '';
+  var roleEl = _piVal ? '' : (roleKey ? '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' : '');
   return (
     '<div class="pi-stk-player">' +
       strip +

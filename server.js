@@ -3688,6 +3688,7 @@ app.post('/api/valorant/sync', requireAdmin, async (req, res) => {
       io.emit('assets:progress', { phase: 'done', key: target.key, result });
       results.push(result);
     }
+    await valorantSync.buildBusts();   // derive player-intro head+shoulders busts from portraits
     valorantSync.writeManifests(await valorantSync.agentList(), await valorantSync.mapList());
     res.json({ ok: true, results });
   } catch (e) {
