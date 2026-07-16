@@ -314,6 +314,7 @@ function piIsValorant(state) { var a = state.adapter || {}; return a.assetSource
 function agentSlug(name) { return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
 function agentImgUrl(name)  { var s = agentSlug(name); return s ? '/agents/bust/' + s + '.webp' : ''; }     // head+torso bust crop (fills the row well)
 function agentIconUrl(name) { var s = agentSlug(name); return s ? '/agents/icons/' + s + '.png' : ''; }   // small headshot icon
+function agentPortraitUrl(name) { var s = agentSlug(name); return s ? '/agents/' + s + '.png' : ''; }     // full-body portrait (Agent Cards layout)
 
 // Some agents have big overhead elements in their portrait (a raised weapon, ability FX,
 // grenade) so their face sits low — nudge those up (% of the bust's own height) so more of
@@ -562,6 +563,67 @@ function renderBar(state) {
   if (t2NameEl) fitText(t2NameEl, maxBarNamePx, minBarNamePx, t2NameEl.querySelector('span'));
 }
 
+// ── Layout: Agent Cards (VALORANT) ────────────────────────────────────────────
+// A full-screen "hero shot" layout — each team's five agents as tall portrait cards
+// (full-body art, not the row bust) clustered LEFT / RIGHT with VS in the centre, in the
+// same card language as the Map Veto board. Valorant-only (needs one agent per player);
+// falls back to the Nameplate panel for any other game (no wired portrait art).
+function buildAgentCardHtml(player, i) {
+  var handle = player.handle || '';
+  var agent  = player.agent || '';
+  var url    = agentPortraitUrl(agent);
+  var portrait = url ? '<img class="pi-ac-portrait" decoding="async" src="' + url + '" alt="">' : '';
+  return (
+    '<div class="pi-ac-card" style="--i:' + i + '">' +
+      portrait +
+      '<div class="pi-ac-scrim"></div>' +
+      '<div class="pi-ac-foot">' +
+        '<span class="pi-ac-handle">' + esc(handle) + '</span>' +
+        (agent ? '<span class="pi-ac-agent">' + esc(agent) + '</span>' : '') +
+      '</div>' +
+    '</div>'
+  );
+}
+
+function renderAgentCards(state) {
+  var match     = state.match || {};
+  var pi        = state.playerIntro || {};
+  var t1        = match.team1 || {};
+  var t2        = match.team2 || {};
+  var t1Players = (state.players && state.players.team1) || [];
+  var t2Players = (state.players && state.players.team2) || [];
+  var showLogo  = pi.showLogo !== false;
+
+  var t1El = $('pi-ac-t1'), t2El = $('pi-ac-t2');
+  if (t1El) t1El.style.setProperty('--team-color', 'var(--gfx-blue)');
+  if (t2El) t2El.style.setProperty('--team-color', 'var(--gfx-red)');
+
+  setBg('pi-ac-t1-logo', t1.logo);
+  setBg('pi-ac-t2-logo', t2.logo);
+  setTxt('pi-ac-t1-name', t1.name || t1.tag || '');
+  setTxt('pi-ac-t2-name', t2.name || t2.tag || '');
+
+  var maxNamePx = Math.round(window.innerHeight * 0.05);
+  fitText($('pi-ac-t1-name'), maxNamePx, Math.round(maxNamePx * 0.4));
+  fitText($('pi-ac-t2-name'), maxNamePx, Math.round(maxNamePx * 0.4));
+
+  setLogoOrVs($('pi-ac-centre-img'), $('pi-ac-vs'), showLogo ? getCentreLogo(state) : '');
+
+  function fillCards(elId, players) {
+    var el = $(elId);
+    if (!el) return;
+    var rows = piSlots(state, players).map(function(sl) { return sl.player; });
+    var key = rows.map(function(p) { return [p.handle || '', p.agent || ''].join(':'); }).join('|');
+    if (el.dataset.key !== key) {
+      el.dataset.key = key;
+      el.innerHTML = rows.map(buildAgentCardHtml).join('');
+    }
+  }
+
+  fillCards('pi-ac-t1-cards', t1Players);
+  fillCards('pi-ac-t2-cards', t2Players);
+}
+
 // ── Render dispatch ───────────────────────────────────────────────────────────
 function renderAll(state) {
   var pi     = state.playerIntro || {};
@@ -569,15 +631,20 @@ function renderAll(state) {
   var root   = $('pi-root');
   if (!root) return;
 
+  // Agent Cards needs Valorant's per-player agent art — for any other game there's no
+  // wired portrait, so fall back to the Nameplate panel rather than show empty cards.
+  if (layout === 'agentcards' && !piIsValorant(state)) layout = 'panel';
+
   if (root.dataset.layout !== layout) {
     root.dataset.layout = layout;
-    root.classList.remove('layout-panel', 'layout-stack', 'layout-bar');
+    root.classList.remove('layout-panel', 'layout-stack', 'layout-bar', 'layout-agentcards');
     root.classList.add('layout-' + layout);
   }
 
-  if      (layout === 'stack') renderStack(state);
-  else if (layout === 'bar')   renderBar(state);
-  else                         renderPanel(state);
+  if      (layout === 'stack')      renderStack(state);
+  else if (layout === 'bar')        renderBar(state);
+  else if (layout === 'agentcards') renderAgentCards(state);
+  else                              renderPanel(state);
 }
 
 // ── Background ────────────────────────────────────────────────────────────────
@@ -611,6 +678,11 @@ function refitNames() {
     var t1El = $('pi-bar-t1-team-name'), t2El = $('pi-bar-t2-team-name');
     if (t1El) fitText(t1El, maxBarPx, minBarPx, t1El.querySelector('span'));
     if (t2El) fitText(t2El, maxBarPx, minBarPx, t2El.querySelector('span'));
+  } else if (layout === 'agentcards') {
+    var maxAcPx = Math.round(window.innerHeight * 0.05);
+    var minAcPx = Math.round(maxAcPx * 0.4);
+    fitText($('pi-ac-t1-name'), maxAcPx, minAcPx);
+    fitText($('pi-ac-t2-name'), maxAcPx, minAcPx);
   }
 }
 
@@ -629,7 +701,7 @@ socket.on('state', function(state) {
 
   if (root) {
     var layout = pi.layout || 'panel';
-    var defaultAnim = layout === 'stack' ? 'split' : layout === 'bar' ? 'slide' : 'rise';
+    var defaultAnim = layout === 'stack' ? 'split' : layout === 'bar' ? 'slide' : layout === 'agentcards' ? 'rise' : 'rise';
     var anim = pi.animVariant || defaultAnim;
     var animClass = 'anim-' + anim;
     if (!root.classList.contains(animClass)) {

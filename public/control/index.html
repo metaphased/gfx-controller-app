@@ -1281,6 +1281,7 @@
             <button id="pi-layout-panel" class="btn btn-sm btn-active-gfx" onclick="setPlayerIntroLayout('panel')">Nameplate</button>
             <button id="pi-layout-stack" class="btn btn-sm btn-dim"        onclick="setPlayerIntroLayout('stack')">Team Stack</button>
             <button id="pi-layout-bar"   class="btn btn-sm btn-dim"        onclick="setPlayerIntroLayout('bar')">Bar</button>
+            <button id="pi-layout-agentcards" class="btn btn-sm btn-dim cap-valorant" onclick="setPlayerIntroLayout('agentcards')">Agent Cards</button>
           </div>
         </div>
         <div class="gfx-ctrl-row">
@@ -1316,7 +1317,7 @@
         <div class="ps-col">
           <div class="card">
             <div class="card-title">About Player Intro</div>
-            <p class="hint">Pre-series graphic introducing both rosters. Three layouts: <strong>Nameplate</strong> (centred overlay panel), <strong>Team Stack</strong> (full-screen left/right split), <strong>Bar</strong> (bottom-anchored band).</p>
+            <p class="hint">Pre-series graphic introducing both rosters. Layouts: <strong>Nameplate</strong> (centred overlay panel), <strong>Team Stack</strong> (full-screen left/right split), <strong>Bar</strong> (bottom-anchored band)<span class="cap-valorant">, and <strong>Agent Cards</strong> (full-screen tall agent-portrait cards, VALORANT only)</span>.</p>
             <p class="hint cap-champ-draft" style="margin-top:8px">Rank and champion data are optional — fetch them first in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel. Champs blends each player's <strong>top 3 most-played</strong> champions along their row (Nameplate &amp; Team Stack); players with no data fall back to a clean name. The Bar layout is always name-only. Disable to keep the focus on player names everywhere.</p>
           </div>
         </div>

@@ -14,13 +14,15 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* ── Layout visibility switch ─────────────────────────────────────────────── */
 .pi-layout { display: none; }
-#pi-root.layout-panel .pi-panel { display: flex; }
-#pi-root.layout-stack .pi-stack { display: flex; }
-#pi-root.layout-bar   .pi-bar   { display: flex; }
+#pi-root.layout-panel      .pi-panel      { display: flex; }
+#pi-root.layout-stack      .pi-stack      { display: flex; }
+#pi-root.layout-bar        .pi-bar        { display: flex; }
+#pi-root.layout-agentcards .pi-agentcards { display: flex; }
 
 .pi-panel { width: 100%; height: 100%; align-items: center; justify-content: center; }
 .pi-stack { width: 100%; height: 100%; flex-direction: row; }
 .pi-bar   { width: 100%; height: 100%; align-items: flex-end; }
+.pi-agentcards { width: 100%; height: 100%; flex-direction: row; align-items: center; justify-content: center; gap: 1.2vw; padding: 0 2.5vw; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    LAYOUT: NAMEPLATE PANEL
@@ -499,6 +501,130 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   LAYOUT: AGENT CARDS (VALORANT, full-screen)
+   Two clusters of five tall portrait cards flanking a centre VS, in the same card
+   language as the Map Veto board (dark card, ken-burns-free still, bottom scrim,
+   team-colour accent). Full-body agent art fills each card vertically.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pi-ac-cluster {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 1.8vh;
+}
+
+.pi-ac-header {
+  display: flex;
+  align-items: center;
+  gap: 1.4vw;
+  height: 8vh;
+  padding: 0 0.4vw;
+}
+.pi-ac-t2 .pi-ac-header { flex-direction: row-reverse; }
+
+.pi-ac-logo {
+  width: 7vh; height: 7vh;
+  flex-shrink: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.pi-ac-team-name {
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-size: 5vh; font-weight: 900;
+  letter-spacing: 0.04em; text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--gfx-c3, #fff);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.pi-ac-t2 .pi-ac-team-name { text-align: right; }
+
+.pi-ac-cards { display: flex; gap: 0.55vw; }
+.pi-ac-t2 .pi-ac-cards { flex-direction: row-reverse; }   /* mirror so cards read outward from the VS */
+
+.pi-ac-card {
+  position: relative;
+  width: 7.6vw;
+  height: 66vh;
+  overflow: hidden;
+  border-radius: var(--gfx-radius, 4px);
+  background: var(--gfx-panel-bg, linear-gradient(180deg, rgba(20,28,38,.92), rgba(8,12,18,.96)));
+  border: 1px solid var(--gfx-panel-border, rgba(255, 255, 255,0.10));
+  border-bottom: 3px solid var(--team-color, var(--gfx-c1));
+  box-shadow: 0 12px 34px rgba(0,0,0,.45);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* Full-body portrait fills the card vertically; the character sits centred in a nearly
+   square source canvas, so a cover crop to this tall/narrow card keeps the whole body
+   top-to-bottom and trims the empty side margins. */
+.pi-ac-portrait {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  object-position: center 22%;
+  filter: saturate(1.05) brightness(0.95);
+}
+
+.pi-ac-scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(6,10,15,.05) 44%, rgba(6,10,15,.55) 68%, rgba(6,10,15,.95) 100%);
+}
+
+.pi-ac-foot {
+  position: relative; z-index: 2;
+  padding: 0 0.7vw 1.4vh;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2vh;
+}
+
+.pi-ac-handle {
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-size: 2.7vh; font-weight: 900;
+  letter-spacing: 0.02em; text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--gfx-c3, #fff);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pi-ac-agent {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.5vh; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--team-color, var(--gfx-c1));
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* Centre VS column — sits between the two card clusters. */
+.pi-ac-centre {
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.6vw;
+}
+.pi-ac-centre img { max-height: 7vh; max-width: 8vw; object-fit: contain; }
+
+.pi-ac-vs {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 3.4vh; font-weight: 900;
+  letter-spacing: 0.18em; text-transform: var(--gfx-text-transform, uppercase);
+  color: rgba(255, 255, 255,0.32);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    KEYFRAMES
    ═══════════════════════════════════════════════════════════════════════════ */
 @keyframes pi-rise    { from { transform: translateY(22px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -584,3 +710,29 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* ── Fade: cancel slide ─────────────────────────────────────────────────── */
 #pi-root.layout-bar.anim-fade.pi-entering .pi-bar-band { animation: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   AGENT CARDS ANIMATIONS
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Rise (default): headers rise, cards rise with a per-card stagger ─────── */
+#pi-root.layout-agentcards.pi-entering .pi-ac-header {
+  animation: pi-rise calc(0.42s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
+}
+#pi-root.layout-agentcards.pi-entering .pi-ac-card {
+  animation: pi-rise calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
+  animation-delay: calc((0.12s + var(--i, 0) * 0.06s) * var(--gfx-dur-scale, 1));
+}
+
+/* ── Split: clusters slide in from their own edge (cards ride along) ──────── */
+#pi-root.layout-agentcards.anim-split.pi-entering .pi-ac-card { animation: none; }
+#pi-root.layout-agentcards.anim-split.pi-entering .pi-ac-t1 {
+  animation: pi-in-l calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
+}
+#pi-root.layout-agentcards.anim-split.pi-entering .pi-ac-t2 {
+  animation: pi-in-r calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
+}
+
+/* ── Fade: root opacity handles it; cancel card/cluster movement ──────────── */
+#pi-root.layout-agentcards.anim-fade.pi-entering .pi-ac-header,
+#pi-root.layout-agentcards.anim-fade.pi-entering .pi-ac-card { animation: none; }

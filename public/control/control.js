@@ -2826,12 +2826,17 @@ const PI_ANIMS = {
   panel: [['rise', 'Rise'], ['stagger', 'Stagger'], ['fade', 'Fade']],
   stack: [['split', 'Split'], ['rise', 'Rise'], ['fade', 'Fade']],
   bar:   [['slide', 'Slide'], ['fade', 'Fade']],
+  agentcards: [['rise', 'Rise'], ['split', 'Split'], ['fade', 'Fade']],
 };
 
 function syncPlayerIntroLayoutBtns(layout) {
-  ['panel', 'stack', 'bar'].forEach(function(id) {
+  ['panel', 'stack', 'bar', 'agentcards'].forEach(function(id) {
     const btn = g('pi-layout-' + id);
-    if (btn) btn.className = 'btn btn-sm ' + (layout === id ? 'btn-active-gfx' : 'btn-dim');
+    if (!btn) return;
+    // Toggle only the active/dim state — never rewrite className, or cap-valorant (the
+    // Agent Cards gate) would be stripped before applyAdapterUI can hide the button.
+    btn.classList.remove('btn-active-gfx', 'btn-dim');
+    btn.classList.add(layout === id ? 'btn-active-gfx' : 'btn-dim');
   });
   const opacityGrp = g('pi-bar-opacity-group');
   if (opacityGrp) opacityGrp.style.display = layout === 'bar' ? '' : 'none';
