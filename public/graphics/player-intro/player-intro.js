@@ -305,6 +305,19 @@ function champStripHtml(champPool, side, layout) {
   return '<span class="' + wrap + '">' + imgs + '</span>';
 }
 
+// ── VALORANT agents ──────────────────────────────────────────────────────────────
+// Agents lock hidden (no public draft), so we don't have a "pool" like LoL champs — each
+// player has ONE agent this map, set manually on the roster. In the player-intro row we show
+// the agent's icon in the (otherwise empty) role-icon slot, so the lineup reads at a glance.
+var _piVal = false;   // set per render — true when the tournament game is VALORANT
+function piIsValorant(state) { var a = state.adapter || {}; return a.assetSource === 'valorant' || (state.match || {}).game === 'valorant'; }
+function agentSlug(name) { return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+function agentIconUrl(name) { var s = agentSlug(name); return s ? '/agents/icons/' + s + '.png' : ''; }
+function agentIconHtml(name, cls) {
+  var url = agentIconUrl(name); if (!url) return '';
+  return '<span class="' + (cls || 'pi-pnl-role-icon') + ' pi-agent-icon" style="background-image:url(' + url + ')"></span>';
+}
+
 function buildPanelRowHtml(player, roleKey, side, showRank, showChamps, csLine) {
   var handle    = player.handle || '';
   var icon      = ROLE_ICONS[roleKey] || '';
@@ -313,8 +326,9 @@ function buildPanelRowHtml(player, roleKey, side, showRank, showChamps, csLine) 
   var isRight = side === 'right';
   var rowCls  = 'pi-pnl-row' + (isRight ? ' pi-pnl-row-right' : '');
 
-  var strip  = showChamps ? champStripHtml(player.champPool, side, 'panel') : '';
-  var roleEl = roleKey ? '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>' : '';
+  var strip  = (showChamps && !_piVal) ? champStripHtml(player.champPool, side, 'panel') : '';
+  var roleEl = _piVal ? agentIconHtml(player.agent)
+             : (roleKey ? '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>' : '');
   var textEl = (
     '<span class="pi-pnl-text">' +
       '<span class="pi-pnl-handle">' + esc(handle) + '</span>' +
@@ -336,6 +350,7 @@ function renderPanel(state) {
   var showRank   = !!pi.showRank;
   var showChamps = !!pi.showChamps;
   var showLogo   = pi.showLogo !== false;
+  _piVal = piIsValorant(state);
 
   setBg('pi-panel-t1-logo', t1.logo);
   setBg('pi-panel-t2-logo', t2.logo);
@@ -361,7 +376,7 @@ function renderPanel(state) {
     });
     var key = rows.map(function(r) {
       var p = r.player;
-      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), showChamps,
+      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), showChamps, _piVal, p.agent||'',
         (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(','), r.cs].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
@@ -382,11 +397,13 @@ function buildStackPlayerHtml(player, roleKey, showRank, showChamps, side, csLin
   var icon      = ROLE_ICONS[roleKey] || '';
   var rank      = showRank   ? rankText(player.rank || null) : '';
 
-  var strip = showChamps ? champStripHtml(player.champPool, side, 'stack') : '';
+  var strip = (showChamps && !_piVal) ? champStripHtml(player.champPool, side, 'stack') : '';
+  var roleEl = _piVal ? agentIconHtml(player.agent, 'pi-stk-role')
+             : (roleKey ? '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' : '');
   return (
     '<div class="pi-stk-player">' +
       strip +
-      (roleKey ? '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' : '') +
+      roleEl +
       '<span class="pi-stk-handle">' + esc(handle) + '</span>' +
       (csLine    ? '<span class="pi-stk-csstat">' + esc(csLine) + '</span>' : '') +
       (rank      ? '<span class="pi-stk-rank">' + rank + '</span>' : '') +
@@ -403,6 +420,7 @@ function renderStack(state) {
   var t2Players  = (state.players && state.players.team2) || [];
   var showRank   = !!pi.showRank;
   var showChamps = !!pi.showChamps;
+  _piVal = piIsValorant(state);
 
   var t1El = $('pi-stack-t1'), t2El = $('pi-stack-t2');
   if (t1El) t1El.style.setProperty('--team-color', 'var(--gfx-blue)');
@@ -424,7 +442,7 @@ function renderStack(state) {
     });
     var key = rows.map(function(r) {
       var p = r.player;
-      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), showChamps,
+      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), showChamps, _piVal, p.agent||'',
         (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(','), r.cs].join(':');
     }).join('|');
     if (el.dataset.key !== key) {

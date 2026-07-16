@@ -133,6 +133,13 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   filter: brightness(0) invert(1);
   opacity: 0.4;
 }
+/* VALORANT agent icon reuses the role-icon slot but is a full-colour agent portrait, so it
+   drops the monochrome flatten + low opacity and reads a touch larger. */
+.pi-agent-icon {
+  filter: none !important;
+  opacity: 1 !important;
+  width: 4.8vh !important; height: 4.8vh !important;
+}
 
 /* ── Champion strip (top-3 most-played, blended splash crops) ─────────────────
    Shared across all three layouts. Each row reads name → divider:

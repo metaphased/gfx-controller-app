@@ -58,6 +58,18 @@ function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource 
 function supportsHeroes()   { const a = gameAdapter(); return a ? a.assetSource === 'dota-heroes' : false; }
 function supportsValorant() { const a = gameAdapter(); return a ? a.assetSource === 'valorant'    : false; } // agent + map art sync
 function supportsCs2Maps()  { const a = gameAdapter(); return a ? a.assetSource === 'cs2-maps'    : false; } // CS2 map-art proxy sync (NOT Valorant)
+// VALORANT agent dropdown options (agent names from the synced manifest), fetched once. `after`
+// runs only once options are actually loaded — so the roster fills on the sync after the fetch.
+var _agentOpts = null, _agentOptsLoading = false;
+function _loadAgentOpts(after) {
+  if (_agentOpts !== null) { if (after) after(); return; }
+  if (_agentOptsLoading) return;   // in-flight — the completion below re-runs the fill
+  _agentOptsLoading = true;
+  fetch('/api/agents').then(function(r){ return r.json(); }).then(function(d){
+    _agentOpts = ((d && d.agents) || []).map(function(a){ return '<option value="' + esc(a.name) + '">' + esc(a.name) + '</option>'; }).join('');
+    _agentOptsLoading = false; if (after) after();
+  }).catch(function(){ _agentOpts = ''; _agentOptsLoading = false; if (after) after(); });
+}
 function supportsLiveData()  { const a = gameAdapter(); return a ? !!a.liveData : false; } // has a GSI feed (CS2, Dota 2)
 function _gfxHidden(key)     { const a = gameAdapter(); return !!(a && (a.hiddenGraphics || []).indexOf(key) >= 0); } // graphic hidden for this game
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
@@ -3822,6 +3834,10 @@ function renderPlayerEditors(players) {
           // don't need the Teams DB modal. Saves on change (blur/enter) via /api/players.
           '<div class="cap-steamid"><div class="player-num">Steam ID</div>' +
             '<input type="text" class="ep-live-steamid" data-index="'+i+'" placeholder="765… (optional)"></div>' +
+          // VALORANT: the agent this player ran this map (manual — no public draft). Saves on
+          // change via /api/players; feeds Player Intro + the post-game scoreboard.
+          '<div class="cap-valorant"><div class="player-num">Agent</div>' +
+            '<select class="ep-agent" data-index="'+i+'"><option value="">— Agent —</option></select></div>' +
           // Empty label keeps the select on the same baseline as the labelled inputs beside it.
           '<div><div class="player-num">&nbsp;</div>' +
             '<select class="sub-swap-sel" data-team="'+team+'" data-player-index="'+i+'">' +
@@ -3836,6 +3852,10 @@ function renderPlayerEditors(players) {
         const sel = e.target;
         if (sel.classList.contains('ep-live-steamid')) {
           api('/api/players', { team, index: parseInt(sel.dataset.index), data: { steamid: sel.value.trim() } });
+          return;
+        }
+        if (sel.classList.contains('ep-agent')) {
+          api('/api/players', { team, index: parseInt(sel.dataset.index), data: { agent: sel.value } });
           return;
         }
         if (!sel.classList.contains('sub-swap-sel')) return;
@@ -3903,6 +3923,19 @@ function renderPlayerEditors(players) {
       if (document.activeElement === inp) return;
       const p = list[parseInt(inp.dataset.index)];
       inp.value = (p && p.steamid) || '';
+    });
+
+    // VALORANT agent selects: populate options once (from the synced manifest), then reflect
+    // each player's current agent. The row's 4th grid column is enabled via .has-agent.
+    const valOn = supportsValorant();
+    starterSec.querySelectorAll('.player-row-edit').forEach(function(row) { row.classList.toggle('has-agent', valOn); });
+    if (valOn) _loadAgentOpts(function() {
+      starterSec.querySelectorAll('.ep-agent').forEach(function(sel) {
+        if (sel.dataset.filled !== '1') { sel.insertAdjacentHTML('beforeend', _agentOpts || ''); sel.dataset.filled = '1'; }
+        if (document.activeElement === sel) return;
+        const p = list[parseInt(sel.dataset.index)];
+        sel.value = (p && p.agent) || '';
+      });
     });
 
     starterSec.querySelectorAll('.opgg-link').forEach(function(link) {
