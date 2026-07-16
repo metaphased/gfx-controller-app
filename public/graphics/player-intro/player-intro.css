@@ -143,24 +143,21 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-agentstrip { overflow: visible; z-index: 1; }
 .pi-agentstrip .pi-agent-portrait {
   position: absolute;
-  bottom: -3%;                  /* sit just below the row baseline… */
-  height: 168%;                 /* …and stand well above it (top breaks out) */
-  width: auto;                  /* square bust → width tracks height */
+  bottom: -6%;                  /* sit just below the row baseline… */
+  height: 200%;                 /* …and stand tall, breaking out above the row */
+  width: auto;                  /* tight bust → width tracks height */
   object-fit: contain;
   filter: saturate(1.05) brightness(0.94) drop-shadow(0 0.3vh 0.5vh rgba(0,0,0,0.5));
 }
-/* anchor the agent toward the centre divider, mirrored per side */
-.pi-agentstrip:not(.pi-champstrip-right) .pi-agent-portrait { right: 3%; }
-.pi-agentstrip.pi-champstrip-right       .pi-agent-portrait { left: 3%; }
+/* Anchor each agent FLUSH to the centre divider so they scale from the divider outward toward
+   their player name — left team's images right-aligned, right team's left-aligned. */
+.pi-agentstrip:not(.pi-champstrip-right) .pi-agent-portrait { right: 0; }
+.pi-agentstrip.pi-champstrip-right       .pi-agent-portrait { left: 0; }
 
-/* Agent rows: taller + overflow visible so busts can break out the top. */
+/* Agent rows: taller + overflow visible so busts can break out the top, all aligned flush
+   to the centre divider. */
 .pi-pnl-row-agent    { min-height: 12vh;  overflow: visible; }
 .pi-stk-player-agent { min-height: 15vh; overflow: visible; }
-/* Subtle horizontal stagger — every other row's agent shifts away from the divider so
-   overflowing tops sit in their own space instead of stacking on the agent above. */
-.pi-pnl-row-agent:nth-child(even):not(.pi-pnl-row-right) .pi-agent-portrait,
-.pi-stk-player-agent:nth-child(even) .pi-agent-portrait { transform: translateX(-26%); }
-.pi-pnl-row-agent:nth-child(even).pi-pnl-row-right .pi-agent-portrait { transform: translateX(26%); }
 
 /* ── Champion strip (top-3 most-played, blended splash crops) ─────────────────
    Shared across all three layouts. Each row reads name → divider:

@@ -81,10 +81,15 @@ async function buildBusts() {
     const dest = path.join(BUST_DIR, f.replace(/\.png$/i, '.webp'));
     if (fs.existsSync(dest)) continue;
     try {
+      // Trim to the character, take head+torso (top ~62%) at the character's natural width so
+      // the bust is tight (no transparent padding) → the graphic can anchor it flush to the
+      // centre divider. Fade the bottom to transparent so the torso cut is never a hard line.
       const { data, info } = await sharp(path.join(AGENT_DIR, f)).trim({ threshold: 10 }).toBuffer({ resolveWithObject: true });
-      const cropH = Math.round(info.height * 0.55);
-      const head = await sharp(data).extract({ left: 0, top: 0, width: info.width, height: cropH }).toBuffer();
-      await sharp(head).resize({ width: 512, height: 512, fit: 'cover', position: 'top' }).webp({ quality: 90 }).toFile(dest);
+      const cropH = Math.round(info.height * 0.62);
+      const head = await sharp(data).extract({ left: 0, top: 0, width: info.width, height: cropH }).resize({ height: 640 }).png().toBuffer();
+      const m = await sharp(head).metadata();
+      const fade = Buffer.from('<svg width="' + m.width + '" height="' + m.height + '" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0.72" stop-color="white"/><stop offset="1" stop-color="white" stop-opacity="0"/></linearGradient></defs><rect width="' + m.width + '" height="' + m.height + '" fill="url(#g)"/></svg>');
+      await sharp(head).composite([{ input: fade, blend: 'dest-in' }]).webp({ quality: 90 }).toFile(dest);
       built++;
     } catch (e) { /* skip a bad portrait */ }
   }
