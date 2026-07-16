@@ -133,18 +133,34 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   filter: brightness(0) invert(1);
   opacity: 0.4;
 }
-/* VALORANT agent portrait — the champion-splash strip's big-image treatment, but a single
-   full-body agent render. object-position favours the upper body so the face reads in the
-   short row; a touch wider than the champ strip so the agent has real presence. */
-.pi-agentstrip.pi-champstrip-panel { width: 70%; }
-.pi-agentstrip.pi-champstrip-stack { width: 66%; }
-.pi-agentstrip.pi-champstrip-bar   { width: 60%; }
+/* VALORANT agent bust — sized by HEIGHT so the whole face shows (not a thin cover-slice),
+   bottom-anchored so it rises out of the row and its top breaks out above the row line.
+   Agent rows get extra height + visible overflow (set below), and alternate rows are nudged
+   sideways so an agent's overflow doesn't collide with the one above. */
+.pi-agentstrip.pi-champstrip-panel { width: 74%; }
+.pi-agentstrip.pi-champstrip-stack { width: 70%; }
+.pi-agentstrip.pi-champstrip-bar   { width: 62%; }
+.pi-agentstrip { overflow: visible; z-index: 1; }
 .pi-agentstrip .pi-agent-portrait {
-  width: 100%;
-  object-fit: cover;
-  object-position: center top;   /* bust is already framed to head+shoulders */
-  filter: saturate(1.05) brightness(0.92);
+  position: absolute;
+  bottom: -3%;                  /* sit just below the row baseline… */
+  height: 168%;                 /* …and stand well above it (top breaks out) */
+  width: auto;                  /* square bust → width tracks height */
+  object-fit: contain;
+  filter: saturate(1.05) brightness(0.94) drop-shadow(0 0.3vh 0.5vh rgba(0,0,0,0.5));
 }
+/* anchor the agent toward the centre divider, mirrored per side */
+.pi-agentstrip:not(.pi-champstrip-right) .pi-agent-portrait { right: 3%; }
+.pi-agentstrip.pi-champstrip-right       .pi-agent-portrait { left: 3%; }
+
+/* Agent rows: taller + overflow visible so busts can break out the top. */
+.pi-pnl-row-agent    { min-height: 12vh;  overflow: visible; }
+.pi-stk-player-agent { min-height: 15vh; overflow: visible; }
+/* Subtle horizontal stagger — every other row's agent shifts away from the divider so
+   overflowing tops sit in their own space instead of stacking on the agent above. */
+.pi-pnl-row-agent:nth-child(even):not(.pi-pnl-row-right) .pi-agent-portrait,
+.pi-stk-player-agent:nth-child(even) .pi-agent-portrait { transform: translateX(-26%); }
+.pi-pnl-row-agent:nth-child(even).pi-pnl-row-right .pi-agent-portrait { transform: translateX(26%); }
 
 /* ── Champion strip (top-3 most-played, blended splash crops) ─────────────────
    Shared across all three layouts. Each row reads name → divider:

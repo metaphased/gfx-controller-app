@@ -334,7 +334,7 @@ function buildPanelRowHtml(player, roleKey, side, showRank, showChamps, csLine) 
   var rank      = showRank   ? rankText(player.rank || null) : '';
 
   var isRight = side === 'right';
-  var rowCls  = 'pi-pnl-row' + (isRight ? ' pi-pnl-row-right' : '');
+  var rowCls  = 'pi-pnl-row' + (isRight ? ' pi-pnl-row-right' : '') + (_piVal ? ' pi-pnl-row-agent' : '');
 
   var strip  = showChamps ? (_piVal ? agentStripHtml(player.agent, side, 'panel') : champStripHtml(player.champPool, side, 'panel')) : '';
   var roleEl = _piVal ? '' : (roleKey ? '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>' : '');
@@ -409,7 +409,7 @@ function buildStackPlayerHtml(player, roleKey, showRank, showChamps, side, csLin
   var strip = showChamps ? (_piVal ? agentStripHtml(player.agent, side, 'stack') : champStripHtml(player.champPool, side, 'stack')) : '';
   var roleEl = _piVal ? '' : (roleKey ? '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' : '');
   return (
-    '<div class="pi-stk-player">' +
+    '<div class="pi-stk-player' + (_piVal ? ' pi-stk-player-agent' : '') + '">' +
       strip +
       roleEl +
       '<span class="pi-stk-handle">' + esc(handle) + '</span>' +
