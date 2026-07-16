@@ -585,6 +585,15 @@ function buildAgentCardHtml(player, i) {
   );
 }
 
+// Set (or collapse) an Agent Cards header logo box. Empty url → hidden + display:none so the
+// flex row drops the box and its gap, sliding the team name out to the cluster edge.
+function acHeaderLogo(id, url) {
+  var el = $(id);
+  if (!el) return;
+  el.style.backgroundImage = url ? 'url(' + url + ')' : '';
+  el.style.display = url ? '' : 'none';
+}
+
 function renderAgentCards(state) {
   var match     = state.match || {};
   var pi        = state.playerIntro || {};
@@ -598,8 +607,10 @@ function renderAgentCards(state) {
   if (t1El) t1El.style.setProperty('--team-color', 'var(--gfx-blue)');
   if (t2El) t2El.style.setProperty('--team-color', 'var(--gfx-red)');
 
-  setBg('pi-ac-t1-logo', t1.logo);
-  setBg('pi-ac-t2-logo', t2.logo);
+  // Team logos live in the outer region of each header, gated by the Logo toggle. When off
+  // (or the team has no logo) collapse the box so the name slides out to the cluster edge.
+  acHeaderLogo('pi-ac-t1-logo', showLogo && t1.logo ? t1.logo : '');
+  acHeaderLogo('pi-ac-t2-logo', showLogo && t2.logo ? t2.logo : '');
   setTxt('pi-ac-t1-name', t1.name || t1.tag || '');
   setTxt('pi-ac-t2-name', t2.name || t2.tag || '');
 
@@ -607,7 +618,8 @@ function renderAgentCards(state) {
   fitText($('pi-ac-t1-name'), maxNamePx, Math.round(maxNamePx * 0.4));
   fitText($('pi-ac-t2-name'), maxNamePx, Math.round(maxNamePx * 0.4));
 
-  setLogoOrVs($('pi-ac-centre-img'), $('pi-ac-vs'), showLogo ? getCentreLogo(state) : '');
+  // Centre is always the VS lockup for this layout — team branding lives in the outer regions.
+  setLogoOrVs($('pi-ac-centre-img'), $('pi-ac-vs'), '');
 
   function fillCards(elId, players) {
     var el = $(elId);

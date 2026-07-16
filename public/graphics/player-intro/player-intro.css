@@ -517,7 +517,7 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   display: flex;
   align-items: center;
   gap: 1.4vw;
-  height: 8vh;
+  height: 10vh;
   padding: 0 0.4vw;
 }
 /* Left header packs to its left edge (logo outer-left, name inner). Right header mirrors:
@@ -525,8 +525,11 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
    the outer-right edge and the name sits just inside it — equidistant from both outer edges. */
 .pi-ac-t2 .pi-ac-header { justify-content: flex-end; }
 
+/* Team logo sits in the outer region of the header (left of the T1 name / right of the
+   T2 name). Toggled by the Logo option — when off, JS collapses this box so the name
+   moves out to the cluster edge and no dead space is left. */
 .pi-ac-logo {
-  width: 7vh; height: 7vh;
+  width: 9vh; height: 9vh;
   flex-shrink: 0;
   background-size: contain;
   background-repeat: no-repeat;
