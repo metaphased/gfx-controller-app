@@ -719,26 +719,64 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 
 /* ═══════════════════════════════════════════════════════════════════════════
    AGENT CARDS ANIMATIONS
+   Energetic in/out designed to lead cleanly into a match graphic + game. Each
+   variant has a matching punchy exit (not just a fade), staggered per card.
    ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes pi-ac-pop-in   { from { opacity: 0; transform: translateY(58px) scale(0.9); } 55% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes pi-ac-pop-out  { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateY(-40px) scale(1.03); } }
+@keyframes pi-ac-slam-l   { from { opacity: 0; transform: translateX(-12vw) scale(0.95); } to { opacity: 1; transform: none; } }
+@keyframes pi-ac-slam-r   { from { opacity: 0; transform: translateX(12vw)  scale(0.95); } to { opacity: 1; transform: none; } }
+@keyframes pi-ac-slam-ol  { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-9vw)  scale(0.97); } }
+@keyframes pi-ac-slam-or  { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(9vw)   scale(0.97); } }
 
-/* ── Rise (default): headers rise, cards rise with a per-card stagger ─────── */
+/* Overshoot easing for the enter pop (slight settle past 1); snappy accel for exits. */
+#pi-root.layout-agentcards {
+  --pi-ac-pop:  cubic-bezier(0.18, 1.12, 0.32, 1);
+  --pi-ac-snap: cubic-bezier(0.5, 0, 0.78, 0);
+}
+
+/* ── Rise (default): headers rise; cards pop up + scale with overshoot, staggered
+      from the centre VS outward so the matchup "blooms" open. ─────────────────── */
 #pi-root.layout-agentcards.pi-entering .pi-ac-header {
-  animation: pi-rise calc(0.42s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
+  animation: pi-rise calc(0.42s * var(--gfx-dur-scale, 1)) var(--pi-ac-pop) calc(0.05s * var(--gfx-dur-scale, 1)) both;
 }
 #pi-root.layout-agentcards.pi-entering .pi-ac-card {
-  animation: pi-rise calc(0.5s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
-  animation-delay: calc((0.12s + var(--i, 0) * 0.06s) * var(--gfx-dur-scale, 1));
+  animation: pi-ac-pop-in calc(0.5s * var(--gfx-dur-scale, 1)) var(--pi-ac-pop) both;
+  animation-delay: calc((0.1s + (4 - var(--i, 0)) * 0.06s) * var(--gfx-dur-scale, 1));
+}
+/* Exit: cards lift + fade fast, staggered from the outer edge inward — clears the
+   frame quickly (and upward) to hand off to the next graphic. */
+#pi-root.layout-agentcards.pi-exiting .pi-ac-header {
+  animation: pi-sink calc(0.3s * var(--gfx-dur-scale, 1)) var(--pi-ac-snap) forwards;
+}
+#pi-root.layout-agentcards.pi-exiting .pi-ac-card {
+  animation: pi-ac-pop-out calc(0.34s * var(--gfx-dur-scale, 1)) var(--pi-ac-snap) both;
+  animation-delay: calc(var(--i, 0) * 0.04s * var(--gfx-dur-scale, 1));
 }
 
-/* ── Split: clusters slide in from their own edge (cards ride along) ──────── */
-#pi-root.layout-agentcards.anim-split.pi-entering .pi-ac-card { animation: none; }
-#pi-root.layout-agentcards.anim-split.pi-entering .pi-ac-t1 {
-  animation: pi-in-l calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
+/* ── Split: cards slam in from each team's own edge toward the VS, staggered from
+      the VS outward; exit flies back out the same way. ─────────────────────────── */
+#pi-root.layout-agentcards.anim-split.pi-entering .pi-ac-card,
+#pi-root.layout-agentcards.anim-split.pi-exiting  .pi-ac-card { animation: none; }
+#pi-root.layout-agentcards.anim-split.pi-entering .pi-ac-t1 .pi-ac-card {
+  animation: pi-ac-slam-l calc(0.5s * var(--gfx-dur-scale, 1)) var(--pi-ac-pop) both;
+  animation-delay: calc((0.06s + (4 - var(--i, 0)) * 0.05s) * var(--gfx-dur-scale, 1));
 }
-#pi-root.layout-agentcards.anim-split.pi-entering .pi-ac-t2 {
-  animation: pi-in-r calc(0.55s * var(--gfx-dur-scale, 1)) var(--gfx-ease-enter, cubic-bezier(0.25,1,0.5,1)) both;
+#pi-root.layout-agentcards.anim-split.pi-entering .pi-ac-t2 .pi-ac-card {
+  animation: pi-ac-slam-r calc(0.5s * var(--gfx-dur-scale, 1)) var(--pi-ac-pop) both;
+  animation-delay: calc((0.06s + (4 - var(--i, 0)) * 0.05s) * var(--gfx-dur-scale, 1));
+}
+#pi-root.layout-agentcards.anim-split.pi-exiting .pi-ac-t1 .pi-ac-card {
+  animation: pi-ac-slam-ol calc(0.34s * var(--gfx-dur-scale, 1)) var(--pi-ac-snap) both;
+  animation-delay: calc(var(--i, 0) * 0.035s * var(--gfx-dur-scale, 1));
+}
+#pi-root.layout-agentcards.anim-split.pi-exiting .pi-ac-t2 .pi-ac-card {
+  animation: pi-ac-slam-or calc(0.34s * var(--gfx-dur-scale, 1)) var(--pi-ac-snap) both;
+  animation-delay: calc(var(--i, 0) * 0.035s * var(--gfx-dur-scale, 1));
 }
 
-/* ── Fade: root opacity handles it; cancel card/cluster movement ──────────── */
+/* ── Fade: root opacity handles both directions; cancel all card/header motion ── */
 #pi-root.layout-agentcards.anim-fade.pi-entering .pi-ac-header,
-#pi-root.layout-agentcards.anim-fade.pi-entering .pi-ac-card { animation: none; }
+#pi-root.layout-agentcards.anim-fade.pi-entering .pi-ac-card,
+#pi-root.layout-agentcards.anim-fade.pi-exiting  .pi-ac-header,
+#pi-root.layout-agentcards.anim-fade.pi-exiting  .pi-ac-card { animation: none; }
