@@ -520,7 +520,10 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   height: 8vh;
   padding: 0 0.4vw;
 }
-.pi-ac-t2 .pi-ac-header { flex-direction: row-reverse; }
+/* Left header packs to its left edge (logo outer-left, name inner). Right header mirrors:
+   pack to the right edge with the SAME DOM order kept as [name][logo] so the logo lands on
+   the outer-right edge and the name sits just inside it — equidistant from both outer edges. */
+.pi-ac-t2 .pi-ac-header { justify-content: flex-end; }
 
 .pi-ac-logo {
   width: 7vh; height: 7vh;

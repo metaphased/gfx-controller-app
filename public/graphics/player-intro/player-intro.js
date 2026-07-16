@@ -622,6 +622,18 @@ function renderAgentCards(state) {
 
   fillCards('pi-ac-t1-cards', t1Players);
   fillCards('pi-ac-t2-cards', t2Players);
+  fitAgentCardHandles();
+}
+
+// Shrink each player handle down until it fits the card width (long handles would otherwise
+// clip) — the card is narrow, so this is a genuine fit rather than the usual headroom. Runs
+// every render (idempotent: fitText resets to max, then binary-searches down) and again after
+// fonts load via refitNames.
+function fitAgentCardHandles() {
+  var handles = document.querySelectorAll('.pi-agentcards .pi-ac-handle');
+  var maxPx = Math.round(window.innerHeight * 0.027);
+  var minPx = Math.round(maxPx * 0.45);
+  for (var i = 0; i < handles.length; i++) fitText(handles[i], maxPx, minPx);
 }
 
 // ── Render dispatch ───────────────────────────────────────────────────────────
@@ -683,6 +695,7 @@ function refitNames() {
     var minAcPx = Math.round(maxAcPx * 0.4);
     fitText($('pi-ac-t1-name'), maxAcPx, minAcPx);
     fitText($('pi-ac-t2-name'), maxAcPx, minAcPx);
+    fitAgentCardHandles();
   }
 }
 
