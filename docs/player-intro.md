@@ -6,7 +6,7 @@ It reads the two loaded teams and their rosters ([Match & draft control](match-a
 
 ## Layouts
 
-Pick a layout in the control tab. The three core layouts show the same data; choose the one that fits your scene. VALORANT tournaments add a fourth, [Agent Cards](#agent-cards-valorant).
+Pick a layout in the control tab. The three core layouts show the same data; choose the one that fits your scene. VALORANT tournaments add two more: [Agent Cards](#agent-cards-valorant) and [Team Fan](#team-fan-valorant).
 
 ### Nameplate
 
@@ -38,6 +38,12 @@ A full-screen matchup board only offered on VALORANT tournaments: each team's fi
 
 It reads each player's **Agent** field from the roster ([VALORANT guide](valorant.md#rosters--agents)) — assign agents once they lock, then bring the board up.
 
+### Team Fan (VALORANT)
+
+A composited "team photo": each team's five agents overlapped into one full-body lineup — centre agent tallest and foremost, heights stepping down outward, all standing on a shared floor, with each player's handle + agent beneath. The layout **auto-arranges by art width** (the widest portraits take the outer slots so capes and ability effects tuck behind their neighbours). A **Teams** option shows **both teams** around a centre VS, or **one team** full-screen — the hero treatment below. Enter animations: **Rise** (centre lands first, the fan opens outward) or **Converge** (outer agents sweep in from the sides while the centre rises).
+
+![Player Intro — Team Fan layout, one team (VALORANT)](img/valorant-team-fan.webp)
+
 ## Controls
 
 ![Player Intro control tab](img/tool-player-intro.jpg)
@@ -47,7 +53,7 @@ From the Player Intro ctrl-bar:
 ![Player Intro live control bar — layout, options, animation and background](img/pi-controls.jpg)
 
 - **Show / hide** the graphic (entrance/exit animate).
-- **Layout** — Nameplate · Team Stack · Bar (VALORANT adds **Agent Cards**).
+- **Layout** — Nameplate · Team Stack · Bar (VALORANT adds **Agent Cards** and **Team Fan**; the fan also gets a **Teams** group — Both / Team 1 / Team 2).
 - **Options: Logo / Rank / Champs** — toggle each data row.
   - *League of Legends* — Ranks come from the Riot API ([Players / Rosters](match-and-draft.md#league-of-legends--ranks-and-champion-pools)). **Champs** blends each player's **top 3 most-played** champions (from their op.gg pool) along their row as overlapping splash crops that fade toward the name — players with no pool data fall back to a clean name. Available on the **Nameplate** and **Team Stack** layouts; the **Bar** layout is always name-only.
   - *VALORANT* — the art toggle shows each player's assigned **agent** rising out of their row instead of a champion strip.

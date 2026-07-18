@@ -58,13 +58,17 @@ Everything game-neutral works out of the box (pre-show, break, lower thirds, tic
 |---|---|
 | [Map Veto](map-veto.md) | Ban/pick board with real map splash art, DEF/ATK sides, accordion reveal. |
 | [Map Intro](map-intro.md) | Cinematic per-map intro with the veto story. |
-| [Player Intro](player-intro.md) | Agent art in the player rows, plus the VALORANT-only **Agent Cards** layout — both teams' five agents as full-body portrait cards around a centre VS. |
+| [Player Intro](player-intro.md) | Agent art in the player rows, plus two VALORANT-only layouts — **Agent Cards** (tall portrait cards around a centre VS) and **Team Fan** (each team composited into one overlapped lineup, one or both teams). |
 | [Win Screen](win-screen.md) | The winning team's five **agents** as full-body portraits — the COMP style full-screen, or a compact row on the centred styles. |
 | [Post-Game Scoreboard](post-game.md) | Agents + K/D/A + ACS per player, fed by the [post-map fetch](#post-map-data-beta) (BETA). |
 
 The **Agent Cards** intro layout — the full matchup at a glance:
 
 ![Player Intro — Agent Cards layout](img/valorant-agent-cards.webp)
+
+And the **Team Fan** — both teams composited into overlapped lineups (or one team full-screen):
+
+![Player Intro — Team Fan layout, both teams](img/valorant-team-fan-both.webp)
 
 The standard intro layouts show each player's agent along their row instead of the LoL champion strip:
 
