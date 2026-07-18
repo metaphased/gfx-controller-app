@@ -441,6 +441,8 @@ function opggUrl(region, riotId) {
 }
 
 function renderPlayerRow(p, color) {
+  // VALORANT: agent + Riot ID row (manual data — no live stats feed, no HLTV/Steam).
+  if (casterIsValorant()) return renderPlayerRowVal(p, color);
   // CS2 (role-less / no champion pick entity): show CS stats + HLTV instead of champ/rank/op.gg.
   if (casterIsMapVeto() || casterNoRoles()) return renderPlayerRowCS(p, color);
   const dota = casterIsDota();
@@ -612,6 +614,34 @@ function renderPlayerRowCS(p, color) {
       '<div class="player-handle">' + esc(p.handle || p.name || '—') + '</div>' +
       badge +
       (hltv ? '<a class="hltv-btn" href="' + esc(hltv) + '" target="_blank" rel="noopener" onclick="event.stopPropagation()">HLTV ↗</a>' : '') +
+      '<div class="expand-arrow">▼</div>' +
+    '</div>' +
+    '<div class="player-detail">' + detail + '</div>' +
+  '</div>';
+}
+
+// ── VALORANT roster row ─────────────────────────────────────────────────────────
+// Agent + Riot ID — VALORANT data is manual (no live feed), so the caster row shows the
+// player's assigned agent (icon + name, set per map on the control roster) and identity.
+function casterIsValorant() { const a = _state && _state.adapter; return a ? a.assetSource === 'valorant' : false; }
+function valAgentSlug(name) { return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+function renderPlayerRowVal(p, color) {
+  const slug = valAgentSlug(p.agent);
+  const icon = slug ? '<div class="player-role-icon" style="background-image:url(/agents/icons/' + esc(slug) + '.png);filter:none;border-radius:3px"></div>' : '<div class="player-role-icon"></div>';
+  const badge = p.agent ? '<span class="cs-badge" style="--team-color:' + esc(color) + '">' + esc(p.agent) + '</span>' : '';
+
+  let detail = '';
+  if (p.name && p.name !== p.handle) detail += '<div class="detail-riot-id">' + esc(p.name) + '</div>';
+  if (p.riotId) detail += '<div class="detail-riot-id">' + esc(p.riotId) + '</div>';
+  detail += p.agent
+    ? '<div class="cs-stat-row"><span class="cs-stat-label">Agent</span><span class="cs-stat-vals"><b>' + esc(p.agent) + '</b></span></div>'
+    : '<div style="color:var(--text-faint);font-size:12px">No agent assigned — set one on the control panel roster.</div>';
+
+  return '<div class="player-row">' +
+    '<div class="player-row-summary">' +
+      icon +
+      '<div class="player-handle">' + esc(p.handle || p.name || '—') + '</div>' +
+      badge +
       '<div class="expand-arrow">▼</div>' +
     '</div>' +
     '<div class="player-detail">' + detail + '</div>' +
@@ -1132,7 +1162,12 @@ function renderMapVeto() {
       if (act === 'pick') {
         const other = st.team === 'team1' ? 'team2' : 'team1';
         meta = st.side ? '<span class="cs-veto-side">' + esc(teamName(other)) + ' ' + esc(st.side) + ' start</span>' : '';
-      } else if (act === 'decider') meta = '<span class="cs-veto-side">Knife round</span>';
+      } else if (act === 'decider') {
+        // Data-driven: CS2 deciders record side:'knife'; VALORANT records a team + DEF/ATK side.
+        meta = st.side === 'knife' ? '<span class="cs-veto-side">Knife round</span>'
+             : (st.side && st.team) ? '<span class="cs-veto-side">' + esc(teamName(st.team)) + ' ' + esc(st.side) + ' start</span>'
+             : '';
+      }
       return '<div class="cs-veto-step ' + cls + '">' +
         '<span class="cs-veto-num">' + (i + 1) + '</span>' +
         '<span class="cs-veto-act">' + esc((act || '').toUpperCase()) + '</span>' +

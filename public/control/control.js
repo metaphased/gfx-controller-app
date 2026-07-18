@@ -105,6 +105,9 @@ function applyAdapterUI() {
     // LoL champ picks, Dota hero picks, or VALORANT per-player agents.
     'cap-win-comp':    isChampDraft() || isHeroDraft() || supportsValorant(),
     'cap-live-data':   supportsLiveData(),   // games with a GSI live feed (CS2, Dota 2)
+    // CS2-only live-data surfaces (CT-side mapping etc.): a map-veto game WITH a GSI feed.
+    // VALORANT is map-veto but has no live feed; Dota has a feed but no map veto.
+    'cap-cs2-live':    isMapVeto() && supportsLiveData(),
     'cap-opgg':        supportsOpgg(),
     'cap-opendota':    supportsOpenDota(),
     'cap-intel':       supportsIntel(),     // any per-player intel provider (opgg or opendota)
@@ -5177,9 +5180,15 @@ function hdRenderAssign(hd, m, tn1, tn2){
 // ban/pick slot (no map can be used twice); the decider is the auto-remaining map.
 function _mvBestOf(){ const f=(window._state&&window._state.match&&window._state.match.format)||'Bo3'; const n=parseInt(String(f).replace(/\D/g,''),10); return (n===1||n===5)?n:3; }
 function _mvTeamA(){ return (_mvState().teamA)==='team2' ? 'team2' : 'team1'; }
+// Per-game side vocabulary for the veto: CS2 rounds start CT vs T; VALORANT rounds start
+// Defense vs Attack. The stored side string is what the graphics display ("DEF START").
+function _mvSides(){ return supportsValorant() ? ['DEF','ATK'] : ['CT','T']; }
 // Ordered veto slots (one per map). pick slots carry the side-picking team; decider is auto.
+// CS2 settles the decider's sides with a knife round; VALORANT has no knife round, so its
+// decider gets a free team+side chooser (rulesets vary on who chooses — operator records it).
 function _vetoSlots(bo, A, poolSize){
   const B = A==='team1'?'team2':'team1', opp=function(x){ return x===A?B:A; }, s=[];
+  const decider = supportsValorant() ? {type:'decider', chooseTS:true} : {type:'decider', knife:true};
   if(bo===1){
     let a=A; for(let i=0;i<Math.max(1,poolSize-1);i++){ s.push({type:'ban',team:a}); a=opp(a); }
     const finalBanner=((poolSize-1)%2===1)?A:B; s.push({type:'decider', sideTeam:opp(finalBanner)}); return s;
@@ -5188,12 +5197,12 @@ function _vetoSlots(bo, A, poolSize){
     s.push({type:'ban',team:A},{type:'ban',team:B}); let p=A;
     for(let i=0;i<4;i++){ s.push({type:'pick',team:p,sideTeam:opp(p)}); p=opp(p); }
     let a=A; for(let i=0;i<Math.max(0,poolSize-7);i++){ s.push({type:'ban',team:a}); a=opp(a); }
-    s.push({type:'decider', knife:true}); return s;
+    s.push(decider); return s;
   }
   // Bo3
   s.push({type:'ban',team:A},{type:'ban',team:B},{type:'pick',team:A,sideTeam:B},{type:'pick',team:B,sideTeam:A});
   let a=A; for(let i=0;i<Math.max(0,poolSize-5);i++){ s.push({type:'ban',team:a}); a=opp(a); }
-  s.push({type:'decider', knife:true}); return s;
+  s.push(decider); return s;
 }
 function mvSetTeamA(team){ api('/api/mapVeto', { teamA: team, steps: [] }); }   // changing A clears the veto
 function mvCommitVeto(){
@@ -5202,7 +5211,15 @@ function mvCommitVeto(){
   const steps=slots.map(function(sl,i){
     const mapSel=document.querySelector('.mv-vm-map[data-i="'+i+'"]');
     const sideSel=document.querySelector('.mv-vm-side[data-i="'+i+'"]')||document.querySelector('.mv-vd-side[data-i="'+i+'"]');
-    if(sl.type==='decider') return { map:'', action:'decider', team:(sl.sideTeam||''), side: sl.knife?'knife':((sideSel||{}).value||'') };
+    if(sl.type==='decider'){
+      // VALORANT decider: combined team+side chooser ("team1|DEF") — no knife round.
+      if(sl.chooseTS){
+        const ts=document.querySelector('.mv-vd-ts[data-i="'+i+'"]');
+        const parts=(((ts||{}).value)||'').split('|');
+        return { map:'', action:'decider', team:parts[0]||'', side:parts[1]||'' };
+      }
+      return { map:'', action:'decider', team:(sl.sideTeam||''), side: sl.knife?'knife':((sideSel||{}).value||'') };
+    }
     return { map:(mapSel||{}).value||'', action:sl.type, team:sl.team, side:(sl.type==='pick'?((sideSel||{}).value||''):'') };
   });
   const chosen={}; steps.forEach(function(st){ if(st.action!=='decider'&&st.map) chosen[st.map]=1; });
@@ -5236,9 +5253,20 @@ function mvRenderVeto(state){
   stepsEl.innerHTML = slots.map(function(sl,i){
     const st=steps[i]||{}, num=i+1;
     if(sl.type==='decider'){
-      const side = sl.knife ? '<span class="mv-decider-side">Knife round</span>'
-        : '<select class="mv-vd-side" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">— '+esc(tn(sl.sideTeam))+' side —</option>'+
-          ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+esc(tn(sl.sideTeam))+' '+sd+'</option>';}).join('')+'</select>';
+      let side;
+      if(sl.knife){ side='<span class="mv-decider-side">Knife round</span>'; }
+      else if(sl.chooseTS){
+        // VALORANT: whichever team gets side choice on the decider (ruleset-dependent) + their side.
+        const cur=(st.team&&st.side)?(st.team+'|'+st.side):'';
+        const opts=['team1','team2'].map(function(tk){ return _mvSides().map(function(sd){
+          const v=tk+'|'+sd; return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+esc(tn(tk))+' '+sd+'</option>';
+        }).join(''); }).join('');
+        side='<select class="mv-vd-ts" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">— starting side —</option>'+opts+'</select>';
+      }
+      else {
+        side='<select class="mv-vd-side" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">— '+esc(tn(sl.sideTeam))+' side —</option>'+
+          _mvSides().map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+esc(tn(sl.sideTeam))+' '+sd+'</option>';}).join('')+'</select>';
+      }
       return '<div class="mv-veto-row decider"><span class="mv-row-num">'+num+'</span>'+
         '<span class="mv-veto-act decider">DECIDER</span>'+
         '<span class="mv-veto-map auto">'+esc(deciderMap)+'</span>'+side+'</div>';
@@ -5251,7 +5279,7 @@ function mvRenderVeto(state){
       '<select class="mv-vm-map" data-i="'+i+'" onchange="mvCommitVeto()">'+opts+'</select>';
     if(sl.type==='pick') row+='<span class="mv-veto-side-label">'+esc(tn(sl.sideTeam))+' side</span>'+
       '<select class="mv-vm-side" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">—</option>'+
-      ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+'</select>';
+      _mvSides().map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+'</select>';
     return row+'</div>';
   }).join('');
 }

@@ -56,18 +56,29 @@ function mapNumber(state, row) {
   var i = rows.indexOf(row);
   return i >= 0 ? i + 1 : 1;
 }
-// Veto story: who picked the map + which team starts CT. The pick step's `side` is the OTHER
-// (non-picking) team's start side, so CT-start = side==='CT' ? other : picker.
+// Veto story: who picked the map + starting sides. Data-driven from the recorded step so it
+// works for both games' vocabularies: CS2 sides are CT/T (with a knife-round decider);
+// VALORANT sides are DEF/ATK (no knife round — the decider records a team + side directly).
 function vetoStory(state, mapName) {
   var steps = (state.mapVeto && state.mapVeto.steps) || [], n = norm(mapName);
   var pick = null, decider = null;
   steps.forEach(function (s) { if (!s || norm(s.map) !== n) return; if (s.action === 'pick') pick = s; if (s.action === 'decider') decider = s; });
-  if (decider) return { picker: '', sideTxt: 'Decider · Knife round' };
+  if (decider) {
+    if (decider.side && decider.side !== 'knife' && decider.team) {
+      return { picker: '', sideTxt: 'Decider · ' + teamMeta(state, decider.team).name + ' ' + decider.side + ' start' };
+    }
+    return { picker: '', sideTxt: decider.side === 'knife' ? 'Decider · Knife round' : 'Decider' };
+  }
   if (!pick || !pick.team) return null;
   var picker = teamMeta(state, pick.team).name;
   var other = pick.team === 'team1' ? 'team2' : 'team1';
-  var ctTeam = pick.side === 'CT' ? other : pick.side === 'T' ? pick.team : '';
-  return { picker: picker, sideTxt: ctTeam ? (teamMeta(state, ctTeam).name + ' CT start') : '' };
+  // The pick step's `side` is the OTHER (non-picking) team's start side. For CS2 keep the
+  // classic "who starts CT" line; for any other vocabulary (DEF/ATK) name the side directly.
+  if (pick.side === 'CT' || pick.side === 'T') {
+    var ctTeam = pick.side === 'CT' ? other : pick.team;
+    return { picker: picker, sideTxt: teamMeta(state, ctTeam).name + ' CT start' };
+  }
+  return { picker: picker, sideTxt: pick.side ? (teamMeta(state, other).name + ' ' + pick.side + ' start') : '' };
 }
 
 // ── Map art + optional flyby slideshow ───────────────────────────────────────────
