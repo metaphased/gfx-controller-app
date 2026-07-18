@@ -868,7 +868,13 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .style-comp .ws-tag     { font-size: 2.2vh; letter-spacing: 0.5em; color: var(--win-color); }
 .style-comp .ws-name    { font-size: 8.2vh; line-height: 0.9; }
 .style-comp .ws-message { font-size: 2vh; letter-spacing: 0.3em; margin-top: 0.6vh; color: rgba(255,255,255,0.72); }
-.style-comp .ws-score-row { display: none !important; }
+/* COMP hides the score row by default, but the auto-series opt-in (#win-root.ws-series-on,
+   higher specificity) brings it back — when it does, centre the chips: the row stretches to
+   the text column's width, and without this the chips left-pack ~half a row off centre. */
+.style-comp .ws-score-row { display: none !important; justify-content: center; }
+/* …and drop the comp row so the centre character's head doesn't paint over the chips
+   (the row of characters normally starts right where the score chips end). */
+#win-root.ws-series-on.style-comp .ws-comp-row { top: 42vh; }
 
 .style-comp .ws-comp-row {
   display: flex; justify-content: center; align-items: flex-start;

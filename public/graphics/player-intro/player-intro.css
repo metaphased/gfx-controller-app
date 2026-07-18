@@ -142,11 +142,20 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-agentstrip.pi-champstrip-panel { width: 74%; }
 .pi-agentstrip.pi-champstrip-stack { width: 70%; }
 .pi-agentstrip.pi-champstrip-bar   { width: 62%; }
-.pi-agentstrip { overflow: visible; z-index: 1; }
-.pi-agentstrip .pi-agent-portrait {
+/* Double class so this WINS over the base .pi-champstrip { overflow:hidden } defined later
+   in the file (same specificity would lose on order) — otherwise the strip flat-crops the
+   bust at the row's top edge and cuts agents' heads off. */
+.pi-champstrip.pi-agentstrip { overflow: visible; z-index: 1; }
+/* Triple selector: must OUT-SPECIFY the base .pi-champstrip .pi-champ-img rule (defined
+   later in the file), whose top:0 would otherwise win and top-anchor the bust — with
+   top+height set, bottom is ignored and the row window flat-cuts heads. */
+.pi-champstrip.pi-agentstrip .pi-agent-portrait {
   position: absolute;
+  top: auto;                    /* clear top:0 → bottom-anchored, breaking out above */
   bottom: -6%;                  /* sit just below the row baseline… */
-  height: 200%;                 /* …and stand tall, breaking out above the row */
+  height: 150%;                 /* …and stand tall enough that the FACE stays beside its own
+                                   player name while the head breaks into the row above —
+                                   200% pushed faces a full row up and broke the association */
   width: auto;                  /* tight bust → width tracks height */
   object-fit: contain;
   filter: saturate(1.05) brightness(0.94) drop-shadow(0 0.3vh 0.5vh rgba(0,0,0,0.5));
@@ -157,9 +166,18 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .pi-agentstrip.pi-champstrip-right       .pi-agent-portrait { left: 0; }
 
 /* Agent rows: taller + overflow visible so busts can break out the top, all aligned flush
-   to the centre divider. */
-.pi-pnl-row-agent    { min-height: 12vh;  overflow: visible; }
-.pi-stk-player-agent { min-height: 15vh; overflow: visible; }
+   to the centre divider. Double selectors: the BASE row rules (.pi-pnl-row / .pi-stk-player,
+   defined later in this file) set overflow:hidden at equal single-class specificity — these
+   must out-specify them or the rows flat-cut the agents' heads at the row top. */
+.pi-pnl-row.pi-pnl-row-agent       { min-height: 12vh; overflow: visible; }
+.pi-stk-player.pi-stk-player-agent { min-height: 15vh; overflow: visible; }
+
+/* VALORANT (#pi-root.pi-val): the containers must ALSO stop clipping, or the FIRST row's
+   bust is beheaded at the panel-box / stack-half edge — agents may break above the box
+   (over the header band) so no heads are ever cut. Rows paint after the header in DOM
+   order, so the busts overlay it cleanly. */
+#pi-root.pi-val .pi-panel-box  { overflow: visible; }
+#pi-root.pi-val .pi-stack-half { overflow: visible; }
 
 /* ── Champion strip (top-3 most-played, blended splash crops) ─────────────────
    Shared across all three layouts. Each row reads name → divider:
