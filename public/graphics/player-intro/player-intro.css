@@ -18,11 +18,13 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 #pi-root.layout-stack      .pi-stack      { display: flex; }
 #pi-root.layout-bar        .pi-bar        { display: flex; }
 #pi-root.layout-agentcards .pi-agentcards { display: flex; }
+#pi-root.layout-fan        .pi-fan        { display: flex; }
 
 .pi-panel { width: 100%; height: 100%; align-items: center; justify-content: center; }
 .pi-stack { width: 100%; height: 100%; flex-direction: row; }
 .pi-bar   { width: 100%; height: 100%; align-items: flex-end; }
 .pi-agentcards { width: 100%; height: 100%; flex-direction: row; align-items: center; justify-content: center; gap: 1.2vw; padding: 0 2.5vw; }
+.pi-fan        { width: 100%; height: 100%; flex-direction: row; align-items: center; justify-content: center; gap: 1vw; padding: 0 2vw; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    LAYOUT: NAMEPLATE PANEL
@@ -649,6 +651,129 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
+   LAYOUT: TEAM FAN (VALORANT, full-screen)
+   Each team's five agents composited into ONE overlapped lineup (\\||//): the
+   centre agent tallest and foremost, heights stepping down outward, everyone
+   standing on a shared floor. Optional .fan-angled leans the outer agents.
+   Shows one team (fan-solo) or both around a centre VS.
+   ═══════════════════════════════════════════════════════════════════════════ */
+.pi-fan-cluster {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6vh;
+}
+/* Solo mode: single cluster, bigger and centred. */
+#pi-root.fan-solo .pi-fan-cluster { flex: 0 1 62vw; }
+
+.pi-fan-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.4vw;
+  height: 9vh;
+}
+
+.pi-fan-logo {
+  width: 8vh; height: 8vh;
+  flex-shrink: 0;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.pi-fan-team-name {
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-size: 5vh; font-weight: 900;
+  letter-spacing: 0.05em; text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--gfx-c3, #fff);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* The composite stage — agents are absolutely positioned on a shared floor. */
+.pi-fan-stage {
+  position: relative;
+  height: 56vh;
+  overflow: visible;
+}
+#pi-root.fan-solo .pi-fan-stage { height: 62vh; }
+
+/* The base transform lives in --fan-tf so the enter/exit keyframes can COMPOSE with it
+   (a keyframe's transform would otherwise stomp the centring/rotation). */
+.pi-fan-agent {
+  position: absolute;
+  bottom: 0;
+  --fan-tf: translateX(-50%);
+  transform: var(--fan-tf);
+  transform-origin: 50% 100%;   /* rotate around the feet in angled mode */
+  width: auto;
+  filter: saturate(1.05) brightness(0.96) drop-shadow(0 1vh 2.2vh rgba(0,0,0,0.55));
+}
+/* Angled variant: lean the outer agents in around their feet — \\ | //. --rs is the
+   per-slot sign (-1 left pair, 0 centre, +1 right pair), --d the distance from centre. */
+#pi-root.fan-angled .pi-fan-agent {
+  --fan-tf: translateX(-50%) rotate(calc(var(--rs, 0) * var(--d, 0) * var(--fan-rot, 3.5deg)));
+}
+
+/* Player names under the composite — five equal columns matching the slot spread. */
+.pi-fan-names {
+  display: flex;
+  padding: 1.2vh 0 0;
+}
+.pi-fan-name {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.3vh;
+}
+.pi-fan-name b {
+  font-family: var(--gfx-font, 'Barlow Condensed'), sans-serif;
+  font-size: 2.4vh; font-weight: 900;
+  letter-spacing: 0.03em; text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--gfx-c3, #fff);
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.pi-fan-name i {
+  font-style: normal;
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 1.4vh; font-weight: 700;
+  letter-spacing: 0.12em; text-transform: var(--gfx-text-transform, uppercase);
+  color: var(--team-color, var(--gfx-c1));
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 100%;
+}
+
+.pi-fan-centre {
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 0.8vw;
+}
+.pi-fan-centre img { max-height: 7vh; max-width: 8vw; object-fit: contain; }
+
+.pi-fan-vs {
+  font-family: var(--gfx-font-2, var(--gfx-font, 'Barlow Condensed')), sans-serif;
+  font-size: 3.4vh; font-weight: 900;
+  letter-spacing: 0.18em; text-transform: var(--gfx-text-transform, uppercase);
+  color: rgba(255, 255, 255,0.32);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
    KEYFRAMES
    ═══════════════════════════════════════════════════════════════════════════ */
 @keyframes pi-rise    { from { transform: translateY(22px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -798,3 +923,38 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 #pi-root.layout-agentcards.anim-fade.pi-entering .pi-ac-card,
 #pi-root.layout-agentcards.anim-fade.pi-exiting  .pi-ac-header,
 #pi-root.layout-agentcards.anim-fade.pi-exiting  .pi-ac-card { animation: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   TEAM FAN ANIMATIONS — centre agent lands first, the fan opens outward;
+   exit lifts + fades fast. Keyframes compose with --fan-tf (centring/rotation).
+   ═══════════════════════════════════════════════════════════════════════════ */
+@keyframes pi-fan-in  { from { opacity: 0; transform: var(--fan-tf, translateX(-50%)) translateY(7vh) scale(0.94); }
+                        60% { opacity: 1; }
+                        to   { opacity: 1; transform: var(--fan-tf, translateX(-50%)); } }
+@keyframes pi-fan-out { from { opacity: 1; transform: var(--fan-tf, translateX(-50%)); }
+                        to   { opacity: 0; transform: var(--fan-tf, translateX(-50%)) translateY(-4vh); } }
+
+#pi-root.layout-fan.pi-entering .pi-fan-header,
+#pi-root.layout-fan.pi-entering .pi-fan-names {
+  animation: pi-rise calc(0.45s * var(--gfx-dur-scale, 1)) var(--pi-ac-pop, cubic-bezier(0.18,1.12,0.32,1)) calc(0.32s * var(--gfx-dur-scale, 1)) both;
+}
+#pi-root.layout-fan.pi-entering .pi-fan-agent {
+  animation: pi-fan-in calc(0.55s * var(--gfx-dur-scale, 1)) var(--pi-ac-pop, cubic-bezier(0.18,1.12,0.32,1)) both;
+  animation-delay: calc((0.08s + var(--d, 0) * 0.09s) * var(--gfx-dur-scale, 1));
+}
+#pi-root.layout-fan.pi-exiting .pi-fan-header,
+#pi-root.layout-fan.pi-exiting .pi-fan-names {
+  animation: pi-sink calc(0.3s * var(--gfx-dur-scale, 1)) var(--pi-ac-snap, cubic-bezier(0.5,0,0.78,0)) forwards;
+}
+#pi-root.layout-fan.pi-exiting .pi-fan-agent {
+  animation: pi-fan-out calc(0.32s * var(--gfx-dur-scale, 1)) var(--pi-ac-snap, cubic-bezier(0.5,0,0.78,0)) both;
+  animation-delay: calc((2 - var(--d, 0)) * 0.04s * var(--gfx-dur-scale, 1));
+}
+
+/* Fade: root opacity handles both directions. */
+#pi-root.layout-fan.anim-fade.pi-entering .pi-fan-header,
+#pi-root.layout-fan.anim-fade.pi-entering .pi-fan-names,
+#pi-root.layout-fan.anim-fade.pi-entering .pi-fan-agent,
+#pi-root.layout-fan.anim-fade.pi-exiting  .pi-fan-header,
+#pi-root.layout-fan.anim-fade.pi-exiting  .pi-fan-names,
+#pi-root.layout-fan.anim-fade.pi-exiting  .pi-fan-agent { animation: none; }

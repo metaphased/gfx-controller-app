@@ -1283,6 +1283,18 @@
             <button id="pi-layout-stack" class="btn btn-sm btn-dim"        onclick="setPlayerIntroLayout('stack')">Team Stack</button>
             <button id="pi-layout-bar"   class="btn btn-sm btn-dim"        onclick="setPlayerIntroLayout('bar')">Bar</button>
             <button id="pi-layout-agentcards" class="btn btn-sm btn-dim cap-valorant" onclick="setPlayerIntroLayout('agentcards')">Agent Cards</button>
+            <button id="pi-layout-fan" class="btn btn-sm btn-dim cap-valorant" onclick="setPlayerIntroLayout('fan')">Team Fan</button>
+          </div>
+          <div class="gfx-ctrl-group" id="pi-fan-teams-group" style="display:none">
+            <span class="gfx-ctrl-section-label">Teams</span>
+            <button id="pi-fan-teams-both"  class="btn btn-sm btn-dim" onclick="patchPlayerIntro({fanTeams:'both'})">Both</button>
+            <button id="pi-fan-teams-team1" class="btn btn-sm btn-dim" onclick="patchPlayerIntro({fanTeams:'team1'})">Team 1</button>
+            <button id="pi-fan-teams-team2" class="btn btn-sm btn-dim" onclick="patchPlayerIntro({fanTeams:'team2'})">Team 2</button>
+          </div>
+          <div class="gfx-ctrl-group" id="pi-fan-style-group" style="display:none">
+            <span class="gfx-ctrl-section-label">Arrangement</span>
+            <button id="pi-fan-style-flat"   class="btn btn-sm btn-dim" onclick="patchPlayerIntro({fanStyle:'flat'})">Flat</button>
+            <button id="pi-fan-style-angled" class="btn btn-sm btn-dim" onclick="patchPlayerIntro({fanStyle:'angled'})">Angled ⫽</button>
           </div>
         </div>
         <div class="gfx-ctrl-row">

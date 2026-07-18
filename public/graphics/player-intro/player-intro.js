@@ -642,6 +642,94 @@ function fitAgentCardHandles() {
   for (var i = 0; i < handles.length; i++) fitText(handles[i], maxPx, minPx);
 }
 
+// ── Layout: Team Fan (VALORANT) ───────────────────────────────────────────────
+// A composited "team photo": each team's five agents overlapped into ONE hero image —
+// centre agent tallest/foremost, heights stepping down outward (\\||//), all standing on a
+// common floor. Optional angling leans the outer agents in. Shows one team or both (VS
+// centre), from pi.fanTeams: 'both' | 'team1' | 'team2'. Valorant-only (full-body art).
+// Slot geometry per visual position 0..4: centre-x (% of stage), height (% of stage),
+// z-index, and the distance-from-centre used for the animation stagger + angling.
+var FAN_SLOTS = [
+  { x: 12, h: 76, z: 1, d: 2 },
+  { x: 31, h: 87, z: 2, d: 1 },
+  { x: 50, h: 100, z: 3, d: 0 },
+  { x: 69, h: 87, z: 2, d: 1 },
+  { x: 88, h: 76, z: 1, d: 2 },
+];
+
+// Valorant is role-less — the fan uses straight roster order, slot i = player i.
+function fanPlayers(players) {
+  return (players || []).filter(function (p) { return p && (p.handle || p.agent); }).slice(0, 5);
+}
+
+function buildFanStageHtml(players) {
+  var list = fanPlayers(players);
+  var html = '';
+  for (var i = 0; i < FAN_SLOTS.length; i++) {
+    var p = list[i] || {};
+    var url = agentPortraitUrl(p.agent);
+    if (!url) continue;
+    var s = FAN_SLOTS[i];
+    // Angling (CSS .fan-angled): rotate outward agents around their feet — sign flips
+    // per side of the fan so it reads \\ | // ; magnitude set by the CSS var --fan-rot.
+    var sign = i < 2 ? -1 : i > 2 ? 1 : 0;
+    html += '<img class="pi-fan-agent" decoding="async" src="' + url + '"' +
+      ' style="left:' + s.x + '%;height:' + s.h + '%;z-index:' + s.z + ';--d:' + s.d + ';--rs:' + sign + '">';
+  }
+  return html;
+}
+
+function buildFanNamesHtml(players) {
+  var list = fanPlayers(players);
+  return FAN_SLOTS.map(function (_, i) {
+    var p = list[i] || {};
+    return '<span class="pi-fan-name"><b>' + esc(p.handle || '') + '</b>' +
+      (p.agent ? '<i>' + esc(p.agent) + '</i>' : '') + '</span>';
+  }).join('');
+}
+
+function renderFan(state) {
+  var match     = state.match || {};
+  var pi        = state.playerIntro || {};
+  var t1        = match.team1 || {};
+  var t2        = match.team2 || {};
+  var showLogo  = pi.showLogo !== false;
+  var teams     = pi.fanTeams === 'team1' || pi.fanTeams === 'team2' ? pi.fanTeams : 'both';
+  var root      = $('pi-root');
+
+  root.classList.toggle('fan-solo', teams !== 'both');
+  root.classList.toggle('fan-angled', pi.fanStyle === 'angled');
+
+  var t1El = $('pi-fan-t1'), t2El = $('pi-fan-t2'), cEl = $('pi-fan-centre');
+  if (t1El) { t1El.style.display = teams === 'team2' ? 'none' : ''; t1El.style.setProperty('--team-color', 'var(--gfx-blue)'); }
+  if (t2El) { t2El.style.display = teams === 'team1' ? 'none' : ''; t2El.style.setProperty('--team-color', 'var(--gfx-red)'); }
+  if (cEl)  cEl.style.display = teams === 'both' ? '' : 'none';
+
+  acHeaderLogo('pi-fan-t1-logo', showLogo && t1.logo ? t1.logo : '');
+  acHeaderLogo('pi-fan-t2-logo', showLogo && t2.logo ? t2.logo : '');
+  setTxt('pi-fan-t1-name', t1.name || t1.tag || '');
+  setTxt('pi-fan-t2-name', t2.name || t2.tag || '');
+
+  var maxNamePx = Math.round(window.innerHeight * 0.05);
+  fitText($('pi-fan-t1-name'), maxNamePx, Math.round(maxNamePx * 0.4));
+  fitText($('pi-fan-t2-name'), maxNamePx, Math.round(maxNamePx * 0.4));
+
+  setLogoOrVs($('pi-fan-centre-img'), $('pi-fan-vs'), '');
+
+  function fill(stageId, namesId, players) {
+    var stage = $(stageId), names = $(namesId);
+    if (!stage) return;
+    var key = (players || []).map(function (p) { return [p.handle || '', p.agent || ''].join(':'); }).join('|') + '|' + teams;
+    if (stage.dataset.key !== key) {
+      stage.dataset.key = key;
+      stage.innerHTML = buildFanStageHtml(players);
+      if (names) names.innerHTML = buildFanNamesHtml(players);
+    }
+  }
+  if (teams !== 'team2') fill('pi-fan-t1-stage', 'pi-fan-t1-names', (state.players && state.players.team1) || []);
+  if (teams !== 'team1') fill('pi-fan-t2-stage', 'pi-fan-t2-names', (state.players && state.players.team2) || []);
+}
+
 // ── Render dispatch ───────────────────────────────────────────────────────────
 function renderAll(state) {
   var pi     = state.playerIntro || {};
@@ -649,19 +737,20 @@ function renderAll(state) {
   var root   = $('pi-root');
   if (!root) return;
 
-  // Agent Cards needs Valorant's per-player agent art — for any other game there's no
-  // wired portrait, so fall back to the Nameplate panel rather than show empty cards.
-  if (layout === 'agentcards' && !piIsValorant(state)) layout = 'panel';
+  // Agent Cards / Team Fan need Valorant's per-player agent art — for any other game there's
+  // no wired portrait, so fall back to the Nameplate panel rather than show empty frames.
+  if ((layout === 'agentcards' || layout === 'fan') && !piIsValorant(state)) layout = 'panel';
 
   if (root.dataset.layout !== layout) {
     root.dataset.layout = layout;
-    root.classList.remove('layout-panel', 'layout-stack', 'layout-bar', 'layout-agentcards');
+    root.classList.remove('layout-panel', 'layout-stack', 'layout-bar', 'layout-agentcards', 'layout-fan');
     root.classList.add('layout-' + layout);
   }
 
   if      (layout === 'stack')      renderStack(state);
   else if (layout === 'bar')        renderBar(state);
   else if (layout === 'agentcards') renderAgentCards(state);
+  else if (layout === 'fan')        renderFan(state);
   else                              renderPanel(state);
 }
 
@@ -702,6 +791,11 @@ function refitNames() {
     fitText($('pi-ac-t1-name'), maxAcPx, minAcPx);
     fitText($('pi-ac-t2-name'), maxAcPx, minAcPx);
     fitAgentCardHandles();
+  } else if (layout === 'fan') {
+    var maxFanPx = Math.round(window.innerHeight * 0.05);
+    var minFanPx = Math.round(maxFanPx * 0.4);
+    fitText($('pi-fan-t1-name'), maxFanPx, minFanPx);
+    fitText($('pi-fan-t2-name'), maxFanPx, minFanPx);
   }
 }
 
@@ -724,7 +818,7 @@ socket.on('state', function(state) {
 
   if (root) {
     var layout = pi.layout || 'panel';
-    var defaultAnim = layout === 'stack' ? 'split' : layout === 'bar' ? 'slide' : layout === 'agentcards' ? 'rise' : 'rise';
+    var defaultAnim = layout === 'stack' ? 'split' : layout === 'bar' ? 'slide' : 'rise';   // agentcards + fan default rise
     var anim = pi.animVariant || defaultAnim;
     var animClass = 'anim-' + anim;
     if (!root.classList.contains(animClass)) {
