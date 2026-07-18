@@ -31,6 +31,7 @@ Set up teams and rosters as usual ([Tournament setup](tournament-setup.md), [Mat
 
 - Set it manually per map once agents are locked — it's per-player broadcast state, not part of the Teams Database.
 - The agent shows up in the [Player Intro](player-intro.md) (all layouts that show art), the [Win Screen](win-screen.md) winning-team showcase, and the [caster view](caster-view.md) roster.
+- **Validate Riot IDs** (button at the top of the Players page) checks every roster `Name#TAG` against the official Riot Account API — catching typos before broadcast. It needs `RIOT_API_KEY` in your `.env` (the same standard key used for LoL ranks; no special VALORANT access required).
 
 ## Map veto & map intro
 

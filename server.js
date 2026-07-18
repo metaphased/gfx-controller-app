@@ -3047,6 +3047,54 @@ app.post('/api/heropool/refresh', requireAdmin, async (req, res) => {
   res.json({ ok: true, updated, errors });
 });
 
+// ── VALORANT Riot ID validation ──────────────────────────────────────────────────
+// Resolves every roster Riot ID (Name#TAG) → PUUID via the official Account-V1, which
+// works on the standard RIOT_API_KEY (no VAL-* production access needed). Catches
+// roster typos before broadcast; the stored player.puuid is the stable join key if
+// richer VALORANT data ever comes into scope. account-v1 is a global service on every
+// routing cluster — europe is fine for all regions.
+// RIOT_ACCOUNT_BASE env override exists ONLY for the test harness (mock server).
+app.post('/api/valorant/validate-ids', requireAdmin, async (req, res) => {
+  if (!adapterSupports('valorant')) return res.json({ skipped: true, reason: 'Active game is not VALORANT' });
+  const riotKey = process.env.RIOT_API_KEY || '';
+  if (!riotKey) {
+    logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'val-validate-ids', 'FAILED: RIOT_API_KEY not set in .env');
+    return res.status(500).json({ error: 'RIOT_API_KEY not set in .env' });
+  }
+  const base = process.env.RIOT_ACCOUNT_BASE || 'https://europe.api.riotgames.com';
+  const results = [];
+  for (const slot of ['team1', 'team2']) {
+    const players = state.players[slot] || [];
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      if (!p || (!p.handle && !p.riotId)) continue;   // empty roster row
+      const parts = String(p.riotId || '').split('#');
+      if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        results.push({ team: slot, handle: p.handle || '', ok: false, error: p.riotId ? 'malformed Riot ID (want Name#TAG)' : 'no Riot ID set' });
+        continue;
+      }
+      try {
+        const r = await fetch(`${base}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`,
+          { headers: { 'X-Riot-Token': riotKey } });
+        if (r.status === 404) throw new Error('Riot ID not found');
+        if (r.status === 429) throw new Error('rate limited — wait a minute and retry');
+        if (!r.ok) throw new Error('Riot HTTP ' + r.status);
+        const puuid = ((await r.json()) || {}).puuid || '';
+        if (!puuid) throw new Error('no puuid in response');
+        state.players[slot][i].puuid = puuid;
+        results.push({ team: slot, handle: p.handle || '', ok: true });
+        await new Promise(r => setTimeout(r, 150));   // dev-key rate limits are tight
+      } catch (err) {
+        results.push({ team: slot, handle: p.handle || '', ok: false, error: err.message });
+      }
+    }
+  }
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'val-validate-ids',
+    results.filter(r => r.ok).length + ' ok, ' + results.filter(r => !r.ok).length + ' failed');
+  broadcast();
+  res.json({ ok: true, results });
+});
+
 app.post('/api/ranks/refresh', requireAdmin, async (req, res) => {
   if (!adapterSupports('opgg')) return res.json({ skipped: true, reason: 'Active game has no op.gg intel provider' });
   const key = process.env.RIOT_API_KEY;

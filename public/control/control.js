@@ -4335,6 +4335,46 @@ async function refreshHeroPool() {
   }
 }
 
+// VALORANT — validate every roster Riot ID against the Riot Account API (typo check
+// before broadcast; stores each player's PUUID server-side). Mirrors refreshHeroPool's
+// button/status treatment, plus a per-player pass/fail list under the card.
+async function validateRiotIds() {
+  const btns = Array.from(document.querySelectorAll('[onclick="validateRiotIds()"]'));
+  const statEl = g('val-ids-status'), listEl = g('val-ids-results');
+  btns.forEach(function(b) { b._origText = b._origText || b.textContent; b.disabled = true; b.textContent = '✓ Checking…'; b.classList.remove('btn-ok','btn-err'); });
+  if (statEl) statEl.textContent = 'Contacting Riot API…';
+  if (listEl) { listEl.style.display = 'none'; listEl.innerHTML = ''; }
+  try {
+    const r = await fetch('/api/valorant/validate-ids', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    const res = await r.json().catch(function() { return {}; });
+    if (!r.ok) {
+      if (statEl) statEl.textContent = 'Error: ' + ((res && res.error) || ('HTTP ' + r.status));
+      _setActionState(btns, 'err'); return;
+    }
+    const results = (res && res.results) || [];
+    const bad = results.filter(function(x) { return !x.ok; });
+    if (statEl) statEl.textContent = results.length
+      ? (bad.length ? '⚠ ' + bad.length + ' of ' + results.length + ' failed:' : '✓ All ' + results.length + ' Riot IDs valid.')
+      : 'No roster players with a Riot ID found.';
+    if (listEl && bad.length) {
+      const tn = function(t) {
+        const m = (window._state && window._state.match) || {};
+        return ((m[t] || {}).tag) || ((m[t] || {}).name) || (t === 'team1' ? 'Team 1' : 'Team 2');
+      };
+      listEl.innerHTML = bad.map(function(x) {
+        return '<div>✗ <strong>' + esc(x.handle || '(unnamed)') + '</strong> <span style="color:var(--text-dim)">(' + esc(tn(x.team)) + ')</span> — ' + esc(x.error || 'failed') + '</div>';
+      }).join('');
+      listEl.style.display = '';
+    }
+    _setActionState(btns, bad.length ? 'err' : 'ok');
+  } catch(e) {
+    if (statEl) statEl.textContent = 'Request failed: ' + e.message;
+    console.error('[val-ids] validate error:', e); _setActionState(btns, 'err');
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '✓ Validate Riot IDs'; });
+  }
+}
+
 async function refreshRanks() {
   const btns = Array.from(document.querySelectorAll('[onclick="refreshRanks()"]'));
   const statEls = [g('ranks-status'), g('intel-status')].filter(Boolean);

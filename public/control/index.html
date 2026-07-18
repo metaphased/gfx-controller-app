@@ -1076,6 +1076,13 @@
           <span id="heropool-status" style="font-size:12px;color:var(--text-dim)">Fetches each player's most-played heroes (needs a Steam ID set on the roster).</span>
         </div>
       </div>
+      <div class="card cap-valorant" style="margin-bottom:12px;display:none">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button class="btn btn-primary" onclick="validateRiotIds()">✓ Validate Riot IDs</button>
+          <span id="val-ids-status" style="font-size:12px;color:var(--text-dim)">Checks every roster Riot ID (Name#TAG) against the Riot API — catches typos before broadcast. Needs <code>RIOT_API_KEY</code> in <code>.env</code>.</span>
+        </div>
+        <div id="val-ids-results" style="margin-top:8px;display:none;font-size:12px;line-height:1.7"></div>
+      </div>
       <div class="grid2">
         <div class="card"><div class="card-title" id="players-t1-label">Team 1 Roster</div><div id="t1-roster"></div></div>
         <div class="card"><div class="card-title" id="players-t2-label">Team 2 Roster</div><div id="t2-roster"></div></div>
