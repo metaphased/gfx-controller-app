@@ -868,10 +868,13 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 @keyframes pi-ac-slam-ol  { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(-9vw)  scale(0.97); } }
 @keyframes pi-ac-slam-or  { from { opacity: 1; transform: none; } to { opacity: 0; transform: translateX(9vw)   scale(0.97); } }
 
-/* Overshoot easing for the enter pop (slight settle past 1); snappy accel for exits. */
-#pi-root.layout-agentcards {
-  --pi-ac-pop:  cubic-bezier(0.18, 1.12, 0.32, 1);
-  --pi-ac-snap: cubic-bezier(0.5, 0, 0.78, 0);
+/* Enter/exit easing for the VALORANT layouts (Agent Cards + Team Fan) — routed through
+   the Broadcast Theme animation tokens so the easing library + per-graphic overrides
+   apply here like everywhere else. The literal fallbacks (overshoot pop in, snappy accel
+   out) only matter outside the app shell, since applyAnimation always sets the tokens. */
+#pi-root {
+  --pi-ac-pop:  var(--gfx-ease-enter, cubic-bezier(0.18, 1.12, 0.32, 1));
+  --pi-ac-snap: var(--gfx-ease-exit,  cubic-bezier(0.5, 0, 0.78, 0));
 }
 
 /* ── Rise (default): headers rise; cards pop up + scale with overshoot, staggered
@@ -921,30 +924,55 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 #pi-root.layout-agentcards.anim-fade.pi-exiting  .pi-ac-card { animation: none; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   TEAM FAN ANIMATIONS — centre agent lands first, the fan opens outward;
-   exit lifts + fades fast. Keyframes compose with --fan-tf (centring/rotation).
+   TEAM FAN ANIMATIONS — all easing via --pi-ac-pop/--pi-ac-snap (theme tokens).
+   Rise (default): centre agent lands first and the fan opens outward, header +
+   names following; exit lifts + fades, outer agents first. Converge: the outer
+   agents sweep in horizontally toward their slots while the centre rises.
+   Keyframes compose with --fan-tf so the centring transform survives.
    ═══════════════════════════════════════════════════════════════════════════ */
-@keyframes pi-fan-in  { from { opacity: 0; transform: var(--fan-tf, translateX(-50%)) translateY(7vh) scale(0.94); }
-                        60% { opacity: 1; }
-                        to   { opacity: 1; transform: var(--fan-tf, translateX(-50%)); } }
-@keyframes pi-fan-out { from { opacity: 1; transform: var(--fan-tf, translateX(-50%)); }
-                        to   { opacity: 0; transform: var(--fan-tf, translateX(-50%)) translateY(-4vh); } }
+@keyframes pi-fan-in   { from { opacity: 0; transform: var(--fan-tf, translateX(-50%)) translateY(9vh) scale(0.93); }
+                         55% { opacity: 1; }
+                         to   { opacity: 1; transform: var(--fan-tf, translateX(-50%)); } }
+@keyframes pi-fan-out  { from { opacity: 1; transform: var(--fan-tf, translateX(-50%)); }
+                         to   { opacity: 0; transform: var(--fan-tf, translateX(-50%)) translateY(-5vh); } }
+/* Converge: --cs is the slot's horizontal sign (-1 left pair, +1 right pair, 0 centre) —
+   outer agents travel from the outside in; the centre (cs=0) rises instead:
+   (1 - cs²) is 1 only for the centre, giving it the vertical component. */
+@keyframes pi-fan-cv-in { from { opacity: 0;
+                           transform: var(--fan-tf, translateX(-50%))
+                             translateX(calc(var(--cs, 0) * 11vw))
+                             translateY(calc((1 - var(--cs, 0) * var(--cs, 0)) * 9vh)); }
+                         55% { opacity: 1; }
+                         to   { opacity: 1; transform: var(--fan-tf, translateX(-50%)); } }
+@keyframes pi-fan-cv-out { from { opacity: 1; transform: var(--fan-tf, translateX(-50%)); }
+                         to   { opacity: 0;
+                           transform: var(--fan-tf, translateX(-50%))
+                             translateX(calc(var(--cs, 0) * 8vw))
+                             translateY(calc((1 - var(--cs, 0) * var(--cs, 0)) * -5vh)); } }
 
 #pi-root.layout-fan.pi-entering .pi-fan-header,
 #pi-root.layout-fan.pi-entering .pi-fan-names {
-  animation: pi-rise calc(0.45s * var(--gfx-dur-scale, 1)) var(--pi-ac-pop, cubic-bezier(0.18,1.12,0.32,1)) calc(0.32s * var(--gfx-dur-scale, 1)) both;
+  animation: pi-rise calc(0.45s * var(--gfx-dur-scale, 1)) var(--pi-ac-pop) calc(0.34s * var(--gfx-dur-scale, 1)) both;
 }
 #pi-root.layout-fan.pi-entering .pi-fan-agent {
-  animation: pi-fan-in calc(0.55s * var(--gfx-dur-scale, 1)) var(--pi-ac-pop, cubic-bezier(0.18,1.12,0.32,1)) both;
+  animation: pi-fan-in calc(0.55s * var(--gfx-dur-scale, 1)) var(--pi-ac-pop) both;
   animation-delay: calc((0.08s + var(--d, 0) * 0.09s) * var(--gfx-dur-scale, 1));
 }
 #pi-root.layout-fan.pi-exiting .pi-fan-header,
 #pi-root.layout-fan.pi-exiting .pi-fan-names {
-  animation: pi-sink calc(0.3s * var(--gfx-dur-scale, 1)) var(--pi-ac-snap, cubic-bezier(0.5,0,0.78,0)) forwards;
+  animation: pi-sink calc(0.3s * var(--gfx-dur-scale, 1)) var(--pi-ac-snap) forwards;
 }
 #pi-root.layout-fan.pi-exiting .pi-fan-agent {
-  animation: pi-fan-out calc(0.32s * var(--gfx-dur-scale, 1)) var(--pi-ac-snap, cubic-bezier(0.5,0,0.78,0)) both;
+  animation: pi-fan-out calc(0.32s * var(--gfx-dur-scale, 1)) var(--pi-ac-snap) both;
   animation-delay: calc((2 - var(--d, 0)) * 0.04s * var(--gfx-dur-scale, 1));
+}
+
+/* Converge variant — same header/names treatment, different agent travel. */
+#pi-root.layout-fan.anim-converge.pi-entering .pi-fan-agent {
+  animation-name: pi-fan-cv-in;
+}
+#pi-root.layout-fan.anim-converge.pi-exiting .pi-fan-agent {
+  animation-name: pi-fan-cv-out;
 }
 
 /* Fade: root opacity handles both directions. */

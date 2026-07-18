@@ -715,8 +715,9 @@ function buildFanStageHtml(arranged) {
     var url = agentFanUrl(p.agent);
     if (!url) continue;
     var s = FAN_SLOTS[i];
+    var cs = i < 2 ? -1 : i > 2 ? 1 : 0;   // horizontal sign for the Converge animation
     html += '<img class="pi-fan-agent" decoding="async" src="' + url + '"' +
-      ' style="left:' + s.x + '%;height:' + s.h + '%;z-index:' + s.z + ';--d:' + s.d + '">';
+      ' style="left:' + s.x + '%;height:' + s.h + '%;z-index:' + s.z + ';--d:' + s.d + ';--cs:' + cs + '">';
   }
   return html;
 }
@@ -845,7 +846,7 @@ function refitNames() {
 }
 
 // ── Socket ────────────────────────────────────────────────────────────────────
-var ALL_ANIMS = ['anim-rise', 'anim-stagger', 'anim-fade', 'anim-split', 'anim-slide'];
+var ALL_ANIMS = ['anim-rise', 'anim-stagger', 'anim-fade', 'anim-split', 'anim-slide', 'anim-converge'];
 
 socket.on('state', function(state) {
   var root    = $('pi-root');

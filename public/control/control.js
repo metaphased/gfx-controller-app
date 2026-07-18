@@ -2841,7 +2841,7 @@ const PI_ANIMS = {
   stack: [['split', 'Split'], ['rise', 'Rise'], ['fade', 'Fade']],
   bar:   [['slide', 'Slide'], ['fade', 'Fade']],
   agentcards: [['rise', 'Rise'], ['split', 'Split'], ['fade', 'Fade']],
-  fan:   [['rise', 'Rise'], ['fade', 'Fade']],
+  fan:   [['rise', 'Rise'], ['converge', 'Converge'], ['fade', 'Fade']],
 };
 
 function syncPlayerIntroLayoutBtns(layout) {
