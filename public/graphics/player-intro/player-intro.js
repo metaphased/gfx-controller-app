@@ -314,7 +314,11 @@ function piIsValorant(state) { var a = state.adapter || {}; return a.assetSource
 function agentSlug(name) { return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
 function agentImgUrl(name)  { var s = agentSlug(name); return s ? '/agents/bust/' + s + '.webp' : ''; }     // head+torso bust crop (fills the row well)
 function agentIconUrl(name) { var s = agentSlug(name); return s ? '/agents/icons/' + s + '.png' : ''; }   // small headshot icon
-function agentPortraitUrl(name) { var s = agentSlug(name); return s ? '/agents/' + s + '.png' : ''; }     // full-body portrait (Agent Cards layout)
+function agentPortraitUrl(name) { var s = agentSlug(name); return s ? '/agents/' + s + '.png' : ''; }     // full-body portrait (Agent Cards layout — cover-cropped, wants the big raw canvas)
+// Tight full-body crop (transparent margins trimmed) — the Team Fan positions and WIDTH-SORTS
+// by the image box, so it needs the real bounding box: the raw portraits all share one canvas
+// (identical aspect), which silently degrades the width sort to alphabetical.
+function agentFanUrl(name) { var s = agentSlug(name); return s ? '/agents/full/' + s + '.webp' : ''; }
 
 // Big agent portrait filling the row toward the centre divider — the VALORANT equivalent of
 // the champion splash strip (same H2H-card feel), fading toward the name so the handle stays
@@ -684,7 +688,7 @@ function fanEnsureAspects(list, onReady) {
       if (--pending === 0 && onReady) onReady();
     };
     img.onerror = function () { _fanAspect[slug] = 1; delete _fanLoading[slug]; if (--pending === 0 && onReady) onReady(); };
-    img.src = agentPortraitUrl(p.agent);
+    img.src = agentFanUrl(p.agent);
   });
   return pending === 0;
 }
@@ -708,7 +712,7 @@ function buildFanStageHtml(arranged) {
   var html = '';
   for (var i = 0; i < FAN_SLOTS.length; i++) {
     var p = arranged[i] || {};
-    var url = agentPortraitUrl(p.agent);
+    var url = agentFanUrl(p.agent);
     if (!url) continue;
     var s = FAN_SLOTS[i];
     html += '<img class="pi-fan-agent" decoding="async" src="' + url + '"' +
