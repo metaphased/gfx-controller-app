@@ -1655,6 +1655,8 @@ function syncUI(s) {
   if (_piRankBtn) _piRankBtn.textContent = 'Rank: ' + (_pi.showRank ? 'On' : 'Off');
   const _piChampsBtn = g('pi-toggle-champs');
   if (_piChampsBtn) _piChampsBtn.textContent = 'Champs: ' + (_pi.showChamps ? 'On' : 'Off');
+  const _piAgentsBtn = g('pi-toggle-agents');   // VALORANT label for the same showChamps state
+  if (_piAgentsBtn) _piAgentsBtn.textContent = 'Agents: ' + (_pi.showChamps ? 'On' : 'Off');
   syncPiBgBtns(_pi.piBg || 'transparent');
   const _piBarOpacity = _pi.barOpacity !== undefined ? _pi.barOpacity : 0.93;
   const _piBarSlider = g('pi-bar-opacity-slider');

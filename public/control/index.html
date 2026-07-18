@@ -1290,8 +1290,10 @@
             <span class="gfx-ctrl-section-label">Options</span>
             <button id="pi-toggle-logo"   class="btn btn-sm btn-dim" onclick="togglePlayerIntroLogo()">Logo: On</button>
             <button id="pi-toggle-rank"   class="btn btn-sm btn-dim cap-opgg" onclick="togglePlayerIntroRank()">Rank: Off</button>
-            <!-- champ strip is only wired for champ-draft (LoL); hidden for Dota/CS2 (no wired pick art) -->
+            <!-- champ strip is only wired for champ-draft (LoL); hidden for Dota/CS2 (no wired pick art).
+                 VALORANT reuses the same showChamps state for its AGENT strip — its own labelled button. -->
             <button id="pi-toggle-champs" class="btn btn-sm btn-dim cap-champ-draft" onclick="togglePlayerIntroChamps()">Champs: Off</button>
+            <button id="pi-toggle-agents" class="btn btn-sm btn-dim cap-valorant" onclick="togglePlayerIntroChamps()">Agents: Off</button>
           </div>
           <div class="gfx-ctrl-group">
             <span class="gfx-ctrl-section-label">Animation</span>
@@ -1320,6 +1322,7 @@
             <div class="card-title">About Player Intro</div>
             <p class="hint">Pre-series graphic introducing both rosters. Layouts: <strong>Nameplate</strong> (centred overlay panel), <strong>Team Stack</strong> (full-screen left/right split), <strong>Bar</strong> (bottom-anchored band)<span class="cap-valorant">, and <strong>Agent Cards</strong> (full-screen tall agent-portrait cards, VALORANT only)</span>.</p>
             <p class="hint cap-champ-draft" style="margin-top:8px">Rank and champion data are optional — fetch them first in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel. Champs blends each player's <strong>top 3 most-played</strong> champions along their row (Nameplate &amp; Team Stack); players with no data fall back to a clean name. The Bar layout is always name-only. Disable to keep the focus on player names everywhere.</p>
+            <p class="hint cap-valorant" style="margin-top:8px">Assign each player an <strong>agent</strong> in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel — the Agents toggle shows their art along the rows (Nameplate &amp; Team Stack), and the <strong>Agent Cards</strong> layout shows both teams' agents as full-body portrait cards.</p>
           </div>
         </div>
 
