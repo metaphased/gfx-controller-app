@@ -645,10 +645,10 @@ function fitAgentCardHandles() {
 // ── Layout: Team Fan (VALORANT) ───────────────────────────────────────────────
 // A composited "team photo": each team's five agents overlapped into ONE hero image —
 // centre agent tallest/foremost, heights stepping down outward (\\||//), all standing on a
-// common floor. Optional angling leans the outer agents in. Shows one team or both (VS
-// centre), from pi.fanTeams: 'both' | 'team1' | 'team2'. Valorant-only (full-body art).
+// common floor. Shows one team or both (VS centre), from pi.fanTeams: 'both' | 'team1' |
+// 'team2'. Valorant-only (full-body art).
 // Slot geometry per visual position 0..4: centre-x (% of stage), height (% of stage),
-// z-index, and the distance-from-centre used for the animation stagger + angling.
+// z-index, and the distance-from-centre used for the animation stagger.
 var FAN_SLOTS = [
   { x: 12, h: 76, z: 1, d: 2 },
   { x: 31, h: 87, z: 2, d: 1 },
@@ -657,32 +657,69 @@ var FAN_SLOTS = [
   { x: 88, h: 76, z: 1, d: 2 },
 ];
 
-// Valorant is role-less — the fan uses straight roster order, slot i = player i.
+// Valorant is role-less — roster order carries no meaning, so the fan is free to arrange.
 function fanPlayers(players) {
   return (players || []).filter(function (p) { return p && (p.handle || p.agent); }).slice(0, 5);
 }
 
-function buildFanStageHtml(players) {
-  var list = fanPlayers(players);
+// Some portraits are much WIDER than others (capes, deployed abilities, nebulae) and at
+// fan overlap they slather across their neighbours. Fix: measure each portrait's aspect
+// and put the WIDEST art on the OUTER slots (low z → wide elements tuck BEHIND the inner
+// neighbour) and the narrowest in the tall centre slot. Aspect cache is filled by
+// preloading the local images; until an aspect is known we fall back to roster order and
+// re-render when the load lands (local files — near-instant).
+var _fanAspect = {};        // slug -> width/height
+var _fanLoading = {};       // slug -> true while an Image() load is in flight
+function fanEnsureAspects(list, onReady) {
+  var pending = 0;
+  list.forEach(function (p) {
+    var slug = agentSlug(p.agent);
+    if (!slug || _fanAspect[slug] != null || _fanLoading[slug]) return;
+    _fanLoading[slug] = true;
+    pending++;
+    var img = new Image();
+    img.onload = function () {
+      _fanAspect[slug] = img.naturalHeight ? img.naturalWidth / img.naturalHeight : 1;
+      delete _fanLoading[slug];
+      if (--pending === 0 && onReady) onReady();
+    };
+    img.onerror = function () { _fanAspect[slug] = 1; delete _fanLoading[slug]; if (--pending === 0 && onReady) onReady(); };
+    img.src = agentPortraitUrl(p.agent);
+  });
+  return pending === 0;
+}
+
+// Visual arrangement: widest two → outer slots (0, 4), middle two → slots 1, 3,
+// narrowest → centre (2). Deterministic (slug tiebreak) so repeated renders agree.
+function fanArrange(list) {
+  var known = list.every(function (p) { return _fanAspect[agentSlug(p.agent)] != null; });
+  if (!known || list.length < 2) return list;
+  var byWidth = list.slice().sort(function (a, b) {
+    var d = (_fanAspect[agentSlug(b.agent)] || 1) - (_fanAspect[agentSlug(a.agent)] || 1);
+    return d !== 0 ? d : agentSlug(a.agent) < agentSlug(b.agent) ? -1 : 1;
+  });
+  var out = [];
+  var order = [0, 4, 1, 3, 2];              // widest → first/fifth, narrowest → centre
+  byWidth.forEach(function (p, i) { out[order[i]] = p; });
+  return out.filter(function (p) { return p; });
+}
+
+function buildFanStageHtml(arranged) {
   var html = '';
   for (var i = 0; i < FAN_SLOTS.length; i++) {
-    var p = list[i] || {};
+    var p = arranged[i] || {};
     var url = agentPortraitUrl(p.agent);
     if (!url) continue;
     var s = FAN_SLOTS[i];
-    // Angling (CSS .fan-angled): rotate outward agents around their feet — sign flips
-    // per side of the fan so it reads \\ | // ; magnitude set by the CSS var --fan-rot.
-    var sign = i < 2 ? -1 : i > 2 ? 1 : 0;
     html += '<img class="pi-fan-agent" decoding="async" src="' + url + '"' +
-      ' style="left:' + s.x + '%;height:' + s.h + '%;z-index:' + s.z + ';--d:' + s.d + ';--rs:' + sign + '">';
+      ' style="left:' + s.x + '%;height:' + s.h + '%;z-index:' + s.z + ';--d:' + s.d + '">';
   }
   return html;
 }
 
-function buildFanNamesHtml(players) {
-  var list = fanPlayers(players);
+function buildFanNamesHtml(arranged) {
   return FAN_SLOTS.map(function (_, i) {
-    var p = list[i] || {};
+    var p = arranged[i] || {};
     return '<span class="pi-fan-name"><b>' + esc(p.handle || '') + '</b>' +
       (p.agent ? '<i>' + esc(p.agent) + '</i>' : '') + '</span>';
   }).join('');
@@ -698,7 +735,6 @@ function renderFan(state) {
   var root      = $('pi-root');
 
   root.classList.toggle('fan-solo', teams !== 'both');
-  root.classList.toggle('fan-angled', pi.fanStyle === 'angled');
 
   var t1El = $('pi-fan-t1'), t2El = $('pi-fan-t2'), cEl = $('pi-fan-centre');
   if (t1El) { t1El.style.display = teams === 'team2' ? 'none' : ''; t1El.style.setProperty('--team-color', 'var(--gfx-blue)'); }
@@ -719,11 +755,16 @@ function renderFan(state) {
   function fill(stageId, namesId, players) {
     var stage = $(stageId), names = $(namesId);
     if (!stage) return;
-    var key = (players || []).map(function (p) { return [p.handle || '', p.agent || ''].join(':'); }).join('|') + '|' + teams;
+    var list = fanPlayers(players);
+    // Width-aware arrangement needs the portraits' aspects — preload any unknown ones and
+    // re-fill when they land (local files, so this resolves within a frame or two).
+    var ready = fanEnsureAspects(list, function () { stage.dataset.key = ''; fill(stageId, namesId, players); });
+    var arranged = ready ? fanArrange(list) : list;
+    var key = arranged.map(function (p) { return [p.handle || '', p.agent || ''].join(':'); }).join('|') + '|' + teams + '|' + (ready ? 'w' : 'r');
     if (stage.dataset.key !== key) {
       stage.dataset.key = key;
-      stage.innerHTML = buildFanStageHtml(players);
-      if (names) names.innerHTML = buildFanNamesHtml(players);
+      stage.innerHTML = buildFanStageHtml(arranged);
+      if (names) names.innerHTML = buildFanNamesHtml(arranged);
     }
   }
   if (teams !== 'team2') fill('pi-fan-t1-stage', 'pi-fan-t1-names', (state.players && state.players.team1) || []);

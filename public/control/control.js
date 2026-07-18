@@ -1663,11 +1663,6 @@ function syncUI(s) {
     const b = g('pi-fan-teams-' + v);
     if (b) { b.classList.remove('btn-active-gfx', 'btn-dim'); b.classList.add(_fanTeams === v ? 'btn-active-gfx' : 'btn-dim'); }
   });
-  const _fanStyle = _pi.fanStyle === 'angled' ? 'angled' : 'flat';
-  ['flat', 'angled'].forEach(function(v) {
-    const b = g('pi-fan-style-' + v);
-    if (b) { b.classList.remove('btn-active-gfx', 'btn-dim'); b.classList.add(_fanStyle === v ? 'btn-active-gfx' : 'btn-dim'); }
-  });
   syncPiBgBtns(_pi.piBg || 'transparent');
   const _piBarOpacity = _pi.barOpacity !== undefined ? _pi.barOpacity : 0.93;
   const _piBarSlider = g('pi-bar-opacity-slider');
@@ -2860,11 +2855,9 @@ function syncPlayerIntroLayoutBtns(layout) {
   });
   const opacityGrp = g('pi-bar-opacity-group');
   if (opacityGrp) opacityGrp.style.display = layout === 'bar' ? '' : 'none';
-  // Team Fan options (which team(s) + flat/angled) only apply to the fan layout.
-  ['pi-fan-teams-group', 'pi-fan-style-group'].forEach(function(id) {
-    const grp = g(id);
-    if (grp) grp.style.display = layout === 'fan' ? '' : 'none';
-  });
+  // Team Fan options (which team(s)) only apply to the fan layout.
+  const fanGrp = g('pi-fan-teams-group');
+  if (fanGrp) fanGrp.style.display = layout === 'fan' ? '' : 'none';
 }
 
 function syncPlayerIntroAnimBtns(layout, active) {

@@ -665,8 +665,9 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
   align-items: stretch;
   gap: 0.6vh;
 }
-/* Solo mode: single cluster, bigger and centred. */
-#pi-root.fan-solo .pi-fan-cluster { flex: 0 1 62vw; }
+/* Solo mode: single cluster, bigger and centred — wide enough that the five agents get
+   clear breathing room between slots (full-screen team-photo treatment). */
+#pi-root.fan-solo .pi-fan-cluster { flex: 0 1 74vw; }
 
 .pi-fan-header {
   display: flex;
@@ -703,20 +704,15 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 #pi-root.fan-solo .pi-fan-stage { height: 62vh; }
 
 /* The base transform lives in --fan-tf so the enter/exit keyframes can COMPOSE with it
-   (a keyframe's transform would otherwise stomp the centring/rotation). */
+   (a keyframe's transform would otherwise stomp the centring). Flat only — an angled
+   variant was tried and dropped: the leans read as agents falling over. */
 .pi-fan-agent {
   position: absolute;
   bottom: 0;
   --fan-tf: translateX(-50%);
   transform: var(--fan-tf);
-  transform-origin: 50% 100%;   /* rotate around the feet in angled mode */
   width: auto;
   filter: saturate(1.05) brightness(0.96) drop-shadow(0 1vh 2.2vh rgba(0,0,0,0.55));
-}
-/* Angled variant: lean the outer agents in around their feet — \\ | //. --rs is the
-   per-slot sign (-1 left pair, 0 centre, +1 right pair), --d the distance from centre. */
-#pi-root.fan-angled .pi-fan-agent {
-  --fan-tf: translateX(-50%) rotate(calc(var(--rs, 0) * var(--d, 0) * var(--fan-rot, 3.5deg)));
 }
 
 /* Player names under the composite — five equal columns matching the slot spread. */
