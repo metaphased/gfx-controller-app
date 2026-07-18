@@ -73,6 +73,12 @@ Everything above applies to every tournament. Each game then has its own art syn
 - **Live data (optional)** — GSI from an observer/GOTV client fills the draft, scoreboards and the match-summary graph: [Live Data (Dota 2)](dota-live-data.md).
 - Add **Steam IDs** to rosters — for Dota this is also what keeps players' real handles (not their in-game smurf names) on air: [names on air](dota-live-data.md#names-on-air--the-roster-rule).
 
+### VALORANT *(alpha)*
+
+- **Agent + map art** — sync both from **Settings → Broadcast Assets → Agent & Map Assets · VALORANT** (or `node scripts/sync-valorant.js`). Agents drive the player intro and win screen; maps drive the veto and map intro.
+- **Assign agents** per player on **Game Setup → Players / Rosters** once they lock — there's no public draft in VALORANT.
+- Data entry is **manual** (no live VALORANT feed) — final map scores go in **Game Setup → Series Tracker**. Full rundown: [VALORANT guide](valorant.md).
+
 ## Environment variables
 
 All optional. Create a `.env` file in the project root:

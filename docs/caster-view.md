@@ -29,7 +29,7 @@ Click any player to expand full prep detail — Riot ID, this-game draft pick wi
 | **Bracket** | The playoff bracket — single- or double-elimination, with scores and winners. |
 | **Schedule** | The broadcast schedule. |
 
-The tabs adapt to the tournament's game — the table above describes a League of Legends event; see [Dota 2](#dota-2) below for how the Draft, Live and Series tabs change.
+The tabs adapt to the tournament's game — the table above describes a League of Legends event; see [Dota 2](#dota-2) below for how the Draft, Live and Series tabs change. On **map-veto games** a **Map Veto** tab mirrors the ban/pick sequence with starting sides (CS2 CT/T + knife round, VALORANT DEF/ATK + decider side). On **VALORANT** the roster rows show each player's assigned **agent** (icon + name) and Riot ID, and the Live tab is hidden (no live feed).
 
 ### Teams
 

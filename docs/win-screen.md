@@ -1,6 +1,6 @@
 # Win Screen
 
-Celebrate a game or series result with a winner reveal. Ten styles — from quick on-scene reveals to full-screen **stingers** that double as scene transitions, plus a **COMP** screen showing the winning draft (champions on LoL, heroes on Dota 2). Driven from **Graphics → Win Screen**, output at `/graphics/win-screen/`.
+Celebrate a game or series result with a winner reveal. Ten styles — from quick on-scene reveals to full-screen **stingers** that double as scene transitions, plus a **COMP** screen showing the winning team's characters (champions on LoL, heroes on Dota 2, agents on VALORANT). Driven from **Graphics → Win Screen**, output at `/graphics/win-screen/`.
 
 ![Win Screen — COMP style](img/win-screen-comp.webp)
 
@@ -52,6 +52,8 @@ In the control bar pick the **winning team**; the control tab below sets the **m
 - **COMP** — a full-screen showcase of the **winning team's champion picks and players** (pictured above). Needs a recorded game in the series so the picks are known. Options let you toggle the picks, choose their position, and pick the portrait shape and background treatment.
 
 **Dota 2:** the winning-picks row shows the winner's five **drafted heroes** from the current [hero draft](hero-draft.md) — landscape hero art labelled by hero name.
+
+**VALORANT:** the winning-picks row shows the winner's five **agents** as full-body portraits, read from each player's assigned agent on the roster ([VALORANT guide](valorant.md#rosters--agents)) — every agent at the same full height, labelled by player handle. COMP shows them full-screen; the compact row works on the centred styles like the other games.
 
 ## Notes
 

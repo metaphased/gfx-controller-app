@@ -26,7 +26,7 @@ Every graphic is a browser source for OBS/vMix at 1920×1080. Each page below co
 | Guide | Graphic |
 |---|---|
 | [Broadcast Theming](theming.md) | The whole broadcast's visual identity — palette, fonts, shape & surface, animation, Looks. |
-| [Player Intro](player-intro.md) | Player/roster intro — Nameplate, Team Stack, Bar layouts. |
+| [Player Intro](player-intro.md) | Player/roster intro — Nameplate, Team Stack, Bar layouts (plus Agent Cards on VALORANT). |
 | [Win Screen](win-screen.md) | Match/series result, stingers and the COMP winning-picks screen. |
 | [Post-Game Scoreboard](post-game.md) | End-of-game player stat board — CS2 and Dota 2, fed by live data. |
 | [Break Screen](break-screen.md) | "Back soon" / PIP break card. |
@@ -65,6 +65,16 @@ CS2 live data (GSI / MatchZy) is in **beta** — the data flows are being exerci
 | [Hero Draft](hero-draft.md) | Captains Mode pick/ban board, the draft timer, and auto-fill from the live game. |
 | [Live Data (Dota 2)](dota-live-data.md) | Dota GSI setup, the live feed inspector, game archive and stat snapshots. |
 | [Match Summary](match-summary.md) | Whole-match analysis board — scoreboards, items, net-worth graph with event markers. |
+
+## VALORANT
+
+VALORANT support is in **alpha** — data entry is manual (there is no live VALORANT feed).
+
+| Guide | What it covers |
+|---|---|
+| [VALORANT guide](valorant.md) | Agent & map asset sync, per-player agents, the Agent Cards intro layout, win-screen agents, manual data. |
+| [Map Veto](map-veto.md) | The shared map-veto board — VALORANT uses DEF/ATK sides and a side-choice decider. |
+| [Map Intro](map-intro.md) | Cinematic map introduction card with the veto story. |
 
 ## Systems & integrations
 

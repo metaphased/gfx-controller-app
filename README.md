@@ -15,7 +15,7 @@
 
 ---
 
-MetaGFX is a self-hosted control room for community esports productions across **League of Legends, Counter-Strike 2 and Dota 2**. You manage the tournament once — rosters, schedule, draft/veto, results — and every overlay (player intros, head-to-head, draft & veto boards, brackets, win screens, post-game scoreboards, lower thirds and more) updates itself in real time across OBS or vMix. Set your event's game and the whole panel adapts — you only see the tabs and graphics that game uses. An operator view, a read-only caster dashboard, Stream Deck/Companion control, and live on-air detection round it out.
+MetaGFX is a self-hosted control room for community esports productions across **League of Legends, Counter-Strike 2, Dota 2 and VALORANT**. You manage the tournament once — rosters, schedule, draft/veto, results — and every overlay (player intros, head-to-head, draft & veto boards, brackets, win screens, post-game scoreboards, lower thirds and more) updates itself in real time across OBS or vMix. Set your event's game and the whole panel adapts — you only see the tabs and graphics that game uses. An operator view, a read-only caster dashboard, Stream Deck/Companion control, and live on-air detection round it out.
 
 > [!IMPORTANT]
 > **MetaGFX is built for community and grassroots tournaments — not paid or commercial productions.**
@@ -54,13 +54,14 @@ MetaGFX is a self-hosted control room for community esports productions across *
 ## Highlights
 
 **🎮 Multi-game**
-- One suite for **League of Legends, Counter-Strike 2 and Dota 2**. Pick the game per tournament and the control panel, graphics and data integrations adapt to it — shared graphics (brackets, lower thirds, win screens, pre-show…) work everywhere, and each game adds its own draft/veto, live-data and analysis overlays.
+- One suite for **League of Legends, Counter-Strike 2, Dota 2 and VALORANT** *(alpha)*. Pick the game per tournament and the control panel, graphics and data integrations adapt to it — shared graphics (brackets, lower thirds, win screens, pre-show…) work everywhere, and each game adds its own draft/veto, live-data and analysis overlays.
 
 **🎬 Graphics (browser sources for OBS/vMix, 1920×1080)**
 - **Shared overlays:** Player Intro, Win Screen (10 styles incl. full-screen stingers), Break Screen (PIP), Pre-show, Lower Third, Bracket (single/double elim), Group Stage, Tournament Structure, Prizepool, Ticker, animated backgrounds.
 - **League of Legends:** Draft pick/ban board, Player Spotlight, Head-to-Head — with champion splash art and op.gg/tournament stats.
 - **Counter-Strike 2:** Map Veto board, cinematic Map Intro (lineups + flyby), and a live-data Post-Game Scoreboard.
 - **Dota 2:** Captains Mode Hero Draft board, Post-Game Scoreboard, and a full Match Summary (scoreboards, items, net-worth graph with event markers).
+- **VALORANT** *(alpha)*: Map Veto board + Map Intro (shared with CS2), per-player **agents** across the Player Intro (incl. a full-screen Agent Cards layout) and Win Screen — manual data entry, no live feed.
 - **Everything stays in sync** — change a score or a pick once and every overlay reflects it instantly via WebSockets.
 - **GFX Bus system** — route many graphics through 3–4 shared browser sources instead of one per graphic (big RAM/VRAM saving); switch live from the operator routing matrix.
 - **Theming & Looks** — palette, accents, background, animation easing/speed, **broadcast typography** (primary display + secondary label fonts, 13 bundled families plus your own custom font uploads), and **structural style** (panel corner-radius slider, glass/solid/outline surface, UPPERCASE/Normal text case) — all saved as reusable named "Looks" you can apply over any event and **export/import** to carry between installs.

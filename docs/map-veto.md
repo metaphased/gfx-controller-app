@@ -1,21 +1,23 @@
 # Map Veto
 
-The CS2 map-veto pre-game scene — the map-veto counterpart to the [Draft Overlay](draft.md) for League. It presents the ban/pick sequence for a series as a broadcast graphic: each pool map shown as a card, marked as a **ban**, a **pick** (with the picking team's starting side), or the **decider**. Output at `/graphics/map-veto/`.
+The map-veto pre-game scene — the counterpart to the [Draft Overlay](draft.md) for League. It presents the ban/pick sequence for a series as a broadcast graphic: each pool map shown as a card, marked as a **ban**, a **pick** (with a starting side), or the **decider**. Output at `/graphics/map-veto/`.
 
-It appears for games whose pre-game is a map veto (CS2). The pool, the veto order and the overlay's look are driven from two control tabs: **Game → Map Veto** (the sequence) and **Graphics → Map Veto** (the on-air look).
+It appears for games whose pre-game is a map veto — **Counter-Strike 2** and **[VALORANT](valorant.md)**. The pool, the veto order and the overlay's look are driven from two control tabs: **Game → Map Veto** (the sequence) and **Graphics → Map Veto** (the on-air look).
 
 ## Map pool
 
 The maps come from the tournament's active-duty pool, set under **[Tournament Setup](tournament-setup.md) → Map Pool**:
 
 - Edit the pool (names + order); **Load default pool** seeds the current active-duty set, and **Set as default** saves the current pool as the default for this game.
-- Each map can take an optional **Image URL** (card background) and **Video URL** (used by the accordion view). Leave them blank and art is auto-resolved from each map's `de_*` slug.
-- **Refresh map images** (on the overlay tab) re-downloads and rebuilds the map art if it's outdated or broken.
+- Each map can take an optional **Image URL** (card background) and **Video URL** (used by the accordion view).
+- **CS2** — with the URLs blank, art is auto-resolved from each map's `de_*` slug; **Refresh map images** (on the overlay tab) re-downloads and rebuilds it if outdated or broken.
+- **VALORANT** — map splash art comes from the local [Agent & Map asset sync](valorant.md#one-time-setup-agent--map-assets); the seeded default pool is pre-wired to it.
 
 ## Veto sequence (Game → Map Veto)
 
 - **Bans First** — pick which team starts the veto. The other team follows in the official order. Each map is used once; changing the first-ban team clears the veto.
-- **Veto Sequence** — one row per pool map. Each row sets the action — **ban**, **pick**, or **decider** — and, for a pick, the picking team's starting side (CT / T); the decider is the **knife round**.
+- **Veto Sequence** — one row per pool map. Each row sets the action — **ban**, **pick**, or **decider** — and, for a pick, the non-picking team's starting side.
+- Sides use the game's vocabulary — **CS2:** CT / T, and the decider is the **knife round**. **VALORANT:** DEF / ATK, and there's no knife round — the decider row records **which team chose which starting side** (rulesets differ on who gets the choice, so you record what happened).
 - The sequence length follows the match **Best-of** and the pool, so a Bo3 reads bans → picks → decider as expected.
 
 Per-map **round scores & winners** are entered separately, in **Game Setup → Series Tracker**, as the series plays out (see [Match & draft control](match-and-draft.md)). Those feed the [Break Screen](break-screen.md) and [Win Screen](win-screen.md).
