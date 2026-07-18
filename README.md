@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <i>Self-hosted · Node.js · real-time · no build step · <b>League of Legends · Counter-Strike 2 · Dota 2</b></i>
+  <i>Self-hosted · Node.js · real-time · no build step · <b>League of Legends · Counter-Strike 2 · Dota 2 · Valorant</b></i>
 </p>
 
 ---
