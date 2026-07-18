@@ -72,7 +72,8 @@ VALORANT support is in **alpha** — data entry is manual (there is no live VALO
 
 | Guide | What it covers |
 |---|---|
-| [VALORANT guide](valorant.md) | Agent & map asset sync, per-player agents, the Agent Cards intro layout, win-screen agents, manual data. |
+| [VALORANT guide](valorant.md) | Agent & map asset sync, per-player agents, the Agent Cards & Team Fan intro layouts, win-screen agents. |
+| [Post-Map Data](valorant-data.md) | Riot ID validation + per-map scores, agents, stats & pools via a community API (beta — reliability disclaimer inside). |
 | [Map Veto](map-veto.md) | The shared map-veto board — VALORANT uses DEF/ATK sides and a side-choice decider. |
 | [Map Intro](map-intro.md) | Cinematic map introduction card with the veto story. |
 

@@ -684,6 +684,7 @@
       <div class="card cap-valorant" style="margin-top:16px">
         <div class="card-title">Post-Map Data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· VALORANT · BETA</span></div>
         <p class="hint" style="margin-bottom:10px">After a map finishes, fetch its match record — final score, winner, and each player's agent, K/D/A &amp; ACS. Review the suggestion, then apply it to a Series Tracker slot (also fills roster agents for the win screen and feeds the <a onclick="switchToTab('post-game-gfx')" href="#" style="color:var(--primary)">Post-Game Scoreboard</a>). Needs <code>HENRIKDEV_API_KEY</code> in <code>.env</code> and validated Riot IDs on the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players</a> page.</p>
+        <p class="hint" style="margin-bottom:10px">⚠ Data comes from an <strong>unofficial community API</strong> (HenrikDev) — availability isn't guaranteed. If it's down, enter scores and agents manually; nothing else depends on it.</p>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
           <label style="font-size:12px;color:var(--text-dim)">Region
             <select id="val-region" style="margin-left:6px" onchange="api('/api/settings',{valorant:{region:this.value}})">

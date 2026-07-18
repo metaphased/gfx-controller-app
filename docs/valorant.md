@@ -36,19 +36,9 @@ Set up teams and rosters as usual ([Tournament setup](tournament-setup.md), [Mat
 
 ## Post-map data (BETA)
 
-Standard Riot keys have no VALORANT match access, so match records come from the community **[HenrikDev API](https://docs.henrikdev.xyz/)** (unofficial — a free "Basic" key from their Discord is plenty; our usage is a handful of requests per map, far under its 30/min cap). Put it in `.env` as `HENRIKDEV_API_KEY`.
+After each finished map, MetaGFX can fetch the match record — final score, winner, every player's **agent, K/D/A and ACS** — as a one-click suggestion that fills the Series Tracker, the roster agents, and a full **[Post-Game Scoreboard](post-game.md)**, plus per-player **agent pools** for the caster view.
 
-After a map finishes, on **Game Setup → Post-Map Data**:
-
-1. Pick the event **Region** (once), then **Fetch latest map** — one request pulls the most recent custom match containing your roster (matched by PUUID).
-2. Review the suggestion: map, final score, winner, and both teams' per-player agent, K/D/A and ACS lines, plus how many roster players matched.
-3. **Apply** it to a Series Tracker map slot. One click writes the score/winner, fills every roster player's **agent** (so the intro layouts and win screen are correct without touching them), and stores the stat lines for the Post-Game Scoreboard.
-
-Like CS2's live data this is **data-only**: fetches land as suggestions the operator reviews — nothing airs automatically.
-
-## Post-Game Scoreboard
-
-Applying a post-map fetch revives the full **[Post-Game Scoreboard](post-game.md)** for VALORANT: per-player agent (icon + name), K/D/A, +/-, **ACS** and K/D, sorted by ACS, with the map score and winner in the header. Confirm the data on the Post-Game tab before going live, as with CS2.
+Setup, workflow, request budget and troubleshooting live on the dedicated **[Post-Map Data](valorant-data.md)** page — including its **reliability disclaimer**: match data comes from an unofficial community API (HenrikDev) whose operation MetaGFX cannot guarantee, so everything it fills in can always be entered manually instead.
 
 ## Map veto & map intro
 
