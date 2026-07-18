@@ -28,15 +28,18 @@ function resolveRow(state) {
   if (sel) { var hit = rows.filter(function (r) { return norm(r.map) === sel; })[0]; if (hit) return hit; }
   return rows[rows.length - 1];
 }
-// Per-team player stat lines for a map, from the accumulated csStats (one line/player/map).
+// Per-team player stat lines for a map. CS2 reads the GSI-accumulated csStats; VALORANT
+// reads valStats (HenrikDev post-map fetch, applied by the operator in Game Setup).
+function isValGame(state) { var a = state.adapter; return a ? a.assetSource === 'valorant' : ((state.match || {}).game === 'valorant'); }
 function playersForRow(state, row) {
-  var sk = currentSeriesKey(state), mapN = norm(row.map);
-  var lines = ((state.tournament && state.tournament.csStats) || []).filter(function (l) {
-    return l.seriesKey === sk && norm(l.map) === mapN;
-  });
+  var sk = currentSeriesKey(state), mapN = norm(row.map), isVal = isValGame(state);
+  var src = ((state.tournament && (isVal ? state.tournament.valStats : state.tournament.csStats)) || []);
+  var lines = src.filter(function (l) { return l.seriesKey === sk && norm(l.map) === mapN; });
   var by = { team1: [], team2: [] };
   lines.forEach(function (l) { (by[l.team] || by.team1).push(l); });
-  var sortK = function (a, b) { return (b.kills | 0) - (a.kills | 0) || (a.deaths | 0) - (b.deaths | 0); };
+  var sortK = isVal
+    ? function (a, b) { return (b.acs | 0) - (a.acs | 0) || (b.kills | 0) - (a.kills | 0); }
+    : function (a, b) { return (b.kills | 0) - (a.kills | 0) || (a.deaths | 0) - (b.deaths | 0); };
   by.team1.sort(sortK); by.team2.sort(sortK);
   return by;
 }
@@ -95,6 +98,41 @@ function colHtml(state, key, lines, isWinner) {
     '<span class="pg-stat">+/-</span><span class="pg-stat">ADR</span><span class="pg-stat">K/D</span>' +
   '</div>';
   var rows = lines.length ? lines.map(statRowHtml).join('') : '<div class="pg-empty">No stats</div>';
+  return '<div class="pg-col-inner' + (isWinner ? ' pg-winner' : '') + '" style="--team-color:' + tm.color + '">' + head + header + rows + '</div>';
+}
+
+// ── VALORANT rows (agent icon + K/D/A + ACS, from the applied post-map fetch) ────
+function valAgentSlug(name) { return String(name || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+function valStatRowHtml(l) {
+  var kills = l.kills | 0, deaths = l.deaths | 0, plus = kills - deaths;
+  var kd = (kills / Math.max(1, deaths)).toFixed(2);
+  var diff = (plus > 0 ? '+' : '') + plus;
+  var slug = valAgentSlug(l.agent);
+  var thumb = '<span class="pg-agent"' + (slug ? ' style="background-image:url(/agents/icons/' + slug + '.png)" title="' + esc(l.agent) + '"' : '') + '></span>';
+  return '<div class="pg-row">' +
+    '<span class="pg-pname">' + thumb + '<span class="pg-pn-txt">' + esc(l.name || '?') +
+      (l.agent ? '<span class="pg-hero-sub">' + esc(l.agent) + '</span>' : '') + '</span></span>' +
+    '<span class="pg-stat pg-k">' + kills + '</span>' +
+    '<span class="pg-stat pg-d">' + deaths + '</span>' +
+    '<span class="pg-stat pg-a">' + (l.assists | 0) + '</span>' +
+    '<span class="pg-stat pg-diff ' + (plus > 0 ? 'pos' : plus < 0 ? 'neg' : '') + '">' + diff + '</span>' +
+    '<span class="pg-stat pg-adr">' + (l.acs | 0) + '</span>' +
+    '<span class="pg-stat pg-kd">' + kd + '</span>' +
+  '</div>';
+}
+function valColHtml(state, key, lines, isWinner) {
+  var tm = teamMeta(state, key), showLogos = !(state.postGame && state.postGame.showLogos === false);
+  var head = '<div class="pg-col-head" style="--team-color:' + tm.color + '">' +
+    (showLogos && tm.logo ? '<div class="pg-col-logo" style="background-image:url(' + esc(tm.logo) + ')"></div>' : '') +
+    '<span class="pg-col-name">' + esc(tm.name) + '</span>' +
+    (isWinner ? '<span class="pg-win-badge">WIN</span>' : '') +
+  '</div>';
+  var header = '<div class="pg-row pg-row-head">' +
+    '<span class="pg-pname">Player</span>' +
+    '<span class="pg-stat">K</span><span class="pg-stat">D</span><span class="pg-stat">A</span>' +
+    '<span class="pg-stat">+/-</span><span class="pg-stat">ACS</span><span class="pg-stat">K/D</span>' +
+  '</div>';
+  var rows = lines.length ? lines.map(valStatRowHtml).join('') : '<div class="pg-empty">No data — fetch the map in Game Setup</div>';
   return '<div class="pg-col-inner' + (isWinner ? ' pg-winner' : '') + '" style="--team-color:' + tm.color + '">' + head + header + rows + '</div>';
 }
 
@@ -189,7 +227,9 @@ function renderAll(state) {
   var pg = state.postGame || {};
   $('pg-title').textContent = pg.title || 'POST-GAME';
   var root = $('pg-root'); if (root) root.classList.toggle('pg-dota', isDotaGame(state));
+  if (root) root.classList.toggle('pg-val', isValGame(state));
   if (isDotaGame(state)) { renderDota(state); return; }
+  var isVal = isValGame(state);
   var row = resolveRow(state);
   if (!row) {
     $('pg-map').textContent = '';
@@ -210,8 +250,9 @@ function renderAll(state) {
   $('pg-h-score').innerHTML = '<b class="' + (row.winner === 'team1' ? 'pg-sc-win' : '') + '">' + (row.t1Rounds | 0) + '</b>' +
     '<span class="pg-sc-sep">:</span><b class="' + (row.winner === 'team2' ? 'pg-sc-win' : '') + '">' + (row.t2Rounds | 0) + '</b>';
   $('pg-rounds').innerHTML = roundsHtml(state, row);
-  $('pg-col-t1').innerHTML = colHtml(state, 'team1', by.team1, row.winner === 'team1');
-  $('pg-col-t2').innerHTML = colHtml(state, 'team2', by.team2, row.winner === 'team2');
+  var col = isVal ? valColHtml : colHtml;
+  $('pg-col-t1').innerHTML = col(state, 'team1', by.team1, row.winner === 'team1');
+  $('pg-col-t2').innerHTML = col(state, 'team2', by.team2, row.winner === 'team2');
 }
 
 // A signature so we only re-render the inner content (not re-fire the entrance) when data changes.
@@ -225,7 +266,8 @@ function contentSig(state) {
   var row = resolveRow(state);
   return JSON.stringify([row && row.map, row && row.t1Rounds, row && row.t2Rounds, row && row.winner,
     row && (row.roundHistory || []).length, (state.postGame || {}).showRounds, (state.postGame || {}).showLogos,
-    (state.tournament && state.tournament.csStats || []).length]);
+    (state.tournament && state.tournament.csStats || []).length,
+    isValGame(state) && JSON.stringify((state.tournament && state.tournament.valStats) || [])]);
 }
 
 // ── Show / hide ───────────────────────────────────────────────────────────────

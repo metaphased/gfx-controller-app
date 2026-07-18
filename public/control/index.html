@@ -102,7 +102,7 @@
         <span id="nav-dot-player-spotlight" class="nav-status-dot"></span>
         Player Spotlight
       </a>
-      <a class="nav-item cap-live-data" data-tab="post-game-gfx">
+      <a class="nav-item cap-postgame" data-tab="post-game-gfx">
         <span id="nav-dot-post-game-gfx" class="nav-status-dot"></span>
         Post-Game
       </a>
@@ -678,6 +678,24 @@
         <div id="ld-suggestions-gs" style="margin-top:10px"></div>
         <p class="hint" style="margin-top:8px">Connect GSI / MatchZy and see full player stats on the <a onclick="switchToTab('live-data')" href="#" style="color:var(--primary)">Live Data</a> page.</p>
       </div>
+
+      <!-- Post-Map Data — VALORANT (HenrikDev, BETA). Fetch the finished map's record as a
+           suggestion; the operator reviews and applies (DATA-ONLY, like CS2 suggestions). -->
+      <div class="card cap-valorant" style="margin-top:16px">
+        <div class="card-title">Post-Map Data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· VALORANT · BETA</span></div>
+        <p class="hint" style="margin-bottom:10px">After a map finishes, fetch its match record — final score, winner, and each player's agent, K/D/A &amp; ACS. Review the suggestion, then apply it to a Series Tracker slot (also fills roster agents for the win screen and feeds the <a onclick="switchToTab('post-game-gfx')" href="#" style="color:var(--primary)">Post-Game Scoreboard</a>). Needs <code>HENRIKDEV_API_KEY</code> in <code>.env</code> and validated Riot IDs on the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players</a> page.</p>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <label style="font-size:12px;color:var(--text-dim)">Region
+            <select id="val-region" style="margin-left:6px" onchange="api('/api/settings',{valorant:{region:this.value}})">
+              <option value="eu">EU</option><option value="na">NA</option><option value="ap">AP</option>
+              <option value="kr">KR</option><option value="br">BR</option><option value="latam">LATAM</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" onclick="valPostmapFetch()">⟳ Fetch latest map</button>
+          <span id="val-postmap-status" style="font-size:12px;color:var(--text-dim)"></span>
+        </div>
+        <div id="val-postmap-suggestion" style="margin-top:10px"></div>
+      </div>
     </section>
 
     <!-- ══════════════════════════════════════════════════════════════════════
@@ -783,6 +801,7 @@
         </div>
       </div>
       <p class="hint cap-hero-draft" style="margin-bottom:12px;display:none">Dota post-game: per-player hero, K/D/A, net worth &amp; GPM come live from GSI (set Steam IDs on the roster for exact name matching). Set the graphic live from the button above once the game's over.</p>
+      <p class="hint cap-valorant" style="margin-bottom:12px;display:none">VALORANT post-game: agents, K/D/A and ACS come from the match record — fetch the finished map in <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup → Post-Map Data</a> and apply it, then confirm below and go live.</p>
       <div class="ps-two-col">
         <div class="ps-col">
           <div class="card">
@@ -799,7 +818,7 @@
                 <button class="btn btn-sm" data-pgbg="transparent" onclick="api('/api/postGame',{bg:'transparent'})">Transparent</button>
               </div>
             </div>
-            <label class="cap-map-veto" style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="pg-show-rounds" onchange="api('/api/postGame',{showRounds:this.checked})"> <span style="font-size:13px">Show round-by-round tracker</span></label>
+            <label class="cap-cs2-live" style="display:flex;align-items:center;gap:8px;margin-top:10px;cursor:pointer"><input type="checkbox" id="pg-show-rounds" onchange="api('/api/postGame',{showRounds:this.checked})"> <span style="font-size:13px">Show round-by-round tracker</span></label>
             <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="pg-show-logos" onchange="api('/api/postGame',{showLogos:this.checked})"> <span style="font-size:13px">Show team logos</span></label>
             <p class="hint" style="margin-top:10px">Stats are pulled from the live-data the map logged. Map scores come from <a onclick="switchToTab('game')" href="#" style="color:var(--primary)">Game Setup → Series Tracker</a>; the round tracker needs GSI.</p>
           </div>
@@ -1079,7 +1098,8 @@
       <div class="card cap-valorant" style="margin-bottom:12px;display:none">
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="validateRiotIds()">✓ Validate Riot IDs</button>
-          <span id="val-ids-status" style="font-size:12px;color:var(--text-dim)">Checks every roster Riot ID (Name#TAG) against the Riot API — catches typos before broadcast. Needs <code>RIOT_API_KEY</code> in <code>.env</code>.</span>
+          <button class="btn btn-primary" onclick="refreshAgentPools()">↻ Refresh Agent Pools</button>
+          <span id="val-ids-status" style="font-size:12px;color:var(--text-dim)">Validate checks every Riot ID (Name#TAG) against the Riot API (<code>RIOT_API_KEY</code>); Agent Pools fetches each validated player's most-played agents for the caster view (<code>HENRIKDEV_API_KEY</code>).</span>
         </div>
         <div id="val-ids-results" style="margin-top:8px;display:none;font-size:12px;line-height:1.7"></div>
       </div>
@@ -3313,7 +3333,7 @@
     <div class="lbar-group cap-map-veto" id="lbar-group-mapIntro">
       <button class="lbar-toggle" id="lbar-toggle-mapIntro" onclick="toggleGraphic('mapIntro')"><span class="lbar-dot" id="lbar-dot-mapIntro"></span>MAP INTRO</button>
     </div>
-    <div class="lbar-group cap-live-data" id="lbar-group-postGame">
+    <div class="lbar-group cap-postgame" id="lbar-group-postGame">
       <button class="lbar-toggle" id="lbar-toggle-postGame" onclick="toggleGraphic('postGame')"><span class="lbar-dot" id="lbar-dot-postGame"></span>POST-GAME</button>
     </div>
     <div class="lbar-group cap-hero-draft" id="lbar-group-matchSummary">

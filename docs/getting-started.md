@@ -77,7 +77,8 @@ Everything above applies to every tournament. Each game then has its own art syn
 
 - **Agent + map art** — sync both from **Settings → Broadcast Assets → Agent & Map Assets · VALORANT** (or `node scripts/sync-valorant.js`). Agents drive the player intro and win screen; maps drive the veto and map intro.
 - **Assign agents** per player on **Game Setup → Players / Rosters** once they lock — there's no public draft in VALORANT.
-- Data entry is **manual** (no live VALORANT feed) — final map scores go in **Game Setup → Series Tracker**. Full rundown: [VALORANT guide](valorant.md).
+- **Riot IDs** — validate them (and store PUUIDs) with the Players-page button; uses the standard `RIOT_API_KEY`.
+- **Post-map data (optional, beta)** — with a free `HENRIKDEV_API_KEY`, fetch each finished map's score, agents and stats as a one-click suggestion (feeds the Series Tracker, roster agents and the Post-Game Scoreboard): [VALORANT guide](valorant.md#post-map-data-beta). No key = manual entry, which always works.
 
 ## Environment variables
 
@@ -94,6 +95,7 @@ EXTERNAL_URL=http://YOUR_LAN_IP:3000
 | `RIOT_API_KEY` | No | *(League of Legends)* Persistent Riot key for Solo Queue rank lookups. **Not** the 24-hour dev key. |
 | `PORT` | No | Server port, defaults to `3000`. |
 | `EXTERNAL_URL` | No | LAN IP/hostname for sharing output URLs to a remote OBS on the same network. |
+| `HENRIKDEV_API_KEY` | No | *(VALORANT, beta)* Free community key for post-map data & agent pools — [VALORANT guide](valorant.md#post-map-data-beta). |
 
 ## The views
 

@@ -636,6 +636,20 @@ function renderPlayerRowVal(p, color) {
   detail += p.agent
     ? '<div class="cs-stat-row"><span class="cs-stat-label">Agent</span><span class="cs-stat-vals"><b>' + esc(p.agent) + '</b></span></div>'
     : '<div style="color:var(--text-faint);font-size:12px">No agent assigned — set one on the control panel roster.</div>';
+  // Agent pool — most-played agents from recent matches (control panel → Refresh Agent Pools).
+  const pool = p.agentPool || [];
+  if (pool.length) {
+    detail += '<table class="champ-table">' +
+      '<thead><tr><th>Agent</th><th class="right">Games</th><th class="right">Win Rate</th></tr></thead><tbody>' +
+      pool.map(function (a) {
+        const slug = valAgentSlug(a.agent);
+        const icon = slug ? '<div class="champ-icon-sm" style="background-image:url(/agents/icons/' + esc(slug) + '.png)"></div>' : '';
+        const wrPct = a.games ? Math.round((a.wins | 0) / a.games * 100) : null;
+        return '<tr><td><div class="champ-icon-cell">' + icon + '<span class="champ-name">' + esc(a.agent) + '</span></div></td>' +
+          '<td class="right">' + (a.games | 0) + '</td>' +
+          '<td class="right ' + wrClass(wrPct) + '">' + (wrPct != null ? wrPct + '%' : '—') + '</td></tr>';
+      }).join('') + '</tbody></table>';
+  }
 
   return '<div class="player-row">' +
     '<div class="player-row-summary">' +
