@@ -3047,6 +3047,247 @@ app.post('/api/heropool/refresh', requireAdmin, async (req, res) => {
   res.json({ ok: true, updated, errors });
 });
 
+// ── VALORANT post-map data (HenrikDev, BETA) ─────────────────────────────────────
+// No official live feed exists for VALORANT and standard Riot keys have no VAL-MATCH
+// access, so post-map match data comes from the community HenrikDev API (unofficial;
+// free Basic key via their Discord — HENRIKDEV_API_KEY in .env, ~30 req/min cap which
+// our click-triggered usage never approaches). DATA-ONLY like CS2 GSI: fetches land as
+// a SUGGESTION the operator reviews and applies — nothing airs automatically.
+// HENRIKDEV_BASE override exists ONLY for the test harness (mock server).
+const HENRIK_BASE = () => process.env.HENRIKDEV_BASE || 'https://api.henrikdev.xyz';
+async function henrikGet(path) {
+  const key = process.env.HENRIKDEV_API_KEY || '';
+  const r = await fetch(HENRIK_BASE() + path, { headers: key ? { Authorization: key } : {} });
+  if (r.status === 429) throw new Error('rate limited — wait a minute and retry');
+  if (!r.ok) throw new Error('HenrikDev HTTP ' + r.status);
+  const j = await r.json();
+  return j && j.data !== undefined ? j.data : j;
+}
+function henrikConfigured() { return !!(process.env.HENRIKDEV_API_KEY || process.env.HENRIKDEV_BASE); }
+function valRegion() { return (state.settings && state.settings.valorant && state.settings.valorant.region) || 'eu'; }
+// puuid → { team, index, handle } for every roster player that has one (set by validate-ids).
+function valRosterPuuids() {
+  const map = {};
+  for (const slot of ['team1', 'team2']) {
+    (state.players[slot] || []).forEach((p, i) => { if (p && p.puuid) map[p.puuid] = { team: slot, index: i, handle: p.handle || '' }; });
+  }
+  return map;
+}
+
+// Normalize one HenrikDev match (tolerates the v4 and v3 shapes) against the roster →
+// a post-map suggestion, or null when it can't be read / nobody on the roster is in it.
+function valNormalizeMatch(m) {
+  const meta = m.metadata || {};
+  const matchId = meta.match_id || meta.matchid || '';
+  const mapName = (meta.map && (meta.map.name || meta.map)) || '';
+  const playersRaw = Array.isArray(m.players) ? m.players : ((m.players && m.players.all_players) || []);
+  if (!matchId || !playersRaw.length) return null;
+  const roster = valRosterPuuids();
+  // Which in-game side (Red/Blue) is team1/team2 — majority vote of roster puuids.
+  const votes = { team1: { red: 0, blue: 0 }, team2: { red: 0, blue: 0 } };
+  let overlap = 0;
+  for (const pl of playersRaw) {
+    const hit = roster[pl.puuid];
+    if (!hit) continue;
+    overlap++;
+    const side = String(pl.team_id || pl.team || '').toLowerCase();
+    if (side === 'red' || side === 'blue') votes[hit.team][side]++;
+  }
+  if (!overlap) return null;
+  const t1Side = votes.team1.red >= votes.team1.blue ? 'red' : 'blue';
+  const t2Side = t1Side === 'red' ? 'blue' : 'red';
+  // Rounds won per side — v4: teams:[{team_id,rounds:{won}}]; v3: teams:{red:{rounds_won}}.
+  const sideRounds = { red: 0, blue: 0 };
+  if (Array.isArray(m.teams)) {
+    for (const t of m.teams) {
+      const s = String(t.team_id || '').toLowerCase();
+      if (s === 'red' || s === 'blue') sideRounds[s] = (t.rounds ? (t.rounds.won != null ? t.rounds.won : t.rounds_won) : t.rounds_won) | 0;
+    }
+  } else if (m.teams) {
+    sideRounds.red = ((m.teams.red || {}).rounds_won) | 0;
+    sideRounds.blue = ((m.teams.blue || {}).rounds_won) | 0;
+  }
+  const roundsPlayed = (Array.isArray(m.rounds) ? m.rounds.length : 0) || (sideRounds.red + sideRounds.blue) || 1;
+  const lines = { team1: [], team2: [] };
+  const agents = {};
+  for (const pl of playersRaw) {
+    const hit = roster[pl.puuid];
+    if (!hit) continue;
+    const st = pl.stats || {};
+    const agent = (pl.agent && (pl.agent.name || pl.agent)) || (pl.character && (pl.character.name || pl.character)) || '';
+    const shots = (st.headshots | 0) + (st.bodyshots | 0) + (st.legshots | 0);
+    agents[pl.puuid] = agent;
+    lines[hit.team].push({
+      puuid: pl.puuid, name: hit.handle || pl.name || '', agent,
+      kills: st.kills | 0, deaths: st.deaths | 0, assists: st.assists | 0,
+      acs: Math.round((st.score | 0) / roundsPlayed),
+      hs: shots ? Math.round((st.headshots | 0) / shots * 100) : 0,
+    });
+  }
+  const sortK = (a, b) => (b.acs - a.acs) || (b.kills - a.kills);
+  lines.team1.sort(sortK); lines.team2.sort(sortK);
+  const t1Rounds = sideRounds[t1Side] | 0, t2Rounds = sideRounds[t2Side] | 0;
+  return {
+    matchId, map: mapName, startedAt: meta.started_at || meta.game_start_patched || '',
+    overlap, t1Rounds, t2Rounds,
+    winner: t1Rounds === t2Rounds ? '' : (t1Rounds > t2Rounds ? 'team1' : 'team2'),
+    lines, agents, fetchedAt: Date.now(),
+  };
+}
+
+// Fetch the most recent CUSTOM match involving this roster (1 request — the matchlist
+// carries full match objects). Anchored on the first roster player with a validated PUUID.
+app.post('/api/valorant/postmap/fetch', requireAdmin, async (req, res) => {
+  if (!adapterSupports('valorant')) return res.json({ skipped: true, reason: 'Active game is not VALORANT' });
+  if (!henrikConfigured()) return res.status(500).json({ error: 'HENRIKDEV_API_KEY not set in .env (free key via the HenrikDev Discord)' });
+  const roster = valRosterPuuids();
+  const anchor = Object.keys(roster)[0];
+  if (!anchor) return res.status(400).json({ error: 'No roster PUUIDs — run Validate Riot IDs first' });
+  try {
+    const list = await henrikGet(`/valorant/v4/by-puuid/matches/${encodeURIComponent(valRegion())}/pc/${encodeURIComponent(anchor)}?mode=custom&size=5`);
+    const matches = Array.isArray(list) ? list : [];
+    let best = null;
+    for (const m of matches) {
+      const s = valNormalizeMatch(m);
+      if (s && (!best || s.overlap > best.overlap)) best = s;
+      if (best && best.overlap >= 10) break;
+    }
+    if (!best) return res.status(404).json({ error: 'No recent custom match found containing roster players' });
+    state.valPostmap = best;
+    logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'val-postmap-fetch',
+      `${best.map} ${best.t1Rounds}-${best.t2Rounds} (${best.overlap} roster players)`);
+    broadcast();
+    res.json({ ok: true, suggestion: best });
+  } catch (e) {
+    res.status(502).json({ error: 'HenrikDev fetch failed: ' + e.message });
+  }
+});
+
+// Apply the fetched suggestion: map slot score/winner (Series Tracker), per-player stat
+// lines (tournament.valStats — feeds the Post-Game Scoreboard), and roster agents (feed
+// the Player Intro layouts + Win Screen). Operator-triggered; re-apply updates in place.
+app.post('/api/valorant/postmap/apply', requireAdmin, (req, res) => {
+  if (!adapterSupports('valorant')) return res.json({ skipped: true, reason: 'Active game is not VALORANT' });
+  const s = state.valPostmap;
+  if (!s) return res.status(400).json({ error: 'Nothing fetched — run Fetch latest map first' });
+  const idx = req.body && req.body.index != null ? (req.body.index | 0) : -1;
+  if (!state.match.mapResults) state.match.mapResults = [];
+  const rows = state.match.mapResults;
+  if (idx < 0 || idx >= rows.length) return res.status(400).json({ error: 'Pick a map slot to apply to' });
+  rows[idx] = Object.assign({}, rows[idx], {
+    map: s.map || rows[idx].map, t1Rounds: s.t1Rounds, t2Rounds: s.t2Rounds,
+    winner: s.winner, status: 'final',
+  });
+  // Stat lines — upsert by series+map+puuid so a re-fetch/re-apply updates, not duplicates.
+  if (!state.tournament) state.tournament = {};
+  const log = state.tournament.valStats || (state.tournament.valStats = []);
+  const sk = csSeriesKey(), mapName = s.map || rows[idx].map || '';
+  for (const slot of ['team1', 'team2']) {
+    for (const l of s.lines[slot] || []) {
+      const key = sk + ':' + String(mapName).toLowerCase() + ':' + l.puuid;
+      const next = Object.assign({ key, seriesKey: sk, team: slot, map: mapName, matchId: s.matchId, ts: Date.now() }, l);
+      const i = log.findIndex(x => x.key === key);
+      if (i < 0) log.push(next); else log[i] = next;
+    }
+  }
+  // Roster agents for this map — powers the intro layouts + the win-screen agent showcase.
+  for (const slot of ['team1', 'team2']) {
+    (state.players[slot] || []).forEach(p => { if (p && p.puuid && s.agents[p.puuid]) p.agent = s.agents[p.puuid]; });
+  }
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'val-postmap-apply',
+    `${mapName} ${s.t1Rounds}-${s.t2Rounds} → slot ${idx + 1}`);
+  broadcast();
+  res.json({ ok: true });
+});
+
+// Per-player agent pools (most-played agents, last ~20 matches) — the VALORANT analogue
+// of the Dota OpenDota hero pools, shown on the caster view roster. One request/player.
+app.post('/api/valorant/pools/refresh', requireAdmin, async (req, res) => {
+  if (!adapterSupports('valorant')) return res.json({ skipped: true, reason: 'Active game is not VALORANT' });
+  if (!henrikConfigured()) return res.status(500).json({ error: 'HENRIKDEV_API_KEY not set in .env (free key via the HenrikDev Discord)' });
+  const updated = [], errors = [];
+  for (const slot of ['team1', 'team2']) {
+    const players = state.players[slot] || [];
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      if (!p.puuid) continue;   // unvalidated — skip quietly
+      try {
+        const rowsRaw = await henrikGet(`/valorant/v1/by-puuid/stored-matches/${encodeURIComponent(valRegion())}/${encodeURIComponent(p.puuid)}?size=20`);
+        const rows = Array.isArray(rowsRaw) ? rowsRaw : [];
+        const agg = {};
+        for (const r of rows) {
+          const st = r.stats || {};
+          const agent = (st.character && (st.character.name || st.character)) || '';
+          if (!agent) continue;
+          const a = agg[agent] || (agg[agent] = { agent, games: 0, wins: 0 });
+          a.games++;
+          const teams = r.teams || {};
+          const mySide = String(st.team || '').toLowerCase();
+          const my = mySide === 'red' ? teams.red : teams.blue;
+          const their = mySide === 'red' ? teams.blue : teams.red;
+          if ((my | 0) > (their | 0)) a.wins++;
+        }
+        state.players[slot][i].agentPool = Object.values(agg).sort((a, b) => b.games - a.games).slice(0, 5);
+        updated.push(p.handle);
+        await new Promise(r => setTimeout(r, 300));   // free tier (30/min) — stay well under
+      } catch (err) {
+        errors.push(`${p.handle}: ${err.message}`);
+      }
+    }
+  }
+  if (errors.length) logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'val-pools-refresh', _logTrunc('FAILED ' + errors.length + ': ' + errors.join('; ')));
+  broadcast();
+  res.json({ ok: true, updated, errors });
+});
+
+// ── VALORANT Riot ID validation ──────────────────────────────────────────────────
+// Resolves every roster Riot ID (Name#TAG) → PUUID via the official Account-V1, which
+// works on the standard RIOT_API_KEY (no VAL-* production access needed). Catches
+// roster typos before broadcast; the stored player.puuid is the stable join key if
+// richer VALORANT data ever comes into scope. account-v1 is a global service on every
+// routing cluster — europe is fine for all regions.
+// RIOT_ACCOUNT_BASE env override exists ONLY for the test harness (mock server).
+app.post('/api/valorant/validate-ids', requireAdmin, async (req, res) => {
+  if (!adapterSupports('valorant')) return res.json({ skipped: true, reason: 'Active game is not VALORANT' });
+  const riotKey = process.env.RIOT_API_KEY || '';
+  if (!riotKey) {
+    logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'val-validate-ids', 'FAILED: RIOT_API_KEY not set in .env');
+    return res.status(500).json({ error: 'RIOT_API_KEY not set in .env' });
+  }
+  const base = process.env.RIOT_ACCOUNT_BASE || 'https://europe.api.riotgames.com';
+  const results = [];
+  for (const slot of ['team1', 'team2']) {
+    const players = state.players[slot] || [];
+    for (let i = 0; i < players.length; i++) {
+      const p = players[i];
+      if (!p || (!p.handle && !p.riotId)) continue;   // empty roster row
+      const parts = String(p.riotId || '').split('#');
+      if (parts.length !== 2 || !parts[0] || !parts[1]) {
+        results.push({ team: slot, handle: p.handle || '', ok: false, error: p.riotId ? 'malformed Riot ID (want Name#TAG)' : 'no Riot ID set' });
+        continue;
+      }
+      try {
+        const r = await fetch(`${base}/riot/account/v1/accounts/by-riot-id/${encodeURIComponent(parts[0])}/${encodeURIComponent(parts[1])}`,
+          { headers: { 'X-Riot-Token': riotKey } });
+        if (r.status === 404) throw new Error('Riot ID not found');
+        if (r.status === 429) throw new Error('rate limited — wait a minute and retry');
+        if (!r.ok) throw new Error('Riot HTTP ' + r.status);
+        const puuid = ((await r.json()) || {}).puuid || '';
+        if (!puuid) throw new Error('no puuid in response');
+        state.players[slot][i].puuid = puuid;
+        results.push({ team: slot, handle: p.handle || '', ok: true });
+        await new Promise(r => setTimeout(r, 150));   // dev-key rate limits are tight
+      } catch (err) {
+        results.push({ team: slot, handle: p.handle || '', ok: false, error: err.message });
+      }
+    }
+  }
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'val-validate-ids',
+    results.filter(r => r.ok).length + ' ok, ' + results.filter(r => !r.ok).length + ' failed');
+  broadcast();
+  res.json({ ok: true, results });
+});
+
 app.post('/api/ranks/refresh', requireAdmin, async (req, res) => {
   if (!adapterSupports('opgg')) return res.json({ skipped: true, reason: 'Active game has no op.gg intel provider' });
   const key = process.env.RIOT_API_KEY;

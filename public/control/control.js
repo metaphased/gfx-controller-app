@@ -108,6 +108,9 @@ function applyAdapterUI() {
     // CS2-only live-data surfaces (CT-side mapping etc.): a map-veto game WITH a GSI feed.
     // VALORANT is map-veto but has no live feed; Dota has a feed but no map veto.
     'cap-cs2-live':    isMapVeto() && supportsLiveData(),
+    // Post-Game Scoreboard: games with a stat source — GSI (CS2, Dota) or the VALORANT
+    // HenrikDev post-map fetch.
+    'cap-postgame':    supportsLiveData() || supportsValorant(),
     'cap-opgg':        supportsOpgg(),
     'cap-opendota':    supportsOpenDota(),
     'cap-intel':       supportsIntel(),     // any per-player intel provider (opgg or opendota)
@@ -392,6 +395,7 @@ socket.on('state', async (state) => {
   hdRenderAutoFill(state);
   hdSyncFirstPick(state);
   ldRender(state);
+  valRenderPostmap(state);
   mvRenderVeto(state);
   mvRenderGfx(state);
   ldRenderDota(state);
@@ -4335,6 +4339,143 @@ async function refreshHeroPool() {
   }
 }
 
+// VALORANT — validate every roster Riot ID against the Riot Account API (typo check
+// before broadcast; stores each player's PUUID server-side). Mirrors refreshHeroPool's
+// button/status treatment, plus a per-player pass/fail list under the card.
+async function validateRiotIds() {
+  const btns = Array.from(document.querySelectorAll('[onclick="validateRiotIds()"]'));
+  const statEl = g('val-ids-status'), listEl = g('val-ids-results');
+  btns.forEach(function(b) { b._origText = b._origText || b.textContent; b.disabled = true; b.textContent = '✓ Checking…'; b.classList.remove('btn-ok','btn-err'); });
+  if (statEl) statEl.textContent = 'Contacting Riot API…';
+  if (listEl) { listEl.style.display = 'none'; listEl.innerHTML = ''; }
+  try {
+    const r = await fetch('/api/valorant/validate-ids', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    const res = await r.json().catch(function() { return {}; });
+    if (!r.ok) {
+      if (statEl) statEl.textContent = 'Error: ' + ((res && res.error) || ('HTTP ' + r.status));
+      _setActionState(btns, 'err'); return;
+    }
+    const results = (res && res.results) || [];
+    const bad = results.filter(function(x) { return !x.ok; });
+    if (statEl) statEl.textContent = results.length
+      ? (bad.length ? '⚠ ' + bad.length + ' of ' + results.length + ' failed:' : '✓ All ' + results.length + ' Riot IDs valid.')
+      : 'No roster players with a Riot ID found.';
+    if (listEl && bad.length) {
+      const tn = function(t) {
+        const m = (window._state && window._state.match) || {};
+        return ((m[t] || {}).tag) || ((m[t] || {}).name) || (t === 'team1' ? 'Team 1' : 'Team 2');
+      };
+      listEl.innerHTML = bad.map(function(x) {
+        return '<div>✗ <strong>' + esc(x.handle || '(unnamed)') + '</strong> <span style="color:var(--text-dim)">(' + esc(tn(x.team)) + ')</span> — ' + esc(x.error || 'failed') + '</div>';
+      }).join('');
+      listEl.style.display = '';
+    }
+    _setActionState(btns, bad.length ? 'err' : 'ok');
+  } catch(e) {
+    if (statEl) statEl.textContent = 'Request failed: ' + e.message;
+    console.error('[val-ids] validate error:', e); _setActionState(btns, 'err');
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '✓ Validate Riot IDs'; });
+  }
+}
+
+// VALORANT — agent pools (most-played agents per validated player, for the caster view).
+async function refreshAgentPools() {
+  const btns = Array.from(document.querySelectorAll('[onclick="refreshAgentPools()"]'));
+  const statEl = g('val-ids-status');
+  btns.forEach(function(b) { b._origText = b._origText || b.textContent; b.disabled = true; b.textContent = '↻ Fetching…'; b.classList.remove('btn-ok','btn-err'); });
+  if (statEl) statEl.textContent = 'Contacting HenrikDev…';
+  try {
+    const r = await fetch('/api/valorant/pools/refresh', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    const res = await r.json().catch(function() { return {}; });
+    if (!r.ok) { if (statEl) statEl.textContent = 'Error: ' + ((res && res.error) || ('HTTP ' + r.status)); _setActionState(btns, 'err'); return; }
+    const updated = (res && res.updated) || [], errors = (res && res.errors) || [];
+    if (statEl) statEl.textContent = updated.length
+      ? '✓ Agent pools: ' + updated.join(', ') + (errors.length ? ' — Errors: ' + errors.join('; ') : '')
+      : (errors.length ? 'Errors: ' + errors.join('; ') : 'No validated players (run Validate Riot IDs first).');
+    _setActionState(btns, updated.length ? 'ok' : 'err');
+  } catch(e) {
+    if (statEl) statEl.textContent = 'Request failed: ' + e.message;
+    _setActionState(btns, 'err');
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '↻ Refresh Agent Pools'; });
+  }
+}
+
+// VALORANT — post-map fetch (HenrikDev suggestion) + apply. The suggestion itself is
+// broadcast as state.valPostmap, so valRenderPostmap keeps every admin's view in sync.
+async function valPostmapFetch() {
+  const btns = Array.from(document.querySelectorAll('[onclick="valPostmapFetch()"]'));
+  const statEl = g('val-postmap-status');
+  btns.forEach(function(b) { b._origText = b._origText || b.textContent; b.disabled = true; b.textContent = '⟳ Fetching…'; b.classList.remove('btn-ok','btn-err'); });
+  if (statEl) statEl.textContent = 'Contacting HenrikDev…';
+  try {
+    const r = await fetch('/api/valorant/postmap/fetch', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+    const res = await r.json().catch(function() { return {}; });
+    if (!r.ok) { if (statEl) statEl.textContent = 'Error: ' + ((res && res.error) || ('HTTP ' + r.status)); _setActionState(btns, 'err'); return; }
+    if (statEl) statEl.textContent = '✓ Fetched.';
+    _setActionState(btns, 'ok');
+  } catch(e) {
+    if (statEl) statEl.textContent = 'Request failed: ' + e.message;
+    _setActionState(btns, 'err');
+  } finally {
+    btns.forEach(function(b) { b.disabled = false; b.textContent = b._origText || '⟳ Fetch latest map'; });
+  }
+}
+async function valPostmapApply() {
+  const sel = g('val-apply-slot'); if (!sel) return;
+  const statEl = g('val-postmap-status');
+  try {
+    const r = await fetch('/api/valorant/postmap/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index: parseInt(sel.value, 10) }) });
+    const res = await r.json().catch(function() { return {}; });
+    if (statEl) statEl.textContent = r.ok ? '✓ Applied — Series Tracker, roster agents and the Post-Game board are updated.' : ('Error: ' + ((res && res.error) || ('HTTP ' + r.status)));
+  } catch(e) { if (statEl) statEl.textContent = 'Request failed: ' + e.message; }
+}
+// Render the broadcast suggestion (state.valPostmap) + region picker sync.
+function valRenderPostmap(state) {
+  if (typeof supportsValorant === 'function' && !supportsValorant()) return;
+  const regSel = g('val-region');
+  if (regSel && document.activeElement !== regSel) {
+    regSel.value = ((state.settings || {}).valorant || {}).region || 'eu';
+  }
+  const el = g('val-postmap-suggestion'); if (!el) return;
+  const s = state.valPostmap;
+  if (!s) { if (el.dataset.sig) { el.dataset.sig = ''; el.innerHTML = ''; } return; }
+  const m = state.match || {};
+  const tn = function(k) { return (m[k] && (m[k].tag || m[k].name)) || (k === 'team1' ? 'Team 1' : 'Team 2'); };
+  const rows = (m.mapResults || []);
+  const sig = JSON.stringify([s.matchId, s.fetchedAt, rows.map(function(r) { return [r.map, r.status]; })]);
+  if (el.dataset.sig === sig) return;
+  el.dataset.sig = sig;
+  const lineTxt = function(slot) {
+    return (s.lines[slot] || []).map(function(l) {
+      return esc(l.name) + ' <span style="color:var(--text-faint)">(' + esc(l.agent) + ')</span> ' + l.kills + '/' + l.deaths + '/' + l.assists + ' · ' + l.acs + ' ACS';
+    }).join('<br>') || '<span class="hint">no roster players matched</span>';
+  };
+  // Default slot: first non-final row, else the last row.
+  let def = rows.findIndex(function(r) { return r && r.status !== 'final'; });
+  if (def < 0) def = rows.length - 1;
+  const opts = rows.map(function(r, i) {
+    return '<option value="' + i + '"' + (i === def ? ' selected' : '') + '>Map ' + (i + 1) + (r.map ? ' — ' + esc(r.map) : '') + (r.status === 'final' ? ' (final)' : '') + '</option>';
+  }).join('');
+  el.innerHTML =
+    '<div style="border:1px solid var(--border);border-radius:6px;padding:10px;font-size:12px;line-height:1.6">' +
+      '<div style="font-size:13px;margin-bottom:6px"><strong>' + esc(s.map || '?') + '</strong> · ' +
+        esc(tn('team1')) + ' <b>' + (s.t1Rounds | 0) + '</b> — <b>' + (s.t2Rounds | 0) + '</b> ' + esc(tn('team2')) +
+        (s.winner ? ' · ' + esc(tn(s.winner)) + ' win' : '') +
+        ' <span class="hint" style="margin-left:6px">' + (s.overlap | 0) + ' roster players matched</span></div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">' +
+        '<div><div style="font-weight:700;margin-bottom:2px">' + esc(tn('team1')) + '</div>' + lineTxt('team1') + '</div>' +
+        '<div><div style="font-weight:700;margin-bottom:2px">' + esc(tn('team2')) + '</div>' + lineTxt('team2') + '</div>' +
+      '</div>' +
+      (rows.length
+        ? '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">Apply to <select id="val-apply-slot">' + opts + '</select>' +
+          '<button class="btn btn-sm btn-primary" onclick="valPostmapApply()">Apply</button>' +
+          '<span class="hint">writes score/winner + roster agents + Post-Game stats</span></div>'
+        : '<p class="hint" style="margin:0">Set the match <strong>Format</strong> above to create map slots first.</p>') +
+    '</div>';
+}
+
 async function refreshRanks() {
   const btns = Array.from(document.querySelectorAll('[onclick="refreshRanks()"]'));
   const statEls = [g('ranks-status'), g('intel-status')].filter(Boolean);
@@ -5410,24 +5551,29 @@ function pgRenderPreview(state){
   const row=pgResolveRow(state), m=(state.match)||{};
   if(!row){ el.innerHTML='<p class="hint" style="margin:0">No completed map yet. Log a map’s scores in <a onclick="switchToTab(\'game\')" href="#" style="color:var(--primary)">Game Setup</a> (or via live data) — it will appear here to confirm before you show it.</p>'; return; }
   const sk=pgSeriesKey(state), mapN=pgNorm(row.map);
-  const lines=((state.tournament&&state.tournament.csStats)||[]).filter(function(l){return l.seriesKey===sk&&pgNorm(l.map)===mapN;});
+  // VALORANT reads the HenrikDev post-map lines (valStats, ACS); CS2 the GSI lines (csStats, ADR).
+  const isVal=typeof supportsValorant==='function' && supportsValorant();
+  const src=((state.tournament&&(isVal?state.tournament.valStats:state.tournament.csStats))||[]);
+  const rateLabel=isVal?'ACS':'ADR', rateOf=function(l){ return isVal?(l.acs|0):(l.adr|0); };
+  const lines=src.filter(function(l){return l.seriesKey===sk&&pgNorm(l.map)===mapN;});
   const by={team1:[],team2:[]}; lines.forEach(function(l){ (by[l.team]||by.team1).push(l); });
-  const sortK=function(a,b){return (b.kills|0)-(a.kills|0);};
+  const sortK=isVal?function(a,b){return (b.acs|0)-(a.acs|0);}:function(a,b){return (b.kills|0)-(a.kills|0);};
   by.team1.sort(sortK); by.team2.sort(sortK);
   const tn=function(k){ return (m[k]&&(m[k].name||m[k].tag))||(k==='team1'?'Team 1':'Team 2'); };
   const winTxt=row.winner==='team1'?(' · '+esc(tn('team1'))+' win'):row.winner==='team2'?(' · '+esc(tn('team2'))+' win'):'';
   const hist=(row.roundHistory||[]).length;
+  const histTxt=hist?hist+' rounds tracked':(isVal?'':'no round tracker (needs GSI)');
   let html='<div style="font-size:13px;margin-bottom:8px"><strong>'+esc(row.map)+'</strong> · '+(row.t1Rounds|0)+'–'+(row.t2Rounds|0)+winTxt+
-    ' <span class="hint" style="margin-left:6px">'+(hist?hist+' rounds tracked':'no round tracker (needs GSI)')+'</span></div>';
+    (histTxt?' <span class="hint" style="margin-left:6px">'+histTxt+'</span>':'')+'</div>';
   const col=function(k){
     const rowsH=(by[k].length?by[k]:[]).map(function(l){
       const kd=((l.kills|0)/Math.max(1,l.deaths|0)).toFixed(2);
-      return '<div style="display:grid;grid-template-columns:1fr 32px 32px 32px 46px 46px;gap:4px;font-size:12px;padding:2px 0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(l.name||'?')+'</span>'+
+      return '<div style="display:grid;grid-template-columns:1fr 32px 32px 32px 46px 46px;gap:4px;font-size:12px;padding:2px 0"><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(l.name||'?')+(isVal&&l.agent?' <span style="color:var(--text-faint)">('+esc(l.agent)+')</span>':'')+'</span>'+
         '<span style="text-align:center">'+(l.kills|0)+'</span><span style="text-align:center">'+(l.deaths|0)+'</span><span style="text-align:center">'+(l.assists|0)+'</span>'+
-        '<span style="text-align:center;color:var(--primary)">'+(l.adr|0)+'</span><span style="text-align:center;color:var(--text-dim)">'+kd+'</span></div>';
+        '<span style="text-align:center;color:var(--primary)">'+rateOf(l)+'</span><span style="text-align:center;color:var(--text-dim)">'+kd+'</span></div>';
     }).join('')||'<p class="hint" style="margin:2px 0">No player stats logged for this map.</p>';
     return '<div style="min-width:0;margin-bottom:10px"><div style="font-weight:700;font-size:12px;margin-bottom:2px;color:var(--text)">'+esc(tn(k))+'</div>'+
-      '<div style="display:grid;grid-template-columns:1fr 32px 32px 32px 46px 46px;gap:4px;font-size:10px;color:var(--text-faint);letter-spacing:0.04em"><span>PLAYER</span><span style="text-align:center">K</span><span style="text-align:center">D</span><span style="text-align:center">A</span><span style="text-align:center">ADR</span><span style="text-align:center">KD</span></div>'+rowsH+'</div>';
+      '<div style="display:grid;grid-template-columns:1fr 32px 32px 32px 46px 46px;gap:4px;font-size:10px;color:var(--text-faint);letter-spacing:0.04em"><span>PLAYER</span><span style="text-align:center">K</span><span style="text-align:center">D</span><span style="text-align:center">A</span><span style="text-align:center">'+rateLabel+'</span><span style="text-align:center">KD</span></div>'+rowsH+'</div>';
   };
   // Stack the two teams vertically — the preview card is narrow, so side-by-side overflowed.
   html+=col('team1')+col('team2');
