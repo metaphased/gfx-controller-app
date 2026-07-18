@@ -45,6 +45,14 @@ function champNameFromUrl(url) {
   return url.split('/').pop().replace(/\.[^.]+$/, '').replace(/_\d+$/, '');
 }
 function champSplash(name) { return name ? '/graphics/head2head/champions/' + name + '_0.jpg' : ''; }
+
+// VALORANT agents — one manually-set agent per winning player → full-body portrait art.
+function agentSlug(name) { return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+// Tight full-body crop (transparent margins trimmed) so the win-screen showcase can show the
+// whole agent with object-fit:contain and never clip a wide pose. Falls back handled in CSS.
+function agentPortrait(name) { var s = agentSlug(name); return s ? '/agents/full/' + s + '.webp' : ''; }
+function isValorantGame(state) { var a = state && state.adapter; return a ? a.assetSource === 'valorant' : ((state && state.match && state.match.game) === 'valorant'); }
+
 const _COMP_ROLE_ORDER = ['top', 'jungle', 'mid', 'bot', 'support'];
 function _normRole(r) { r = (r || '').toLowerCase().trim(); return r === 'adc' ? 'bot' : r; }
 
@@ -155,12 +163,30 @@ function buildCompRow(ws, match) {
   if (!row) return;
   if (!_wantCompRow(ws)) { if (_compFp !== '') { _compFp = ''; row.innerHTML = ''; row.classList.remove('hero-picks'); } return; }
 
-  const winner  = ws.team || 'team1';
-  const heroMode = isHeroGame(_lastState);
+  const winner   = ws.team || 'team1';
+  const valMode  = isValorantGame(_lastState);
+  const heroMode = !valMode && isHeroGame(_lastState);
   row.classList.toggle('hero-picks', heroMode);
+  row.classList.toggle('agent-picks', valMode);
 
   let html = '';
-  if (heroMode) {
+  if (valMode) {
+    // VALORANT — winning roster's manually-set agents as full-body portraits. There's no draft or
+    // per-game agent history (no live data), so read the current roster like the Player Intro does.
+    // Labelled by player handle (the image conveys the agent), mirroring the LoL handle labels.
+    const players = (_lastState && _lastState.players && _lastState.players[winner]) || [];
+    const picks = players.filter(p => p && p.agent).slice(0, 5).map(p => ({ handle: p.handle || '', agent: p.agent }));
+    const fp = JSON.stringify({ w: winner, st: _style, val: picks });
+    if (fp === _compFp) return;
+    _compFp = fp;
+    for (let i = 0; i < picks.length; i++) {
+      const url = agentPortrait(picks[i].agent); if (!url) continue;
+      html += '<div class="ws-comp-pick">' +
+        '<div class="ws-comp-portrait"><img src="' + url + '" alt="" onerror="this.style.display=\'none\'"></div>' +
+        (picks[i].handle ? '<div class="ws-comp-player">' + esc(picks[i].handle) + '</div>' : '') +
+        '</div>';
+    }
+  } else if (heroMode) {
     // Dota — landscape hero art from the current draft; labelled by hero name.
     const picks = winnerHeroPicks(_lastState, winner);
     const fp = JSON.stringify({ w: winner, st: _style, hero: picks });
@@ -508,6 +534,11 @@ function revealEntrance(root) {
   root.classList.add('is-entering');
   root.style.display = 'block';
   void root.offsetWidth;
+  // Now that the card is displayed (and measurable), position the below-card picks row. The
+  // call in populateContent can run while the root is still display:none (the entrance waits on
+  // image decode), measuring the card at height 0 → the row falls back to 63vh and overlaps the
+  // card text. offsetHeight ignores the is-entering transforms, so this is stable mid-animation.
+  requestAnimationFrame(positionPicksRow);
   if (_style === 'spotlight') startSpotParticles();
   if (_style === 'split') { startSplitParticles(); requestAnimationFrame(fitSplitName); }
 

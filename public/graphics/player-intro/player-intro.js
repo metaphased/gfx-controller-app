@@ -305,16 +305,48 @@ function champStripHtml(champPool, side, layout) {
   return '<span class="' + wrap + '">' + imgs + '</span>';
 }
 
+// ── VALORANT agents ──────────────────────────────────────────────────────────────
+// Agents lock hidden (no public draft), so we don't have a "pool" like LoL champs — each
+// player has ONE agent this map, set manually on the roster. In the player-intro row we show
+// the agent's icon in the (otherwise empty) role-icon slot, so the lineup reads at a glance.
+var _piVal = false;   // set per render — true when the tournament game is VALORANT
+function piIsValorant(state) { var a = state.adapter || {}; return a.assetSource === 'valorant' || (state.match || {}).game === 'valorant'; }
+function agentSlug(name) { return String(name || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+function agentImgUrl(name)  { var s = agentSlug(name); return s ? '/agents/bust/' + s + '.webp' : ''; }     // head+torso bust crop (fills the row well)
+function agentIconUrl(name) { var s = agentSlug(name); return s ? '/agents/icons/' + s + '.png' : ''; }   // small headshot icon
+function agentPortraitUrl(name) { var s = agentSlug(name); return s ? '/agents/' + s + '.png' : ''; }     // full-body portrait (Agent Cards layout)
+
+// Some agents have big overhead elements in their portrait (a raised weapon, ability FX,
+// grenade) so their face sits low — nudge those up (% of the bust's own height) so more of
+// the character/face shows. Most agents need nothing. Slugs match the synced art.
+var AGENT_NUDGE = { raze: 15, clove: 9, neon: 11, harbor: 8, astra: 12, reyna: 9, skye: 9,
+  iso: 8, vyse: 8, brimstone: 7, waylay: 6, kayo: 5, phoenix: 4 };
+
+// Big agent portrait filling the row toward the centre divider — the VALORANT equivalent of
+// the champion splash strip (same H2H-card feel), fading toward the name so the handle stays
+// legible. One agent per player (no draft pool). Reuses the champ-strip container + sizing.
+function agentStripHtml(agentName, side, layout) {
+  var url = agentImgUrl(agentName); if (!url) return '';
+  var isRight = side === 'right';
+  var mask = isRight
+    ? 'linear-gradient(to right, #000 0%, #000 48%, transparent 94%)'
+    : 'linear-gradient(to right, transparent 6%, #000 52%, #000 100%)';
+  var nudge = AGENT_NUDGE[agentSlug(agentName)] || 0;
+  var tf = nudge ? ';transform:translateY(-' + nudge + '%)' : '';
+  var wrap = 'pi-champstrip pi-agentstrip pi-champstrip-' + (layout || 'panel') + (isRight ? ' pi-champstrip-right' : '');
+  return '<span class="' + wrap + '"><img class="pi-champ-img pi-agent-portrait" decoding="async" src="' + url + '" style="-webkit-mask-image:' + mask + ';mask-image:' + mask + tf + '"></span>';
+}
+
 function buildPanelRowHtml(player, roleKey, side, showRank, showChamps, csLine) {
   var handle    = player.handle || '';
   var icon      = ROLE_ICONS[roleKey] || '';
   var rank      = showRank   ? rankText(player.rank || null) : '';
 
   var isRight = side === 'right';
-  var rowCls  = 'pi-pnl-row' + (isRight ? ' pi-pnl-row-right' : '');
+  var rowCls  = 'pi-pnl-row' + (isRight ? ' pi-pnl-row-right' : '') + (_piVal ? ' pi-pnl-row-agent' : '');
 
-  var strip  = showChamps ? champStripHtml(player.champPool, side, 'panel') : '';
-  var roleEl = roleKey ? '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>' : '';
+  var strip  = showChamps ? (_piVal ? agentStripHtml(player.agent, side, 'panel') : champStripHtml(player.champPool, side, 'panel')) : '';
+  var roleEl = _piVal ? '' : (roleKey ? '<span class="pi-pnl-role-icon" style="background-image:url(' + icon + ')"></span>' : '');
   var textEl = (
     '<span class="pi-pnl-text">' +
       '<span class="pi-pnl-handle">' + esc(handle) + '</span>' +
@@ -336,6 +368,7 @@ function renderPanel(state) {
   var showRank   = !!pi.showRank;
   var showChamps = !!pi.showChamps;
   var showLogo   = pi.showLogo !== false;
+  _piVal = piIsValorant(state);
 
   setBg('pi-panel-t1-logo', t1.logo);
   setBg('pi-panel-t2-logo', t2.logo);
@@ -361,7 +394,7 @@ function renderPanel(state) {
     });
     var key = rows.map(function(r) {
       var p = r.player;
-      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), showChamps,
+      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), showChamps, _piVal, p.agent||'',
         (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(','), r.cs].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
@@ -382,11 +415,12 @@ function buildStackPlayerHtml(player, roleKey, showRank, showChamps, side, csLin
   var icon      = ROLE_ICONS[roleKey] || '';
   var rank      = showRank   ? rankText(player.rank || null) : '';
 
-  var strip = showChamps ? champStripHtml(player.champPool, side, 'stack') : '';
+  var strip = showChamps ? (_piVal ? agentStripHtml(player.agent, side, 'stack') : champStripHtml(player.champPool, side, 'stack')) : '';
+  var roleEl = _piVal ? '' : (roleKey ? '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' : '');
   return (
-    '<div class="pi-stk-player">' +
+    '<div class="pi-stk-player' + (_piVal ? ' pi-stk-player-agent' : '') + '">' +
       strip +
-      (roleKey ? '<span class="pi-stk-role" style="background-image:url(' + icon + ')"></span>' : '') +
+      roleEl +
       '<span class="pi-stk-handle">' + esc(handle) + '</span>' +
       (csLine    ? '<span class="pi-stk-csstat">' + esc(csLine) + '</span>' : '') +
       (rank      ? '<span class="pi-stk-rank">' + rank + '</span>' : '') +
@@ -403,6 +437,7 @@ function renderStack(state) {
   var t2Players  = (state.players && state.players.team2) || [];
   var showRank   = !!pi.showRank;
   var showChamps = !!pi.showChamps;
+  _piVal = piIsValorant(state);
 
   var t1El = $('pi-stack-t1'), t2El = $('pi-stack-t2');
   if (t1El) t1El.style.setProperty('--team-color', 'var(--gfx-blue)');
@@ -424,7 +459,7 @@ function renderStack(state) {
     });
     var key = rows.map(function(r) {
       var p = r.player;
-      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), showChamps,
+      return [p.handle||'', r.roleKey, showRank, rankText(p.rank||null), showChamps, _piVal, p.agent||'',
         (p.champPool || []).slice(0, 3).map(function(c){return c && c.name;}).join(','), r.cs].join(':');
     }).join('|');
     if (el.dataset.key !== key) {
@@ -528,6 +563,91 @@ function renderBar(state) {
   if (t2NameEl) fitText(t2NameEl, maxBarNamePx, minBarNamePx, t2NameEl.querySelector('span'));
 }
 
+// ── Layout: Agent Cards (VALORANT) ────────────────────────────────────────────
+// A full-screen "hero shot" layout — each team's five agents as tall portrait cards
+// (full-body art, not the row bust) clustered LEFT / RIGHT with VS in the centre, in the
+// same card language as the Map Veto board. Valorant-only (needs one agent per player);
+// falls back to the Nameplate panel for any other game (no wired portrait art).
+function buildAgentCardHtml(player, i) {
+  var handle = player.handle || '';
+  var agent  = player.agent || '';
+  var url    = agentPortraitUrl(agent);
+  var portrait = url ? '<img class="pi-ac-portrait" decoding="async" src="' + url + '" alt="">' : '';
+  return (
+    '<div class="pi-ac-card" style="--i:' + i + '">' +
+      portrait +
+      '<div class="pi-ac-scrim"></div>' +
+      '<div class="pi-ac-foot">' +
+        '<span class="pi-ac-handle">' + esc(handle) + '</span>' +
+        (agent ? '<span class="pi-ac-agent">' + esc(agent) + '</span>' : '') +
+      '</div>' +
+    '</div>'
+  );
+}
+
+// Set (or collapse) an Agent Cards header logo box. Empty url → hidden + display:none so the
+// flex row drops the box and its gap, sliding the team name out to the cluster edge.
+function acHeaderLogo(id, url) {
+  var el = $(id);
+  if (!el) return;
+  el.style.backgroundImage = url ? 'url(' + url + ')' : '';
+  el.style.display = url ? '' : 'none';
+}
+
+function renderAgentCards(state) {
+  var match     = state.match || {};
+  var pi        = state.playerIntro || {};
+  var t1        = match.team1 || {};
+  var t2        = match.team2 || {};
+  var t1Players = (state.players && state.players.team1) || [];
+  var t2Players = (state.players && state.players.team2) || [];
+  var showLogo  = pi.showLogo !== false;
+
+  var t1El = $('pi-ac-t1'), t2El = $('pi-ac-t2');
+  if (t1El) t1El.style.setProperty('--team-color', 'var(--gfx-blue)');
+  if (t2El) t2El.style.setProperty('--team-color', 'var(--gfx-red)');
+
+  // Team logos live in the outer region of each header, gated by the Logo toggle. When off
+  // (or the team has no logo) collapse the box so the name slides out to the cluster edge.
+  acHeaderLogo('pi-ac-t1-logo', showLogo && t1.logo ? t1.logo : '');
+  acHeaderLogo('pi-ac-t2-logo', showLogo && t2.logo ? t2.logo : '');
+  setTxt('pi-ac-t1-name', t1.name || t1.tag || '');
+  setTxt('pi-ac-t2-name', t2.name || t2.tag || '');
+
+  var maxNamePx = Math.round(window.innerHeight * 0.05);
+  fitText($('pi-ac-t1-name'), maxNamePx, Math.round(maxNamePx * 0.4));
+  fitText($('pi-ac-t2-name'), maxNamePx, Math.round(maxNamePx * 0.4));
+
+  // Centre is always the VS lockup for this layout — team branding lives in the outer regions.
+  setLogoOrVs($('pi-ac-centre-img'), $('pi-ac-vs'), '');
+
+  function fillCards(elId, players) {
+    var el = $(elId);
+    if (!el) return;
+    var rows = piSlots(state, players).map(function(sl) { return sl.player; });
+    var key = rows.map(function(p) { return [p.handle || '', p.agent || ''].join(':'); }).join('|');
+    if (el.dataset.key !== key) {
+      el.dataset.key = key;
+      el.innerHTML = rows.map(buildAgentCardHtml).join('');
+    }
+  }
+
+  fillCards('pi-ac-t1-cards', t1Players);
+  fillCards('pi-ac-t2-cards', t2Players);
+  fitAgentCardHandles();
+}
+
+// Shrink each player handle down until it fits the card width (long handles would otherwise
+// clip) — the card is narrow, so this is a genuine fit rather than the usual headroom. Runs
+// every render (idempotent: fitText resets to max, then binary-searches down) and again after
+// fonts load via refitNames.
+function fitAgentCardHandles() {
+  var handles = document.querySelectorAll('.pi-agentcards .pi-ac-handle');
+  var maxPx = Math.round(window.innerHeight * 0.027);
+  var minPx = Math.round(maxPx * 0.45);
+  for (var i = 0; i < handles.length; i++) fitText(handles[i], maxPx, minPx);
+}
+
 // ── Render dispatch ───────────────────────────────────────────────────────────
 function renderAll(state) {
   var pi     = state.playerIntro || {};
@@ -535,15 +655,20 @@ function renderAll(state) {
   var root   = $('pi-root');
   if (!root) return;
 
+  // Agent Cards needs Valorant's per-player agent art — for any other game there's no
+  // wired portrait, so fall back to the Nameplate panel rather than show empty cards.
+  if (layout === 'agentcards' && !piIsValorant(state)) layout = 'panel';
+
   if (root.dataset.layout !== layout) {
     root.dataset.layout = layout;
-    root.classList.remove('layout-panel', 'layout-stack', 'layout-bar');
+    root.classList.remove('layout-panel', 'layout-stack', 'layout-bar', 'layout-agentcards');
     root.classList.add('layout-' + layout);
   }
 
-  if      (layout === 'stack') renderStack(state);
-  else if (layout === 'bar')   renderBar(state);
-  else                         renderPanel(state);
+  if      (layout === 'stack')      renderStack(state);
+  else if (layout === 'bar')        renderBar(state);
+  else if (layout === 'agentcards') renderAgentCards(state);
+  else                              renderPanel(state);
 }
 
 // ── Background ────────────────────────────────────────────────────────────────
@@ -577,6 +702,12 @@ function refitNames() {
     var t1El = $('pi-bar-t1-team-name'), t2El = $('pi-bar-t2-team-name');
     if (t1El) fitText(t1El, maxBarPx, minBarPx, t1El.querySelector('span'));
     if (t2El) fitText(t2El, maxBarPx, minBarPx, t2El.querySelector('span'));
+  } else if (layout === 'agentcards') {
+    var maxAcPx = Math.round(window.innerHeight * 0.05);
+    var minAcPx = Math.round(maxAcPx * 0.4);
+    fitText($('pi-ac-t1-name'), maxAcPx, minAcPx);
+    fitText($('pi-ac-t2-name'), maxAcPx, minAcPx);
+    fitAgentCardHandles();
   }
 }
 
@@ -595,7 +726,7 @@ socket.on('state', function(state) {
 
   if (root) {
     var layout = pi.layout || 'panel';
-    var defaultAnim = layout === 'stack' ? 'split' : layout === 'bar' ? 'slide' : 'rise';
+    var defaultAnim = layout === 'stack' ? 'split' : layout === 'bar' ? 'slide' : layout === 'agentcards' ? 'rise' : 'rise';
     var anim = pi.animVariant || defaultAnim;
     var animClass = 'anim-' + anim;
     if (!root.classList.contains(animClass)) {

@@ -664,8 +664,9 @@
 
       <!-- Live Data — show-time controls (CS2). Lives here, beside the Series Tracker,
            because CT side + score-apply are touched while the series is being run.
-           Setup + the full player-stats readout live on the dedicated Live Data tab. -->
-      <div class="card cap-map-veto" style="margin-top:16px">
+           Setup + the full player-stats readout live on the dedicated Live Data tab.
+           cap-cs2-live (not cap-map-veto): VALORANT is map-veto but has no live feed. -->
+      <div class="card cap-cs2-live" style="margin-top:16px">
         <div class="card-title">Live Data <span style="font-size:11px;font-weight:600;color:var(--text-dim)">· optional</span></div>
         <div class="field-row" style="margin-bottom:0"><label>CT side is</label>
           <div class="btn-row" style="display:flex;gap:6px">
@@ -1281,6 +1282,7 @@
             <button id="pi-layout-panel" class="btn btn-sm btn-active-gfx" onclick="setPlayerIntroLayout('panel')">Nameplate</button>
             <button id="pi-layout-stack" class="btn btn-sm btn-dim"        onclick="setPlayerIntroLayout('stack')">Team Stack</button>
             <button id="pi-layout-bar"   class="btn btn-sm btn-dim"        onclick="setPlayerIntroLayout('bar')">Bar</button>
+            <button id="pi-layout-agentcards" class="btn btn-sm btn-dim cap-valorant" onclick="setPlayerIntroLayout('agentcards')">Agent Cards</button>
           </div>
         </div>
         <div class="gfx-ctrl-row">
@@ -1288,8 +1290,10 @@
             <span class="gfx-ctrl-section-label">Options</span>
             <button id="pi-toggle-logo"   class="btn btn-sm btn-dim" onclick="togglePlayerIntroLogo()">Logo: On</button>
             <button id="pi-toggle-rank"   class="btn btn-sm btn-dim cap-opgg" onclick="togglePlayerIntroRank()">Rank: Off</button>
-            <!-- champ strip is only wired for champ-draft (LoL); hidden for Dota/CS2 (no wired pick art) -->
+            <!-- champ strip is only wired for champ-draft (LoL); hidden for Dota/CS2 (no wired pick art).
+                 VALORANT reuses the same showChamps state for its AGENT strip — its own labelled button. -->
             <button id="pi-toggle-champs" class="btn btn-sm btn-dim cap-champ-draft" onclick="togglePlayerIntroChamps()">Champs: Off</button>
+            <button id="pi-toggle-agents" class="btn btn-sm btn-dim cap-valorant" onclick="togglePlayerIntroChamps()">Agents: Off</button>
           </div>
           <div class="gfx-ctrl-group">
             <span class="gfx-ctrl-section-label">Animation</span>
@@ -1316,8 +1320,9 @@
         <div class="ps-col">
           <div class="card">
             <div class="card-title">About Player Intro</div>
-            <p class="hint">Pre-series graphic introducing both rosters. Three layouts: <strong>Nameplate</strong> (centred overlay panel), <strong>Team Stack</strong> (full-screen left/right split), <strong>Bar</strong> (bottom-anchored band).</p>
+            <p class="hint">Pre-series graphic introducing both rosters. Layouts: <strong>Nameplate</strong> (centred overlay panel), <strong>Team Stack</strong> (full-screen left/right split), <strong>Bar</strong> (bottom-anchored band)<span class="cap-valorant">, and <strong>Agent Cards</strong> (full-screen tall agent-portrait cards, VALORANT only)</span>.</p>
             <p class="hint cap-champ-draft" style="margin-top:8px">Rank and champion data are optional — fetch them first in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel. Champs blends each player's <strong>top 3 most-played</strong> champions along their row (Nameplate &amp; Team Stack); players with no data fall back to a clean name. The Bar layout is always name-only. Disable to keep the focus on player names everywhere.</p>
+            <p class="hint cap-valorant" style="margin-top:8px">Assign each player an <strong>agent</strong> in the <a onclick="switchToTab('players')" href="#" style="color:var(--primary)">Players / Rosters</a> panel — the Agents toggle shows their art along the rows (Nameplate &amp; Team Stack), and the <strong>Agent Cards</strong> layout shows both teams' agents as full-body portrait cards.</p>
           </div>
         </div>
 
@@ -2607,10 +2612,11 @@
             </div>
           </div>
 
-          <div class="card cap-char-draft">
+          <div class="card cap-win-comp">
             <div class="card-title">Winning Draft Picks</div>
             <p class="hint cap-champ-draft" style="margin-bottom:8px">Shows the winning team's champion picks from the game they won. The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
             <p class="hint cap-hero-draft" style="margin-bottom:8px;display:none">Shows the winning team's drafted <strong>heroes</strong> (from the current Captains Mode draft). The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
+            <p class="hint cap-valorant" style="margin-bottom:8px;display:none">Shows the winning team's <strong>agents</strong> as full-body portraits (from each player's assigned agent). The <strong>COMP</strong> style shows them full-screen; on the other full-screen styles, toggle them on as a compact row.</p>
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
               <input type="checkbox" id="win-showpicks" onchange="patchWin({showPicks:this.checked})">
               <span>Show winning draft picks on full-screen styles</span>
@@ -2767,9 +2773,9 @@
               </div>
             </label>
 
-            <div class="win-style-group-label cap-char-draft">Draft Comp</div>
+            <div class="win-style-group-label cap-win-comp">Draft Comp</div>
 
-            <label class="win-style-option cap-char-draft" id="win-style-comp">
+            <label class="win-style-option cap-win-comp" id="win-style-comp">
               <input type="radio" name="win-style" value="comp" onchange="patchWin({style:'comp'})">
               <div class="win-style-preview win-preview-comp">
                 <div class="win-preview-comp-head"></div>
@@ -2781,6 +2787,7 @@
                 <div class="win-style-name">COMP</div>
                 <div class="win-style-desc cap-champ-draft">Full-screen showcase of the winning team's champion picks + players. Needs a recorded game.</div>
                 <div class="win-style-desc cap-hero-draft" style="display:none">Full-screen showcase of the winning team's drafted heroes (from the current Captains Mode draft).</div>
+                <div class="win-style-desc cap-valorant" style="display:none">Full-screen showcase of the winning team's agents as full-body portraits (from each player's assigned agent).</div>
               </div>
             </label>
           </div>
@@ -3001,7 +3008,7 @@
             <div id="item-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
           </div>
 
-          <div class="card cap-map-veto" style="margin-bottom:16px">
+          <div class="card cap-cs2maps" style="margin-bottom:16px">
             <div class="card-title">Map Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· CS2</span></div>
             <p class="hint" style="margin-bottom:12px">Downloads map art for the maps in your <a onclick="switchToTab('tournament')" href="#" style="color:var(--primary)">Tournament map pool</a> only — not every CS2 map. Run this if a map's art is missing or outdated (e.g. after a map pool change).</p>
             <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
@@ -3009,6 +3016,16 @@
               <button class="btn btn-primary btn-sm" onclick="syncMapAssets(this)">Download / Update Pool Maps</button>
             </div>
             <div id="map-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
+          </div>
+
+          <div class="card cap-valorant" style="margin-bottom:16px">
+            <div class="card-title">Agent &amp; Map Assets <span style="font-size:10px;font-weight:700;letter-spacing:0.08em;color:var(--text-dim)">· VALORANT</span></div>
+            <p class="hint" style="margin-bottom:12px">Downloads agent portraits + icons and competitive map art from <a href="https://valorant-api.com" target="_blank" rel="noopener" style="color:var(--primary)">valorant-api.com</a> (a free Riot content mirror). Agents feed player intros + the post-game scoreboard; maps feed the veto/intro. Only missing files are fetched.</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+              <button class="btn btn-sm" onclick="checkValorant()">Check Status</button>
+              <button class="btn btn-primary btn-sm" onclick="syncValorant()">Sync Missing</button>
+            </div>
+            <div id="valorant-asset-status" style="font-size:12px;color:var(--text-dim)"></div>
           </div>
 
           <!-- Appearance / UI theme (per-user) -->

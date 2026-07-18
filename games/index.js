@@ -3,14 +3,16 @@
 // source, and stat/intel provider. The active game (state.match.game) resolves to an
 // adapter; core code reads capabilities from the resolved descriptor rather than
 // branching on the raw game id. See MULTI-GAME-SUPPORT-PLAN.md / PHASE-0-ADAPTER-PLAN.md.
-const lol     = require('./lol');
-const cs2     = require('./cs2');
-const dota2   = require('./dota2');
-const generic = require('./generic');
+const lol      = require('./lol');
+const cs2      = require('./cs2');
+const dota2    = require('./dota2');
+const valorant = require('./valorant');
+const generic  = require('./generic');
 
-// valorant (and any unknown id) falls back to the generic adapter until its phase lands.
-// LoL, CS2 and Dota 2 are implemented (Dota 2 is adapter-stage / alpha).
-const ADAPTERS = { lol, cs2, dota2, generic };
+// Any unknown id falls back to the generic adapter until its phase lands. LoL, CS2 and Dota 2
+// are implemented; VALORANT is adapter-stage / alpha (reuses the CS2 map-veto pipeline + agent
+// art, no live GSI).
+const ADAPTERS = { lol, cs2, dota2, valorant, generic };
 
 function resolveAdapter(gameId) {
   return ADAPTERS[gameId] || generic;
@@ -18,14 +20,12 @@ function resolveAdapter(gameId) {
 
 // Control-room maturity flag (NEVER shown on-air) so operators know how production-ready a
 // title is: 'stable' = battle-tested, 'beta' = shipped + actively hardening, 'alpha' =
-// early / planned. Games picked in the control room that have no dedicated adapter yet
-// (valorant) run on the generic core, so they're flagged 'alpha' here rather than inheriting
-// generic's 'stable'. Keyed by the SELECTED game id. Real adapters (incl. Dota 2, which is
-// alpha) carry their own `maturity`.
-const PLANNED_MATURITY = { valorant: 'alpha' };
-// Display labels for planned titles that have no dedicated adapter yet (they run on the
-// generic core). Real adapters carry their own `label`.
-const PLANNED_LABELS = { valorant: 'VALORANT' };
+// early / planned. Planned titles with no dedicated adapter yet run on the generic core and
+// would be flagged here; real adapters (incl. VALORANT + Dota 2, both alpha) carry their own
+// `maturity`. Empty now that VALORANT has a real adapter — kept for the next planned title.
+const PLANNED_MATURITY = {};
+// Display labels for planned titles with no adapter yet. Real adapters carry their own `label`.
+const PLANNED_LABELS = {};
 function gameMaturity(gameId) {
   if (PLANNED_MATURITY[gameId]) return PLANNED_MATURITY[gameId];
   return resolveAdapter(gameId).maturity || 'stable';

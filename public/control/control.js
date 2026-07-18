@@ -56,6 +56,20 @@ function supportsSteamId()  { const a = gameAdapter(); return a ? a.rosterIds ==
 function supportsHltv()     { const a = gameAdapter(); return a ? a.rosterLinks === 'hltv'    : false; }
 function supportsAssets()   { const a = gameAdapter(); return a ? a.assetSource === 'ddragon'  : true; }
 function supportsHeroes()   { const a = gameAdapter(); return a ? a.assetSource === 'dota-heroes' : false; }
+function supportsValorant() { const a = gameAdapter(); return a ? a.assetSource === 'valorant'    : false; } // agent + map art sync
+function supportsCs2Maps()  { const a = gameAdapter(); return a ? a.assetSource === 'cs2-maps'    : false; } // CS2 map-art proxy sync (NOT Valorant)
+// VALORANT agent dropdown options (agent names from the synced manifest), fetched once. `after`
+// runs only once options are actually loaded — so the roster fills on the sync after the fetch.
+var _agentOpts = null, _agentOptsLoading = false;
+function _loadAgentOpts(after) {
+  if (_agentOpts !== null) { if (after) after(); return; }
+  if (_agentOptsLoading) return;   // in-flight — the completion below re-runs the fill
+  _agentOptsLoading = true;
+  fetch('/api/agents').then(function(r){ return r.json(); }).then(function(d){
+    _agentOpts = ((d && d.agents) || []).map(function(a){ return '<option value="' + esc(a.name) + '">' + esc(a.name) + '</option>'; }).join('');
+    _agentOptsLoading = false; if (after) after();
+  }).catch(function(){ _agentOpts = ''; _agentOptsLoading = false; if (after) after(); });
+}
 function supportsLiveData()  { const a = gameAdapter(); return a ? !!a.liveData : false; } // has a GSI feed (CS2, Dota 2)
 function _gfxHidden(key)     { const a = gameAdapter(); return !!(a && (a.hiddenGraphics || []).indexOf(key) >= 0); } // graphic hidden for this game
 function hasPickEntity()    { const a = gameAdapter(); return a ? a.pickEntity != null          : true; }
@@ -87,12 +101,20 @@ function applyAdapterUI() {
     // character draft = a champion OR hero pick/ban (LoL + Dota, NOT CS2's map pickEntity) — for
     // shared graphics that show drafted characters (e.g. win-screen picks).
     'cap-char-draft':  isChampDraft() || isHeroDraft(),
+    // win-screen "comp" feature — any game with characters to showcase on the win screen:
+    // LoL champ picks, Dota hero picks, or VALORANT per-player agents.
+    'cap-win-comp':    isChampDraft() || isHeroDraft() || supportsValorant(),
     'cap-live-data':   supportsLiveData(),   // games with a GSI live feed (CS2, Dota 2)
+    // CS2-only live-data surfaces (CT-side mapping etc.): a map-veto game WITH a GSI feed.
+    // VALORANT is map-veto but has no live feed; Dota has a feed but no map veto.
+    'cap-cs2-live':    isMapVeto() && supportsLiveData(),
     'cap-opgg':        supportsOpgg(),
     'cap-opendota':    supportsOpenDota(),
     'cap-intel':       supportsIntel(),     // any per-player intel provider (opgg or opendota)
     'cap-assets':      supportsAssets(),
     'cap-heroes':      supportsHeroes(),
+    'cap-valorant':    supportsValorant(),   // VALORANT agent + map assets card
+    'cap-cs2maps':     supportsCs2Maps(),     // CS2-only map assets card (map-veto is also Valorant)
     'cap-picks':       hasPickEntity(),
     'cap-roles':       hasRoles(),
     'cap-steamid':     supportsSteamId(),     // Steam-ID roster fields (CS2, Dota — live-data match key)
@@ -1633,6 +1655,8 @@ function syncUI(s) {
   if (_piRankBtn) _piRankBtn.textContent = 'Rank: ' + (_pi.showRank ? 'On' : 'Off');
   const _piChampsBtn = g('pi-toggle-champs');
   if (_piChampsBtn) _piChampsBtn.textContent = 'Champs: ' + (_pi.showChamps ? 'On' : 'Off');
+  const _piAgentsBtn = g('pi-toggle-agents');   // VALORANT label for the same showChamps state
+  if (_piAgentsBtn) _piAgentsBtn.textContent = 'Agents: ' + (_pi.showChamps ? 'On' : 'Off');
   syncPiBgBtns(_pi.piBg || 'transparent');
   const _piBarOpacity = _pi.barOpacity !== undefined ? _pi.barOpacity : 0.93;
   const _piBarSlider = g('pi-bar-opacity-slider');
@@ -2810,12 +2834,17 @@ const PI_ANIMS = {
   panel: [['rise', 'Rise'], ['stagger', 'Stagger'], ['fade', 'Fade']],
   stack: [['split', 'Split'], ['rise', 'Rise'], ['fade', 'Fade']],
   bar:   [['slide', 'Slide'], ['fade', 'Fade']],
+  agentcards: [['rise', 'Rise'], ['split', 'Split'], ['fade', 'Fade']],
 };
 
 function syncPlayerIntroLayoutBtns(layout) {
-  ['panel', 'stack', 'bar'].forEach(function(id) {
+  ['panel', 'stack', 'bar', 'agentcards'].forEach(function(id) {
     const btn = g('pi-layout-' + id);
-    if (btn) btn.className = 'btn btn-sm ' + (layout === id ? 'btn-active-gfx' : 'btn-dim');
+    if (!btn) return;
+    // Toggle only the active/dim state — never rewrite className, or cap-valorant (the
+    // Agent Cards gate) would be stripped before applyAdapterUI can hide the button.
+    btn.classList.remove('btn-active-gfx', 'btn-dim');
+    btn.classList.add(layout === id ? 'btn-active-gfx' : 'btn-dim');
   });
   const opacityGrp = g('pi-bar-opacity-group');
   if (opacityGrp) opacityGrp.style.display = layout === 'bar' ? '' : 'none';
@@ -3365,7 +3394,8 @@ function syncWinTab(ws, match) {
   // is reset). Both draft games get the full card — gating this on champ-draft
   // only used to force the checkbox off for Dota every sync, so the toggle
   // looked dead while the overlay (ungated) kept showing the heroes.
-  const draftGame = isChampDraft() || isHeroDraft();
+  // "Has a win-screen comp to show": LoL champ picks, Dota hero picks, or VALORANT agents.
+  const draftGame = isChampDraft() || isHeroDraft() || supportsValorant();
   const showPicks = draftGame && !!ws.showPicks;
   const spChk = g('win-showpicks'); if (spChk) spChk.checked = showPicks;
   const posRow = g('win-picks-pos-row'); if (posRow) posRow.style.display = showPicks ? 'flex' : 'none';
@@ -3448,10 +3478,45 @@ function renderWinHeroPicksPreview(ws, match, el) {
     '<div class="wpp-row">' + tiles + '</div>';
 }
 
+// VALORANT preview: the win screen draws the winning roster's manually-assigned agents
+// (win.js valMode), read from the current roster — mirror that here so the operator sees
+// exactly which agents will appear.
+function renderWinAgentPicksPreview(ws, match, el) {
+  const winner   = (ws && ws.team) || 'team1';
+  const t        = (match && match[winner]) || {};
+  const winLabel = t.tag || t.name || (winner === 'team1' ? 'Team 1' : 'Team 2');
+  const players  = ((window._state && window._state.players) || {})[winner] || [];
+  const picks    = players.filter(function (p) { return p && p.agent; }).slice(0, 5)
+                          .map(function (p) { return { handle: p.handle || '', agent: p.agent }; });
+
+  if (!_sfp('winPicksPreview', { w: winner, l: winLabel, a: picks.map(function (p) { return p.agent + '|' + p.handle; }), st: ws && ws.style, sp: !!(ws && ws.showPicks) })) return;
+
+  if (!picks.length) {
+    el.innerHTML = '<div class="wpp-warn">No agents assigned for <strong>' + escHtml(winLabel) +
+      '</strong> yet — the picks row will be empty. Assign each player an agent in the ' +
+      '<a onclick="switchToTab(\'players\')" href="#" style="color:var(--primary)">Players / Rosters</a> panel.</div>';
+    return;
+  }
+  let tiles = '';
+  for (let i = 0; i < 5; i++) {
+    const p = picks[i];
+    const slug = p ? String(p.agent).toLowerCase().replace(/[^a-z0-9]+/g, '') : '';
+    const url  = slug ? '/agents/icons/' + slug + '.png' : '';
+    tiles += '<div class="wpp-pick">' +
+      (url ? '<div class="wpp-img" style="background-image:url(' + escHtml(url) + ')"></div>'
+           : '<div class="wpp-img wpp-empty"></div>') +
+      '<div class="wpp-handle">' + escHtml((p && p.handle) || '—') + '</div></div>';
+  }
+  el.innerHTML =
+    '<div class="wpp-head">' + escHtml(winLabel) + ' — these agents will appear (from the current roster)</div>' +
+    '<div class="wpp-row">' + tiles + '</div>';
+}
+
 // Show the operator exactly which champions + players the win screen will draw,
 // and from which game — so a wrong/missing comp is caught before going on air.
 function renderWinPicksPreview(ws, match) {
   const el = g('win-picks-preview'); if (!el) return;
+  if (typeof supportsValorant === 'function' && supportsValorant()) return renderWinAgentPicksPreview(ws, match, el);
   if (typeof isHeroDraft === 'function' && isHeroDraft()) return renderWinHeroPicksPreview(ws, match, el);
   const winner   = (ws && ws.team) || 'team1';
   const tk       = winner === 'team2' ? 't2' : 't1';   // seriesGames stores picks as t1/t2RolePicks
@@ -3818,6 +3883,10 @@ function renderPlayerEditors(players) {
           // don't need the Teams DB modal. Saves on change (blur/enter) via /api/players.
           '<div class="cap-steamid"><div class="player-num">Steam ID</div>' +
             '<input type="text" class="ep-live-steamid" data-index="'+i+'" placeholder="765… (optional)"></div>' +
+          // VALORANT: the agent this player ran this map (manual — no public draft). Saves on
+          // change via /api/players; feeds Player Intro + the post-game scoreboard.
+          '<div class="cap-valorant"><div class="player-num">Agent</div>' +
+            '<select class="ep-agent" data-index="'+i+'"><option value="">— Agent —</option></select></div>' +
           // Empty label keeps the select on the same baseline as the labelled inputs beside it.
           '<div><div class="player-num">&nbsp;</div>' +
             '<select class="sub-swap-sel" data-team="'+team+'" data-player-index="'+i+'">' +
@@ -3832,6 +3901,10 @@ function renderPlayerEditors(players) {
         const sel = e.target;
         if (sel.classList.contains('ep-live-steamid')) {
           api('/api/players', { team, index: parseInt(sel.dataset.index), data: { steamid: sel.value.trim() } });
+          return;
+        }
+        if (sel.classList.contains('ep-agent')) {
+          api('/api/players', { team, index: parseInt(sel.dataset.index), data: { agent: sel.value } });
           return;
         }
         if (!sel.classList.contains('sub-swap-sel')) return;
@@ -3899,6 +3972,19 @@ function renderPlayerEditors(players) {
       if (document.activeElement === inp) return;
       const p = list[parseInt(inp.dataset.index)];
       inp.value = (p && p.steamid) || '';
+    });
+
+    // VALORANT agent selects: populate options once (from the synced manifest), then reflect
+    // each player's current agent. The row's 4th grid column is enabled via .has-agent.
+    const valOn = supportsValorant();
+    starterSec.querySelectorAll('.player-row-edit').forEach(function(row) { row.classList.toggle('has-agent', valOn); });
+    if (valOn) _loadAgentOpts(function() {
+      starterSec.querySelectorAll('.ep-agent').forEach(function(sel) {
+        if (sel.dataset.filled !== '1') { sel.insertAdjacentHTML('beforeend', _agentOpts || ''); sel.dataset.filled = '1'; }
+        if (document.activeElement === sel) return;
+        const p = list[parseInt(sel.dataset.index)];
+        sel.value = (p && p.agent) || '';
+      });
     });
 
     starterSec.querySelectorAll('.opgg-link').forEach(function(link) {
@@ -5096,9 +5182,15 @@ function hdRenderAssign(hd, m, tn1, tn2){
 // ban/pick slot (no map can be used twice); the decider is the auto-remaining map.
 function _mvBestOf(){ const f=(window._state&&window._state.match&&window._state.match.format)||'Bo3'; const n=parseInt(String(f).replace(/\D/g,''),10); return (n===1||n===5)?n:3; }
 function _mvTeamA(){ return (_mvState().teamA)==='team2' ? 'team2' : 'team1'; }
+// Per-game side vocabulary for the veto: CS2 rounds start CT vs T; VALORANT rounds start
+// Defense vs Attack. The stored side string is what the graphics display ("DEF START").
+function _mvSides(){ return supportsValorant() ? ['DEF','ATK'] : ['CT','T']; }
 // Ordered veto slots (one per map). pick slots carry the side-picking team; decider is auto.
+// CS2 settles the decider's sides with a knife round; VALORANT has no knife round, so its
+// decider gets a free team+side chooser (rulesets vary on who chooses — operator records it).
 function _vetoSlots(bo, A, poolSize){
   const B = A==='team1'?'team2':'team1', opp=function(x){ return x===A?B:A; }, s=[];
+  const decider = supportsValorant() ? {type:'decider', chooseTS:true} : {type:'decider', knife:true};
   if(bo===1){
     let a=A; for(let i=0;i<Math.max(1,poolSize-1);i++){ s.push({type:'ban',team:a}); a=opp(a); }
     const finalBanner=((poolSize-1)%2===1)?A:B; s.push({type:'decider', sideTeam:opp(finalBanner)}); return s;
@@ -5107,12 +5199,12 @@ function _vetoSlots(bo, A, poolSize){
     s.push({type:'ban',team:A},{type:'ban',team:B}); let p=A;
     for(let i=0;i<4;i++){ s.push({type:'pick',team:p,sideTeam:opp(p)}); p=opp(p); }
     let a=A; for(let i=0;i<Math.max(0,poolSize-7);i++){ s.push({type:'ban',team:a}); a=opp(a); }
-    s.push({type:'decider', knife:true}); return s;
+    s.push(decider); return s;
   }
   // Bo3
   s.push({type:'ban',team:A},{type:'ban',team:B},{type:'pick',team:A,sideTeam:B},{type:'pick',team:B,sideTeam:A});
   let a=A; for(let i=0;i<Math.max(0,poolSize-5);i++){ s.push({type:'ban',team:a}); a=opp(a); }
-  s.push({type:'decider', knife:true}); return s;
+  s.push(decider); return s;
 }
 function mvSetTeamA(team){ api('/api/mapVeto', { teamA: team, steps: [] }); }   // changing A clears the veto
 function mvCommitVeto(){
@@ -5121,7 +5213,15 @@ function mvCommitVeto(){
   const steps=slots.map(function(sl,i){
     const mapSel=document.querySelector('.mv-vm-map[data-i="'+i+'"]');
     const sideSel=document.querySelector('.mv-vm-side[data-i="'+i+'"]')||document.querySelector('.mv-vd-side[data-i="'+i+'"]');
-    if(sl.type==='decider') return { map:'', action:'decider', team:(sl.sideTeam||''), side: sl.knife?'knife':((sideSel||{}).value||'') };
+    if(sl.type==='decider'){
+      // VALORANT decider: combined team+side chooser ("team1|DEF") — no knife round.
+      if(sl.chooseTS){
+        const ts=document.querySelector('.mv-vd-ts[data-i="'+i+'"]');
+        const parts=(((ts||{}).value)||'').split('|');
+        return { map:'', action:'decider', team:parts[0]||'', side:parts[1]||'' };
+      }
+      return { map:'', action:'decider', team:(sl.sideTeam||''), side: sl.knife?'knife':((sideSel||{}).value||'') };
+    }
     return { map:(mapSel||{}).value||'', action:sl.type, team:sl.team, side:(sl.type==='pick'?((sideSel||{}).value||''):'') };
   });
   const chosen={}; steps.forEach(function(st){ if(st.action!=='decider'&&st.map) chosen[st.map]=1; });
@@ -5155,9 +5255,20 @@ function mvRenderVeto(state){
   stepsEl.innerHTML = slots.map(function(sl,i){
     const st=steps[i]||{}, num=i+1;
     if(sl.type==='decider'){
-      const side = sl.knife ? '<span class="mv-decider-side">Knife round</span>'
-        : '<select class="mv-vd-side" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">— '+esc(tn(sl.sideTeam))+' side —</option>'+
-          ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+esc(tn(sl.sideTeam))+' '+sd+'</option>';}).join('')+'</select>';
+      let side;
+      if(sl.knife){ side='<span class="mv-decider-side">Knife round</span>'; }
+      else if(sl.chooseTS){
+        // VALORANT: whichever team gets side choice on the decider (ruleset-dependent) + their side.
+        const cur=(st.team&&st.side)?(st.team+'|'+st.side):'';
+        const opts=['team1','team2'].map(function(tk){ return _mvSides().map(function(sd){
+          const v=tk+'|'+sd; return '<option value="'+v+'"'+(cur===v?' selected':'')+'>'+esc(tn(tk))+' '+sd+'</option>';
+        }).join(''); }).join('');
+        side='<select class="mv-vd-ts" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">— starting side —</option>'+opts+'</select>';
+      }
+      else {
+        side='<select class="mv-vd-side" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">— '+esc(tn(sl.sideTeam))+' side —</option>'+
+          _mvSides().map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+esc(tn(sl.sideTeam))+' '+sd+'</option>';}).join('')+'</select>';
+      }
       return '<div class="mv-veto-row decider"><span class="mv-row-num">'+num+'</span>'+
         '<span class="mv-veto-act decider">DECIDER</span>'+
         '<span class="mv-veto-map auto">'+esc(deciderMap)+'</span>'+side+'</div>';
@@ -5170,7 +5281,7 @@ function mvRenderVeto(state){
       '<select class="mv-vm-map" data-i="'+i+'" onchange="mvCommitVeto()">'+opts+'</select>';
     if(sl.type==='pick') row+='<span class="mv-veto-side-label">'+esc(tn(sl.sideTeam))+' side</span>'+
       '<select class="mv-vm-side" data-i="'+i+'" onchange="mvCommitVeto()"><option value="">—</option>'+
-      ['CT','T'].map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+'</select>';
+      _mvSides().map(function(sd){return '<option value="'+sd+'"'+(st.side===sd?' selected':'')+'>'+sd+'</option>';}).join('')+'</select>';
     return row+'</div>';
   }).join('');
 }
@@ -5951,6 +6062,32 @@ async function syncItems() {
   if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
   socket.on('assets:progress', _onAssetProgress);
   const res = await api('/api/items/sync', {});
+  socket.off('assets:progress', _onAssetProgress);
+  _assetTargetStates = null;
+  if (!res || res.error) {
+    if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml((res && res.error) || 'Request failed') + '</span>';
+    return;
+  }
+  renderAssetResults(res.results);
+}
+
+// VALORANT assets (agents + maps) — same flow, targeting the VALORANT Assets card.
+async function checkValorant() {
+  _assetStatusElId = 'valorant-asset-status';
+  const el = g(_assetStatusElId);
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Checking…</span>';
+  const res = await api('/api/valorant/check', {});
+  if (res.error) { if (el) el.innerHTML = '<span style="color:var(--danger,#f87171)">Error: ' + escHtml(res.error) + '</span>'; return; }
+  renderAssetResults(res.results);
+}
+async function syncValorant() {
+  if (_assetTargetStates !== null) return; // already running
+  _assetStatusElId = 'valorant-asset-status';
+  const el = g(_assetStatusElId);
+  _assetTargetStates = {};
+  if (el) el.innerHTML = '<span style="color:var(--text-dim)">Connecting…</span>';
+  socket.on('assets:progress', _onAssetProgress);
+  const res = await api('/api/valorant/sync', {});
   socket.off('assets:progress', _onAssetProgress);
   _assetTargetStates = null;
   if (!res || res.error) {

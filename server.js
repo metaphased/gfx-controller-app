@@ -237,6 +237,8 @@ app.use('/uploads',  express.static(UPLOADS_DIR));
 app.use('/champions',express.static(path.join(__dirname, 'public', 'champions')));
 app.use('/heroes',   express.static(path.join(__dirname, 'public', 'heroes'))); // Dota 2 hero art
 app.use('/items',    express.static(path.join(__dirname, 'public', 'items')));  // Dota 2 item icons (match-summary board)
+app.use('/agents',   express.static(path.join(__dirname, 'public', 'agents'))); // VALORANT agent art
+app.use('/valmaps',  express.static(path.join(__dirname, 'public', 'valmaps'))); // VALORANT map art (veto/intro)
 app.use('/fonts',    express.static(path.join(__dirname, 'public', 'fonts')));
 app.use('/shared',   express.static(path.join(__dirname, 'public', 'shared')));  // design tokens — needed by login (pre-auth) too
 
@@ -2977,6 +2979,7 @@ function adapterSupports(kind) {
   if (kind === 'opendota')    return d.intelProvider === 'opendota';
   if (kind === 'ddragon')     return d.assetSource   === 'ddragon';
   if (kind === 'dota-heroes') return d.assetSource   === 'dota-heroes';
+  if (kind === 'valorant')    return d.assetSource   === 'valorant';
   return true;
 }
 
@@ -3645,6 +3648,49 @@ app.post('/api/items/sync', requireAdmin, async (req, res) => {
       results.push(result);
     }
     itemSync.writeManifest(await itemSync.itemList());   // refresh slug↔name manifest after a sync
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ── VALORANT assets (agents + maps; gated on the valorant source) ────────────────
+const valorantSync = require('./scripts/sync-valorant');
+// List synced agents (name ↔ slug ↔ role ↔ image paths) for the roster picker + graphics.
+app.get('/api/agents', (req, res) => {
+  try {
+    if (!fs.existsSync(valorantSync.AGENT_MANIFEST)) return res.json({ agents: [] });
+    res.json({ agents: JSON.parse(fs.readFileSync(valorantSync.AGENT_MANIFEST, 'utf8')) });
+  } catch (e) { res.json({ agents: [] }); }
+});
+app.get('/api/valmaps', (req, res) => {
+  try {
+    if (!fs.existsSync(valorantSync.MAP_MANIFEST)) return res.json({ maps: [] });
+    res.json({ maps: JSON.parse(fs.readFileSync(valorantSync.MAP_MANIFEST, 'utf8')) });
+  } catch (e) { res.json({ maps: [] }); }
+});
+app.post('/api/valorant/check', requireAdmin, async (req, res) => {
+  if (!adapterSupports('valorant')) return res.json({ skipped: true, reason: 'Active game is not VALORANT' });
+  try { res.json({ ok: true, results: await valorantSync.syncAll({ dryRun: true }) }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/valorant/sync', requireAdmin, async (req, res) => {
+  if (!adapterSupports('valorant')) return res.json({ skipped: true, reason: 'Active game is not VALORANT' });
+  try {
+    const targets = valorantSync.TARGETS;
+    io.emit('assets:progress', { phase: 'init', targets });   // reuse the asset-sync progress channel
+    const results = [];
+    for (const target of targets) {
+      io.emit('assets:progress', { phase: 'start', key: target.key });
+      const result = await valorantSync.syncTargetByKey(target.key, {
+        onProgress: (key, n, total, name) => io.emit('assets:progress', { phase: 'file', key, n, total, name }),
+      });
+      io.emit('assets:progress', { phase: 'done', key: target.key, result });
+      results.push(result);
+    }
+    await valorantSync.buildBusts();   // derive player-intro head+shoulders busts from portraits
+    await valorantSync.buildFull();    // derive tight full-body crops for the win-screen showcase
+    valorantSync.writeManifests(await valorantSync.agentList(), await valorantSync.mapList());
     res.json({ ok: true, results });
   } catch (e) {
     res.status(500).json({ error: e.message });

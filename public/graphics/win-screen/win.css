@@ -791,6 +791,19 @@ html, body { width: 100vw; height: 100vh; overflow: hidden; background: transpar
 .style-comp .ws-comp-row.hero-picks .ws-comp-pick     { --comp-pw: 30vh; }
 #win-root.picks-on .ws-comp-row.hero-picks .ws-comp-pick { --comp-pw: 13vh; }
 
+/* VALORANT — winning roster's AGENTS as full-body portraits, from a tight transparent crop.
+   Every agent fills the SAME fixed HEIGHT at its natural width — never scaled down to fit a box,
+   so none look short/"childish" — and is never clipped (width is natural, not cropped). The
+   transparent backing lets each agent float with a silhouette drop-shadow; the pick sizes to the
+   art so the row centres the standing figures with even gaps. */
+#win-root .ws-comp-row.agent-picks .ws-comp-pick     { width: auto; }
+#win-root .ws-comp-row.agent-picks .ws-comp-portrait { width: auto; height: 46vh; overflow: visible; }
+#win-root .ws-comp-row.agent-picks .ws-comp-portrait img {
+  width: auto; height: 100%; background: transparent;
+}
+#win-root.picks-on .ws-comp-row.agent-picks .ws-comp-portrait { height: 16vh; }
+.style-comp .ws-comp-row.agent-picks { gap: 1.6vw; }
+
 @keyframes ws-comp-pick-in  { from { opacity: 0; transform: translateY(3.5vh); } to { opacity: 1; transform: translateY(0); } }
 @keyframes ws-comp-pick-out { from { opacity: 1; } to { opacity: 0; } }
 /* Hero — rise from the bottom on entry (daisychained left→right); drop down on exit. */
