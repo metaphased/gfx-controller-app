@@ -34,6 +34,8 @@ A compact lower bar — useful when you want the rosters without covering the sc
 
 A full-screen matchup board only offered on VALORANT tournaments: each team's five **agents as tall full-body portrait cards** clustered left and right around a centre VS, with team-name headers (team logos in the outer corners when **Logo** is on) and each card labelled with the player handle and agent name. It uses the same card language as the [Map Veto](map-veto.md) board, with energetic staggered in/out animations built to hand off into a match graphic.
 
+![Player Intro — Agent Cards layout (VALORANT)](img/valorant-agent-cards.webp)
+
 It reads each player's **Agent** field from the roster ([VALORANT guide](valorant.md#rosters--agents)) — assign agents once they lock, then bring the board up.
 
 ## Controls

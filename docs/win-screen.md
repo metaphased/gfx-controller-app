@@ -55,6 +55,8 @@ In the control bar pick the **winning team**; the control tab below sets the **m
 
 **VALORANT:** the winning-picks row shows the winner's five **agents** as full-body portraits, read from each player's assigned agent on the roster ([VALORANT guide](valorant.md#rosters--agents)) — every agent at the same full height, labelled by player handle. COMP shows them full-screen; the compact row works on the centred styles like the other games.
 
+![Win Screen — COMP style with the winning team's agents (VALORANT)](img/valorant-win-comp.webp)
+
 ## Notes
 
 - The **stingers** are designed as transitions: because they fully cover the frame, you can switch scenes in OBS/vMix while the stinger is up. See the Companion/Stream Deck integration for triggering them on a button.
