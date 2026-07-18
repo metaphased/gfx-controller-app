@@ -309,6 +309,6 @@ The `data/` directory is created on first run and is not in git:
 
 MetaGFX is released under the **[PolyForm Noncommercial License 1.0.0](LICENSE)** — free to use, modify and share **for any non-commercial purpose**, including by individuals, community/grassroots organisers, charities, schools and other non-profits.
 
-In keeping with the project's intent (see the note near the top of this README), **commercial use is not granted** — for example, paid or commercial broadcast productions, or selling commercial ad space. If you'd like to use MetaGFX commercially, get in touch via [@metaphasetv](https://x.com/metaphasetv) to discuss a separate licence.
+In keeping with the project's intent (see the note near the top of this README), **commercial use is not granted** — for example, paid or commercial broadcast productions, or selling commercial ad space.
 
 See the full terms at [polyformproject.org/licenses/noncommercial/1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0).
