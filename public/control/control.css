@@ -724,6 +724,18 @@ input[type=text], input[type=number], input[type=date], input[type=time], input[
 }
 input:focus, select:focus { border-color: var(--primary); }
 
+/* Number fields: drop the native spinner. Its arrows sit INSIDE the box and only appear
+   on hover/focus, so a compact field (many are 52–72px) suddenly loses ~16px of usable
+   width mid-interaction — clipping the value and the placeholder. Removing them keeps
+   every number field the same width at rest and while editing; min/max still validate
+   and ↑/↓ keys still step. */
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-outer-spin-button,
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+/* Compact fields also need tighter side padding + a floor width, or short placeholders
+   ("e.g. 4", "m", "s") get cut off before anything is typed. */
+input[type=number] { padding-left: 8px; padding-right: 8px; min-width: 52px; }
+
 /* Masked text field — shows dots without triggering browser credential manager */
 .pw-mask { -webkit-text-security: disc; }
 
@@ -745,9 +757,10 @@ select {
   padding-right: 28px;
 }
 select option { background: var(--bg3); }
+/* With color-scheme:dark the native picker icon already renders light — inverting it
+   again would turn it black on a dark field, so only opacity is adjusted here. */
 input[type=date]::-webkit-calendar-picker-indicator,
 input[type=time]::-webkit-calendar-picker-indicator {
-  filter: invert(0.6);
   cursor: pointer;
   opacity: 0.6;
 }
@@ -1152,6 +1165,9 @@ input[type=checkbox]:checked::after {
   margin-bottom: 12px;
   line-height: 1.6;
 }
+/* Use INSIDE a flex row (as a label beside a control) — flex centres the MARGIN box, so
+   the paragraph bottom-margin above would lift the text ~6px above its row-mates. */
+.hint.hint-inline { margin-bottom: 0; }
 code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-size: 0.87em; }
 
 /* ── Import result ────────────────────────────────── */
