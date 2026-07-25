@@ -1440,6 +1440,15 @@ const makeDefault = () => ({
       overrides:       {},              // { [graphicKey]: { enterEase?, exitEase?, moveEase?, speed? } }
     },
     logoSet: { logos: [] },        // [{ name: string, url: string }]
+    // Per-event logo picks + look toggles. These MUST be declared here even though '' is
+    // falsy: a profile snapshot is built from these defaults and applied with deepMerge on
+    // load, so any key missing here is never overwritten — it silently leaks the previous
+    // tournament's value (e.g. a brand-new profile showing the last event's centre logo).
+    h2hLogoUrl:          '',   // Head-to-Head + Player Intro centre logo (picked from logoSet)
+    draftCenterLogoUrl:  '',   // Draft board centre logo
+    breakCenterLogoUrl:  '',   // Break screen centre logo
+    draftPhaseContrast:  'subtle',  // draft phase label: 'subtle' | 'bold'
+    valorant: { region: 'eu' },     // VALORANT event region (post-map data lookups)
     mapPoolDefaults: {},           // per-game default map pool, e.g. { cs2: [{name,image}] } — "Set as default"
     heroDraftDefault: [],          // Dota 2 default CM order [{team,action}] — "Set as default" (overrides adapter preset)
     // CS2 live-data ingest config (optional; both sources independent). liveToken is a
@@ -4736,6 +4745,12 @@ app.post('/api/profiles/save-empty', requireAdmin, (req, res) => {
   const defaultSettingsSnap = JSON.parse(JSON.stringify(makeDefault().settings));
   delete defaultSettingsSnap.graphicsToken;
   const emptyTeam = { name: '', tag: '', logo: '' };
+  // Seed real (blank-named) roster slots for the chosen game's adapter rather than empty
+  // arrays: profile load deep-merges these over state.players, and empty arrays wiped the
+  // rosters — leaving the Players page with no rows, which then never came back when a
+  // match was loaded in. Positions come from the adapter so role-less games (CS2/VALORANT)
+  // don't inherit LoL's Top/Jungle/… labels.
+  const seedPositions = games.resolveAdapter(game).roster.positions;
   const profile = {
     id: 'prof_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
     name: name.trim(),
@@ -4747,7 +4762,8 @@ app.post('/api/profiles/save-empty', requireAdmin, (req, res) => {
       match: { team1: { ...emptyTeam }, team2: { ...emptyTeam }, game, format: 'bo3',
                tournament: name.trim(), tournamentLogo: '', sponsorLogos: [],
                fearlessDraft: false, currentGameNum: 1, seriesGames: [] },
-      players: { team1: [], team2: [] },
+      players: { team1: makeDefaultPlayers(seedPositions), team2: makeDefaultPlayers(seedPositions),
+                 team1subs: makeDefaultSubs(), team2subs: makeDefaultSubs() },
       prizepool: { showLogo: false, logoScale: 7, logoPosition: 'left', entries: [] },
       settings: defaultSettingsSnap,
     },
