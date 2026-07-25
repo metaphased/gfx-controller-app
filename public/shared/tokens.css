@@ -9,6 +9,13 @@
    ============================================================================ */
 
 :root {
+  /* Tell the browser these surfaces are dark. This is what makes NATIVE UI the page
+     can't style — the <input type=date/time> calendar pop-up, scrollbars, select
+     drop-downs, autofill — render dark instead of default white. Every preset below
+     is a dark theme, so this is unconditional. (The pop-up's exact palette is browser
+     chrome: `color-scheme` is the only hook, it can't take our accent colours.) */
+  color-scheme: dark;
+
   /* ── Background ramp (true-neutral charcoal, no teal tint) ───────────────── */
   --bg:        #0b0c0e;   /* app background            */
   --bg2:       #131519;   /* panels / sidebar / cards  */

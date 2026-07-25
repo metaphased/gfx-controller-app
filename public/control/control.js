@@ -3886,10 +3886,19 @@ function renderPlayerEditors(players) {
     const list    = players[team] || [];
     const subList = players[team+'subs'] || [];
 
-    // ── Starters: build DOM once (holds the swap change listener) ──────────
-    if (!container.querySelector('.roster-starter-sec')) {
+    // ── Starters: build the rows whenever the roster SHAPE changes ─────────
+    // Keyed on row count + role labels, NOT built once: an empty roster (new profile,
+    // or any state that clears players) renders zero rows, and a build-once guard meant
+    // they never appeared when a match was later loaded in — the value-sync pass below
+    // only fills rows that already exist. Rebuilding also re-attaches the change listener
+    // that lives on this element.
+    const shapeSig = list.length + '|' + adapterRoles().slice(0, list.length).join(',');
+    const existingSec = container.querySelector('.roster-starter-sec');
+    if (!existingSec || existingSec.dataset.shape !== shapeSig) {
+      if (existingSec) existingSec.remove();
       const starterSec = document.createElement('div');
       starterSec.className = 'roster-starter-sec';
+      starterSec.dataset.shape = shapeSig;
 
       let html = '<div class="roster-section-label">STARTING LINEUP</div>';
       html += list.map(function(p, i) {
@@ -3945,7 +3954,8 @@ function renderPlayerEditors(players) {
         }, { okLabel: 'Swap' });
       });
 
-      container.appendChild(starterSec);
+      // Before the subs section (a rebuild can happen after subs already exist).
+      container.insertBefore(starterSec, container.querySelector('.roster-sub-sec'));
     }
 
     // ── Subs: rebuild each tick so visibility tracks live data ─────────────
