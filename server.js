@@ -4826,7 +4826,13 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
   state.meta.activeProfileName = profile.name;
   logAction(resolveUserFromReq(req), resolveRoleFromReq(req), 'load-profile', profile.name);
   broadcastSchedule(); broadcast();
-  res.json({ ok: true, savedSnapshot: profile.data });
+  // savedSnapshot is what the client treats as "the last saved state" for its dirty-check —
+  // it must be snapshotForProfile() (the NORMALIZED post-load state: teamPool backfilled by
+  // _ensureTeamPool(), game migrations applied, etc.), not the raw profile.data as it was
+  // written to disk. Returning the raw disk copy meant every load showed the profile as
+  // dirty from frame one (before any real edit), because migration/normalization always adds
+  // fields the on-disk snapshot doesn't have — most visibly on a freshly created empty profile.
+  res.json({ ok: true, savedSnapshot: snapshotForProfile() });
 });
 
 app.post('/api/profiles/rename', requireAdmin, (req, res) => {
