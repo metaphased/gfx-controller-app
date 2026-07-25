@@ -855,8 +855,10 @@ input[type=checkbox]:checked::after {
   transition: all 0.15s;
 }
 .btn:hover { border-color: var(--accent); color: var(--primary); }
-.btn-primary { background: rgba(var(--accent-rgb),0.1); border-color: var(--primary); color: var(--primary); }
-.btn-primary:hover { background: rgba(var(--accent-rgb),0.2); }
+/* Primary / confirm action — the OUTLINE tier of the selected family (see --select in
+   tokens.css). Emphasised, but never as loud as an actually-selected control. */
+.btn-primary { background: rgba(var(--select-rgb),0.10); border-color: rgba(var(--select-rgb),0.75); color: var(--select-hi); }
+.btn-primary:hover { background: rgba(var(--select-rgb),0.18); border-color: var(--select); color: var(--select-hi); }
 .btn-danger { background: rgba(255,68,68,0.1); border-color: var(--danger); color: var(--danger); }
 .btn-danger:hover { background: rgba(255,68,68,0.2); }
 .btn-sm { padding: 5px 12px; font-size: 12px; }
@@ -864,8 +866,13 @@ input[type=checkbox]:checked::after {
 .btn:disabled, .btn[disabled] { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 .btn-secondary { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.25); color: rgba(255,255,255,0.6); }
 .btn-secondary:hover { background: rgba(255,255,255,0.1); }
-.btn-active { background: rgba(220,40,40,0.18); border-color: #e03030; color: #ff5555; box-shadow: 0 0 8px rgba(220,40,40,0.2); }
-.btn-active:hover { background: rgba(220,40,40,0.26); }
+/* SELECTED state for ordinary controls (mode pickers, position toggles, "Editing"…).
+   Filled bone = "this one is chosen", like a lit key. Was on-air red WITH a glow, which
+   broke the rule that saturated colour belongs to live/PGM/PVW only and made every config
+   toggle look like something was on air. Live controls (.btn-active-gfx, the live bar and
+   operator show/hide) are deliberately NOT changed. */
+.btn-active { background: var(--select); border-color: var(--select); color: var(--select-ink); }
+.btn-active:hover { background: var(--select-hi); border-color: var(--select-hi); color: var(--select-ink); }
 /* Action-result states: persist after a sync to show it completed (green) or failed (red). */
 .btn-ok  { background: rgba(46,204,113,0.14); border-color: var(--ok); color: var(--ok); }
 .btn-ok:hover  { background: rgba(46,204,113,0.22); }
@@ -1732,7 +1739,8 @@ input[type=search]::-webkit-search-decoration { display: none; }
   font-size: 11px; font-weight: 700; letter-spacing: .04em; cursor: pointer; white-space: nowrap;
 }
 .lt-set-btn:hover { border-color: var(--accent, #888); color: var(--text-strong, #fff); }
-.lt-set-btn.is-active { background: rgba(var(--primary-rgb,31,250,255),.16); border-color: var(--primary, #1ffaff); color: var(--text-strong, #fff); }
+/* Selected set — bone outline (was a hardcoded cyan left over from the old palette). */
+.lt-set-btn.is-active { background: rgba(var(--select-rgb),.14); border-color: var(--select); color: var(--select-hi); }
 /* Output toggle buttons — channel-tinted to set them apart from the set buttons. */
 .lt-out-btn {
   background: rgba(var(--primary-rgb,31,250,255),.08); border: 1px solid rgba(var(--primary-rgb,31,250,255),.35);
@@ -1773,7 +1781,7 @@ input[type=search]::-webkit-search-decoration { display: none; }
 
 .lt-sets-list { display: flex; flex-direction: column; gap: 6px; }
 .lt-set-row { display: flex; flex-direction: column; gap: 7px; padding: 7px; border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: var(--radius,2px); }
-.lt-set-row.is-active { border-color: var(--primary, #1ffaff); background: rgba(var(--primary-rgb,31,250,255),.06); }
+.lt-set-row.is-active { border-color: rgba(var(--select-rgb),.75); background: rgba(var(--select-rgb),.06); }
 .lt-set-row.is-live { box-shadow: inset 3px 0 0 #ff4d4d; }
 .lt-set-row-main { display: flex; align-items: center; gap: 8px; }
 .lt-set-row .lt-set-pick { flex: 0 0 auto; }
