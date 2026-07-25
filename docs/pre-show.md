@@ -20,7 +20,7 @@ From the Pre-show ctrl-bar:
 - **Countdown** — set the target time; a large "broadcast begins in" timer counts down.
 - **Header text** and **timer label** — optional copy above/around the countdown.
 - **Layout** — side (countdown beside the matchup) or centre.
-- **Logo** — the broadcast/tournament logo shown up top.
+- **Logo** — the logo shown up top: show/hide, pick from [Broadcast Logos](theming.md#broadcast-logos) (**Auto** = the event logo) and scale.
 
 The **matchup card** and the **ticker** at the bottom are populated automatically from your [schedule](schedule.md) and current match, so they reflect the real card without re-entry. Sponsor logos come from [Tournament Setup → Sponsor Logos](tournament-setup.md#sponsor-logos).
 

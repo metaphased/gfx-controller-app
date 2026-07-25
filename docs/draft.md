@@ -24,6 +24,7 @@ From the [Draft control tab](match-and-draft.md#draft-league-of-legends):
 - **Use pick/ban timer** + **Seconds per step** — show and set the countdown.
 - **↺ Replay Intro** — re-trigger the overlay's entrance animation without changing any draft data (handy if you bring the source on screen after the draft already started).
 - The board reflects **Blue/Red side**, **bans-first** and **side-chosen-by** exactly as set in the control tab.
+- **Centre logo** — the mark in the middle of the board, picked from [Broadcast Logos](theming.md#broadcast-logos) (**Auto** = the event logo).
 
 ## Notes
 

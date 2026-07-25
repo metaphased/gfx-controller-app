@@ -55,6 +55,13 @@ body {
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   color: var(--primary);
 }
+/* Event logo beside the profile name. The bar is only 38px tall, so it's hard-capped
+   and hidden outright when no event logo is set — an empty <img> would reflow the row. */
+.mtb-tourn-logo {
+  height: 22px; max-width: 120px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
 .mtb-sep {
   width: 1px; height: 16px;
   background: rgba(255,255,255,0.15);
@@ -1191,20 +1198,6 @@ code { background: var(--bg3); padding: 2px 5px; font-family: monospace; font-si
 .import-result.error { color: var(--danger); background: rgba(255,68,68,0.05); border-color: rgba(255,68,68,0.15); }
 
 /* ── Sponsor grid ─────────────────────────────────── */
-.sponsor-grid { display: flex; flex-wrap: wrap; gap: 8px; }
-.sponsor-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: var(--bg3);
-  border: 1px solid var(--border);
-  padding: 4px 8px;
-  font-size: 11px;
-  color: var(--text-dim);
-}
-.sponsor-chip img { height: 32px; object-fit: contain; }
-.sponsor-chip button { background: none; border: none; color: var(--danger); cursor: pointer; padding: 0 2px; font-size: 12px; }
-
 /* ── Scrollbar ────────────────────────────────────── */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: var(--bg); }

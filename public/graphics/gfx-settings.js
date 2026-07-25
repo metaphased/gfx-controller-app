@@ -207,6 +207,38 @@ window.GfxSettings = (function () {
 
   function logo(s, type) { return (get(s).logoSet || {})[type] || ''; }
 
+  // ── Logo library ────────────────────────────────────────────────────────────
+  // Every graphic resolves its logo through ONE chain: graphic pick → event logo → none.
+  // A placement stores a library ENTRY ID, so replacing the file in the library updates
+  // every graphic at once. Accepts the whole state or just the settings object.
+  //   ''/'auto'/unknown id → the event logo   ·   'none' → nothing
+  //   a literal URL        → used as-is (legacy saves, written before the library existed)
+  function _logoSet(s) { return (get(s).logoSet || (s && s.logoSet) || {}); }
+  function _findLogo(ls, id) {
+    var logos = ls.logos || [];
+    for (var i = 0; i < logos.length; i++) if (logos[i] && logos[i].id === id) return logos[i];
+    return null;
+  }
+  function logoUrl(s, ref) {
+    var ls = _logoSet(s);
+    var r = String(ref == null ? '' : ref).trim();
+    if (r === 'none') return '';
+    if (/^(https?:\/\/|\/|data:)/i.test(r)) return r;
+    var hit = r && _findLogo(ls, r);
+    if (hit) return hit.url || '';
+    var ev = ls.eventLogoId && _findLogo(ls, ls.eventLogoId);
+    return (ev && ev.url) || '';
+  }
+  // The event logo on its own (no per-graphic pick) — for graphics that only ever show it.
+  function eventLogo(s) { return logoUrl(s, ''); }
+  // Sponsor placements, in the operator's order.
+  function sponsorLogos(s) {
+    var ls = _logoSet(s);
+    return (ls.sponsorIds || []).map(function (id) {
+      var l = _findLogo(ls, id); return l && l.url;
+    }).filter(Boolean);
+  }
+
   // ── Easing library + animation token injection ──────────────────────────────
   // Standard easing curves expressible as a single cubic-bezier.
   var EASINGS = {
@@ -1083,5 +1115,5 @@ window.GfxSettings = (function () {
     frame();
   }
 
-  return { applyTheme, applyBackground, clearBackground, applyAnimation, resolveEasing, EASINGS, bgSpeed, palette, accent, logo, stopBgAnimation };
+  return { applyTheme, applyBackground, clearBackground, applyAnimation, resolveEasing, EASINGS, bgSpeed, palette, accent, logo, logoUrl, eventLogo, sponsorLogos, stopBgAnimation };
 })();

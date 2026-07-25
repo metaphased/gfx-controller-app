@@ -30,6 +30,7 @@ From the Head to Head ctrl-bar:
 - **Mode** — Lineup or Spotlight.
 - **Spotlight role** — in Spotlight mode, which role (Top → Support) is featured. Step through roles live as the casters move down the map.
 - **Animation style** — the entrance feel (standard / impact / drop).
+- **Centre logo** — the mark between the two lineups, picked from [Broadcast Logos](theming.md#broadcast-logos) (**Auto** = the event logo). [Player Intro](player-intro.md) follows this choice unless it has its own.
 
 ## Where the data comes from
 

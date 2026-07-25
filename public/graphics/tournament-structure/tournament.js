@@ -179,7 +179,7 @@ function renderStructure(state) {
 
   // Logo
   var logoImg   = $('ts-logo');
-  var logoUrl   = t.logo || (state.match && state.match.tournamentLogo) || '';
+  var logoUrl   = GfxSettings.logoUrl(state, ts.logoUrl);
   var logoShown = !!(ts.showLogo && logoUrl);
   if (logoImg) {
     if (logoShown) { logoImg.src = logoUrl; logoImg.style.display = ''; }
@@ -279,7 +279,7 @@ function tournamentStructureHash(state) {
     patch:   t.showPatch  && t.patchVersion,
     loc:     t.showLocation && t.location,
     tie:     t.showTiebreaker && t.tiebreaker,
-    logo:    t.logo || (state.match && state.match.tournamentLogo),
+    logo:    GfxSettings.logoUrl(state, ts.logoUrl),
     ts:      ts
   });
 }

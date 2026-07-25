@@ -13,13 +13,12 @@ function _eH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
 // ── Render ────────────────────────────────────────────────────────────────────
 function renderPrizepool(state) {
   var pp   = state.prizepool  || {};
-  var t    = state.tournament || {};
   var root = $('pp-root');
   if (!root) return;
 
   // Logo
   var logoImg   = $('pp-logo');
-  var logoUrl   = t.logo || (state.match && state.match.tournamentLogo) || '';
+  var logoUrl   = GfxSettings.logoUrl(state, pp.logoUrl);
   var logoShown = !!(pp.showLogo && logoUrl);
   if (logoImg) {
     if (logoShown) { logoImg.src = logoUrl; logoImg.style.display = ''; }
@@ -153,13 +152,12 @@ function animateOut() {
 // ── Data fingerprint ──────────────────────────────────────────────────────────
 function prizepoolHash(state) {
   var pp = state.prizepool  || {};
-  var t  = state.tournament || {};
   return JSON.stringify({
     entries:  pp.entries,
     showLogo: pp.showLogo,
     scale:    pp.logoScale,
     pos:      pp.logoPosition,
-    logo:     t.logo || (state.match && state.match.tournamentLogo) || ''
+    logo:     GfxSettings.logoUrl(state, pp.logoUrl)
   });
 }
 

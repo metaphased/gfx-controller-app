@@ -56,15 +56,17 @@ function renderSponsors(logos) {
 }
 
 // ── Ticker label ──────────────────────────────────────────────────────────────
-function renderTickerLabel(ticker) {
+function renderTickerLabel(state) {
+  var ticker = state.ticker || {};
   TickerEngine.renderLabel(
     { wrap: 'ps-ticker-label', text: 'ps-ticker-label-text', img: 'ps-ticker-label-img' },
-    ticker
+    ticker, GfxSettings.logoUrl(state, ticker.labelLogoUrl)
   );
 }
 
 // ── Ticker scroll — identical logic to break screen ───────────────────────────
-function renderTicker(ticker) {
+function renderTicker(state) {
+  var ticker = state.ticker || {};
   var wrap  = $('ps-ticker');
   var inner = $('ps-ticker-inner');
   if (!wrap || !inner) return;
@@ -72,7 +74,7 @@ function renderTicker(ticker) {
   var items = (ticker && ticker.autoMode) ? (ticker.autoItems || []) : ((ticker && ticker.items) || []);
   var show  = !!(ticker && ticker.visible && items.length);
 
-  renderTickerLabel(ticker);
+  renderTickerLabel(state);
 
   if (show !== _tickerVisible) {
     var isFirst = (_tickerVisible === null);
@@ -207,7 +209,6 @@ function fitGameNames() {
 // ── Main render ───────────────────────────────────────────────────────────────
 function renderAll(state) {
   var ps       = state.preShow    || {};
-  var settings = state.settings   || {};
   var tourn    = state.tournament  || {};
   var root     = $('ps-root');
 
@@ -219,9 +220,8 @@ function renderAll(state) {
   // Logo scale CSS variable
   document.documentElement.style.setProperty('--ps-logo-scale', (ps.logoScale || 8) + 'vh');
 
-  // Logo
-  var logos   = (settings.logoSet && settings.logoSet.logos) || [];
-  var logoUrl = ps.logoUrl || (logos.length ? logos[0].url : '');
+  // Logo — uniform chain: pre-show pick → event logo → none
+  var logoUrl = GfxSettings.logoUrl(state, ps.logoUrl);
   var logoEl  = $('ps-logo');
   if (logoEl) {
     if (!ps.hideLogo && logoUrl) { logoEl.src = logoUrl; logoEl.style.display = ''; }
@@ -244,9 +244,9 @@ function renderAll(state) {
   if (lblEl) lblEl.textContent = ps.timerLabel || 'BROADCAST BEGINS IN';
 
   runTimer(ps.timerEnd || null);
-  renderSponsors((state.match && state.match.sponsorLogos) || []);
+  renderSponsors(GfxSettings.sponsorLogos(state));
   renderGames(state.todayGames || []);
-  renderTicker(state.ticker || {});
+  renderTicker(state);
 
   // renderGames re-fits names on a data change; also re-fit when the broadcast
   // font or layout changes (those don't rebuild the cards).

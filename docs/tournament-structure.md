@@ -20,7 +20,7 @@ From the Tournament Structure graphics tab / ctrl-bar:
 
 - **Show / hide**.
 - **Title** — toggle and set a display title.
-- **Logo** — toggle, scale and position.
+- **Logo** — show/hide, pick from [Broadcast Logos](theming.md#broadcast-logos) (**Auto** = the event logo), scale and position.
 - **Info bar** — alignment and which fields show (dates/region/patch are toggled in Broadcast Info).
 
 ## Notes

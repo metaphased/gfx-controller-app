@@ -24,7 +24,7 @@ From the Group Stage graphics tab / ctrl-bar:
 
 - **Show / hide**.
 - **Mode** — live standings.
-- **Logo** — toggle and scale the broadcast/tournament logo.
+- **Logo** — show/hide, pick from [Broadcast Logos](theming.md#broadcast-logos) (**Auto** = the event logo), scale and position.
 
 ## Notes
 

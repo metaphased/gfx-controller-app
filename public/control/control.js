@@ -1407,6 +1407,14 @@ function regenerateGfxToken() {
 function syncTopBar(s) {
   const meta = s.meta || {};
 
+  // Event logo — hidden entirely when none is set, so the 38px row never reflows
+  const logoEl = g('mtb-tourn-logo');
+  if (logoEl) {
+    const url = eventLogoUrl();
+    if (url) { if (logoEl.getAttribute('src') !== url) logoEl.src = url; logoEl.style.display = ''; }
+    else     { logoEl.removeAttribute('src'); logoEl.style.display = 'none'; }
+  }
+
   // Profile name
   const profileNameEl = g('mtb-profile-name');
   if (profileNameEl) {
@@ -1578,6 +1586,12 @@ function renderDashboard(s) {
 let _pendingSnapshotRestore = false;
 let _syncFp = {};
 function _sfp(key, val) { const v = JSON.stringify(val); if (_syncFp[key] === v) return false; _syncFp[key] = v; return true; }
+// Fingerprint for a logo picker: the slot's own pick plus everything that changes what
+// the tiles show (the library itself, and the event logo the Auto tile previews).
+function _logoFp(s, ref) {
+  const ls = ((s && s.settings) || {}).logoSet || {};
+  return { sel: ref || '', ev: ls.eventLogoId || '', logos: (ls.logos || []).map(function(l) { return l.id + '|' + l.name + '|' + l.url; }) };
+}
 
 function syncUI(s) {
   if (!s || !s.match || !s.lowerThird || !s.draft || !s.breakScreen || !s.winScreen || !s.bracket || !s.players) {
@@ -1591,8 +1605,9 @@ function syncUI(s) {
   // Tournament Setup tab
   const t = s.tournament || {};
   setInpSafe('ts-name',  m.tournament);
-  setInpSafe('ts-logo',  m.tournamentLogo);
   setInp('ts-game', m.game);
+  if (_sfp('eventLogo',   _logoFp(s, ''))) renderEventLogoPicker();
+  if (_sfp('sponsorPick', _logoFp(s, (s.settings && s.settings.logoSet && s.settings.logoSet.sponsorIds) || []))) renderSponsorPicker();
   const tnHint = g('ts-name-hint');
   if (tnHint) {
     const prof = s.meta && s.meta.activeProfileName;
@@ -1683,7 +1698,7 @@ function syncUI(s) {
   if (_piBarSlider) _piBarSlider.value = _piBarOpacity;
   const _piBarValEl = g('pi-bar-opacity-val');
   if (_piBarValEl) _piBarValEl.textContent = Math.round(_piBarOpacity * 100) + '%';
-  if (_sfp('piLogo', { sel: _pi.piLogoUrl, logos: s.settings && s.settings.logoSet && s.settings.logoSet.logos })) renderPiLogoPicker(_pi, s.settings || {});
+  if (_sfp('piLogo', _logoFp(s, [_pi.piLogoUrl, (s.settings || {}).h2hLogoUrl]))) renderPiLogoPicker(_pi);
 
   // ── Pre-show sync ──────────────────────────────────────────────────────────
   syncPreShowUI(s.preShow || {}, s.settings || {}, s.todayGames || [], s.ticker || {});
@@ -1708,7 +1723,6 @@ function syncUI(s) {
   syncPlayerSpotlightTab(s);
   syncBgoTab(s.bgOutput || {});
 
-  if (_sfp('sponsors', m.sponsorLogos)) renderSponsors(m.sponsorLogos || []);
   if (_sfp('players', { t1: (p.team1||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId,x.hltvUrl];}), t1s: p.team1subs, t2: (p.team2||[]).map(function(x){return [x.handle,x.role,x.opggRegion,x.riotId,x.hltvUrl];}), t2s: p.team2subs })) renderPlayerEditors(p);
   renderIntelPanel(s);
   if (_sfp('ltGrid', { t1: m.team1.name+m.team1.tag, t2: m.team2.name+m.team2.tag, p1: (p.team1||[]).map(function(x){return x.handle||x.name;}), p2: (p.team2||[]).map(function(x){return x.handle||x.name;}) })) renderLTQuickGrid(p, m);
@@ -1733,7 +1747,7 @@ function syncUI(s) {
     const bOn = g('bracket-logo-show-on'), bOff = g('bracket-logo-show-off');
     if (bOn)  bOn.classList.toggle('btn-active', bsl);
     if (bOff) bOff.classList.toggle('btn-active', !bsl);
-    if (_sfp('bracketLogo', { sel: s.bracket.logoUrl, logos: s.settings && s.settings.logoSet && s.settings.logoSet.logos })) renderBracketLogoPicker(s);
+    if (_sfp('bracketLogo', _logoFp(s, s.bracket.logoUrl))) renderBracketLogoPicker(s);
   }
 
   syncTopBar(s);
@@ -1744,12 +1758,13 @@ function syncUI(s) {
   if (s.settings) syncGfxToken(s.settings);
   syncBusConfig(s);
   syncOmtTab(s);
-  if (s.settings && _sfp('breakLogo', { sel: s.settings.breakCenterLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderBreakCenterLogoPicker(s.settings);
-  if (s.settings && _sfp('h2hLogo', { sel: s.settings.h2hLogoUrl, logos: s.settings.logoSet && s.settings.logoSet.logos })) renderH2HLogoPicker(s.settings);
+  if (s.settings && _sfp('breakLogo', _logoFp(s, s.settings.breakCenterLogoUrl))) renderBreakCenterLogoPicker(s.settings);
+  if (s.settings && _sfp('h2hLogo',   _logoFp(s, s.settings.h2hLogoUrl)))          renderH2HLogoPicker(s.settings);
+  if (_sfp('mvLogo', _logoFp(s, (s.mapVeto || {}).logoUrl)))    renderMapVetoLogoPicker(s.mapVeto || {});
+  if (_sfp('hdLogo', _logoFp(s, (s.heroDraft || {}).logoUrl)))  renderHeroDraftLogoPicker(s.heroDraft || {});
   if (s.groupStage)          syncGroupStageGfxUI(s);
   if (s.tournamentStructure) syncTournamentStructureGfxUI(s);
   if (s.prizepool) syncPrizepoolTab(s);
-  if (_sfp('themeSponsor', m.sponsorLogos)) renderThemeSponsorPreview(m.sponsorLogos);
   syncDraftGfxTab(s.draft || {}, s.settings || {});
 }
 
@@ -2967,25 +2982,65 @@ function extendPreShowTimer(mins) {
   const base = (cur && cur > Date.now()) ? cur : Date.now();
   patchPreShow({ timerEnd: base + mins * 60 * 1000 });
 }
-function renderPreShowLogoPicker(ps, settings) {
-  const grid = g('ps-logo-grid');
-  if (!grid) return;
-  const logos = ((settings && settings.logoSet && settings.logoSet.logos) || []);
-  const selectedUrl = (ps && ps.logoUrl) || '';
-  const tiles = [{ url: '', label: 'Auto' }].concat(
-    logos.map(function(l) { return { url: l.url || '', label: l.name || '' }; })
-  );
+// ── Logo library (control-panel mirror of GfxSettings.logoUrl) ─────────────────
+// Placements store a library ENTRY ID, never a URL. Everything resolves through the
+// same chain the overlays use: graphic pick → event logo → none.
+function logoLibrary()  { return (((window._state || {}).settings || {}).logoSet || {}).logos || []; }
+function _logoSetCtrl() { return ((window._state || {}).settings || {}).logoSet || {}; }
+function logoById(id)   { return logoLibrary().find(function(l) { return l.id === id; }) || null; }
+function eventLogoUrl() { const l = logoById(_logoSetCtrl().eventLogoId); return (l && l.url) || ''; }
+function resolveLogoRef(ref) {
+  const r = String(ref == null ? '' : ref).trim();
+  if (r === 'none') return '';
+  if (/^(https?:\/\/|\/|data:)/i.test(r)) return r;   // legacy value saved before the library
+  const hit = r && logoById(r);
+  return hit ? (hit.url || '') : eventLogoUrl();
+}
+function sponsorLogoList() {
+  return (_logoSetCtrl().sponsorIds || []).map(logoById).filter(Boolean);
+}
+
+// ONE picker for every per-graphic logo slot. `onPick` receives the chosen reference
+// ('' = Auto). The leading Auto tile previews the event logo so the operator can see
+// what Auto will actually put on air.
+function renderLogoPicker(gridId, currentRef, onPick, opts) {
+  const grid = g(gridId); if (!grid) return;
+  opts = opts || {};
+  const logos = logoLibrary();
+  // What Auto actually resolves to — usually the event logo, but a slot can inherit
+  // another slot's pick (Player Intro follows Head-to-Head), so the tile must preview
+  // the same thing the overlay will show.
+  const evUrl = opts.autoUrl !== undefined ? opts.autoUrl : eventLogoUrl();
+  if (!logos.length) {
+    grid.innerHTML = '<p class="hint" style="margin:0">No logos yet — add them in ' +
+      '<a onclick="switchToTab(\'theme\')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Theme → Broadcast Logos</a>.</p>';
+    return;
+  }
+  const cur   = String(currentRef == null ? '' : currentRef);
+  const known = !!logoById(cur);
+  const tiles = [{ ref: '', label: opts.autoLabel || 'Auto', url: evUrl, auto: true }]
+    .concat(logos.map(function(l) { return { ref: l.id, label: l.name || '', url: l.url || '' }; }));
   grid.innerHTML = tiles.map(function(t) {
-    const active = t.url === '' ? !selectedUrl : t.url === selectedUrl;
-    return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '"' +
-      ' data-logo-url="' + escHtml(t.url) + '"' +
-      ' onclick="patchPreShow({logoUrl:this.dataset.logoUrl})">' +
-      (t.url
-        ? '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(t.url) + ')"></div>'
-        : '<div class="draft-logo-tile-img"><span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;color:var(--text-dim);letter-spacing:0.08em">AUTO</span></div>') +
+    // Anything that doesn't resolve to a library entry IS Auto (empty, or a stale id
+    // left behind by a deleted logo / a profile from another event).
+    const active = t.auto ? !known : t.ref === cur;
+    const inner  = t.url
+      ? '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(t.url) + ')"></div>'
+      : '<div class="draft-logo-tile-img"><span class="draft-logo-tile-empty">' + (t.auto ? 'AUTO' : '—') + '</span></div>';
+    return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + (t.auto ? ' is-auto' : '') + '"' +
+      ' data-logo-ref="' + escHtml(t.ref) + '"' +
+      ' title="' + escHtml(t.auto ? 'Auto — uses the event logo' : (t.label || 'Logo')) + '">' +
+      inner +
       '<div class="draft-logo-tile-label">' + escHtml(t.label) + '</div>' +
       '</div>';
   }).join('');
+  Array.prototype.forEach.call(grid.querySelectorAll('.draft-logo-tile'), function(el) {
+    el.addEventListener('click', function() { onPick(el.dataset.logoRef); });
+  });
+}
+
+function renderPreShowLogoPicker(ps) {
+  renderLogoPicker('ps-logo-grid', ps && ps.logoUrl, function(ref) { patchPreShow({ logoUrl: ref }); });
 }
 function syncPreShowUI(ps, settings, todayGames, ticker) {
   // Layout buttons
@@ -3005,7 +3060,7 @@ function syncPreShowUI(ps, settings, todayGames, ticker) {
   if (_showTextChk) _showTextChk.checked = !ps.hideHeaderText;
   setInpSafe('ps-header-text',       ps.headerText  || '');
   setInpSafe('ps-timer-label-input', ps.timerLabel  || '');
-  renderPreShowLogoPicker(ps, settings);
+  renderPreShowLogoPicker(ps);
   const statusEl = g('ps-timer-status');
   if (statusEl) {
     if (ps.timerEnd && ps.timerEnd > Date.now()) {
@@ -3062,96 +3117,45 @@ function patchTickerItem(i, key, val) {
   items[i][key] = val;
   api('/api/ticker', { items });
 }
-function selectTickerLabelLogo(url) { api('/api/ticker', { labelLogoUrl: url }); }
 
 function renderBreakCenterLogoPicker(settings) {
-  const grid = g('break-center-logo-grid');
-  if (!grid) return;
-  const logos = ((settings && settings.logoSet && settings.logoSet.logos) || []);
-  const selectedUrl = (settings && settings.breakCenterLogoUrl) || '';
-  const tiles = [{ url: '', label: 'Auto' }].concat(
-    logos.map(function(l) { return { url: l.url || '', label: l.name || '' }; })
-  );
-  grid.innerHTML = tiles.map(function(t) {
-    const active = t.url === '' ? !selectedUrl : t.url === selectedUrl;
-    return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '"' +
-      ' data-logo-url="' + escHtml(t.url) + '"' +
-      ' onclick="patchSettings({breakCenterLogoUrl:this.dataset.logoUrl})">' +
-      (t.url
-        ? '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(t.url) + ')"></div>'
-        : '<div class="draft-logo-tile-img"><span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;color:var(--text-dim);letter-spacing:0.08em">AUTO</span></div>') +
-      '<div class="draft-logo-tile-label">' + escHtml(t.label) + '</div>' +
-      '</div>';
-  }).join('');
+  renderLogoPicker('break-center-logo-grid', settings && settings.breakCenterLogoUrl,
+    function(ref) { patchSettings({ breakCenterLogoUrl: ref }); });
 }
 function renderBracketLogoPicker(state) {
-  const grid = g('bracket-logo-grid'); if (!grid) return;
-  const logos    = ((state.settings && state.settings.logoSet && state.settings.logoSet.logos) || []);
-  const selected = (state.bracket && state.bracket.logoUrl) || '';
-  const tiles    = [{ url: '', label: 'Auto' }].concat(logos.map(function(l) { return { url: l.url || '', label: l.name || '' }; }));
-  grid.innerHTML = tiles.map(function(t) {
-    const active = t.url === '' ? !selected : t.url === selected;
-    return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '"' +
-      ' data-logo-url="' + escHtml(t.url) + '"' +
-      ' onclick="patchBracket({logoUrl:this.dataset.logoUrl})">' +
-      (t.url
-        ? '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(t.url) + ')"></div>'
-        : '<div class="draft-logo-tile-img"><span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;color:var(--text-dim);letter-spacing:0.08em">AUTO</span></div>') +
-      '<div class="draft-logo-tile-label">' + escHtml(t.label) + '</div>' +
-      '</div>';
-  }).join('');
+  renderLogoPicker('bracket-logo-grid', state.bracket && state.bracket.logoUrl,
+    function(ref) { patchBracket({ logoUrl: ref }); });
 }
-
 function renderH2HLogoPicker(settings) {
-  const grid = g('h2h-logo-grid');
-  if (!grid) return;
-  const logos = ((settings && settings.logoSet && settings.logoSet.logos) || []);
-  const selectedUrl = (settings && settings.h2hLogoUrl) || '';
-  const tiles = [{ url: '', label: 'Auto' }].concat(
-    logos.map(function(l) { return { url: l.url || '', label: l.name || '' }; })
-  );
-  grid.innerHTML = tiles.map(function(t) {
-    const active = t.url === '' ? !selectedUrl : t.url === selectedUrl;
-    return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '"' +
-      ' data-logo-url="' + escHtml(t.url) + '"' +
-      ' onclick="patchSettings({h2hLogoUrl:this.dataset.logoUrl})">' +
-      (t.url
-        ? '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(t.url) + ')"></div>'
-        : '<div class="draft-logo-tile-img"><span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;color:var(--text-dim);letter-spacing:0.08em">AUTO</span></div>') +
-      '<div class="draft-logo-tile-label">' + escHtml(t.label) + '</div>' +
-      '</div>';
-  }).join('');
+  renderLogoPicker('h2h-logo-grid', settings && settings.h2hLogoUrl,
+    function(ref) { patchSettings({ h2hLogoUrl: ref }); });
+}
+function renderPiLogoPicker(pi) {
+  // Player Intro with no pick of its own inherits the Head-to-Head choice, so its
+  // Auto tile is labelled — and previews — that, not the event logo directly.
+  const h2hRef = ((window._state || {}).settings || {}).h2hLogoUrl;
+  renderLogoPicker('pi-logo-grid', pi && pi.piLogoUrl,
+    function(ref) { patchPlayerIntro({ piLogoUrl: ref }); },
+    { autoLabel: 'Match H2H', autoUrl: resolveLogoRef(h2hRef) });
+}
+function renderMapVetoLogoPicker(mv) {
+  renderLogoPicker('mv-logo-grid', mv && mv.logoUrl, function(ref) { api('/api/mapVeto', { logoUrl: ref }); });
+}
+function renderHeroDraftLogoPicker(hd) {
+  renderLogoPicker('hd-logo-grid', hd && hd.logoUrl, function(ref) { api('/api/heroDraft', { logoUrl: ref }); });
+}
+function renderPrizepoolLogoPicker(pp) {
+  renderLogoPicker('pp-logo-grid', pp && pp.logoUrl, function(ref) { patchPrizepool({ logoUrl: ref }); });
+}
+function renderTsGfxLogoPicker(ts) {
+  renderLogoPicker('ts-gfx-logo-grid', ts && ts.logoUrl, function(ref) { patchTournamentStructureGfx({ logoUrl: ref }); });
+}
+function renderTickerLabelLogoPicker(ticker) {
+  renderLogoPicker('ticker-label-logo-grid', ticker && ticker.labelLogoUrl,
+    function(ref) { api('/api/ticker', { labelLogoUrl: ref }); });
 }
 
-function renderPiLogoPicker(pi, settings) {
-  const grid = g('pi-logo-grid');
-  if (!grid) return;
-  const logos = ((settings && settings.logoSet && settings.logoSet.logos) || []);
-  const selectedUrl = (pi && pi.piLogoUrl) || '';
-  const tiles = [{ url: '', label: 'Auto' }].concat(
-    logos.map(function(l) { return { url: l.url || '', label: l.name || '' }; })
-  );
-  grid.innerHTML = tiles.map(function(t) {
-    const active = t.url === '' ? !selectedUrl : t.url === selectedUrl;
-    return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '"' +
-      ' data-logo-url="' + escHtml(t.url) + '"' +
-      ' onclick="patchPlayerIntro({piLogoUrl:this.dataset.logoUrl})">' +
-      (t.url
-        ? '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(t.url) + ')"></div>'
-        : '<div class="draft-logo-tile-img"><span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;color:var(--text-dim);letter-spacing:0.08em">AUTO</span></div>') +
-      '<div class="draft-logo-tile-label">' + escHtml(t.label) + '</div>' +
-      '</div>';
-  }).join('');
-}
-
-function setTickerLabelLogo() {
-  const ticker = (window._state && window._state.ticker) || {};
-  const logos  = ((window._state && window._state.settings && window._state.settings.logoSet && window._state.settings.logoSet.logos) || []);
-  const payload = { labelMode: 'logo' };
-  // Auto-select first logo if none already chosen
-  if (!ticker.labelLogoUrl && logos.length) payload.labelLogoUrl = logos[0].url;
-  api('/api/ticker', payload);
-}
+function setTickerLabelLogo() { api('/api/ticker', { labelMode: 'logo' }); }
 
 function renderTickerItems(ticker) {
   const list = g('ticker-items-list'); if (!list) return;
@@ -3216,24 +3220,7 @@ function syncTickerUI(ticker, state) {
   setInpSafe('ticker-label-text', ticker.labelText || 'NEWS');
 
   // Logo grid (for logo mode) — read directly from window._state so it's never stale
-  const logoGrid = g('ticker-label-logo-grid');
-  if (logoGrid) {
-    const _settings = (window._state && window._state.settings) || {};
-    const logoSet = _settings.logoSet || {};
-    const logos = Array.isArray(logoSet) ? logoSet : (logoSet.logos || []);
-    const selectedUrl = ticker.labelLogoUrl || '';
-    logoGrid.innerHTML = logos.length
-      ? logos.map(function(l) {
-          const active = l.url === selectedUrl;
-          return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '"' +
-            ' data-logo-url="' + escHtml(l.url || '') + '"' +
-            ' onclick="selectTickerLabelLogo(this.dataset.logoUrl)">' +
-            '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(l.url || '') + ')"></div>' +
-            '<div class="draft-logo-tile-label">' + escHtml(l.name || '') + '</div>' +
-            '</div>';
-        }).join('')
-      : '<p class="hint" style="margin:0">No logos yet — add them in <a onclick="switchToTab(\'theme\')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Theme</a>.</p>';
-  }
+  renderTickerLabelLogoPicker(ticker);
 }
 function patchWin(data) { api('/api/winScreen', data); }
 
@@ -3578,21 +3565,8 @@ function renderWinPicksPreview(ws, match) {
 function patchGroupStage(data) { api('/api/groupStage', data); }
 
 function renderGroupsLogoPicker(state) {
-  const grid = g('groups-logo-grid'); if (!grid) return;
-  const logos    = ((state.settings && state.settings.logoSet && state.settings.logoSet.logos) || []);
-  const selected = (state.groupStage && state.groupStage.logoUrl) || '';
-  const tiles    = [{ url: '', label: 'Auto' }].concat(logos.map(function(l) { return { url: l.url || '', label: l.name || '' }; }));
-  grid.innerHTML = tiles.map(function(t) {
-    const active = t.url === '' ? !selected : t.url === selected;
-    return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '"' +
-      ' data-logo-url="' + escHtml(t.url) + '"' +
-      ' onclick="patchGroupStage({logoUrl:this.dataset.logoUrl})">' +
-      (t.url
-        ? '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(t.url) + ')"></div>'
-        : '<div class="draft-logo-tile-img"><span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;color:var(--text-dim);letter-spacing:0.08em">AUTO</span></div>') +
-      '<div class="draft-logo-tile-label">' + escHtml(t.label) + '</div>' +
-      '</div>';
-  }).join('');
+  renderLogoPicker('groups-logo-grid', state.groupStage && state.groupStage.logoUrl,
+    function(ref) { patchGroupStage({ logoUrl: ref }); });
 }
 
 function syncGroupStageGfxUI(state) {
@@ -3650,6 +3624,7 @@ function syncTournamentStructureGfxUI(state) {
   const on = g('ts-gfx-logo-on'), off = g('ts-gfx-logo-off');
   if (on)  on.classList.toggle('btn-active', sl);
   if (off) off.classList.toggle('btn-active', !sl);
+  if (_sfp('tsGfxLogo', _logoFp(state, ts.logoUrl))) renderTsGfxLogoPicker(ts);
 
   // Display title
   setInp('ts-gfx-display-title', ts.displayTitle || '');
@@ -4518,15 +4493,83 @@ async function refreshRanks() {
   }
 }
 
-// ── Sponsors ───────────────────────────────────────────────────────────────────
-function renderSponsors(logos) {
-  const el = g('sponsor-list'); if (!el) return;
-  el.innerHTML = logos.map(function(url, i) {
-    return '<div class="sponsor-chip"><img src="'+url+'" alt=""><button onclick="removeSponsor('+i+')" title="Remove">✕</button></div>';
-  }).join('');
+// ── Tournament identity (event logo + sponsors) ────────────────────────────────
+// A thin VIEW of the logo library: these pickers move the library's pointers, they
+// never upload a second copy of a logo. Adding here adds to the library too.
+function _logoEmptyHint() {
+  return '<p class="hint" style="margin:0">No logos yet — add one below, or in ' +
+    '<a onclick="switchToTab(\'theme\')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Theme → Broadcast Logos</a>.</p>';
 }
-function addSponsor() { triggerUpload('sponsor-file', function(url) { const logos=((window._state&&window._state.match&&window._state.match.sponsorLogos)||[]).concat([url]); api('/api/match',{sponsorLogos:logos}); }); }
-function removeSponsor(i) { const logos=((window._state&&window._state.match&&window._state.match.sponsorLogos)||[]).slice(); logos.splice(i,1); api('/api/match',{sponsorLogos:logos}); }
+function _logoTileHtml(l, active, badge) {
+  return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '" data-logo-ref="' + escHtml(l.id || '') + '"' +
+    ' title="' + escHtml(l.name || 'Logo') + '">' +
+    '<div class="draft-logo-tile-img" style="background-image:url(' + escHtml(l.url || '') + ')">' +
+      (badge ? '<span class="draft-logo-tile-badge">' + escHtml(badge) + '</span>' : '') +
+    '</div>' +
+    '<div class="draft-logo-tile-label">' + escHtml(l.name || '') + '</div>' +
+    '</div>';
+}
+function _bindTiles(grid, onPick) {
+  Array.prototype.forEach.call(grid.querySelectorAll('.draft-logo-tile'), function(el) {
+    el.addEventListener('click', function() { onPick(el.dataset.logoRef); });
+  });
+}
+
+function renderEventLogoPicker() {
+  const grid = g('ts-event-logo-grid'); if (!grid) return;
+  const ls = _logoSetCtrl(), logos = ls.logos || [], cur = ls.eventLogoId || '';
+  if (!logos.length) { grid.innerHTML = _logoEmptyHint(); return; }
+  grid.innerHTML =
+    '<div class="draft-logo-tile is-auto' + (cur ? '' : ' is-active') + '" data-logo-ref="" title="No event logo">' +
+      '<div class="draft-logo-tile-img"><span class="draft-logo-tile-empty">NONE</span></div>' +
+      '<div class="draft-logo-tile-label">None</div>' +
+    '</div>' +
+    logos.map(function(l) { return _logoTileHtml(l, l.id === cur); }).join('');
+  _bindTiles(grid, function(ref) {
+    if (ref) api('/api/logos/update', { id: ref, role: 'event' });
+    else if (cur) api('/api/logos/update', { id: cur, role: 'other' });   // clear
+  });
+}
+
+function renderSponsorPicker() {
+  const grid = g('ts-sponsor-grid'); if (!grid) return;
+  const ls = _logoSetCtrl(), logos = ls.logos || [], ids = ls.sponsorIds || [];
+  if (!logos.length) { grid.innerHTML = _logoEmptyHint(); return; }
+  grid.innerHTML = logos.map(function(l) {
+    const i = ids.indexOf(l.id);
+    return _logoTileHtml(l, i !== -1, i === -1 ? '' : String(i + 1));
+  }).join('');
+  _bindTiles(grid, function(ref) {
+    api('/api/logos/update', { id: ref, role: ids.indexOf(ref) === -1 ? 'sponsor' : 'other' });
+  });
+}
+
+// Adding from Tournament Setup lands in the library with the right role already set.
+async function _addLogoWithRole(url, name, role) {
+  const r = await api('/api/logos/add', { url, name, role });
+  if (r && r.error) showAlert(r.error);
+  return !(r && r.error);
+}
+async function addEventLogoFromUrl() {
+  const el = g('ts-event-add-url'); const url = (el && el.value || '').trim();
+  if (!url) { showAlert('Paste an image URL, or use Upload to add a file.'); return; }
+  if (await _addLogoWithRole(url, 'Event Logo', 'event') && el) el.value = '';
+}
+function addEventLogoFromUpload() {
+  triggerUpload('ts-event-add-file', function(url) { _addLogoWithRole(url, 'Event Logo', 'event'); });
+}
+async function addSponsorFromUrl() {
+  const el = g('ts-sponsor-add-url'), nm = g('ts-sponsor-add-name');
+  const url = (el && el.value || '').trim();
+  if (!url) { showAlert('Paste an image URL, or use Upload to add a file.'); return; }
+  if (await _addLogoWithRole(url, (nm && nm.value) || '', 'sponsor')) { if (el) el.value = ''; if (nm) nm.value = ''; }
+}
+function addSponsorFromUpload() {
+  const nm = g('ts-sponsor-add-name');
+  triggerUpload('ts-sponsor-add-file', async function(url) {
+    if (await _addLogoWithRole(url, (nm && nm.value) || '', 'sponsor') && nm) nm.value = '';
+  });
+}
 
 // ── Upload ─────────────────────────────────────────────────────────────────────
 // Upload an image to /api/upload, surfacing server rejections (size/type) to the
@@ -5497,7 +5540,6 @@ function mvRenderGfx(state){
   const mv=(state&&state.mapVeto)||{};
   setInpSafe('mv-title', mv.title||'MAP VETO');
   const sl=g('mv-show-logo'); if(sl) sl.checked=!!mv.showLogo;
-  setInpSafe('mv-logo-url', mv.logoUrl||'');
   const ls=g('mv-logo-scale'); if(ls && mv.logoScale!=null) ls.value=mv.logoScale;
   const pos=mv.logoPosition||'left'; const pr=document.querySelector('input[name="mv-logo-pos"][value="'+pos+'"]'); if(pr) pr.checked=true;
   const scale=mv.scale||'normal';
@@ -5713,8 +5755,7 @@ function syncDraftGfxTab(draft, settings) {
   if (visEl2) visEl2.checked = !!draft.timerVisible;
 
   // Centre logo picker
-  const logos = (settings && settings.logoSet && settings.logoSet.logos) || [];
-  renderDraftLogoPicker(logos, (settings && settings.draftCenterLogoUrl) || '');
+  renderDraftLogoPicker((settings && settings.draftCenterLogoUrl) || '');
 
   // Phase status hint
   const phaseLabels = {
@@ -5725,25 +5766,12 @@ function syncDraftGfxTab(draft, settings) {
   if (statEl) statEl.textContent = phaseLabels[draft.phase || 'notstarted'] || '—';
 }
 
-function renderDraftLogoPicker(logos, selectedUrl) {
-  const grid = g('draft-logo-grid');
-  if (!grid) return;
-  const tiles = [{ url: '', label: 'Auto' }].concat(
-    (logos || []).map(l => ({ url: l.url || '', label: l.name || l.url.split('/').pop().replace(/\.[^.]+$/, '') || '' }))
-  );
-  grid.innerHTML = tiles.map(tile => {
-    const active = tile.url === '' ? !selectedUrl : tile.url === selectedUrl;
-    return '<div class="draft-logo-tile' + (active ? ' is-active' : '') + '" onclick="selectDraftLogo(' + JSON.stringify(tile.url) + ')">' +
-      '<div class="draft-logo-tile-img"' + (tile.url ? ' style="background-image:url(' + escHtml(tile.url) + ')"' : '') + '>' +
-      (tile.url ? '' : '<span style="font-size:9px;font-family:\'Barlow Condensed\',sans-serif;color:var(--text-dim);letter-spacing:0.08em">AUTO</span>') +
-      '</div>' +
-      '<div class="draft-logo-tile-label">' + escHtml(tile.label) + '</div>' +
-      '</div>';
-  }).join('');
+function renderDraftLogoPicker(selectedRef) {
+  renderLogoPicker('draft-logo-grid', selectedRef, selectDraftLogo);
 }
 
-function selectDraftLogo(url) {
-  patchSettings({ draftCenterLogoUrl: url });
+function selectDraftLogo(ref) {
+  patchSettings({ draftCenterLogoUrl: ref });
 }
 
 // Data-driven graphics that render NOTHING on air when they have no data (by design — we
@@ -8051,39 +8079,75 @@ function syncAccentHex(side, val) {
   patchSettings(side === 'blue' ? { blueAccent: val } : { redAccent: val });
 }
 
-// Logo library
-function addThemeLogo() {
-  const logos = JSON.parse(JSON.stringify((((window._state || {}).settings || {}).logoSet || {}).logos || []));
-  logos.push({ name: '', url: '' });
-  patchSettings({ logoSet: { logos } });
+// ── Logo library management (the single surface for broadcast logos) ──────────
+// Entries are addressed by id, so renaming/replacing/reordering never disturbs the
+// placements that point at them. Roles are set by moving the library's own pointers
+// (event / sponsor list) — see normalizeLogoRoles in server.js.
+async function addLogoFromUrl() {
+  const urlEl = g('ts-logo-add-url'), nameEl = g('ts-logo-add-name');
+  const url = (urlEl && urlEl.value || '').trim();
+  if (!url) { showAlert('Paste an image URL, or use Upload to add a file.'); return; }
+  const r = await api('/api/logos/add', { url, name: (nameEl && nameEl.value) || '' });
+  if (r && r.error) { showAlert(r.error); return; }
+  if (urlEl) urlEl.value = ''; if (nameEl) nameEl.value = '';
 }
-function removeThemeLogo(i) {
-  const logos = JSON.parse(JSON.stringify((((window._state || {}).settings || {}).logoSet || {}).logos || []));
-  logos.splice(i, 1);
-  patchSettings({ logoSet: { logos } });
+function addLogoFromUpload() {
+  const nameEl = g('ts-logo-add-name');
+  triggerUpload('ts-logo-add-file', async function(url) {
+    const r = await api('/api/logos/add', { url, name: (nameEl && nameEl.value) || '' });
+    if (r && r.error) { showAlert(r.error); return; }
+    if (nameEl) nameEl.value = '';
+  });
 }
-function patchThemeLogo(i, key, val) {
-  const logos = JSON.parse(JSON.stringify((((window._state || {}).settings || {}).logoSet || {}).logos || []));
-  if (!logos[i]) logos[i] = { name: '', url: '' };
-  logos[i][key] = val;
-  patchSettings({ logoSet: { logos } });
+function patchLogo(id, key, val) { api('/api/logos/update', { id, [key]: val }); }
+function replaceLogoImage(id) {
+  triggerUpload('ts-logo-add-file', function(url) { api('/api/logos/update', { id, url }); });
 }
-function uploadThemeLogo(i, input) {
-  if (!input.files || !input.files[0]) return;
-  uploadImageFile(input.files[0]).then(url => { if (url) patchThemeLogo(i, 'url', url); });
+async function deleteLogo(id) {
+  const r = await api('/api/logos/delete', { id });
+  if (!r || !r.references) return;                 // deleted, or a plain failure already logged
+  showConfirm('"' + (r.name || 'This logo') + '" is still used by: ' + r.references.join(', ') +
+    '. Delete it anyway? Those slots revert to Auto (the event logo).',
+    function() { api('/api/logos/delete', { id, force: true }); }, { danger: true, okLabel: 'Delete' });
 }
-function renderThemeLogos(logos) {
+// Sponsors play out in list order, so moving one is a reorder of the sponsor pointers.
+function moveSponsor(id, dir) {
+  const ids = (_logoSetCtrl().sponsorIds || []).slice();
+  const i = ids.indexOf(id), j = i + dir;
+  if (i === -1 || j < 0 || j >= ids.length) return;
+  ids[i] = ids[j]; ids[j] = id;
+  api('/api/logos/reorder', { sponsorIds: ids });
+}
+
+function renderThemeLogos() {
   const list = g('ts-logos-list'); if (!list) return;
-  if (!logos || logos.length === 0) { list.innerHTML = '<p class="hint">No logos added yet.</p>'; return; }
-  list.innerHTML = logos.map((logo, i) =>
-    '<div class="theme-logo-row">' +
-    '<div class="theme-logo-thumb" style="background-image:url(' + escHtml(logo.url || '') + ')"></div>' +
-    '<input type="text" class="theme-logo-name" value="' + escHtml(logo.name || '') + '" placeholder="Logo name" onchange="patchThemeLogo(' + i + ',\'name\',this.value)">' +
-    '<input type="file" id="ts-lf-' + i + '" accept="image/*" style="display:none" onchange="uploadThemeLogo(' + i + ',this)">' +
-    '<button class="btn btn-sm" onclick="g(\'ts-lf-' + i + '\').click()">Upload</button>' +
-    '<button class="btn btn-sm btn-danger" onclick="removeThemeLogo(' + i + ')">×</button>' +
-    '</div>'
-  ).join('');
+  const ls = _logoSetCtrl();
+  const logos = ls.logos || [];
+  if (!logos.length) { list.innerHTML = '<p class="hint">No logos yet — add one below.</p>'; return; }
+  const sponsorIds = ls.sponsorIds || [];
+  list.innerHTML = logos.map(function(l) {
+    const id   = JSON.stringify(l.id);
+    const role = l.role || 'other';
+    const si   = sponsorIds.indexOf(l.id);
+    const order = '<span class="theme-logo-order">' + (role !== 'sponsor' ? '' :
+      '<span class="theme-logo-order-num">' + (si + 1) + '</span>' +
+      '<button class="btn btn-sm theme-logo-move" onclick="moveSponsor(' + id + ',-1)"' + (si <= 0 ? ' disabled' : '') + ' title="Move earlier">▲</button>' +
+      '<button class="btn btn-sm theme-logo-move" onclick="moveSponsor(' + id + ',1)"'  + (si === sponsorIds.length - 1 ? ' disabled' : '') + ' title="Move later">▼</button>'
+    ) + '</span>';
+    return '<div class="theme-logo-row role-' + role + '">' +
+      '<div class="theme-logo-thumb" style="background-image:url(' + escHtml(l.url || '') + ')"></div>' +
+      '<input type="text" class="theme-logo-name" value="' + escHtml(l.name || '') + '" placeholder="Logo name"' +
+        ' onchange="patchLogo(' + id + ',\'name\',this.value)">' +
+      '<select class="theme-logo-role" onchange="patchLogo(' + id + ',\'role\',this.value)" title="Where this logo is used by default">' +
+        '<option value="other"' +   (role === 'other'   ? ' selected' : '') + '>Library</option>' +
+        '<option value="event"' +   (role === 'event'   ? ' selected' : '') + '>Event</option>' +
+        '<option value="sponsor"' + (role === 'sponsor' ? ' selected' : '') + '>Sponsor</option>' +
+      '</select>' +
+      order +
+      '<button class="btn btn-sm theme-logo-replace" onclick="replaceLogoImage(' + id + ')" title="Replace the image — every graphic using this logo follows">↻</button>' +
+      '<button class="btn btn-sm btn-danger" onclick="deleteLogo(' + id + ')" title="Delete">×</button>' +
+      '</div>';
+  }).join('');
 }
 
 let _looksAutoLoaded = false;
@@ -8095,9 +8159,9 @@ function syncThemeTab(st) {
   // Skip the palette/accents/logos/anim rebuilds when nothing the Theme tab
   // renders has changed — these otherwise ran on every state broadcast.
   if (!_sfp('themeTab', { p: st.palette, b: st.blueAccent, r: st.redAccent,
-        l: (st.logoSet || {}).logos, a: st.animation, f: st.overlayFont, cf: st.customFonts,
+        l: st.logoSet, a: st.animation, f: st.overlayFont, cf: st.customFonts,
         cs: st.cornerRadius, ss: st.surfaceStyle, tc: st.textCase })) return;
-  const { palette = [], blueAccent = '#1e6fff', redAccent = '#ff3b3b', logoSet = {} } = st;
+  const { palette = [], blueAccent = '#1e6fff', redAccent = '#ff3b3b' } = st;
 
   // Palette
   [0,1,2,3].forEach(i => {
@@ -8125,7 +8189,7 @@ function syncThemeTab(st) {
   syncFontControls(st);
 
   // Logo library
-  renderThemeLogos((logoSet.logos || []));
+  renderThemeLogos();
 
   // Structural theme — corner-radius slider + surface / text-case pills + live preview
   const _cr = (st.cornerRadius != null ? st.cornerRadius : 3);
@@ -8703,18 +8767,6 @@ function syncBgoTab(bgo) {
   if (fogInt && document.activeElement !== fogInt) fogInt.value = bgo.bgFogIntensity != null ? bgo.bgFogIntensity : 50;
 }
 
-function renderThemeSponsorPreview(sponsorLogos) {
-  const el = g('ts-sponsors-preview'); if (!el) return;
-  const logos = sponsorLogos || [];
-  if (logos.length === 0) {
-    el.innerHTML = '<p class="hint">No sponsors added yet.</p>';
-    return;
-  }
-  el.innerHTML = '<div class="theme-sponsor-preview">' +
-    logos.map(url => '<div class="theme-sponsor-thumb" style="background-image:url(' + escHtml(url) + ')" title="' + escHtml(url) + '"></div>').join('') +
-    '</div>';
-}
-
 function champNameFromUrl(v) {
   if (!v) return '';
   return v.split('/').pop().replace(/\.[^.]+$/, '').replace(/_\d+$/, '');
@@ -9230,6 +9282,7 @@ function syncPrizepoolTab(state) {
   const on = g('pp-logo-on'), off = g('pp-logo-off');
   if (on)  on.classList.toggle('btn-active', !!pp.showLogo);
   if (off) off.classList.toggle('btn-active', !pp.showLogo);
+  if (_sfp('ppLogo', _logoFp(state, pp.logoUrl))) renderPrizepoolLogoPicker(pp);
 
   // Don't rebuild the entries list while an input inside the tab is focused —
   // rebuilding destroys the element mid-keypress and kills focus.

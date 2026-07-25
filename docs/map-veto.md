@@ -31,7 +31,7 @@ From the Map Veto Overlay ctrl-bar:
 - **Scale** — **Large**, **Normal**, or **Lower Third** (a bottom-anchored compact band that leaves the upper frame free for cameras). Scales can also be cycled live from the Operator view / live bar.
 - **Show team names** — off shows team logos only (where a team has a logo).
 - **Use official map icons instead of map names** — swap the map's text label for its icon.
-- **Logo** — show/hide a centre event logo, with URL (or upload), scale and position.
+- **Logo** — show/hide a centre logo, picked from [Broadcast Logos](theming.md#broadcast-logos) (**Auto** = the event logo), with scale and position.
 
 ## Accordion view
 

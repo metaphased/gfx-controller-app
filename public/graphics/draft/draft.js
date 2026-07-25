@@ -116,8 +116,7 @@ function buildRenderHash(state) {
     banFirst:     d.banFirstTeam,
     sideChooser:  d.sideChooser,
     timerVisible: d.timerVisible,
-    centerLogo:   s.draftCenterLogoUrl || d.centerLogoUrl,
-    logoSet:      s.logoSet && s.logoSet.logos && s.logoSet.logos.map(function(l) { return l.url; }),
+    centerLogo:   GfxSettings.logoUrl(state, s.draftCenterLogoUrl || d.centerLogoUrl),
     phaseContrast:s.draftPhaseContrast,
     team1:        { name: m.team1 && m.team1.name, tag: m.team1 && m.team1.tag, logo: m.team1 && m.team1.logo, score: m.team1 && m.team1.score },
     team2:        { name: m.team2 && m.team2.name, tag: m.team2 && m.team2.tag, logo: m.team2 && m.team2.logo, score: m.team2 && m.team2.score },
@@ -128,7 +127,6 @@ function buildRenderHash(state) {
     t2RolePicks:  d.team2RolePicks,
     players:      p,
     seriesGames:  m.seriesGames,
-    tournLogo:    m.tournamentLogo,
   });
 }
 
@@ -258,12 +256,9 @@ function renderAll(state) {
   renderFearless(match.seriesGames || [], !!match.fearlessDraft, match, blueSlot);
 
   // ── Tournament logo ───────────────────────────────────────────────────────────
-  // Priority: draft-specific override → first logo in library → match tournament logo
-  const logoLibrary = (state.settings && state.settings.logoSet && state.settings.logoSet.logos) || [];
-  const logoUrl = (settings && settings.draftCenterLogoUrl)
-    || draft.centerLogoUrl  // backward compat with older saved state
-    || (logoLibrary.length > 0 ? logoLibrary[0].url : '')
-    || match.tournamentLogo || '';
+  // Uniform chain: draft pick → event logo → none. draft.centerLogoUrl is the
+  // pre-settings field, still honoured for state saved before the picker moved.
+  const logoUrl = GfxSettings.logoUrl(state, (settings && settings.draftCenterLogoUrl) || draft.centerLogoUrl);
   const logoEl = document.getElementById('tourn-logo');
   if (logoEl) logoEl.style.backgroundImage = logoUrl ? 'url(' + logoUrl + ')' : '';
 

@@ -10,19 +10,29 @@ This page also covers the **[Teams Database](#teams-database)** (your reusable t
 
 The first card. Sets the broad identity used across overlays:
 
-![Tournament Info card](img/ts-info.jpg)
+![Tournament Info card — name, game and the Event Logo picker](img/ts-info.webp)
 
 - **Tournament Name** — shown on structure/break/pre-show graphics.
 - **Game** — League of Legends, CS2, Dota 2, VALORANT, Rainbow Six Siege or Generic. The choice tailors the whole control panel: LoL unlocks the draft board, champion art and op.gg/Riot features; CS2 the [map veto](map-veto.md) and [live data](live-data.md); Dota 2 the [hero draft](hero-draft.md) and its [live data](dota-live-data.md). Newer games carry an **alpha/beta badge** in the control room (never on air) so operators know how production-ready that game's support is. The game locks once the tournament is underway — Reset to change it.
-- **Tournament Logo** — paste a URL or **Upload**. Used where a tournament mark is shown.
+
+## Event Logo
+
+Every logo used on air lives in **one library** — [Broadcast Theme → Broadcast Logos](theming.md#broadcast-logos). This card is a *pointer* into it, not a second place to store files: pick which library logo is this tournament's mark, or add a new one (URL or upload) and it joins the library already flagged as the event logo.
+
+The event logo is what every graphic's **Auto** setting falls back to, and it appears next to the profile name in the control panel's top bar.
+
+- **None** clears it — graphics on Auto then show no logo.
+- Swapping the event logo updates every graphic on Auto at once.
 
 ## Sponsor Logos
 
 > **Scope:** sponsor tools are for crediting sponsors who contribute to the **prize pool** of a community/grassroots event — not for selling commercial ad space.
 
-Add sponsor logos here; they appear on the [Pre-show](pre-show.md) and other sponsor-aware graphics. Manage the list with **+ Add Sponsor Logo** (URL or upload).
+Which library logos play out as sponsors on the [Break Screen](break-screen.md) and [Pre-show](pre-show.md). Click a logo to add or remove it; the number on each tile is its **on-air order**, which you change with the ▲▼ arrows in [Broadcast Logos](theming.md#broadcast-logos).
 
-![Sponsor Logos card](img/ts-sponsors.jpg)
+Adding a logo here (URL or upload) puts it in the library tagged as a sponsor — the same file can later be reused anywhere else without uploading it twice.
+
+![Sponsor Logos card — library logos toggled on as sponsors, numbered in play-out order](img/ts-sponsors.webp)
 
 ## Competing Teams
 

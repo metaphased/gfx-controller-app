@@ -25,7 +25,7 @@ From the Bracket graphics tab / ctrl-bar:
 - **Show / hide**.
 - **Title** (e.g. "Nova Cup 2026 — Playoffs").
 - **Type** — single or double elimination (double shows upper/lower tracks).
-- **Logo** — toggle and scale the broadcast/tournament logo.
+- **Logo** — show/hide, pick from [Broadcast Logos](theming.md#broadcast-logos) (**Auto** = the event logo), scale and position.
 
 ## Notes
 

@@ -480,10 +480,11 @@
     var l1=document.getElementById('mv-t1-logo'), l2=document.getElementById('mv-t2-logo');
     if(t1.logo){ l1.src=t1.logo; l1.style.display=''; } else l1.style.display='none';
     if(t2.logo){ l2.src=t2.logo; l2.style.display=''; } else l2.style.display='none';
-    // Event logo
+    // Event logo — uniform chain: map-veto pick → event logo → none
     var lw=document.getElementById('mv-logo-wrap'), lg=document.getElementById('mv-logo');
+    var mvLogo = GfxSettings.logoUrl(state, mv.logoUrl);
     lw.className = mv.logoPosition || 'left';
-    if(mv.showLogo && mv.logoUrl){ lg.src=mv.logoUrl; lg.style.display=''; lg.style.height=((mv.logoScale||7)*8)+'px'; }
+    if(mv.showLogo && mvLogo){ lg.src=mvLogo; lg.style.display=''; lg.style.height=((mv.logoScale||7)*8)+'px'; }
     else { lg.style.display='none'; }
 
     var steps = (mv.steps && mv.steps.length) ? mv.steps
@@ -521,7 +522,7 @@
     var mv = state.mapVeto||{}, m = state.match||{};
     return JSON.stringify({ s:mv.steps, p:(state.tournament&&state.tournament.mapPool), t:mv.title, bo:mv.bestOf, sc:mv.scale,
       ac:mv.accordion, fi:mv.focusIndex, rc:mv.revealedCount, af:mv.accordionFinal, stn:mv.showTeamNames, mni:mv.mapNameImages, fb:mv.mapFlyby,
-      lg:mv.showLogo, lu:mv.logoUrl, ls:mv.logoScale, lp:mv.logoPosition,
+      lg:mv.showLogo, lu:GfxSettings.logoUrl(state, mv.logoUrl), ls:mv.logoScale, lp:mv.logoPosition,
       rev:(state.settings&&state.settings.mapArtRev)||0,
       t1:(m.team1||{}).name, t2:(m.team2||{}).name, l1:(m.team1||{}).logo, l2:(m.team2||{}).logo });
   }

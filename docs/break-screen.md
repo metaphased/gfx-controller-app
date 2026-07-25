@@ -22,7 +22,7 @@ From the Break Screen ctrl-bar:
 - **Message** (e.g. "BE RIGHT BACK") and **subtext** (e.g. "Group Stage · Day 1").
 - **Countdown** — set a target time and a "back in" timer counts down.
 - **PIP mode** — toggle the picture-in-picture layout.
-- **Show tournament name** and the centre logo scale.
+- **Show tournament name**, the centre logo (picked from [Broadcast Logos](theming.md#broadcast-logos) — **Auto** = the event logo) and its scale.
 - The **upcoming matchup** ("After the break") is drawn from the current match / series so it stays accurate.
 
 ## Notes
