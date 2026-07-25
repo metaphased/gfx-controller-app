@@ -18,7 +18,7 @@ From the Ticker control tab:
 
 - **Auto mode** — automatically summarises the day's [schedule](schedule.md) and the live match (e.g. "Aurora Vanguard vs Stormbreak 1-0 — Bo3"), kept up to date for you.
 - **Manual items** — add your own lines (announcements, social handles, casts), each with optional link text.
-- **Label** — the badge at the start of the ticker: a text label (e.g. "NOVA CUP") or a logo.
+- **Label** — the badge at the start of the ticker: a text label (e.g. "NOVA CUP") or a logo from [Broadcast Logos](theming.md#broadcast-logos) (**Auto** = the event logo).
 
 Auto and manual items can run together.
 

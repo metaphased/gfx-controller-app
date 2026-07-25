@@ -290,7 +290,7 @@ The seeded `admin` account is `superadmin`. Create more users in **Settings → 
 - **Server:** Node.js 18+ · Express · Socket.io (real-time state to every page)
 - **Auth:** session login for the panel; token access for graphics + caster
 - **Data:** JSON files in `data/` (auto-created, git-ignored)
-- **Image uploads auto-optimised** — every uploaded logo/image is downscaled (max 1920 px long edge) and re-encoded to WebP (transparency + animation preserved) via [sharp](https://sharp.pixelplumbing.com/), so files stay small regardless of source. See [Theming → Logos & image uploads](docs/theming.md#logos--image-uploads).
+- **Image uploads auto-optimised** — every uploaded logo/image is downscaled (max 1920 px long edge) and re-encoded to WebP (transparency + animation preserved) via [sharp](https://sharp.pixelplumbing.com/), so files stay small regardless of source. See [Theming → Image uploads](docs/theming.md#image-uploads).
 - **No build step** — plain HTML/CSS/JS throughout
 
 The `data/` directory is created on first run and is not in git:

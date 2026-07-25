@@ -1264,7 +1264,7 @@ const makeDefault = () => ({
     groups: [],
     schedule: []
   },
-  tournamentStructure: { visible: false, showLogo: false, logoScale: 7, logoPosition: 'left', displayTitle: '', showTitle: false },
+  tournamentStructure: { visible: false, showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left', displayTitle: '', showTitle: false },
   match: {
     team1: { name: 'Team One', tag: 'T1', logo: '', score: 0 },
     team2: { name: 'Team Two', tag: 'T2', logo: '', score: 0 },
@@ -1394,7 +1394,7 @@ const makeDefault = () => ({
       { team: 'team2', handle: '', champ: '', caption: '', statTokens: [], statOverrides: {} },
     ],
   },
-  prizepool: { visible: false, showLogo: false, logoScale: 7, logoPosition: 'left', entries: [] },
+  prizepool: { visible: false, showLogo: false, logoUrl: '', logoScale: 7, logoPosition: 'left', entries: [] },
   bgOutput: {
     bgType: 'animation', bgAnimation: 'particles',
     bgColor: '#070f12',  bgImage: '',
@@ -1404,7 +1404,7 @@ const makeDefault = () => ({
     animation: { bgSpeed: 'medium' },
     palette: [],
   },
-  ticker:      { visible: false, items: [] },
+  ticker:      { visible: false, items: [], labelLogoUrl: '' },   // labelLogoUrl = logoSet entry id ('' = event logo)
   meta:        { activeProfileId: null, activeProfileName: null },
   settings: {
     palette: [
@@ -1439,14 +1439,24 @@ const makeDefault = () => ({
       bgSpeed:         'medium',        // 'slow' | 'medium' | 'fast'
       overrides:       {},              // { [graphicKey]: { enterEase?, exitEase?, moveEase?, speed? } }
     },
-    logoSet: { logos: [] },        // [{ name: string, url: string }]
+    // ── Logo asset library ──────────────────────────────────────────────────
+    // THE single place a logo file lives. Every placement elsewhere (per-graphic
+    // pickers, the event logo, sponsors) stores an ENTRY ID from here, never a URL —
+    // so re-uploading a mark or swapping a sponsor updates every graphic at once.
+    // `role` is DERIVED from eventLogoId/sponsorIds (see normalizeLogoRoles), which
+    // are the only role truth. Per-profile (event-specific), unlike customFonts.
+    logoSet: {
+      logos:       [],   // [{ id, name, url, role: 'event'|'sponsor'|'other' }]
+      eventLogoId: '',   // the event logo — what every "Auto" pick resolves to
+      sponsorIds:  [],   // ordered sponsor placements (break screen, pre-show)
+    },
     // Per-event logo picks + look toggles. These MUST be declared here even though '' is
     // falsy: a profile snapshot is built from these defaults and applied with deepMerge on
     // load, so any key missing here is never overwritten — it silently leaks the previous
     // tournament's value (e.g. a brand-new profile showing the last event's centre logo).
-    h2hLogoUrl:          '',   // Head-to-Head + Player Intro centre logo (picked from logoSet)
-    draftCenterLogoUrl:  '',   // Draft board centre logo
-    breakCenterLogoUrl:  '',   // Break screen centre logo
+    h2hLogoUrl:          '',   // Head-to-Head + Player Intro centre logo (logoSet entry id)
+    draftCenterLogoUrl:  '',   // Draft board centre logo (logoSet entry id)
+    breakCenterLogoUrl:  '',   // Break screen centre logo (logoSet entry id)
     draftPhaseContrast:  'subtle',  // draft phase label: 'subtle' | 'bold'
     valorant: { region: 'eu' },     // VALORANT event region (post-map data lookups)
     mapPoolDefaults: {},           // per-game default map pool, e.g. { cs2: [{name,image}] } — "Set as default"
@@ -1606,6 +1616,188 @@ function migrateGame(st) {
   }
 }
 
+// ── Logo asset library ────────────────────────────────────────────────────────
+// ONE library (settings.logoSet.logos) holds every logo used on air. A graphic stores
+// a REFERENCE to a library entry, never a URL, so re-uploading a mark or swapping a
+// sponsor mid-event updates every placement at once. Every placement resolves through
+// the same chain: graphic pick → event logo → none.
+//
+// Each entry: { id, name, url, role }. `role` is derived from eventLogoId/sponsorIds —
+// those pointers are the only role truth, so a logo is never event AND sponsor.
+//
+// Every field that stores a placement reference. Legacy saves hold raw URLs in these;
+// migrateLogos() folds each one into the library and rewrites it to an id.
+const LOGO_PLACEMENTS = [
+  ['settings', 'h2hLogoUrl'],   ['settings', 'draftCenterLogoUrl'], ['settings', 'breakCenterLogoUrl'],
+  ['playerIntro', 'piLogoUrl'], ['preShow', 'logoUrl'],             ['bracket', 'logoUrl'],
+  ['groupStage', 'logoUrl'],    ['mapVeto', 'logoUrl'],             ['heroDraft', 'logoUrl'],
+  ['prizepool', 'logoUrl'],     ['tournamentStructure', 'logoUrl'], ['ticker', 'labelLogoUrl'],
+  ['draft', 'centerLogoUrl'],   // pre-settings draft centre logo (still read as a fallback)
+];
+const LOGO_PLACEMENT_LABELS = {
+  'settings.h2hLogoUrl': 'Head to Head', 'settings.draftCenterLogoUrl': 'Draft', 'settings.breakCenterLogoUrl': 'Break Screen',
+  'playerIntro.piLogoUrl': 'Player Intro', 'preShow.logoUrl': 'Pre-Show', 'bracket.logoUrl': 'Bracket',
+  'groupStage.logoUrl': 'Group Stage', 'mapVeto.logoUrl': 'Map Veto', 'heroDraft.logoUrl': 'Hero Draft',
+  'prizepool.logoUrl': 'Prizepool', 'tournamentStructure.logoUrl': 'Tournament Structure', 'ticker.labelLogoUrl': 'Ticker',
+  'draft.centerLogoUrl': 'Draft',
+};
+const MAX_LOGOS = 60;
+// A reference that is a literal URL = a legacy value written before the library existed.
+// Library ids ('logo_…') never match, so this cleanly separates the two.
+function isLogoUrlRef(v) { return typeof v === 'string' && /^(https?:\/\/|\/|data:)/i.test(v.trim()); }
+function newLogoId() { return 'logo_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+// Normalise settings.logoSet into its full shape and return it (never null).
+function logoSetOf(st) {
+  if (!st.settings) st.settings = {};
+  let ls = st.settings.logoSet;
+  // Pre-library saves stored logoSet as a bare array of entries.
+  if (Array.isArray(ls)) ls = { logos: ls };
+  if (!ls || typeof ls !== 'object') ls = {};
+  if (!Array.isArray(ls.logos))      ls.logos = [];
+  if (!Array.isArray(ls.sponsorIds)) ls.sponsorIds = [];
+  if (typeof ls.eventLogoId !== 'string') ls.eventLogoId = '';
+  st.settings.logoSet = ls;
+  return ls;
+}
+function findLogo(ls, id) { return (id && ls.logos.find(l => l.id === id)) || null; }
+// Add a URL to the library, or return the existing entry if that exact URL is already
+// in it — so migrating five graphics that all point at the same file yields ONE entry.
+function upsertLogoByUrl(ls, url, name) {
+  const u = String(url || '').trim();
+  if (!u) return null;
+  const hit = ls.logos.find(l => l.url === u);
+  if (hit) { if (!hit.name && name) hit.name = name; return hit; }
+  if (ls.logos.length >= MAX_LOGOS) return null;
+  const entry = { id: newLogoId(), name: name || ('Logo ' + (ls.logos.length + 1)), url: u, role: 'other' };
+  ls.logos.push(entry);
+  return entry;
+}
+// role is a VIEW of the pointers, so the library UI can show a chip without a second
+// source of truth that could disagree with what the graphics actually resolve.
+function normalizeLogoRoles(st) {
+  const ls = logoSetOf(st);
+  ls.sponsorIds = ls.sponsorIds.filter((id, i) => findLogo(ls, id) && ls.sponsorIds.indexOf(id) === i);
+  if (!findLogo(ls, ls.eventLogoId)) ls.eventLogoId = '';
+  ls.sponsorIds = ls.sponsorIds.filter(id => id !== ls.eventLogoId);
+  ls.logos.forEach(l => {
+    l.role = l.id === ls.eventLogoId ? 'event' : ls.sponsorIds.indexOf(l.id) !== -1 ? 'sponsor' : 'other';
+  });
+}
+// Point an entry at a role by moving the POINTERS (see normalizeLogoRoles).
+function applyLogoRole(st, id, role) {
+  const ls = logoSetOf(st);
+  if (!findLogo(ls, id) || !role) return;
+  if (role === 'event')   { ls.eventLogoId = id; }
+  if (role === 'sponsor') { ls.eventLogoId = ls.eventLogoId === id ? '' : ls.eventLogoId;
+                            if (ls.sponsorIds.indexOf(id) === -1) ls.sponsorIds.push(id); }
+  if (role === 'other')   { if (ls.eventLogoId === id) ls.eventLogoId = '';
+                            ls.sponsorIds = ls.sponsorIds.filter(x => x !== id); }
+  normalizeLogoRoles(st);
+}
+function eventLogoUrl(st) { const ls = logoSetOf(st); const ev = findLogo(ls, ls.eventLogoId); return (ev && ev.url) || ''; }
+function sponsorLogoUrls(st) {
+  const ls = logoSetOf(st);
+  return ls.sponsorIds.map(id => { const l = findLogo(ls, id); return l && l.url; }).filter(Boolean);
+}
+// match.tournamentLogo / match.sponsorLogos (and their tournament.* twins) are kept as
+// SERVER-DERIVED MIRRORS of the library. Nothing writes them as a source of truth any
+// more, but they stay populated so saved profiles, backups and any consumer that still
+// reads the old fields keep working unchanged.
+function syncLogoMirrors(st) {
+  const url = eventLogoUrl(st), sponsors = sponsorLogoUrls(st);
+  if (!st.match) st.match = {};
+  if (!st.tournament) st.tournament = {};
+  st.match.tournamentLogo    = url;
+  st.match.sponsorLogos      = sponsors;
+  st.tournament.logo         = url;
+  st.tournament.sponsorLogos = sponsors.slice();
+}
+// Fold legacy URL-shaped input (an API caller setting match.tournamentLogo /
+// tournament.logo / sponsorLogos directly) back into the library, so the mirrors
+// aren't silently overwritten on the next sync.
+function adoptLegacyLogoUrls(st, body) {
+  const ls = logoSetOf(st);
+  if (body.logo !== undefined || body.tournamentLogo !== undefined) {
+    const url = String((body.logo !== undefined ? body.logo : body.tournamentLogo) || '').trim();
+    if (!url) ls.eventLogoId = '';
+    else { const e = upsertLogoByUrl(ls, url, 'Event Logo'); if (e) ls.eventLogoId = e.id; }
+  }
+  if (Array.isArray(body.sponsorLogos)) {
+    ls.sponsorIds = body.sponsorLogos
+      .map((u, i) => upsertLogoByUrl(ls, u, 'Sponsor ' + (i + 1)))
+      .filter(Boolean).map(e => e.id);
+  }
+  normalizeLogoRoles(st);
+  syncLogoMirrors(st);
+}
+// Every graphic + control placement that currently points at `id`, as display labels.
+function logoReferences(st, id) {
+  const out = [];
+  const ls = logoSetOf(st);
+  if (ls.eventLogoId === id) out.push('Event logo');
+  if (ls.sponsorIds.indexOf(id) !== -1) out.push('Sponsors');
+  LOGO_PLACEMENTS.forEach(([sec, key]) => {
+    if (st[sec] && st[sec][key] === id) {
+      const label = LOGO_PLACEMENT_LABELS[sec + '.' + key];
+      if (label && out.indexOf(label) === -1) out.push(label);
+    }
+  });
+  return out;
+}
+// Idempotent — safe to run on every state load AND every profile load. It derives
+// everything from the data itself (no schema-version flag), because a profile snapshot
+// written by an older build can land on top of an already-migrated state.
+function migrateLogos(st) {
+  if (!st) return;
+  const ls = logoSetOf(st);
+  // 1. Every entry gets a stable, unique id + a name we can show in a picker.
+  const seen = new Set();
+  ls.logos = ls.logos
+    .filter(l => l && typeof l === 'object' && l.url)
+    .map((l, i) => {
+      let id = String(l.id || '');
+      if (!id || seen.has(id)) id = newLogoId();
+      seen.add(id);
+      return { id, name: String(l.name || '') || ('Logo ' + (i + 1)), url: String(l.url), role: 'other' };
+    });
+  // 2. Event logo. The pointer wins; only when it's unset/dangling do we adopt the
+  //    legacy field. Clearing the event logo empties the mirror too, so a later load
+  //    doesn't resurrect it.
+  if (!findLogo(ls, ls.eventLogoId)) {
+    ls.eventLogoId = '';
+    const legacy = (st.match && st.match.tournamentLogo) || (st.tournament && st.tournament.logo) || '';
+    const e = legacy && upsertLogoByUrl(ls, legacy, 'Event Logo');
+    if (e) ls.eventLogoId = e.id;
+  }
+  // 3. Sponsors — same rule: pointers win, the legacy URL array is the fallback.
+  const kept = ls.sponsorIds.filter(id => findLogo(ls, id));
+  if (kept.length) ls.sponsorIds = kept;
+  else {
+    const legacy = (st.match && st.match.sponsorLogos) || (st.tournament && st.tournament.sponsorLogos) || [];
+    ls.sponsorIds = (Array.isArray(legacy) ? legacy : [])
+      .map((u, i) => upsertLogoByUrl(ls, u, 'Sponsor ' + (i + 1)))
+      .filter(Boolean).map(e => e.id);
+  }
+  // 4/5. Per-graphic placements: a raw URL becomes a library entry + an id reference.
+  //      Anything else (an id, '', undefined) is already in the new shape — leave it.
+  LOGO_PLACEMENTS.forEach(([sec, key]) => {
+    const obj = st[sec];
+    if (!obj || !isLogoUrlRef(obj[key])) return;
+    const e = upsertLogoByUrl(ls, obj[key], '');
+    obj[key] = e ? e.id : '';
+  });
+  normalizeLogoRoles(st);
+  // 6. Drop references the library can't resolve. A dangling id is always the PREVIOUS
+  //    event's: per-graphic placements aren't in a profile snapshot at all, and a snapshot
+  //    written before a settings key existed leaves the outgoing value untouched by
+  //    deepMerge. Either way it must read as "no pick" (→ Auto), not as another event's logo.
+  LOGO_PLACEMENTS.forEach(([sec, key]) => {
+    const obj = st[sec];
+    if (obj && obj[key] && obj[key] !== 'none' && !findLogo(ls, obj[key])) obj[key] = '';
+  });
+  syncLogoMirrors(st);
+}
+
 function loadState() {
   let st;
   try {
@@ -1617,6 +1809,7 @@ function loadState() {
   migrateAnimationSettings(st);
   migrateLowerThird(st);
   migrateGame(st);
+  migrateLogos(st);
   return st;
 }
 function saveState() { try { fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2)); } catch(e) { console.error(e); } }
@@ -2208,7 +2401,13 @@ app.get('/api/state', (req, res) => {
   res.json(safe);
 });
 app.post('/api/state/reset', requireAdmin, (req, res) => { state = makeDefault(); deriveTodayGames(); broadcastSchedule(); broadcast(); res.json({ ok: true }); });
-app.post('/api/match',  requireAdmin, (req, res) => { deepMerge(state.match, req.body); reconcileMapResults(); broadcast(); res.json({ ok: true }); });
+app.post('/api/match',  requireAdmin, (req, res) => {
+  deepMerge(state.match, req.body);
+  // tournamentLogo / sponsorLogos on match are derived mirrors of the logo library — fold
+  // any raw URL written here back into the library so it survives the next mirror sync.
+  if (req.body && (req.body.tournamentLogo !== undefined || req.body.sponsorLogos !== undefined)) adoptLegacyLogoUrls(state, req.body);
+  reconcileMapResults(); broadcast(); res.json({ ok: true });
+});
 
 app.post('/api/score', (req, res) => {
   const { team, delta } = req.body;
@@ -3742,6 +3941,90 @@ app.post('/api/upload', requireAdmin, singleUpload(uploadImage.single('file')), 
   }
 });
 
+// ── Logo library ───────────────────────────────────────────────────────────────
+// The one management surface for broadcast logos (Broadcast Theme → Broadcast Logos).
+// Files arrive via the shared POST /api/upload (sharp-processed) or as a pasted URL —
+// either way they land here once, named, and every graphic picks from this list.
+const LOGO_ROLES = ['event', 'sponsor', 'other'];
+function _cleanLogoName(v) { return String(v == null ? '' : v).replace(/[<>"'\\;{}]/g, '').trim().slice(0, 40); }
+function _afterLogoChange(req, action, detail) {
+  normalizeLogoRoles(state);
+  syncLogoMirrors(state);
+  logAction(resolveUserFromReq(req), resolveRoleFromReq(req), action, detail);
+  broadcast();
+}
+
+app.post('/api/logos/add', requireAdmin, (req, res) => {
+  const { url, name, role } = req.body || {};
+  const u = String(url || '').trim();
+  if (!u) return res.status(400).json({ error: 'A logo URL or upload is required' });
+  const ls = logoSetOf(state);
+  if (ls.logos.length >= MAX_LOGOS && !ls.logos.some(l => l.url === u)) {
+    return res.status(400).json({ error: 'Logo library is full (' + MAX_LOGOS + ' max)' });
+  }
+  const entry = upsertLogoByUrl(ls, u, _cleanLogoName(name));
+  if (!entry) return res.status(400).json({ error: 'Could not add that logo' });
+  const cleanName = _cleanLogoName(name);
+  if (cleanName) entry.name = cleanName;
+  if (LOGO_ROLES.indexOf(role) !== -1) applyLogoRole(state, entry.id, role);
+  _afterLogoChange(req, 'add-logo', entry.name);
+  res.json({ ok: true, logo: entry });
+});
+
+app.post('/api/logos/update', requireAdmin, (req, res) => {
+  const { id, name, url, role } = req.body || {};
+  const ls = logoSetOf(state);
+  const entry = findLogo(ls, id);
+  if (!entry) return res.status(404).json({ error: 'Logo not found' });
+  if (name !== undefined) entry.name = _cleanLogoName(name) || entry.name;
+  // Replacing the URL is the whole point of ids: every placement follows automatically.
+  if (url !== undefined) {
+    const u = String(url || '').trim();
+    if (!u) return res.status(400).json({ error: 'A logo URL or upload is required' });
+    entry.url = u;
+  }
+  if (LOGO_ROLES.indexOf(role) !== -1) applyLogoRole(state, entry.id, role);
+  _afterLogoChange(req, 'update-logo', entry.name);
+  res.json({ ok: true, logo: entry });
+});
+
+// Deleting a placed logo would silently blank graphics, so the first call reports where
+// it's still used and refuses; the UI confirms and retries with force.
+app.post('/api/logos/delete', requireAdmin, (req, res) => {
+  const { id, force } = req.body || {};
+  const ls = logoSetOf(state);
+  const entry = findLogo(ls, id);
+  if (!entry) return res.status(404).json({ error: 'Logo not found' });
+  const refs = logoReferences(state, id);
+  if (refs.length && !force) {
+    return res.status(409).json({ error: 'Logo is still in use', references: refs, name: entry.name });
+  }
+  ls.logos = ls.logos.filter(l => l.id !== id);
+  if (ls.eventLogoId === id) ls.eventLogoId = '';
+  ls.sponsorIds = ls.sponsorIds.filter(x => x !== id);
+  // Any placement pointing at it reverts to Auto (→ event logo) rather than dangling.
+  LOGO_PLACEMENTS.forEach(([sec, key]) => { if (state[sec] && state[sec][key] === id) state[sec][key] = ''; });
+  _afterLogoChange(req, 'delete-logo', entry.name);
+  res.json({ ok: true });
+});
+
+// Sponsor order is the on-air order (break screen / pre-show strips); logoIds reorders
+// the library itself so the pickers list logos the way the operator arranged them.
+app.post('/api/logos/reorder', requireAdmin, (req, res) => {
+  const { sponsorIds, logoIds } = req.body || {};
+  const ls = logoSetOf(state);
+  if (Array.isArray(sponsorIds)) {
+    const valid = sponsorIds.filter(id => findLogo(ls, id));
+    ls.sponsorIds = valid.concat(ls.sponsorIds.filter(id => valid.indexOf(id) === -1));
+  }
+  if (Array.isArray(logoIds)) {
+    const ordered = logoIds.map(id => findLogo(ls, id)).filter(Boolean);
+    ls.logos = ordered.concat(ls.logos.filter(l => ordered.indexOf(l) === -1));
+  }
+  _afterLogoChange(req, 'reorder-logos', String(ls.sponsorIds.length) + ' sponsors');
+  res.json({ ok: true });
+});
+
 // ── Custom overlay fonts ───────────────────────────────────────────────────────
 app.post('/api/fonts/upload', requireAdmin, singleUpload(uploadFont.single('file')), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file' });
@@ -4121,13 +4404,13 @@ app.post('/api/tournament', requireAdmin, (req, res) => {
   const gameLocked = !!(state.tournament && state.tournament.created);
   if (name !== undefined) state.match.tournament = name;
   if (game !== undefined && !gameLocked) state.match.game = game;
-  if (logo !== undefined) state.match.tournamentLogo = logo;
-  if (sponsorLogos !== undefined) state.match.sponsorLogos = sponsorLogos;
   if (!state.tournament) state.tournament = {};
   if (name !== undefined) state.tournament.name = name;
   if (game !== undefined && !gameLocked) state.tournament.game = game;
-  if (logo !== undefined) state.tournament.logo = logo;
-  if (sponsorLogos !== undefined) state.tournament.sponsorLogos = sponsorLogos;
+  // logo / sponsorLogos are derived mirrors of the logo library now (the control panel
+  // sets them by picking a library entry). A raw URL here — the first-run wizard, an
+  // older client, an API user — is adopted INTO the library rather than written on top.
+  if (logo !== undefined || sponsorLogos !== undefined) adoptLegacyLogoUrls(state, { logo, sponsorLogos });
   // Map pool is replaced wholesale (not deep-merged, so deletions take effect) + the veto
   // steps reconcile to cover exactly the pool.
   if (mapPool !== undefined) { state.tournament.mapPool = Array.isArray(mapPool) ? mapPool : []; reconcileMapVetoSteps(); warmMapPool(state.tournament.mapPool); }
@@ -4692,6 +4975,9 @@ app.post('/api/settings', requireAdmin, (req, res) => {
   const switcherChanged = req.body && Object.prototype.hasOwnProperty.call(req.body, 'switcher');
   deepMerge(state.settings, req.body);
   if (req.body.buses) initBusState();
+  // The library can also arrive wholesale here (Look import, legacy clients) — re-derive
+  // roles + the tournamentLogo/sponsorLogos mirrors so nothing goes out of step.
+  if (req.body.logoSet) { normalizeLogoRoles(state); syncLogoMirrors(state); }
   if (switcherChanged) { state.settings.switcher = sanitizeSwitcher(state.settings.switcher); switcher.reconfigure(state.settings); }
   broadcast(); res.json({ ok: true });
 });
@@ -4826,11 +5112,22 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
     (state.lowerThird.outputs || []).forEach(o => { o.activeSetIds = []; });
     migrateLowerThird(state); // re-normalise outputs + set assignments
   }
+  // Everything logo-shaped in settings is cleared BEFORE the merge. deepMerge only writes
+  // keys the snapshot actually has, so anything it omits keeps the OUTGOING event's value —
+  // the leak that made a loaded profile show the last tournament's logo. logoSet is an
+  // object (its pointers would survive piecemeal); the centre-logo picks are older than
+  // their entry in makeDefault(), so profiles saved before that simply don't carry them.
+  delete state.settings.logoSet;
+  LOGO_PLACEMENTS.forEach(([sec, key]) => { if (sec === 'settings') state.settings[key] = ''; });
   if (d.settings) {
     const incoming = JSON.parse(JSON.stringify(d.settings));
     delete incoming.graphicsToken; // never restore token from profile
     deepMerge(state.settings, incoming);
   }
+  // Rebuild the logo library from whatever shape the snapshot carried (a pre-library
+  // profile brings raw URLs in match.tournamentLogo / sponsorLogos) and re-derive the
+  // mirrors. Idempotent, so an already-migrated snapshot passes through untouched.
+  migrateLogos(state);
   // Draft is live per-game state and is never part of a profile snapshot — reset it
   // to a clean slate so the previous tournament's picks/phase/committed picks don't
   // leak into the new profile (preserve the operator's timer config).

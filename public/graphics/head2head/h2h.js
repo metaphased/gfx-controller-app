@@ -148,10 +148,8 @@ function renderAll(state) {
   if (t1NameEl) t1NameEl.textContent = t1.name || t1.tag || '';
   if (t2NameEl) t2NameEl.textContent = t2.name || t2.tag || '';
 
-  // ── Centre logo (tournament logo or first library logo) ───────────────────
-  var logoLibrary  = (settings.logoSet && settings.logoSet.logos) || [];
-  var h2hLogoSel   = settings.h2hLogoUrl !== undefined ? settings.h2hLogoUrl : '';
-  var centreLogo   = h2hLogoSel || (logoLibrary.length ? logoLibrary[0].url : '');
+  // ── Centre logo — uniform chain: h2h pick → event logo → none ─────────────
+  var centreLogo   = GfxSettings.logoUrl(state, settings.h2hLogoUrl);
   var centreLogoEl = $('h2h-centre-logo');
   if (centreLogoEl) {
     if (centreLogo) { centreLogoEl.src = centreLogo; centreLogoEl.style.display = ''; }

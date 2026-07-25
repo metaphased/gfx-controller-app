@@ -60,10 +60,11 @@ function runTimer(timerEnd) {
 }
 
 // ── Ticker label (text / logo / none) ─────────────────────────────────────────
-function renderTickerLabel(ticker) {
+function renderTickerLabel(state) {
+  const ticker = state.ticker || {};
   TickerEngine.renderLabel(
     { wrap: 'break-ticker-label', text: 'break-ticker-label-text', img: 'break-ticker-label-img' },
-    ticker
+    ticker, GfxSettings.logoUrl(state, ticker.labelLogoUrl)
   );
 }
 
@@ -433,11 +434,8 @@ function renderAll(state) {
   var _pipExitBefore = (!bs.pipMode && wasPip && rootEl) ? _flipSnapshot() : null;
 
   // ── Tournament / centre logo ──────────────────────────────────────────────
-  // Priority: break-specific override → first library logo → match tournament logo
-  const logoLibrary = (settings.logoSet && settings.logoSet.logos) || [];
-  const tournLogo = (settings.breakCenterLogoUrl)
-    || (logoLibrary.length ? logoLibrary[0].url : '')
-    || match.tournamentLogo || '';
+  // Uniform chain: break-screen pick → event logo → none.
+  const tournLogo = GfxSettings.logoUrl(state, settings.breakCenterLogoUrl);
   const logoImg = $('break-tourn-logo-img');
   if (logoImg) {
     if (!bs.pipMode) {
@@ -518,7 +516,7 @@ function renderAll(state) {
   // ── Sponsor logos ─────────────────────────────────────────────────────────
   const sponsorEl = $('break-sponsors');
   if (sponsorEl) {
-    const logos = match.sponsorLogos || [];
+    const logos = GfxSettings.sponsorLogos(state);
     sponsorEl.innerHTML = logos.map(function(url) {
       return '<div class="break-sponsor" style="background-image:url(' + esc(url) + ')"></div>';
     }).join('');
@@ -629,7 +627,7 @@ socket.on('state', function(state) {
   GfxSettings.clearBackground(root);
 
   // Ticker label runs on every state push — independent of break screen visibility
-  renderTickerLabel(state.ticker || {});
+  renderTickerLabel(state);
 
   // Visibility transitions
   if (visible !== _lastVisible) {

@@ -193,6 +193,7 @@
     <span class="mtb-session" id="mtb-session"></span>
     <span class="mtb-profile-label">ACTIVE PROFILE</span>
     <span class="mtb-profile-name" id="mtb-profile-name">No profile loaded</span>
+    <img class="mtb-tourn-logo" id="mtb-tourn-logo" alt="" style="display:none">
     <div class="mtb-sep"></div>
     <span class="mtb-match-context" id="lbar-game-context"></span>
     <span class="onair-pill" id="mtb-onair" style="display:none"><span class="onair-dot"></span><span id="mtb-onair-label">OFF AIR</span></span>
@@ -287,20 +288,28 @@
           <div class="field-row" id="ts-reset-row" style="display:none"><label></label>
             <button class="btn btn-sm btn-danger" onclick="resetTournament()">Reset Tournament</button>
           </div>
-          <div class="field-row"><label>Tournament Logo</label>
-            <div class="upload-row">
-              <input type="text" id="ts-logo" placeholder="URL or upload" oninput="patchTournamentInfo({logo:this.value})">
-              <button class="btn btn-sm" onclick="triggerUpload('ts-logo-file',function(url){document.getElementById('ts-logo').value=url;patchTournamentInfo({logo:url});})">Upload</button>
-              <input type="file" id="ts-logo-file" accept="image/*" style="display:none">
+          <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+            <span class="theme-anim-label">Event Logo</span>
+            <p class="hint" style="margin:2px 0 8px">The tournament's mark. Every graphic set to <strong>Auto</strong> falls back to this, and it appears in the top bar. Pick from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library, or add a new one here.</p>
+            <div id="ts-event-logo-grid" class="draft-logo-grid"></div>
+            <div class="logo-add-row" style="margin-top:10px;padding-top:10px">
+              <input type="text" id="ts-event-add-url" placeholder="Paste an image URL…" onkeydown="if(event.key==='Enter'){event.preventDefault();addEventLogoFromUrl();}">
+              <button class="btn btn-sm btn-primary" onclick="addEventLogoFromUrl()">Add</button>
+              <button class="btn btn-sm" onclick="addEventLogoFromUpload()">Upload…</button>
+              <input type="file" id="ts-event-add-file" accept="image/*" style="display:none">
             </div>
           </div>
         </div>
         <div class="card">
           <div class="card-title">Sponsor Logos</div>
-          <div id="sponsor-list" class="sponsor-grid"></div>
-          <div style="margin-top:12px">
-            <button class="btn btn-sm" onclick="addSponsor()">+ Add Sponsor Logo</button>
-            <input type="file" id="sponsor-file" accept="image/*" style="display:none">
+          <p class="hint">Which library logos play out as sponsors on the Break Screen and Pre-Show. Click to add or remove; the number is the on-air order (change it in <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a>).</p>
+          <div id="ts-sponsor-grid" class="draft-logo-grid"></div>
+          <div class="logo-add-row">
+            <input type="text" id="ts-sponsor-add-url" placeholder="Paste an image URL…" onkeydown="if(event.key==='Enter'){event.preventDefault();addSponsorFromUrl();}">
+            <input type="text" id="ts-sponsor-add-name" placeholder="Name">
+            <button class="btn btn-sm btn-primary" onclick="addSponsorFromUrl()">Add</button>
+            <button class="btn btn-sm" onclick="addSponsorFromUpload()">Upload…</button>
+            <input type="file" id="ts-sponsor-add-file" accept="image/*" style="display:none">
           </div>
         </div>
       </div>
@@ -918,6 +927,11 @@
             <label style="display:flex;align-items:center;gap:8px;margin-top:14px;cursor:pointer"><input type="checkbox" id="hd-show-names" onchange="hdToggleShowNames(this.checked)"> <span style="font-size:13px">Show hero names on the pick images</span></label>
             <label style="display:flex;align-items:center;gap:8px;margin-top:8px;cursor:pointer"><input type="checkbox" id="hd-show-gradient" onchange="hdToggleShowGradient(this.checked)"> <span style="font-size:13px">Gradient over the pick images (helps the name pop)</span></label>
           </div>
+          <div class="card" style="margin-top:16px">
+            <div class="card-title">Centre Logo</div>
+            <p class="hint" style="margin-bottom:8px">Sits between the two clocks. Selects from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the event logo.</p>
+            <div id="hd-logo-grid" class="draft-logo-grid"></div>
+          </div>
         </div>
         <div class="ps-col">
           <div class="card">
@@ -1263,7 +1277,7 @@
           <!-- Centre logo -->
           <div class="card">
             <div class="card-title">Centre Logo</div>
-            <p class="hint" style="margin-bottom:8px">Select from your <a onclick="switchToTab('theme')" href="#" style="color:var(--primary)">Broadcast Logos</a> library. Auto uses the first logo added.</p>
+            <p class="hint" style="margin-bottom:8px">Select from your <a onclick="switchToTab('theme')" href="#" style="color:var(--primary)">Broadcast Logos</a> library. Auto uses the event logo.</p>
             <div id="h2h-logo-grid" class="draft-logo-grid"></div>
           </div>
 
@@ -1410,7 +1424,7 @@
                 <span id="ps-logo-scale-val" style="font-size:12px;color:var(--text-dim);width:38px;text-align:right">8vh</span>
               </div>
             </div>
-            <p class="hint" style="margin:8px 0 6px">Select from your <a onclick="switchToTab('theme')" href="#" style="color:var(--primary)">Broadcast Logos</a> library. Auto uses the first logo added.</p>
+            <p class="hint" style="margin:8px 0 6px">Select from your <a onclick="switchToTab('theme')" href="#" style="color:var(--primary)">Broadcast Logos</a> library. Auto uses the event logo.</p>
             <div id="ps-logo-grid" class="draft-logo-grid"></div>
           </div>
 
@@ -1556,7 +1570,7 @@
               <input type="text" id="ticker-label-text" value="NEWS" oninput="api('/api/ticker',{labelText:this.value})">
             </div>
             <div id="ticker-label-logo-row" style="display:none;margin-top:8px">
-              <p class="hint" style="margin-bottom:6px">Select from your broadcast logo library.</p>
+              <p class="hint" style="margin-bottom:6px">Select from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the event logo.</p>
               <div id="ticker-label-logo-grid" class="draft-logo-grid"></div>
             </div>
           </div>
@@ -1798,13 +1812,15 @@
           <!-- Broadcast Logos -->
           <div class="card">
             <div class="card-title">Broadcast Logos</div>
-            <p class="hint">Upload and name the logos for this broadcast. Each graphic lets you choose which logo appears in each slot.</p>
+            <p class="hint">Every logo used on air lives here — add it <strong>once</strong>, name it, and each graphic picks from this list. Replacing a logo's image updates every graphic using it.</p>
+            <p class="hint" style="margin-top:-4px">Set one as the <strong>Event</strong> logo: that's what every graphic's <strong>Auto</strong> falls back to, and what appears in the top bar. <strong>Sponsor</strong> logos appear on the Break Screen and Pre-Show, in the order below.</p>
             <div id="ts-logos-list"></div>
-            <button class="btn btn-sm btn-primary" onclick="addThemeLogo()" style="margin-top:8px">+ Add Logo</button>
-            <div class="theme-anim-row" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-              <span class="theme-anim-label">Sponsor Logos</span>
-              <p class="hint" style="margin:2px 0 6px">Managed in <a onclick="switchToTab('tournament')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Tournament Setup</a>.</p>
-              <div id="ts-sponsors-preview"></div>
+            <div class="logo-add-row">
+              <input type="text" id="ts-logo-add-url" placeholder="Paste an image URL…" onkeydown="if(event.key==='Enter'){event.preventDefault();addLogoFromUrl();}">
+              <input type="text" id="ts-logo-add-name" placeholder="Name" onkeydown="if(event.key==='Enter'){event.preventDefault();addLogoFromUrl();}">
+              <button class="btn btn-sm btn-primary" onclick="addLogoFromUrl()">Add</button>
+              <button class="btn btn-sm" onclick="addLogoFromUpload()">Upload…</button>
+              <input type="file" id="ts-logo-add-file" accept="image/*" style="display:none">
             </div>
           </div>
 
@@ -1909,7 +1925,7 @@
 
           <div class="card">
             <div class="card-title">Centre Logo</div>
-            <p class="hint" style="margin-bottom:8px">Select from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the first logo added.</p>
+            <p class="hint" style="margin-bottom:8px">Select from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the event logo.</p>
             <div id="draft-logo-grid" class="draft-logo-grid"></div>
           </div>
         </div>
@@ -2077,13 +2093,8 @@
           <div class="card">
             <div class="card-title">Logo</div>
             <label style="display:flex;align-items:center;gap:8px;margin-bottom:10px;cursor:pointer"><input type="checkbox" id="mv-show-logo" onchange="api('/api/mapVeto',{showLogo:this.checked})"> <span style="font-size:13px">Show logo</span></label>
-            <div class="field-row"><label>Logo URL</label>
-              <div class="upload-row">
-                <input type="text" id="mv-logo-url" placeholder="URL or upload" oninput="api('/api/mapVeto',{logoUrl:this.value})">
-                <button class="btn btn-sm" onclick="triggerUpload('mv-logo-file',function(url){document.getElementById('mv-logo-url').value=url;api('/api/mapVeto',{logoUrl:url,showLogo:true});})">Upload</button>
-                <input type="file" id="mv-logo-file" accept="image/*" style="display:none">
-              </div>
-            </div>
+            <p class="hint" style="margin-bottom:8px">Select from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the event logo.</p>
+            <div id="mv-logo-grid" class="draft-logo-grid" style="margin-bottom:10px"></div>
             <div class="field-row"><label>Scale</label><input type="range" id="mv-logo-scale" min="3" max="14" step="0.5" onchange="api('/api/mapVeto',{logoScale:Number(this.value)})"></div>
             <div class="field-row"><label>Position</label>
               <div class="radio-group">
@@ -2131,7 +2142,7 @@
               <button id="bracket-logo-show-on"  class="btn btn-sm" onclick="patchBracket({showLogo:true})">On</button>
               <button id="bracket-logo-show-off" class="btn btn-sm btn-active" onclick="patchBracket({showLogo:false})">Off</button>
             </div>
-            <p class="hint" style="margin-bottom:8px">Selects from your broadcast logo library. Auto uses the tournament logo.</p>
+            <p class="hint" style="margin-bottom:8px">Selects from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the event logo.</p>
             <div id="bracket-logo-grid" class="draft-logo-grid"></div>
             <div class="field-row" style="margin-top:10px;margin-bottom:0;gap:10px">
               <label style="white-space:nowrap">Logo Size</label>
@@ -2193,7 +2204,7 @@
               <button id="groups-logo-show-on"  class="btn btn-sm" onclick="patchGroupStage({showLogo:true})">On</button>
               <button id="groups-logo-show-off" class="btn btn-sm btn-active" onclick="patchGroupStage({showLogo:false})">Off</button>
             </div>
-            <p class="hint" style="margin-bottom:8px">Selects from your broadcast logo library. Auto uses the tournament logo.</p>
+            <p class="hint" style="margin-bottom:8px">Selects from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the event logo.</p>
             <div id="groups-logo-grid" class="draft-logo-grid"></div>
             <div class="field-row" style="margin-top:10px;margin-bottom:0;gap:10px">
               <label style="white-space:nowrap">Logo Size</label>
@@ -2249,6 +2260,8 @@
               <button id="ts-gfx-logo-on"  class="btn btn-sm" onclick="patchTournamentStructureGfx({showLogo:true})">On</button>
               <button id="ts-gfx-logo-off" class="btn btn-sm btn-active" onclick="patchTournamentStructureGfx({showLogo:false})">Off</button>
             </div>
+            <p class="hint" style="margin-bottom:8px">Selects from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the event logo.</p>
+            <div id="ts-gfx-logo-grid" class="draft-logo-grid" style="margin-bottom:10px"></div>
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
               <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;flex-shrink:0">Logo Size</span>
               <input type="range" id="ts-gfx-logo-scale" min="3" max="18" step="0.5" value="7" style="flex:1"
@@ -2367,6 +2380,8 @@
               <button id="pp-logo-on"  class="btn btn-sm" onclick="patchPrizepool({showLogo:true})">On</button>
               <button id="pp-logo-off" class="btn btn-sm btn-active" onclick="patchPrizepool({showLogo:false})">Off</button>
             </div>
+            <p class="hint" style="margin-bottom:8px">Selects from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the event logo.</p>
+            <div id="pp-logo-grid" class="draft-logo-grid" style="margin-bottom:10px"></div>
             <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
               <span style="font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--text-dim);white-space:nowrap;flex-shrink:0">Logo Size</span>
               <input type="range" id="pp-logo-scale" min="3" max="18" step="0.5" value="7" style="flex:1"
@@ -2551,7 +2566,7 @@
 
           <div class="card">
             <div class="card-title">Center Logo</div>
-            <p class="hint" style="margin-bottom:8px">Selects from your broadcast logo library. Auto uses the first logo added.</p>
+            <p class="hint" style="margin-bottom:8px">Selects from your <a onclick="switchToTab('theme')" style="color:var(--primary);cursor:pointer;text-decoration:underline">Broadcast Logos</a> library. Auto uses the event logo.</p>
             <div id="break-center-logo-grid" class="draft-logo-grid"></div>
             <div class="field-row" style="margin-top:10px;margin-bottom:0;gap:10px">
               <label style="white-space:nowrap">Logo Size</label>

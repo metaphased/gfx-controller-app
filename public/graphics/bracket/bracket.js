@@ -264,7 +264,7 @@ function renderBracket(state) {
 
   // Logo — only shown when explicitly enabled (default off so VMix can own the logo layer)
   var logoImg = document.getElementById('bracket-logo');
-  var logoUrl = bkt.logoUrl || tourn.logo || '';
+  var logoUrl = GfxSettings.logoUrl(state, bkt.logoUrl);
   if (logoImg) {
     if (bkt.showLogo && logoUrl) { logoImg.src = logoUrl; logoImg.style.display = ''; }
     else                          { logoImg.style.display = 'none'; }
@@ -573,7 +573,7 @@ function bracketHash(state) {
     type:   bkt.type,
     format: tourn.playoffFormat,
     teams:  (state.teams || []).map(function(t) { return { id: t.id, name: t.name, tag: t.tag, logo: t.logo }; }),
-    logo:   bkt.logoUrl || tourn.logo,
+    logo:   GfxSettings.logoUrl(state, bkt.logoUrl),
     scale:  bkt.logoScale,
     pos:    bkt.logoPosition,
     show:   bkt.showLogo

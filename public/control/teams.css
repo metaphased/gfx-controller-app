@@ -468,22 +468,6 @@ input.theme-hex-inp:focus { border-color: var(--primary); }
 .theme-pill.is-inert { opacity: 0.45; }
 .theme-pill.is-inert.is-active { border-color: var(--border); color: var(--text-dim); background: transparent; }
 
-.theme-sponsor-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 4px;
-}
-.theme-sponsor-thumb {
-  width: 60px;
-  height: 36px;
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-color: rgba(255,255,255,0.05);
-  border: 1px solid var(--border);
-}
-
 /* Responsive multi-column card flow (was a fixed 2-col grid capped at 900px).
    Cards keep their vertical-stack reading order but flow into as many columns
    as the viewport fits — narrow screens stay 2-col, wide screens fill out,
@@ -541,7 +525,7 @@ input.theme-hex-inp:focus { border-color: var(--primary); }
   color: var(--text-dim);
 }
 
-/* Broadcast logo library */
+/* Broadcast logo library — one row per library entry: thumb · name · role · order · actions */
 .theme-logo-row {
   display: flex;
   align-items: center;
@@ -549,6 +533,64 @@ input.theme-hex-inp:focus { border-color: var(--primary); }
   margin-bottom: 8px;
 }
 .theme-logo-row:last-child { margin-bottom: 0; }
+/* The event logo is the fallback every graphic's "Auto" resolves to — flag it. */
+.theme-logo-row.role-event .theme-logo-thumb { border-color: var(--select); }
+select.theme-logo-role {
+  flex-shrink: 0;
+  width: 92px;
+  background-color: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  /* keep clear of the global select chevron (background-position: right 10px) */
+  padding: 4px 24px 4px 6px;
+  background-position: right 6px center;
+  font-size: 11px;
+  font-family: var(--ui-font), sans-serif;
+  letter-spacing: 0.04em;
+}
+/* Sponsor play-out order. The slot is present on EVERY row (empty for non-sponsors)
+   so the Replace/× columns stay aligned down the list. */
+.theme-logo-order {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
+  width: 62px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.theme-logo-order-num { width: 12px; text-align: center; }
+.btn.theme-logo-move { padding: 2px 5px; line-height: 1; font-size: 10px; }
+.btn.theme-logo-move[disabled] { opacity: 0.3; pointer-events: none; }
+/* Icon-only so the row still fits the name at the Theme tab's column width. */
+.btn.theme-logo-replace { flex-shrink: 0; padding: 4px 8px; font-size: 13px; line-height: 1.1; }
+
+/* Add row — URL paste and upload land in the same library (sponsors used to be
+   upload-only and lived in a separate system entirely). */
+.logo-add-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.logo-add-row input[type="text"] {
+  min-width: 0;
+  width: auto;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 8px;
+  font-size: 12px;
+  font-family: var(--ui-font), sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.logo-add-row input[type="text"]:focus { border-color: var(--primary); }
+#ts-logo-add-url  { flex: 2; }
+#ts-logo-add-name { flex: 1; }
 .theme-logo-thumb {
   width: 52px;
   height: 32px;
@@ -561,7 +603,7 @@ input.theme-hex-inp:focus { border-color: var(--primary); }
 }
 input.theme-logo-name {
   flex: 1;
-  min-width: 0;
+  min-width: 90px;
   width: auto;
   background: var(--bg3);
   border: 1px solid var(--border);
@@ -581,7 +623,9 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   gap: 8px;
 }
 .draft-logo-tile {
-  width: 56px;
+  /* Wide enough for a real library name — the label is the only thing telling two
+     similar marks apart (e.g. "LogoWText" vs "LogoWTextWhite"). Full name on hover. */
+  width: 70px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -595,6 +639,7 @@ input.theme-logo-name:focus { border-color: var(--primary); }
 .draft-logo-tile:hover { border-color: rgba(167,163,142,0.4); }
 .draft-logo-tile.is-active { border-color: var(--select); background: rgba(var(--select-rgb),0.10); }
 .draft-logo-tile-img {
+  position: relative;
   width: 48px; height: 36px;
   background-size: contain;
   background-repeat: no-repeat;
@@ -603,6 +648,27 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   display: flex;
   align-items: center;
   justify-content: center;
+}
+/* Sponsor play-out position, shown on the multi-select tiles in Tournament Setup. */
+.draft-logo-tile-badge {
+  position: absolute;
+  top: 1px; left: 1px;
+  min-width: 13px;
+  padding: 0 3px;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 13px;
+  text-align: center;
+  color: var(--select-ink);
+  background: rgba(var(--select-rgb),0.85);
+}
+/* Auto tile previews the event logo, so mark it apart from a literal pick. */
+.draft-logo-tile.is-auto { border-style: dashed; }
+.draft-logo-tile-empty {
+  font-size: 9px;
+  font-family: var(--ui-font), sans-serif;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
 }
 .draft-logo-tile-label {
   font-size: 10px;

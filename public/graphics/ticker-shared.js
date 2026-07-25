@@ -8,8 +8,9 @@ window.TickerEngine = (function() {
   }
 
   // Render the label zone (text / logo / hidden).
-  // ids: { wrap, text, img }
-  function renderLabel(ids, ticker) {
+  // ids: { wrap, text, img }. logoUrl is RESOLVED by the caller (the logo library lives
+  // in settings, which this helper doesn't see) — see GfxSettings.logoUrl.
+  function renderLabel(ids, ticker, logoUrl) {
     var wrap   = document.getElementById(ids.wrap);
     var textEl = document.getElementById(ids.text);
     var imgEl  = document.getElementById(ids.img);
@@ -19,8 +20,8 @@ window.TickerEngine = (function() {
     if (mode === 'none') { wrap.style.display = 'none'; return; }
     wrap.style.display = '';
 
-    if (mode === 'logo' && ticker.labelLogoUrl) {
-      if (imgEl) { imgEl.src = ticker.labelLogoUrl; imgEl.style.display = ''; }
+    if (mode === 'logo' && logoUrl) {
+      if (imgEl) { imgEl.src = logoUrl; imgEl.style.display = ''; }
       if (textEl) textEl.style.display = 'none';
     } else {
       if (imgEl) imgEl.style.display = 'none';

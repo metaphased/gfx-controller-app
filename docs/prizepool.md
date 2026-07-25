@@ -22,9 +22,9 @@ From the Prizepool ctrl-bar:
 - **Show / hide**.
 - **Entries** — add/edit/reorder placements and amounts.
 - Per-entry **highlight** (emphasise 1st place), **sponsor logo** and **prize image** with sizing.
-- **Logo** — toggle and scale the broadcast/tournament logo.
+- **Logo** — show/hide, pick from [Broadcast Logos](theming.md#broadcast-logos) (**Auto** = the event logo), scale and position.
 
 ## Notes
 
 - Entries are free-form, so it works for placements, per-game bonuses, or "MVP" style awards.
-- Sponsor logos here are managed per entry; broadcast-wide sponsors live in [Tournament Setup](tournament-setup.md#sponsor-logos).
+- Sponsor logos here are attached **per entry** (a one-off image on that card); broadcast-wide sponsors that play out on the Break Screen and Pre-show are set in [Tournament Setup](tournament-setup.md#sponsor-logos).

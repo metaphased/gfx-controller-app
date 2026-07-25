@@ -57,7 +57,7 @@ function structHash(state) {
     groups: (t.groups || []).map(function(g) { return { id: g.id, name: g.name, teamIds: g.teamIds }; }),
     qualN:  t.qualifiersPerGroup,
     teams:  _teams.map(function(t) { return { id: t.id, name: t.name, logo: t.logo }; }),
-    logo:   gs.logoUrl, scale: gs.logoScale, pos: gs.logoPosition, show: gs.showLogo
+    logo:   GfxSettings.logoUrl(state, gs.logoUrl), scale: gs.logoScale, pos: gs.logoPosition, show: gs.showLogo
   });
 }
 
@@ -75,13 +75,12 @@ function scoresHash(state) {
 // ── Apply logo + mode class (no DOM rebuild) ───────────────────────────────────
 function applyLogoAndMode(state) {
   var gs    = state.groupStage || {};
-  var tourn = state.tournament  || {};
   var root  = $('groups-root');
   if (!root) return;
 
   // Logo — only shown when explicitly enabled (default off so VMix can own the logo layer)
   var logoImg = document.getElementById('groups-logo');
-  var logoUrl = gs.logoUrl || tourn.logo || '';
+  var logoUrl = GfxSettings.logoUrl(state, gs.logoUrl);
   if (logoImg) {
     if (gs.showLogo && logoUrl) { logoImg.src = logoUrl; logoImg.style.display = ''; }
     else                         { logoImg.style.display = 'none'; }

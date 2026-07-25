@@ -101,8 +101,8 @@ function render(state){
   $('clock-arrow-l').classList.toggle('show', actTeam === 'team1');
   $('clock-arrow-r').classList.toggle('show', actTeam === 'team2');
 
-  // Tournament logo (event logo from match)
-  setBg('tourn-logo', m.tournamentLogo || '');
+  // Centre logo — uniform chain: hero-draft pick → event logo → none
+  setBg('tourn-logo', GfxSettings.logoUrl(state, hd.logoUrl));
   $('hd-root').classList.toggle('show-names', !!hd.showPickNames);
   $('hd-root').classList.toggle('show-gradient', hd.showPickGradient !== false);
 

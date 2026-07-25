@@ -68,6 +68,7 @@ On **Graphics → Hero Draft Overlay**:
 | **Timer style** | Ring (around the centre logo) or Bar. |
 | **Show hero names** | Name labels on the pick images. |
 | **Gradient over the pick images** | A dark gradient that helps the names pop against bright hero art. |
+| **Centre Logo** | The mark between the two clocks, picked from [Broadcast Logos](theming.md#broadcast-logos) (**Auto** = the event logo). |
 
 ## Auto-fill from the live game
 

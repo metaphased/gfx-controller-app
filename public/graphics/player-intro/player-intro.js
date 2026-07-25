@@ -185,14 +185,12 @@ function rankTextShort(rank) {
   return abbr + ' ' + (rank.division || '') + ' ' + (rank.lp || 0) + 'LP';
 }
 
+// Uniform chain: player-intro pick → event logo → none. With no pick of its own it
+// still inherits the Head-to-Head choice, so the two centre logos stay in step.
 function getCentreLogo(state) {
   var pi = state.playerIntro || {};
-  // piLogoUrl: non-empty string = specific override; empty = auto (fall back to h2hLogoUrl)
-  if (pi.piLogoUrl) return pi.piLogoUrl;
   var settings = state.settings || {};
-  var lib = (settings.logoSet && settings.logoSet.logos) || [];
-  var sel = settings.h2hLogoUrl !== undefined ? settings.h2hLogoUrl : '';
-  return sel || (lib.length ? lib[0].url : '');
+  return GfxSettings.logoUrl(state, pi.piLogoUrl || settings.h2hLogoUrl);
 }
 
 function setLogoOrVs(imgEl, vsEl, logoUrl) {

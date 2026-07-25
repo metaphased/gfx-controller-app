@@ -58,7 +58,8 @@ From the Player Intro ctrl-bar:
   - *League of Legends* — Ranks come from the Riot API ([Players / Rosters](match-and-draft.md#league-of-legends--ranks-and-champion-pools)). **Champs** blends each player's **top 3 most-played** champions (from their op.gg pool) along their row as overlapping splash crops that fade toward the name — players with no pool data fall back to a clean name. Available on the **Nameplate** and **Team Stack** layouts; the **Bar** layout is always name-only.
   - *VALORANT* — the art toggle shows each player's assigned **agent** rising out of their row instead of a champion strip.
 - **Animation** — the entrance style (*Rise · Stagger · Fade*, plus *Split* on Agent Cards); the layout picks a sensible default.
-- **Background** — transparent by default, or a **Dark** backdrop; the centre logo can be overridden per broadcast.
+- **Background** — transparent by default, or a **Dark** backdrop.
+- **Centre logo** — picked from [Broadcast Logos](theming.md#broadcast-logos). **Auto** here follows the [Head-to-Head](head-to-head.md) choice, so the two centre logos stay in step.
 
 ## Notes
 

@@ -100,7 +100,35 @@ Two good-to-knows:
 - **Bounce / Elastic** need a modern renderer; on older embedded browsers the nearest overshoot curve is substituted automatically, so nothing breaks.
 - **Reduced motion** — if the viewing machine's OS/browser requests reduced motion, animations resolve instantly.
 
-## Logos & image uploads
+## Broadcast Logos
+
+**One library holds every logo used on air.** Add a logo once — paste a URL or **Upload…** — name it, and every graphic picks from this list. There is no second place to store a logo: the event logo and sponsor logos are entries in this same library, pointed at from [Tournament Setup](tournament-setup.md#event-logo).
+
+![Broadcast Logos card — one library entry per logo, with its role, sponsor order, replace and delete](img/ts-logo-library.webp)
+
+Each row is one logo:
+
+| Control | What it does |
+|---|---|
+| **Name** | What the logo is called in every picker. Rename freely — placements follow the entry, not the name. |
+| **Role** | **Event** = the tournament's mark (see below). **Sponsor** = plays out on the Break Screen and Pre-show. **Library** = available to any graphic, but not either of those. Only one logo can be the Event logo. |
+| **▲ ▼** | Sponsors only — the on-air play-out order, numbered on the left. |
+| **↻ Replace** | Swap the image file. **Every graphic using this logo updates at once** — the point of the library: re-brand mid-event without hunting through eight graphics. |
+| **×** | Delete. If the logo is still placed anywhere, you're told exactly which graphics use it and asked to confirm; those slots revert to **Auto**. |
+
+### How a graphic picks its logo
+
+Every graphic with a logo slot resolves it the same way:
+
+**the graphic's own pick → the event logo → nothing.**
+
+So each graphic's picker offers an **Auto** tile (dashed border, previewing the event logo) followed by the library. Choosing Auto means "whatever this event's logo is" — set the event logo once and every Auto slot follows. Choosing a specific logo overrides it for that graphic only. Size and position stay per-graphic, on each graphic's own page.
+
+> The **Player Intro** picker's Auto follows the [Head-to-Head](head-to-head.md) choice instead, so the two centre logos stay in step.
+
+The library is **per-profile** — it travels with a saved event, and loading a different profile brings that event's logos. (Uploaded *fonts*, by contrast, are shared across all profiles.)
+
+## Image uploads
 
 Wherever you upload an image in the control panel — broadcast/event logos, sponsor logos, team logos, prize-pool and pre-show artwork — the file is **automatically optimised on upload** so output stays light no matter what you drop in:
 
