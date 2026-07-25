@@ -302,9 +302,19 @@ let _dirtyCheckTimer = null;
 
 function profileSnapshotStr(state) {
   if (!state || !state.match || !state.tournament) return null;
-  const m = state.match;
+  const m = state.match, t = state.tournament;
   return stableStr({
-    tournament: state.tournament,
+    // schedule is normalized to t.schedule||[] here (not passed through as-is): the general
+    // 'state' broadcast deliberately OMITS it (buildStatePayload strips it server-side — it's
+    // pushed instead over a separate 'schedule' socket event that unconditionally sets
+    // window._state.tournament.schedule, defaulting to [] the same way). Comparing the raw
+    // objects meant a brand-new profile's server-side tournament (genuinely no `schedule` key)
+    // could never match the client's copy (which always has one, even if empty) — the profile
+    // showed dirty from the moment it loaded, and Update could never clear it since every
+    // future comparison hit the same asymmetry. Normalizing both sides to the same shape here
+    // fixes that while still catching real schedule edits (differing content still compares
+    // unequal).
+    tournament: Object.assign({}, t, { schedule: t.schedule || [] }),
     bracket:    { title: state.bracket && state.bracket.title, rounds: state.bracket && state.bracket.rounds },
     match: {
       team1: m.team1, team2: m.team2, game: m.game, format: m.format,
