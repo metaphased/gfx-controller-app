@@ -462,7 +462,7 @@ input.theme-hex-inp:focus { border-color: var(--primary); }
   transition: all 0.15s;
 }
 .theme-pill:hover { border-color: rgba(167,163,142,0.4); color: var(--text); }
-.theme-pill.is-active { border-color: var(--primary); color: var(--primary); background: rgba(var(--accent-rgb),0.06); }
+.theme-pill.is-active { border-color: var(--select); color: var(--select-hi); background: rgba(var(--select-rgb),0.12); }
 /* Inert: still selectable, but visibly has no effect for the current context
    (e.g. GPU renderer when the animation type has no shader). */
 .theme-pill.is-inert { opacity: 0.45; }
@@ -593,7 +593,7 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   transition: border-color 0.15s, background 0.15s;
 }
 .draft-logo-tile:hover { border-color: rgba(167,163,142,0.4); }
-.draft-logo-tile.is-active { border-color: var(--primary); background: rgba(var(--accent-rgb),0.06); }
+.draft-logo-tile.is-active { border-color: var(--select); background: rgba(var(--select-rgb),0.10); }
 .draft-logo-tile-img {
   width: 48px; height: 36px;
   background-size: contain;

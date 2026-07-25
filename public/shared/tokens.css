@@ -39,6 +39,16 @@
   --text-dim:    rgba(245,247,250,0.60);
   --label:       rgba(245,247,250,0.78);  /* field/section labels (was ~0.5)   */
 
+  /* ── Selected / active state for ORDINARY controls ───────────────────────── */
+  /* Toggles, mode pickers, confirmations — anything that is NOT a live operation.
+     Deliberately HUE-FREE (warm bone): selection is signalled by contrast, the way a lit
+     key reads on a hardware panel, so it never competes with the status vocabulary below
+     (red = live, green = ok, amber = ready). Filled = chosen; flat, no glow. */
+  --select:      #d8d4c8;          /* filled selected state                    */
+  --select-hi:   #e8e4d8;          /* hover on a filled selected control       */
+  --select-ink:  #14161a;          /* text ON a filled selected control        */
+  --select-rgb:  216,212,200;      /* triplet for subtle/outline variants      */
+
   /* ── Status / broadcast signal colours (the ONLY saturated hues) ─────────── */
   --danger:      #ff4d4d;
   --danger-rgb:  255,77,77;
