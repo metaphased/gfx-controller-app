@@ -623,7 +623,9 @@ input.theme-logo-name:focus { border-color: var(--primary); }
   gap: 8px;
 }
 .draft-logo-tile {
-  width: 56px;
+  /* Wide enough for a real library name — the label is the only thing telling two
+     similar marks apart (e.g. "LogoWText" vs "LogoWTextWhite"). Full name on hover. */
+  width: 70px;
   display: flex;
   flex-direction: column;
   align-items: center;

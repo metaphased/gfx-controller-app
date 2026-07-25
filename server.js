@@ -1787,6 +1787,14 @@ function migrateLogos(st) {
     obj[key] = e ? e.id : '';
   });
   normalizeLogoRoles(st);
+  // 6. Drop references the library can't resolve. A dangling id is always the PREVIOUS
+  //    event's: per-graphic placements aren't in a profile snapshot at all, and a snapshot
+  //    written before a settings key existed leaves the outgoing value untouched by
+  //    deepMerge. Either way it must read as "no pick" (→ Auto), not as another event's logo.
+  LOGO_PLACEMENTS.forEach(([sec, key]) => {
+    const obj = st[sec];
+    if (obj && obj[key] && obj[key] !== 'none' && !findLogo(ls, obj[key])) obj[key] = '';
+  });
   syncLogoMirrors(st);
 }
 
@@ -5104,11 +5112,13 @@ app.post('/api/profiles/load', requireAdmin, (req, res) => {
     (state.lowerThird.outputs || []).forEach(o => { o.activeSetIds = []; });
     migrateLowerThird(state); // re-normalise outputs + set assignments
   }
-  // logoSet is an OBJECT, so deepMerge would keep the OUTGOING event's pointers wherever
-  // the incoming snapshot lacks them — exactly the leak that made a fresh profile show the
-  // last tournament's logo. Drop it first and let the snapshot (or migrateLogos, from the
-  // snapshot's match.tournamentLogo/sponsorLogos) rebuild it from scratch.
+  // Everything logo-shaped in settings is cleared BEFORE the merge. deepMerge only writes
+  // keys the snapshot actually has, so anything it omits keeps the OUTGOING event's value —
+  // the leak that made a loaded profile show the last tournament's logo. logoSet is an
+  // object (its pointers would survive piecemeal); the centre-logo picks are older than
+  // their entry in makeDefault(), so profiles saved before that simply don't carry them.
   delete state.settings.logoSet;
+  LOGO_PLACEMENTS.forEach(([sec, key]) => { if (sec === 'settings') state.settings[key] = ''; });
   if (d.settings) {
     const incoming = JSON.parse(JSON.stringify(d.settings));
     delete incoming.graphicsToken; // never restore token from profile
