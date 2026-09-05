@@ -268,11 +268,13 @@ Per-graphic guides and more live in the [full docs index](docs/README.md).
 
 The panel adapts to the tournament's game — you only see the tabs that game uses.
 
-**Tournament:** Profiles · Tournament Setup · Teams Database · Schedule · Groups · Playoffs
-**Game:** Game Setup · Players / Rosters · Draft / Veto · Match Intel *(game-dependent)*
-**Graphics (shared):** Broadcast Theme · BG Output · Lower Third · Pre-show · Ticker · Bracket · Group Stage · Tournament Structure · Prizepool · Break Screen · Win Screen · Player Intro
-**Graphics (game-specific):** LoL — Draft · Head to Head · Player Spotlight · | CS2 — Map Veto · Map Intro · Post-Game · | Dota 2 — Hero Draft · Post-Game · Match Summary
-**System:** Routing (GFX bus) · Settings (users, token, output URLs, logos, Appearance, Live Switcher, Broadcast Assets) · Log
+| Section | Features |
+|---|---|
+|`Tournament` | Profiles, Tournament Setup, Teams Database, Schedule, Groups, Playoffs |
+|`Game` | Game Setup, Players / Rosters, Draft / Veto, Match Intel *(game-dependent)* |
+|`Graphics` | Broadcast Theme, BG Output, Lower Third, Pre-show, Ticker, Bracket, Group Stage, Tournament Structure, Prizepool, Break Screen, Win Screen, Player Intro |
+|`Graphics (game-specific)` | LoL — Draft, Head to Head, Player Spotlight · CS2 — Map Veto, Map Intro, Post-Game · Dota 2 — Hero Draft, Post-Game, Match Summary |
+|`System` | Routing (GFX bus), Settings (users, token, output URLs, logos, Appearance, Live Switcher, Broadcast Assets), Log |
 
 ## User roles
 
